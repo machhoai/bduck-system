@@ -1,0 +1,24 @@
+{
+  "name": "@bduck/shared-types",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ --ext .ts"
+  },
+  "devDependencies": {
+    "@bduck/eslint-config": "workspace:*",
+    "@bduck/tsconfig": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,57 @@
+# Version Control
+.git
+.gitignore
+
+# Dependencies (rebuilt inside container)
+node_modules
+.pnpm-store
+
+# Build Outputs (rebuilt inside container)
+.next
+dist
+build
+out
+
+# Environment Files (injected at runtime)
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+
+# Documentation & Config
+*.md
+LICENSE
+.editorconfig
+.prettierrc*
+.eslintrc*
+eslint.config.*
+
+# Testing
+coverage
+.nyc_output
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD
+.github
+
+# Firebase Emulators
+.firebase
+*-debug.log
+
+# Nginx (copied separately)
+nginx/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,90 @@
+name: Deploy Test (WMS)
+
+on:
+  push:
+    branches:
+      - develop
+      - test
+    paths:
+      - "apps/fe-wms/**"
+      - "apps/be-wms/**"
+      - "packages/**"
+      - ".github/workflows/deploy-test.yml"
+      - "pnpm-workspace.yaml"
+      - "docker-compose.yml"
+      - "nginx/**"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/your-org/bduck-system
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend (be-wms)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/be-wms/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}-be-wms:latest-test
+          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}-be-wms:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}-be-wms:buildcache,mode=max
+
+      - name: Build and push frontend (fe-wms)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/fe-wms/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}-fe-wms:latest-test
+          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}-fe-wms:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}-fe-wms:buildcache,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Test Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.TEST_SERVER_HOST }}
+          username: ${{ secrets.TEST_SERVER_USER }}
+          key: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          script: |
+            cd /opt/bduck-system
+            docker compose pull
+            docker compose up -d

@@ -1,0 +1,48 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: wms-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - fe-wms
+      - be-wms
+    networks:
+      - wms-network
+    restart: unless-stopped
+
+  be-wms:
+    build:
+      context: .
+      dockerfile: apps/be-wms/Dockerfile
+    container_name: be-wms
+    environment:
+      - NODE_ENV=development
+      - BE_WMS_PORT=4000
+      - BE_WMS_CORS_ORIGIN=http://app.wms.localhost
+    ports:
+      - "4000:4000"
+    networks:
+      - wms-network
+    restart: unless-stopped
+
+  fe-wms:
+    build:
+      context: .
+      dockerfile: apps/fe-wms/Dockerfile
+    container_name: fe-wms
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://api.wms.localhost
+    ports:
+      - "3000:3000"
+    networks:
+      - wms-network
+    restart: unless-stopped
+
+networks:
+  wms-network:
+    driver: bridge

@@ -1,0 +1,33 @@
+{
+  "name": "@bduck/be-wms",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/ --ext .ts",
+    "lint:fix": "eslint src/ --ext .ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bduck/shared-types": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "firebase-admin": "^13.10.0",
+    "helmet": "^8.0.0"
+  },
+  "devDependencies": {
+    "@bduck/eslint-config": "workspace:*",
+    "@bduck/tsconfig": "workspace:*",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^8.57.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
