@@ -13,11 +13,16 @@
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.0",
     "firebase": "^12.13.0",
     "goey-toast": "^0.4.0",
     "next": "^15.1.0",
+    "postcss": "^8.5.15",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sonner": "^2.0.7",
+    "tailwindcss": "^4.3.0",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@bduck/eslint-config": "workspace:*",

@@ -76,7 +76,7 @@ if (!admin.apps.length) {
 //    - `db`: Firestore Admin instance (dùng cho mọi CRUD + Transaction).
 //    - `auth`: Firebase Auth Admin (dùng để verify JWT, quản lý user).
 // ---------------------------------------------------------------------------
-const db = admin.firestore();
-const auth = admin.auth();
+const db: admin.firestore.Firestore = admin.firestore();
+const auth: admin.auth.Auth = admin.auth();
 
 export { admin, db, auth };

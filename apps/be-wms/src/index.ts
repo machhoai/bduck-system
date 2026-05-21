@@ -1,6 +1,8 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
+import authRoutes from "./api/routes/authRoutes";
 
 const app = express();
 const PORT = process.env.BE_WMS_PORT || 4000;
@@ -13,11 +15,18 @@ app.use(
   cors({
     origin: process.env.BE_WMS_CORS_ORIGIN?.split(",") ?? [
       "http://localhost:3000",
+      "http://app.wms.localhost"
     ],
     credentials: true,
   }),
 );
 app.use(express.json());
+app.use(cookieParser());
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+app.use('/api/auth', authRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

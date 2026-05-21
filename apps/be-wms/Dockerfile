@@ -13,6 +13,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 # Copy package.json files for the target app AND its workspace dependencies
 COPY apps/be-wms/package.json ./apps/be-wms/
 COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/tsconfig/package.json ./packages/tsconfig/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
 
 # Install all dependencies (dev + prod) for the build stage
 RUN pnpm install --frozen-lockfile
@@ -26,6 +28,8 @@ WORKDIR /app
 
 # Copy source code for the app and its workspace dependencies
 COPY packages/shared-types/ ./packages/shared-types/
+COPY packages/tsconfig/ ./packages/tsconfig/
+COPY packages/eslint-config/ ./packages/eslint-config/
 COPY apps/be-wms/ ./apps/be-wms/
 
 # Build the backend application

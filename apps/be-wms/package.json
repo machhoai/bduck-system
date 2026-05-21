@@ -15,14 +15,17 @@
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "firebase-admin": "^13.10.0",
-    "helmet": "^8.0.0"
+    "helmet": "^8.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@bduck/eslint-config": "workspace:*",
     "@bduck/tsconfig": "workspace:*",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",

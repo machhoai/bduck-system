@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/your-org/bduck-system
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/bduck-system
 
 jobs:
   build-and-push:
@@ -78,6 +78,18 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose & nginx config to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.TEST_SERVER_HOST }}
+          username: ${{ secrets.TEST_SERVER_USER }}
+          key: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          source: "docker-compose.yml,nginx/"
+          target: "/opt/bduck-system"
+
       - name: Deploy to Test Server
         uses: appleboy/ssh-action@v1.0.3
         with:
