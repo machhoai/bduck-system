@@ -14,8 +14,14 @@
  * @see wms-core-rules.md §7 — Bảo mật Biến môi trường
  */
 
-import * as admin from 'firebase-admin';
-import type { ServiceAccount } from 'firebase-admin';
+import {
+  initializeApp,
+  getApps,
+  cert,
+  type ServiceAccount,
+} from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // ---------------------------------------------------------------------------
 // 1. Parse Service Account từ Base64 Environment Variable
@@ -54,13 +60,13 @@ function parseServiceAccount(): ServiceAccount {
 
 // ---------------------------------------------------------------------------
 // 2. Initialize Firebase Admin App (Singleton pattern)
-//    Kiểm tra admin.apps để tránh khởi tạo trùng khi hot-reload (nodemon/tsx).
+//    Kiểm tra getApps() để tránh khởi tạo trùng khi hot-reload (nodemon/tsx).
 // ---------------------------------------------------------------------------
-if (!admin.apps.length) {
+if (!getApps().length) {
   const serviceAccount = parseServiceAccount();
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  initializeApp({
+    credential: cert(serviceAccount),
   });
 
   // Log xác nhận kết nối thành công — hiển thị Project ID để dễ debug
@@ -72,11 +78,10 @@ if (!admin.apps.length) {
 
 // ---------------------------------------------------------------------------
 // 3. Export các instance để sử dụng trong toàn bộ Backend App
-//    - `admin`: Truy cập đầy đủ Firebase Admin namespace.
 //    - `db`: Firestore Admin instance (dùng cho mọi CRUD + Transaction).
 //    - `auth`: Firebase Auth Admin (dùng để verify JWT, quản lý user).
 // ---------------------------------------------------------------------------
-const db: admin.firestore.Firestore = admin.firestore();
-const auth: admin.auth.Auth = admin.auth();
+const db = getFirestore();
+const auth = getAuth();
 
-export { admin, db, auth };
+export { db, auth };

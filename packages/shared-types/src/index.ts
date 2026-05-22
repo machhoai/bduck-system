@@ -2,6 +2,7 @@
 
 export * from './enums';
 export * from './common';
+export * from './utility';
 export * from './master-data';
 export * from './users';
 export * from './inventory';

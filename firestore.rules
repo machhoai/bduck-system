@@ -1,0 +1,76 @@
+rules_version = '2';
+
+/**
+ * Firestore Security Rules — BDuck WMS
+ *
+ * ► Nguyên tắc: Authenticated users mới được đọc/ghi.
+ * ► Write operations chính nên đi qua BE (Admin SDK) để đảm bảo RBAC.
+ * ► Client SDK chỉ cần READ cho realtime listeners (onSnapshot).
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ── Product Categories: Authenticated users can read ──
+    match /product_categories/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Write only via Admin SDK (BE)
+    }
+
+    // ── Products: Authenticated users can read ──
+    match /products/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Warehouses: Authenticated users can read ──
+    match /warehouses/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Users: Only own profile readable ──
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // ── Roles: Authenticated users can read (for RBAC) ──
+    match /roles/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── User Warehouse Roles: Authenticated users can read own ──
+    match /user_warehouse_roles/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Audit Logs: No client access ──
+    match /audit_logs/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── Vouchers (Import/Export/Transfer): Authenticated read ──
+    match /vouchers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Inventory: Authenticated read ──
+    match /inventory/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Default: Deny all ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

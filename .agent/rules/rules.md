@@ -2,10 +2,10 @@
 trigger: always_on
 ---
 
-# B.Duck Cityfuns WMS - AI Agent Core Guidelines
+# Joy World Cityfuns WMS - AI Agent Core Guidelines
 
 ## 1. QUY TẮC QUY TRÌNH LÀM VIỆC (AI WORKFLOW RULES) - BẮT BUỘC
-* **Suy nghĩ và làm rõ yêu cầu (Brainstorming & Zero Ambiguity):** - Khi nhận một task hoặc tính năng mới, Agent BẮT BUỘC phải gọi skill `@brainstorm` để phân tích sâu vấn đề.
+* **Suy nghĩ và làm rõ yêu cầu (Brainstorming & Zero Ambiguity):** - Khi nhận một task hoặc tính năng mới, Agent BẮT BUỘC phải gọi skill `@brainstorming` để phân tích sâu vấn đề.
   - Agent PHẢI chủ động đặt các câu hỏi ngược lại cho người dùng để làm rõ các edge cases (trường hợp ngoại lệ), logic nghiệp vụ và luồng UI/UX trước khi bắt đầu lập kế hoạch. KHÔNG ĐƯỢC tự ý đoán mò hay giả định.
 * **Đọc Types trước khi tư duy:** Trước khi đề xuất giải pháp, bắt buộc phải đọc các interfaces/types trong thư mục `packages/shared-types/src/`. Mọi dữ liệu phải tuân thủ schema.
 * **Kế hoạch trước khi Code (Plan Before Execution):** - Chỉ khi mọi yêu cầu đã rõ ràng 100%, Agent mới được xuất ra một Danh sách Task (Task List) và Kế hoạch triển khai chi tiết. 
@@ -27,6 +27,8 @@ trigger: always_on
 ## 3. Frontend Rules (`apps/fe-wms`)
 * **Chuyên gia Giao diện (LUẬT THÉP):** Agent BẮT BUỘC phải gọi skill `@frontend-expert` khi thiết kế giao diện UI.
 * **Native Mobile Experience:** Giao diện phải được thiết kế tối ưu cho cả Desktop và Mobile. Phong cách thiết kế đơn giản, ưu tiên tối đa UX. Đặc biệt, UI trên Mobile phải được thiết kế và mang lại cảm giác mượt mà như một **Native App thực thụ**, tuyệt đối không được làm theo kiểu website responsive hời hợt.
+**Light Theme Only (Chỉ dùng giao diện Sáng) - LUẬT THÉP:** Hệ thống CHỈ sử dụng giao diện nền sáng (Light Mode). BẮT BUỘC phải khóa cứng cấu hình theme trong Tailwind CSS, tuyệt đối KHÔNG hỗ trợ Dark Mode và KHÔNG render UI theo cài đặt hệ thống (system preference) của người dùng.
+**Loading Skeletons (Hiệu ứng chờ):** Trong quá trình chờ tải dữ liệu (từ API hoặc Firebase state), BẮT BUỘC phải hiển thị **Skeleton Loading** mô phỏng cấu trúc của khối UI sắp hiển thị. TUYỆT ĐỐI KHÔNG để màn hình trắng hoặc chỉ dùng vòng xoay (spinner) đơn điệu.
 * **Giao diện 100% Tailwind CSS:** Tuyệt đối không viết CSS thuần hoặc inline-style trừ phi xử lý animation đặc thù.
 * **Goey-Toast Promises (LUẬT THÉP):** MỌI thao tác gửi dữ liệu của người dùng đều phải có phản hồi trạng thái. BẮT BUỘC sử dụng thư viện `goey-toast` dưới dạng Promise. KHÔNG ĐƯỢC phép dùng `alert`, `console.log` hay bất kỳ thư viện UI nào khác để thông báo.
   - Đảm bảo Root Layout hoặc Provider đã bọc `<GooeyToaster position="top-right" />`.
@@ -93,4 +95,4 @@ API Fetching: Phải bắt đầu bằng động từ hành động (VD: fetchPr
 * **Bảo mật Biến môi trường:** TUYỆT ĐỐI không hard-code các thông tin nhạy cảm (API Keys, Secrets, URL) vào mã nguồn. Luôn sử dụng `process.env` và định nghĩa trong file `.env.example`.
 
 ## 8. Quản lý State & Dữ liệu Local-First
-* **Global State Management:** Ưu tiên sử dụng `Zustand` kết hợp với Firebase SDK. 
+* **Global State Management:** Ưu tiên sử dụng `Zustand` kết hợp với Firebase SDK.

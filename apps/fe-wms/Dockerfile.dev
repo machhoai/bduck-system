@@ -1,0 +1,34 @@
+# ==============================================================================
+# Frontend Development Dockerfile (Hot Reload)
+# ==============================================================================
+# This Dockerfile installs dependencies once, then relies on volume mounts
+# from docker-compose.dev.yml to provide source code for live editing.
+# ==============================================================================
+
+FROM node:22-alpine
+
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+WORKDIR /app
+
+# Copy root workspace configs
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY packages/tsconfig/package.json ./packages/tsconfig/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY apps/fe-wms/package.json ./apps/fe-wms/
+
+# Install ALL dependencies (including devDependencies for dev server)
+RUN pnpm install --frozen-lockfile
+
+# Copy full source (will be overridden by volume mounts for src/)
+COPY packages/ ./packages/
+COPY apps/fe-wms/ ./apps/fe-wms/
+
+WORKDIR /app/apps/fe-wms
+
+EXPOSE 3000
+
+# Run Next.js dev server with HMR (Hot Module Replacement)
+CMD ["pnpm", "dev"]

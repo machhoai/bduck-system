@@ -2,8 +2,11 @@
 
 /*
  * B.Duck WMS — Design System
- * Aesthetic: Industrial Luxury — clean, dark, authoritative
+ * Aesthetic: Clean Enterprise Light — professional, modern, authoritative
  * Typography: DM Sans (display) + IBM Plex Sans (body)
+ *
+ * ► LUẬT THÉP: CHỈ Light Mode. KHÔNG hỗ trợ Dark Mode.
+ *   Không render theo system preference (prefers-color-scheme).
  */
 
 @theme {
@@ -12,24 +15,30 @@
   --color-brand-primary-hover: #E0B316;
   --color-brand-primary-muted: #F5C51833;
 
-  /* ── Dark Palette ── */
-  --color-surface-base: #0A0A0F;
-  --color-surface-elevated: #12121A;
-  --color-surface-card: #1A1A26;
-  --color-surface-input: #22222E;
+  /* ── Light Palette ── */
+  --color-surface-base: #F5F6F8;
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-card: #F0F2F5;
+  --color-surface-input: #F0F2F5;
 
   /* ── Text ── */
-  --color-text-primary: #F0F0F5;
-  --color-text-secondary: #8888A0;
-  --color-text-muted: #555570;
+  --color-text-primary: #1A1D2B;
+  --color-text-secondary: #5A6178;
+  --color-text-muted: #9CA3B8;
 
   /* ── Borders ── */
-  --color-border-subtle: #2A2A3A;
+  --color-border-subtle: #E4E7ED;
   --color-border-focus: #F5C518;
 
   /* ── Accent / Status ── */
-  --color-accent-error: #FF4D4F;
-  --color-accent-success: #52C41A;
+  --color-accent-error: #EF4444;
+  --color-accent-success: #22C55E;
+  --color-accent-warning: #F59E0B;
+  --color-accent-info: #3B82F6;
+
+  /* ── Skeleton ── */
+  --color-skeleton-base: #E8EAF0;
+  --color-skeleton-shine: #F5F6FA;
 
   /* ── Spacing rhythm (4px base) ── */
   --spacing-xs: 4px;
@@ -49,6 +58,12 @@
   /* ── Fonts ── */
   --font-display: 'DM Sans', system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* ── Layout ── */
+  --sidebar-width-expanded: 256px;
+  --sidebar-width-collapsed: 72px;
+  --bottomnav-height: 64px;
+  --topbar-height: 0px;
 }
 
 /* ── Base styles (inside layer so Tailwind utilities can override) ── */
@@ -56,6 +71,7 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light;
   }
 
   body {
@@ -70,13 +86,32 @@
   }
 }
 
-/* ── Grain overlay (subtle texture) ── */
-.grain-overlay::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.025;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+/* ── Skeleton shimmer animation ── */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--color-skeleton-base) 25%,
+    var(--color-skeleton-shine) 50%,
+    var(--color-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Mobile: sidebar ẩn → main content full width ── */
+@media (max-width: 1023px) {
+  #wms-main-content {
+    margin-left: 0 !important;
+  }
 }

@@ -2,8 +2,8 @@ import './globals.css';
 import ToastProvider from '../components/providers/ToastProvider';
 
 export const metadata = {
-  title: "B.Duck WMS — Đăng nhập",
-  description: "Warehouse Management System Web Dashboard",
+  title: "B.Duck WMS — Hệ thống Quản lý Kho",
+  description: "Joy World Cityfuns — Warehouse Management System",
 };
 
 export default function RootLayout({
@@ -12,8 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className="grain-overlay">
+    <html lang="vi" className="light">
       <head>
+        <meta name="color-scheme" content="light" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

@@ -3,6 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import authRoutes from "./api/routes/authRoutes";
+import categoryRoutes from "./api/routes/categoryRoutes";
 
 const app = express();
 const PORT = process.env.BE_WMS_PORT || 4000;
@@ -27,6 +28,7 @@ app.use(cookieParser());
 // Routes
 // ---------------------------------------------------------------------------
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

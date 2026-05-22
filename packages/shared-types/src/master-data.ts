@@ -60,6 +60,7 @@ export interface ProductCategory {
     category_description: string | null;
     is_deleted: boolean;
     created_at: Date;
+    updated_at: Date;
 }
 
 export interface Product {

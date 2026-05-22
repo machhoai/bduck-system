@@ -6,12 +6,10 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useRouter } from 'next/navigation';
 
 /**
- * LoginForm — Industrial Luxury Aesthetic
+ * LoginForm — Clean Enterprise Light Theme
  *
- * Design Direction: Dark industrial luxury with B.Duck Yellow accent
- * DFII Score: 13 (Impact:4 + Fit:5 + Feasibility:4 + Performance:4 − Risk:4)
- * Differentiation: "This avoids generic white-card-on-gray login by using
- * a dark split-panel with animated gradient orb and brand-yellow CTA."
+ * Design Direction: Light, professional, B.Duck Yellow accent
+ * Split-panel layout with brand visual + login form
  */
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -50,9 +48,9 @@ export default function LoginForm() {
 
       {/* ── Left Panel: Brand Visual ── */}
       <div className="hidden lg:flex lg:w-[45%] relative items-center justify-end">
-        {/* Animated gradient orb */}
+        {/* Soft gradient orb */}
         <div
-          className="absolute w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]"
+          className="absolute w-[500px] h-[500px] rounded-full opacity-20 blur-[120px]"
           style={{
             background: 'radial-gradient(circle, #F5C518 0%, #F59E18 40%, transparent 70%)',
             animation: mounted ? 'float 8s ease-in-out infinite' : 'none',
@@ -61,11 +59,11 @@ export default function LoginForm() {
 
         {/* Grid pattern overlay */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+              linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)
             `,
             backgroundSize: '60px 60px',
           }}
@@ -73,12 +71,11 @@ export default function LoginForm() {
 
         {/* Brand content */}
         <div className="relative z-10 max-w-full">
-
           <h1
             className="text-[5.75rem] text-right font-bold leading-[1.1] tracking-tight mb-2"
             style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
           >
-            <span style={{ color: 'var(--color-brand-primary)' }}>Joy World <br /> Cityfuns</span>
+            <span className="text-[var(--color-brand-primary)]">Joy World <br /> Cityfuns</span>
             <br />
             WMS
           </h1>
@@ -86,39 +83,38 @@ export default function LoginForm() {
           {/* Status indicators */}
           <div className="mt-1 flex items-center justify-end gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Phiên bản</span>
+              <span className="text-xs text-[var(--color-text-muted)]">Phiên bản</span>
             </div>
             <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v1.0.0</span>
+            <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
             <div className="w-2 h-2 rounded-full bg-[var(--color-accent-success)] animate-pulse" />
           </div>
         </div>
       </div>
 
       {/* ── Right Panel: Login Form ── */}
-      <div className="flex-1 flex items-center justify-center px-6 sm:px-12 lg:px-20">
+      <div className="flex-1 flex items-center justify-start px-4 lg:pl-10">
         <div className="w-full max-w-[400px]">
 
           {/* Mobile brand header */}
           <div className="lg:hidden mb-2 flex items-center gap-3">
             <div className="relative z-10 max-w-full">
-
               <h1
                 className="text-[4.75rem] font-bold leading-[1.1] tracking-tight"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
               >
-                <span style={{ color: 'var(--color-brand-primary)' }}>Joy World <br /> Cityfuns</span>
+                <span className="text-[var(--color-brand-primary)]">Joy World <br /> Cityfuns</span>
                 <br />
                 WMS
               </h1>
 
               {/* Status indicators */}
-              <div className=" mb-1 flex items-center justify-start gap-3">
+              <div className="mb-1 flex items-center justify-start gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Phiên bản</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">Phiên bản</span>
                 </div>
                 <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
-                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v1.0.0</span>
+                <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
               </div>
             </div>
           </div>
@@ -126,8 +122,8 @@ export default function LoginForm() {
           {/* Form header */}
           <div className="mb-2">
             <h2
-              className="text-5xl font-bold tracking-tight"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+              className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)]"
+              style={{ fontFamily: 'var(--font-display)' }}
             >
               Đăng nhập
             </h2>
@@ -139,8 +135,7 @@ export default function LoginForm() {
             <div>
               <label
                 htmlFor="login-email"
-                className="block text-xs font-medium uppercase tracking-wider mb-1"
-                style={{ color: 'var(--color-text-muted)' }}
+                className="block text-xs font-medium uppercase tracking-wider mb-1 text-[var(--color-text-muted)]"
               >
                 Email
               </label>
@@ -154,21 +149,15 @@ export default function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@bduck.com"
-                className="w-full h-12 px-4 rounded-[var(--radius-md)] text-sm transition-all duration-200 outline-none disabled:opacity-40"
-                style={{
-                  background: 'var(--color-surface-input)',
-                  border: '1px solid var(--color-border-subtle)',
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-body)',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'var(--color-border-focus)';
-                  e.target.style.boxShadow = '0 0 0 3px var(--color-brand-primary-muted)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--color-border-subtle)';
-                  e.target.style.boxShadow = 'none';
-                }}
+                className="
+                  w-full h-12 px-4 rounded-[var(--radius-md)] text-sm outline-none
+                  bg-[var(--color-surface-input)] border border-[var(--color-border-subtle)]
+                  text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+                  transition-all duration-200
+                  focus:border-[var(--color-border-focus)] focus:shadow-[0_0_0_3px_var(--color-brand-primary-muted)]
+                  disabled:opacity-40
+                "
+                style={{ fontFamily: 'var(--font-body)' }}
               />
             </div>
 
@@ -176,8 +165,7 @@ export default function LoginForm() {
             <div>
               <label
                 htmlFor="login-password"
-                className="block text-xs font-medium uppercase tracking-wider mb-1"
-                style={{ color: 'var(--color-text-muted)' }}
+                className="block text-xs font-medium uppercase tracking-wider mb-1 text-[var(--color-text-muted)]"
               >
                 Mật khẩu
               </label>
@@ -191,28 +179,25 @@ export default function LoginForm() {
                   disabled={isLoading}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 px-4 pr-12 rounded-[var(--radius-md)] text-sm transition-all duration-200 outline-none disabled:opacity-40"
-                  style={{
-                    background: 'var(--color-surface-input)',
-                    border: '1px solid var(--color-border-subtle)',
-                    color: 'var(--color-text-primary)',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'var(--color-border-focus)';
-                    e.target.style.boxShadow = '0 0 0 3px var(--color-brand-primary-muted)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'var(--color-border-subtle)';
-                    e.target.style.boxShadow = 'none';
-                  }}
+                  className="
+                    w-full h-12 px-4 pr-12 rounded-[var(--radius-md)] text-sm outline-none
+                    bg-[var(--color-surface-input)] border border-[var(--color-border-subtle)]
+                    text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+                    transition-all duration-200
+                    focus:border-[var(--color-border-focus)] focus:shadow-[0_0_0_3px_var(--color-brand-primary-muted)]
+                    disabled:opacity-40
+                  "
+                  style={{ fontFamily: 'var(--font-body)' }}
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius-sm)] transition-colors hover:bg-[var(--color-border-subtle)]"
-                  style={{ color: 'var(--color-text-muted)' }}
+                  className="
+                    absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius-sm)]
+                    text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]
+                    transition-colors cursor-pointer
+                  "
                   aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? (
@@ -234,27 +219,18 @@ export default function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 rounded-[var(--radius-md)] text-sm font-semibold tracking-wide transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              style={{
-                background: isLoading ? 'var(--color-brand-primary-hover)' : 'var(--color-brand-primary)',
-                color: '#0A0A0F',
-                fontFamily: 'var(--font-display)',
-                boxShadow: isLoading ? 'none' : '0 0 20px var(--color-brand-primary-muted)',
-              }}
-              onMouseEnter={(e) => {
-                if (!isLoading) {
-                  e.currentTarget.style.background = 'var(--color-brand-primary-hover)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 24px var(--color-brand-primary-muted)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading) {
-                  e.currentTarget.style.background = 'var(--color-brand-primary)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 0 20px var(--color-brand-primary-muted)';
-                }
-              }}
+              className="
+                w-full h-12 rounded-[var(--radius-md)] text-sm font-semibold tracking-wide
+                bg-[var(--color-brand-primary)] text-[#1A1D2B]
+                hover:bg-[var(--color-brand-primary-hover)] hover:-translate-y-0.5
+                hover:shadow-[0_4px_24px_var(--color-brand-primary-muted)]
+                active:translate-y-0
+                transition-all duration-200
+                disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0
+                cursor-pointer
+                shadow-[0_0_20px_var(--color-brand-primary-muted)]
+              "
+              style={{ fontFamily: 'var(--font-display)' }}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -269,27 +245,8 @@ export default function LoginForm() {
               )}
             </button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-10 pt-6">
-            <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
-              Liên hệ Admin nếu bạn chưa có tài khoản
-            </p>
-          </div>
         </div>
       </div>
-
-      {/* ── Keyframe animation ── */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -30px) scale(1.05); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-        }
-        input::placeholder {
-          color: var(--color-text-muted);
-        }
-      `}</style>
     </div>
   );
 }
