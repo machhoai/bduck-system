@@ -17,6 +17,8 @@ build
 **/build
 out
 **/out
+*.tsbuildinfo
+**/*.tsbuildinfo
 
 # Environment Files (injected at runtime)
 .env

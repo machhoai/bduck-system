@@ -1,4 +1,4 @@
-import { db } from '../config/firebase';
+import { db } from '../config/firebase.js';
 import type { User, Role, UserWarehouseRole } from '@bduck/shared-types';
 
 /**
@@ -21,7 +21,7 @@ export const getUserWarehouseRoles = async (userId: string): Promise<UserWarehou
     .where('user_id', '==', userId)
     .get();
 
-  return snapshot.docs.map(doc => ({
+  return snapshot.docs.map((doc: any) => ({
     id: doc.id,
     ...doc.data()
   } as UserWarehouseRole));

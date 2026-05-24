@@ -33,7 +33,7 @@ export enum LocationStatus {
 /** Product category / product type classification */
 export enum ProductType {
     EQUIPMENT = 'EQUIPMENT',
-    CONSUMABLE = 'CONSUMABLE',
+    // CONSUMABLE = 'CONSUMABLE',
     SOUVENIR_SALE = 'SOUVENIR_SALE',
     SOUVENIR_GIFT = 'SOUVENIR_GIFT',
 }

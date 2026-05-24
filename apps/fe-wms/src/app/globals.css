@@ -11,34 +11,34 @@
 
 @theme {
   /* ── Brand Colors ── */
-  --color-brand-primary: #F5C518;       /* B.Duck Yellow */
-  --color-brand-primary-hover: #E0B316;
-  --color-brand-primary-muted: #F5C51833;
+  --color-brand-primary: #f5c518; /* B.Duck Yellow */
+  --color-brand-primary-hover: #e0b316;
+  --color-brand-primary-muted: #f5c51833;
 
   /* ── Light Palette ── */
-  --color-surface-base: #F5F6F8;
-  --color-surface-elevated: #FFFFFF;
-  --color-surface-card: #F0F2F5;
-  --color-surface-input: #F0F2F5;
+  --color-surface-base: #f5f6f8;
+  --color-surface-elevated: #ffffff;
+  --color-surface-card: #f0f2f5;
+  --color-surface-input: #f0f2f5;
 
   /* ── Text ── */
-  --color-text-primary: #1A1D2B;
-  --color-text-secondary: #5A6178;
-  --color-text-muted: #9CA3B8;
+  --color-text-primary: #1a1d2b;
+  --color-text-secondary: #5a6178;
+  --color-text-muted: #9ca3b8;
 
   /* ── Borders ── */
-  --color-border-subtle: #E4E7ED;
-  --color-border-focus: #F5C518;
+  --color-border-subtle: #e4e7ed;
+  --color-border-focus: #f5c518;
 
   /* ── Accent / Status ── */
-  --color-accent-error: #EF4444;
-  --color-accent-success: #22C55E;
-  --color-accent-warning: #F59E0B;
-  --color-accent-info: #3B82F6;
+  --color-accent-error: #ef4444;
+  --color-accent-success: #22c55e;
+  --color-accent-warning: #f59e0b;
+  --color-accent-info: #3b82f6;
 
   /* ── Skeleton ── */
-  --color-skeleton-base: #E8EAF0;
-  --color-skeleton-shine: #F5F6FA;
+  --color-skeleton-base: #e8eaf0;
+  --color-skeleton-shine: #f5f6fa;
 
   /* ── Spacing rhythm (4px base) ── */
   --spacing-xs: 4px;
@@ -56,12 +56,12 @@
   --radius-xl: 24px;
 
   /* ── Fonts ── */
-  --font-display: 'DM Sans', system-ui, sans-serif;
-  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: "DM Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
 
   /* ── Layout ── */
-  --sidebar-width-expanded: 256px;
-  --sidebar-width-collapsed: 72px;
+  --sidebar-width-expanded: 232px;
+  --sidebar-width-collapsed: 64px;
   --bottomnav-height: 64px;
   --topbar-height: 0px;
 }
@@ -88,14 +88,25 @@
 
 /* ── Skeleton shimmer animation ── */
 @keyframes skeleton-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -30px) scale(1.05); }
-  66% { transform: translate(-20px, 20px) scale(0.95); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
 }
 
 .skeleton-pulse {

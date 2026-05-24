@@ -1,6 +1,6 @@
 // Dữ liệu nền tảng cốt lõi
 
-import { ActiveStatus, LocationStatus, LocationType, ProductOrigin, ProductType, WarehouseType } from "./enums";
+import { ActiveStatus, LocationStatus, LocationType, ProductOrigin, ProductType, WarehouseType } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // MASTER DATA
@@ -77,6 +77,17 @@ export interface Product {
     min_stock_threshold: number | null;
     is_serialized: boolean;
     description: string | null;
+    is_deleted: boolean;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface ProductBOM {
+    id: string; // UUID, PK
+    parent_product_id: string; // FK → products (Máy móc)
+    child_product_id: string; // FK → products (Phụ tùng)
+    quantity: number;
+    note: string | null;
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;

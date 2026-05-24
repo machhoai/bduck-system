@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../../config/firebase';
-import { getUserById, getUserWarehouseRoles, getRoleById } from '../../repositories/userRepository';
+import { auth } from '../../config/firebase.js';
+import { getUserById, getUserWarehouseRoles, getRoleById } from '../../repositories/userRepository.js';
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {

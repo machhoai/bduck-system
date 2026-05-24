@@ -1,6 +1,6 @@
 // Tài khoản, phân quyền, RBAC
 
-import { UserStatus, RoleName } from "./enums";
+import { UserStatus, RoleName } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // USERS & RBAC (ISO 5.3 — Segregation of Duties)

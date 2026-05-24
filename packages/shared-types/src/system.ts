@@ -1,6 +1,6 @@
 // Phê duyệt, Audit log và Tệp đính kèm
 
-import { ApprovalEntityType, ApprovalStatus, ApprovalMethod, AuditAction, FileType } from "./enums";
+import { ApprovalEntityType, ApprovalStatus, ApprovalMethod, AuditAction, FileType } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // APPROVAL WORKFLOWS (ISO 5.3 · SOD)

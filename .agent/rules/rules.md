@@ -75,24 +75,30 @@ trigger: always_on
       "zh": "出库数量超过可用数量 (ATP)。"
     }
   }
-Data Validation: Nhận data từ request (req.body, req.query), bắt buộc validate bằng thư viện (Zod/Yup) trước khi thực thi nghiệp vụ.
+* **Data Validation: Nhận data từ request (req.body, req.query), bắt buộc validate bằng thư viện (Zod/Yup) trước khi thực thi nghiệp vụ.
+* **Kiến trúc Layered: Tuân thủ Controller (xử lý request/response) -> Service (logic nghiệp vụ/transaction) -> Repository (chỉ để tương tác DB).
 
-Kiến trúc Layered: Tuân thủ Controller (xử lý request/response) -> Service (logic nghiệp vụ/transaction) -> Repository (chỉ để tương tác DB).
+## 5. Cấu hình & Dependencies
+* **Khi cài đặt package mới, Agent phải sử dụng pnpm add <package> --filter <tên-app> (Ví dụ: pnpm add date-fns --filter be-wms). Không dùng npm/yarn.
 
-5. Cấu hình & Dependencies
-Khi cài đặt package mới, Agent phải sử dụng pnpm add <package> --filter <tên-app> (Ví dụ: pnpm add date-fns --filter be-wms). Không dùng npm/yarn.
-
-6. Quy tắc đặt tên (Naming Conventions)
-Component / Page: Sử dụng PascalCase (VD: TransferOrderModal.tsx).
-
-Hàm logic / Hooks: Sử dụng camelCase (VD: useInventorySync, calculateTotal).
-
-API Fetching: Phải bắt đầu bằng động từ hành động (VD: fetchProductList, updateVoucherStatus, deleteQuarantineRecord).
+## 6. Quy tắc đặt tên (Naming Conventions)
+* **Component / Page: Sử dụng PascalCase (VD: TransferOrderModal.tsx).
+* **Hàm logic / Hooks: Sử dụng camelCase (VD: useInventorySync, calculateTotal).
+* **API Fetching: Phải bắt đầu bằng động từ hành động (VD: fetchProductList, updateVoucherStatus, deleteQuarantineRecord).
 
 ## 7. Nguyên tắc Viết Code & Tối ưu hóa (Code Quality & Modularity)
-* **Code ngắn gọn, Module hóa (LUẬT THÉP):** Quy định nghiêm ngặt code không được quá dài. Một file Component, Controller hay Service không nên vượt quá 200 - 300 dòng. Nếu code dài hơn, BẮT BUỘC phải chia nhỏ (break down) thành các sub-components, helper functions, hoặc custom hooks.
-* **DRY (Don't Repeat Yourself):** Bất kỳ đoạn logic hay UI nào lặp lại từ 2 lần trở lên đều phải được tách ra thành thư viện dùng chung (`utils`, `components/ui`).
-* **Bảo mật Biến môi trường:** TUYỆT ĐỐI không hard-code các thông tin nhạy cảm (API Keys, Secrets, URL) vào mã nguồn. Luôn sử dụng `process.env` và định nghĩa trong file `.env.example`.
+* **Code ngắn gọn, Module hóa (LUẬT THÉP): Quy định nghiêm ngặt code không được quá dài. Một file Component, Controller hay Service không nên vượt quá 200 - 300 dòng. Nếu code dài hơn, BẮT BUỘC phải chia nhỏ (break down) thành các sub-components, helper functions, hoặc custom hooks.
+* **DRY (Don't Repeat Yourself): Bất kỳ đoạn logic hay UI nào lặp lại từ 2 lần trở lên đều phải được tách ra thành thư viện dùng chung (utils, components/ui).
+* **Bảo mật Biến môi trường: TUYỆT ĐỐI không hard-code các thông tin nhạy cảm (API Keys, Secrets, URL) vào mã nguồn. Luôn sử dụng process.env và định nghĩa trong file .env.example.
 
 ## 8. Quản lý State & Dữ liệu Local-First
-* **Global State Management:** Ưu tiên sử dụng `Zustand` kết hợp với Firebase SDK.
+* **Global State Management: Ưu tiên sử dụng Zustand kết hợp với Firebase SDK.
+
+## 9. Bảo mật & An toàn Dữ liệu (Security & Data Protection) - BẮT BUỘC
+* **Bảo vệ API (Rate Limiting & Helmet): Backend BẮT BUỘC phải được bọc bởi các middleware bảo mật cơ bản như helmet (chống tấn công Header) và express-rate-limit (chống spam/DDoS bằng cách giới hạn số lượng request từ 1 IP).
+* **Sanitize Đầu vào (NoSQL Injection Prevention): Dù dùng Zod để validate schema, BẮT BUỘC phải đảm bảo các chuỗi ký tự nhập vào không chứa các toán tử truy vấn độc hại của MongoDB/Firestore (ví dụ: $where, $ne).
+* **Bảo mật File Tải lên: Khi user upload hình ảnh minh chứng hư hỏng/phiếu nhập:
+* **Chỉ cho phép các định dạng ảnh chuẩn (.jpg, .png, .webp). TUYỆT ĐỐI chặn các file thực thi (ví dụ: .exe, .sh, .php, .svg).
+* **Phải giới hạn dung lượng tải lên (Max 20MB đối với hình ảnh và 10MB đối với các file khác)
+* **Cookies An toàn: Nếu sử dụng Session Cookies cho việc xác thực SSO, Cookie BẮT BUỘC phải được set các cờ: HttpOnly (chống XSS lấy trộm token), Secure (chỉ chạy trên HTTPS), và SameSite=Strict.
+* **Mã hóa Dữ liệu Nhạy cảm: Các thông tin cực kỳ nhạy cảm (nếu có, ví dụ: số tài khoản ngân hàng của đối tác) không được lưu dạng plain-text mà phải được mã hóa trước khi ghi vào Database.

@@ -1,19 +1,41 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  query,
-  where,
   onSnapshot,
   orderBy,
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import type { ProductCategory } from '@bduck/shared-types';
+  query,
+  where,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import type { ProductCategory } from "@bduck/shared-types";
+import { auth, db } from "../lib/firebase";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+
+async function fetchCategoriesFromApi(signal?: AbortSignal) {
+  const response = await fetch(`${API_BASE_URL}/api/categories`, {
+    method: "GET",
+    credentials: "include",
+    signal,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(
+      errorData?.messages?.vi || "Không thể tải danh sách danh mục.",
+    );
+  }
+
+  const body = await response.json();
+  return (body.data || []) as ProductCategory[];
+}
 
 /**
- * Realtime Firestore listener cho danh mục sản phẩm (LUẬT THÉP: onSnapshot)
- * Tự động cập nhật khi có thay đổi trên server.
+ * Primary source: Firestore realtime listener.
+ * Fallback source: REST API, used when client Firestore rules/auth block reads.
  */
 export const useCategories = () => {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -21,32 +43,82 @@ export const useCategories = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'product_categories'),
-      where('is_deleted', '==', false),
-      orderBy('created_at', 'desc')
-    );
+    const abortController = new AbortController();
+    let unsubscribeSnapshot: (() => void) | undefined;
+    let isDisposed = false;
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as ProductCategory[];
+    const loadApiFallback = async (reason: string) => {
+      try {
+        const data = await fetchCategoriesFromApi(abortController.signal);
+        if (isDisposed) return;
 
         setCategories(data);
-        setIsLoading(false);
         setError(null);
-      },
-      (err) => {
-        console.error('[useCategories] onSnapshot error:', err);
-        setError(err.message);
-        setIsLoading(false);
-      }
-    );
+      } catch (apiError) {
+        if (isDisposed) return;
 
-    return () => unsubscribe();
+        const message =
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể tải danh mục.";
+        console.error("[useCategories] API fallback error:", apiError);
+        setCategories([]);
+        setError(message);
+      } finally {
+        if (!isDisposed) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = undefined;
+      }
+
+      if (!user) {
+        void loadApiFallback(
+          "Firebase Auth chưa sẵn sàng cho realtime listener.",
+        );
+        return;
+      }
+
+      const categoriesQuery = query(
+        collection(db, "product_categories"),
+        where("is_deleted", "==", false),
+        orderBy("created_at", "desc"),
+      );
+
+      unsubscribeSnapshot = onSnapshot(
+        categoriesQuery,
+        (snapshot) => {
+          if (isDisposed) return;
+
+          const data = snapshot.docs.map((doc) => ({
+            ...doc.data(),
+            id: doc.id,
+          })) as ProductCategory[];
+
+          setCategories(data);
+          setIsLoading(false);
+          setError(null);
+        },
+        (snapshotError) => {
+          console.warn("[useCategories] onSnapshot error:", snapshotError);
+          void loadApiFallback(snapshotError.message);
+        },
+      );
+    });
+
+    return () => {
+      isDisposed = true;
+      abortController.abort();
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, []);
 
   return { categories, isLoading, error };

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { requireAuth } from '../middlewares/authMiddleware.js';
 import { requirePermission } from '../middlewares/rbacMiddleware.js';
 import {
@@ -9,7 +9,7 @@ import {
   removeCategory,
 } from '../controllers/categoryController.js';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // All category routes require authentication
 router.use(requireAuth);

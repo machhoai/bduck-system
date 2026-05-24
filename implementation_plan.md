@@ -110,15 +110,16 @@ graph TB
 | Layer | File | Endpoints |
 |-------|------|-----------|
 | Route | `src/api/routes/productRoutes.ts` | `GET /`, `GET /:id`, `POST /`, `PUT /:id`, `DELETE /:id` (soft) |
-| Controller | `src/api/controllers/productController.ts` | Validate Zod schema |
-| Service | `src/services/productService.ts` | CRUD + audit + validate category_id tồn tại |
+| Controller | `src/api/controllers/productController.ts` | Validate Zod schema `createProductSchema` |
+| Service | `src/services/productService.ts` | CRUD + audit + validate `category_id` tồn tại |
 | Repository | `src/repositories/productRepository.ts` | Firestore `products` collection |
 
-**Business Rules:**
-- `code` (SKU) phải UNIQUE
-- `barcode` phải UNIQUE nếu có
-- Upload `product_image_url[]` lên Firebase Storage
-- Khi soft delete: CHECK không còn inventory record nào > 0
+**Business Rules & AI Proposals (Đề xuất thêm):**
+- `code` (SKU) phải UNIQUE trên toàn hệ thống. **[Đề xuất]**: Không cho phép sửa đổi `code` và `is_serialized` sau khi đã tạo để tránh xung đột logic lưu kho và mapping barcode sau này.
+- `barcode` phải UNIQUE (nếu có nhập). Hỗ trợ tìm kiếm theo `name`, `code`, `barcode`.
+- Khi soft delete: CHECK không còn inventory record nào > 0 (Nếu có inventory > 0 thì return lỗi báo cho user không được xóa).
+- **[Đề xuất] Upload Hình ảnh (`product_image_url[]`)**: Tuân thủ quy định Max 20MB. Thay vì đẩy file qua API Backend làm nghẽn cổ chai (bottleneck), Frontend sẽ dùng Firebase Client SDK upload trực tiếp lên Storage, sau đó lấy chuỗi URL truyền vào body cho Backend. **[Cập nhật]**: Trước khi upload, Frontend sẽ tự động nén ảnh và convert sang định dạng `WEBP` (sử dụng thư viện nén ảnh dưới client) để tối ưu dung lượng lưu trữ trên Firestore. Backend chỉ làm nhiệm vụ lưu array URL string và validate data hợp lệ.
+- Phải đảm bảo `category_id` (Khóa ngoại) tồn tại trong `product_categories` trước khi tiến hành thêm mới/sửa đổi.
 
 ### 1.3 Warehouses & Locations
 

@@ -1,6 +1,6 @@
 // Chứng từ xuất, nhập, điều chuyển, mua hàng
 
-import { ImportVoucherStatus, ItemCondition, ExportType, ExportVoucherStatus, ExportReferenceType, TransferOrderStatus, TransferItemStatus, PurchaseOrderStatus } from "./enums";
+import { ImportVoucherStatus, ItemCondition, ExportType, ExportVoucherStatus, ExportReferenceType, TransferOrderStatus, TransferItemStatus, PurchaseOrderStatus } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // IMPORT VOUCHERS (ISO 8.5.2)

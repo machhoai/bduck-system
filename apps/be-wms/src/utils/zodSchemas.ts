@@ -5,8 +5,20 @@ import { z } from 'zod';
 // ============================================================
 
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  category_id: z.string().uuid().optional(),
+});
+
+// Schema for updating BOM items (Bulk Update)
+export const updateProductBomSchema = z.object({
+  bom_items: z.array(
+    z.object({
+      child_product_id: z.string().uuid(),
+      quantity: z.number().int().positive('Số lượng phải lớn hơn 0'),
+      note: z.string().nullable().optional(),
+    })
+  )
 });
 
 export const idParamSchema = z.object({

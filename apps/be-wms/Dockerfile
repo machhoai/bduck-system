@@ -32,8 +32,8 @@ COPY packages/tsconfig/ ./packages/tsconfig/
 COPY packages/eslint-config/ ./packages/eslint-config/
 COPY apps/be-wms/ ./apps/be-wms/
 
-# Build the backend application
-RUN pnpm --filter @bduck/be-wms build
+# Build the backend application and its workspace dependencies
+RUN pnpm --filter @bduck/be-wms... build
 
 # ==============================================================================
 # Stage 3: Runner — Production-only image

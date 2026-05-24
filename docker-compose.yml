@@ -18,10 +18,12 @@ services:
       context: .
       dockerfile: apps/be-wms/Dockerfile
     container_name: be-wms
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=development
       - BE_WMS_PORT=4000
-      - BE_WMS_CORS_ORIGIN=http://app.wms.localhost
+      - BE_WMS_CORS_ORIGIN=${BE_WMS_CORS_ORIGIN:-http://app.wms.localhost}
     ports:
       - "4000:4000"
     networks:
@@ -32,7 +34,17 @@ services:
     build:
       context: .
       dockerfile: apps/fe-wms/Dockerfile
+      args:
+        - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+        - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     container_name: fe-wms
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=development
       - PORT=3000

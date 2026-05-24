@@ -1,19 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useTranslation } from '../../lib/i18n';
-import { useUserStore } from '../../stores/useUserStore';
-import { useSidebarStore } from '../../stores/useSidebarStore';
-import { menuItems, getVisibleMenuItems } from '../../config/menuConfig';
-import SidebarMenuItem from './SidebarMenuItem';
-import SidebarUserPanel from './SidebarUserPanel';
+import { useEffect } from "react";
+import { X, Warehouse } from "lucide-react";
+import { useTranslation } from "../../lib/i18n";
+import { useUserStore } from "../../stores/useUserStore";
+import { useSidebarStore } from "../../stores/useSidebarStore";
+import { menuItems, getVisibleMenuItems } from "../../config/menuConfig";
+import SidebarActions from "./SidebarActions";
+import SidebarMenuItem from "./SidebarMenuItem";
+import SidebarUserPanel from "./SidebarUserPanel";
 
 /**
- * MobileDrawer — Full-screen drawer từ trái cho mobile
- *
- * ► Trượt vào từ bên trái với backdrop blur overlay
- * ► Chứa full menu + user info (giống sidebar expanded)
- * ► Đóng khi click backdrop hoặc bấm link
+ * MobileDrawer - native-feeling full menu for small screens.
  */
 export default function MobileDrawer() {
   const { t } = useTranslation();
@@ -23,88 +21,86 @@ export default function MobileDrawer() {
 
   const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
 
-  // Lock body scroll khi drawer mở
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`
-          lg:hidden fixed inset-0 z-50 bg-black/30 backdrop-blur-sm
-          transition-opacity duration-300
-          ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300 lg:hidden
+          ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}
         `}
         onClick={closeDrawer}
       />
 
-      {/* Drawer Panel */}
       <div
         className={`
-          lg:hidden fixed left-0 top-0 h-full z-50
-          w-[280px] max-w-[85vw]
-          bg-[var(--color-surface-elevated)]
-          border-r border-[var(--color-border-subtle)]
-          flex flex-col
+          fixed left-0 top-0 z-50 flex h-full w-[300px] max-w-[88vw] flex-col lg:hidden
+          border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]
           transition-transform duration-300 ease-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 h-16 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-brand-primary)] flex items-center justify-center">
-              <span className="text-[#0A0A0F] text-sm font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                W
-              </span>
+        <div className="flex h-16 shrink-0 items-center justify-between px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-primary)] text-[#0A0A0F]">
+              <Warehouse size={19} strokeWidth={2} />
             </div>
-            <span
-              className="text-sm font-bold text-[var(--color-text-primary)]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {t.sidebar.systemName}
-            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+                {t.sidebar.systemName}
+              </p>
+              <p className="truncate text-[11px] font-medium uppercase text-[var(--color-text-muted)]">
+                {t.sidebar.moduleName}
+              </p>
+            </div>
           </div>
 
-          {/* Close button */}
           <button
+            type="button"
             onClick={closeDrawer}
             className="
-              p-2 rounded-lg
-              text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]
-              hover:bg-[var(--color-surface-card)]
-              transition-colors cursor-pointer
+              flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+              text-[var(--color-text-muted)] transition-colors
+              hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]
             "
+            title={t.common.cancel}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <X size={18} strokeWidth={1.8} />
           </button>
         </div>
 
-        {/* Menu items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1" onClick={closeDrawer}>
-          {visibleItems.map((item) => (
-            <SidebarMenuItem
-              key={item.id}
-              item={item}
-              isCollapsed={false}
-              label={t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey}
-            />
-          ))}
-        </nav>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
+          <p className="mb-2 px-3 text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+            {t.sidebar.navigation}
+          </p>
+          <nav className="space-y-1" onClick={closeDrawer}>
+            {visibleItems.map((item) => (
+              <SidebarMenuItem
+                key={item.id}
+                item={item}
+                isCollapsed={false}
+                label={
+                  t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey
+                }
+              />
+            ))}
+          </nav>
+        </div>
 
-        {/* User Panel */}
-        <div className="px-3 pb-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+        <div
+          className="space-y-3 border-t border-[var(--color-border-subtle)] px-3 pb-3 pt-3"
+          style={{
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
           <SidebarUserPanel isCollapsed={false} />
+          <SidebarActions />
         </div>
       </div>
     </>

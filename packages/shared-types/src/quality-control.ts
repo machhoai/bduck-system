@@ -1,6 +1,6 @@
 // Xử lý sự cố, hàng lỗi, cách ly, điều chỉnh
 
-import { NonconformitySourceType, IssueType, NonconformityStatus, ResolutionType, QuarantineStatus, AdjustmentType, AdjustmentReferenceType, AdjustmentVoucherStatus } from "./enums";
+import { NonconformitySourceType, IssueType, NonconformityStatus, ResolutionType, QuarantineStatus, AdjustmentType, AdjustmentReferenceType, AdjustmentVoucherStatus } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // NON-CONFORMITY CONTROL (ISO 8.7)

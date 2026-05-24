@@ -1,5 +1,5 @@
-import { auth } from '../config/firebase';
-import { getUserById, getUserWarehouseRoles, getRoleById } from '../repositories/userRepository';
+import { auth } from '../config/firebase.js';
+import { getUserById, getUserWarehouseRoles, getRoleById } from '../repositories/userRepository.js';
 import type { User, UserWarehouseRole, Role } from '@bduck/shared-types';
 
 export interface AuthSessionResult {

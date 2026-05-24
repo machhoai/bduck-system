@@ -1,6 +1,6 @@
 // Giao dịch POS và xuất quà tặng theo ca
 
-import { GiftSessionStatus, PosTransactionStatus, PosTransactionType } from "./enums";
+import { GiftSessionStatus, PosTransactionStatus, PosTransactionType } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // GIFT EXPORT QUEUE — Xuất quà tặng theo ca

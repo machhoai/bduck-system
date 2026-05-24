@@ -5,7 +5,7 @@
  * ► Sidebar và BottomNav đều đọc từ config này → Single Source of Truth.
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
-import { Home, FolderTree, LucideIcon } from 'lucide-react';
+import { Home, Package, LucideIcon } from "lucide-react";
 
 export interface MenuItem {
   id: string;
@@ -25,18 +25,18 @@ export interface MenuItem {
  */
 export const menuItems: MenuItem[] = [
   {
-    id: 'dashboard',
-    labelKey: 'dashboard',
+    id: "dashboard",
+    labelKey: "dashboard",
     icon: Home,
-    href: '/dashboard',
+    href: "/dashboard",
     showInBottomNav: true,
   },
   {
-    id: 'categories',
-    labelKey: 'categories',
-    icon: FolderTree,
-    href: '/categories',
-    permission: 'category.read',
+    id: "products",
+    labelKey: "products",
+    icon: Package,
+    href: "/products",
+    permission: "products.read",
   },
   // ── Thêm module mới vào đây ──
 ];
@@ -46,7 +46,7 @@ export const menuItems: MenuItem[] = [
  */
 export function getVisibleMenuItems(
   items: MenuItem[],
-  hasPermission: (action: string) => boolean
+  hasPermission: (action: string) => boolean,
 ): MenuItem[] {
   return items.filter((item) => {
     if (!item.permission) return true;

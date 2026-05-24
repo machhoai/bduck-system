@@ -1,61 +1,65 @@
-import { useState } from 'react';
-import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { gooeyToast } from 'goey-toast';
-import { useUserStore } from '../stores/useUserStore';
+import {
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from "firebase/auth";
+import { gooeyToast } from "goey-toast";
+import { useState } from "react";
+import { auth } from "../lib/firebase";
+import { useUserStore } from "../stores/useUserStore";
 
-// Assuming standard API URL structure based on Nginx routing mapping api.wms.localhost -> be-wms
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://api.wms.localhost';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const setAuthData = useUserStore(state => state.setAuthData);
-  const clearAuth = useUserStore(state => state.clearAuth);
+  const setAuthData = useUserStore((state) => state.setAuthData);
+  const clearAuth = useUserStore((state) => state.clearAuth);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
 
     const loginAction = async () => {
-      // 1. Sign in with Firebase Client SDK
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // 2. Get the ID Token
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const idToken = await userCredential.user.getIdToken();
 
-      // 3. Exchange ID Token for Session Cookie via our backend API
       const response = await fetch(`${API_BASE_URL}/api/auth/sessionLogin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        // Clean up Firebase client state if backend login fails
         await firebaseSignOut(auth);
-        throw new Error(errorData?.messages?.vi || 'Đăng nhập hệ thống thất bại');
+        throw new Error(
+          errorData?.messages?.vi || "Đăng nhập hệ thống thất bại",
+        );
       }
 
       const { data, messages } = await response.json();
-      
-      // 4. Update local state
       setAuthData(data.user, data.permissions);
-      
+
       return messages;
     };
 
     try {
       await gooeyToast.promise(loginAction(), {
-        loading: 'Đang xác thực thông tin...',
-        success: (msgs) => msgs?.vi || 'Đăng nhập thành công',
-        error: (err: any) => err.message || 'Đã xảy ra lỗi khi đăng nhập',
+        loading: "Đang xác thực thông tin...",
+        success: (msgs) => msgs?.vi || "Đăng nhập thành công",
+        error: (err: unknown) =>
+          err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập",
         description: {
-          success: 'Hệ thống đang tải dữ liệu của bạn.',
-          error: 'Vui lòng kiểm tra lại thông tin và thử lại.',
+          success: "Hệ thống đang tải dữ liệu của bạn.",
+          error: "Vui lòng kiểm tra lại thông tin và thử lại.",
         },
         action: {
           error: {
-            label: 'Thử lại',
+            label: "Thử lại",
             onClick: () => login(email, password),
           },
         },
@@ -67,28 +71,41 @@ export const useAuth = () => {
 
   const logout = async () => {
     setIsLoading(true);
+
     const logoutAction = async () => {
-      // 1. Call Backend to clear cookie
-      const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Không thể đăng xuất phiên làm việc hiện tại');
+      let backendSessionCleared = true;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+        });
+
+        backendSessionCleared = response.ok;
+      } catch (error) {
+        backendSessionCleared = false;
+        console.error("[useAuth] logout backend request failed:", error);
       }
 
-      // 2. Clear Firebase client state
       await firebaseSignOut(auth);
-      
-      // 3. Clear Zustand local state
       clearAuth();
+
+      return { backendSessionCleared };
     };
 
     try {
       await gooeyToast.promise(logoutAction(), {
-        loading: 'Đang đăng xuất...',
-        success: 'Đã đăng xuất',
-        error: 'Lỗi đăng xuất',
+        loading: "Đang đăng xuất...",
+        success: ({ backendSessionCleared }) =>
+          backendSessionCleared
+            ? "Đã đăng xuất"
+            : "Đã đăng xuất khỏi thiết bị này",
+        error: "Lỗi đăng xuất",
+        description: {
+          success:
+            "Phiên cục bộ đã được xóa. Nếu API đang tắt, cookie máy chủ sẽ được xóa khi kết nối lại.",
+          error: "Vui lòng thử lại hoặc kiểm tra kết nối API.",
+        },
       });
     } finally {
       setIsLoading(false);

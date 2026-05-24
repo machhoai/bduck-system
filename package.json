@@ -1,56 +1,56 @@
 {
-  "name": "@bduck/root",
-  "version": "1.0.0",
-  "private": true,
-  "description": "BDuck System — Monorepo for HR and WMS applications",
-  "packageManager": "pnpm@9.15.4",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "scripts": {
-    "--- DEV ---": "",
-    "dev": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms --filter @bduck/be-hr dev",
-    "dev:wms": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms dev",
-    "dev:fe-wms": "pnpm --filter @bduck/fe-wms dev",
-    "dev:be-wms": "pnpm --filter @bduck/be-wms dev",
-    "dev:be-hr": "pnpm --filter @bduck/be-hr dev",
-    "--- BUILD ---": "",
-    "build": "pnpm run --recursive build",
-    "build:fe-wms": "pnpm --filter @bduck/fe-wms build",
-    "build:be-wms": "pnpm --filter @bduck/be-wms build",
-    "build:be-hr": "pnpm --filter @bduck/be-hr build",
-    "--- QUALITY ---": "",
-    "lint": "pnpm run --recursive lint",
-    "lint:fix": "pnpm run --recursive lint:fix",
-    "typecheck": "pnpm run --recursive typecheck",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
-    "--- DOCKER (Production) ---": "",
-    "docker:wms:up": "docker compose up -d --build",
-    "docker:wms:down": "docker compose down",
-    "docker:wms:logs": "docker compose logs -f",
-    "--- DOCKER (Dev - Live Reload) ---": "",
-    "docker:dev:up": "docker compose -f docker-compose.dev.yml up -d --build",
-    "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
-    "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
-    "docker:dev:rebuild": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d --build",
-    "--- GIT HOOKS ---": "",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "husky": "^9.1.0",
-    "lint-staged": "^15.2.0",
-    "prettier": "^3.4.0",
-    "typescript": "^5.7.0"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,css,yml,yaml}": [
-      "prettier --write"
-    ]
-  }
+    "name": "@bduck/root",
+    "version": "1.0.0",
+    "private": true,
+    "description": "BDuck System — Monorepo for HR and WMS applications",
+    "packageManager": "pnpm@9.15.4",
+    "engines": {
+        "node": ">=22.0.0"
+    },
+    "scripts": {
+        "--- DEV ---": "",
+        "dev": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms dev",
+        "dev:wms": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms dev",
+        "dev:fe-wms": "pnpm --filter @bduck/fe-wms dev",
+        "dev:be-wms": "pnpm --filter @bduck/be-wms dev",
+        "dev:be-hr": "pnpm --filter @bduck/be-hr dev",
+        "--- BUILD ---": "",
+        "build": "pnpm run --recursive build",
+        "build:fe-wms": "pnpm --filter @bduck/fe-wms build",
+        "build:be-wms": "pnpm --filter @bduck/be-wms build",
+        "build:be-hr": "pnpm --filter @bduck/be-hr build",
+        "--- QUALITY ---": "",
+        "lint": "pnpm run --recursive lint",
+        "lint:fix": "pnpm run --recursive lint:fix",
+        "typecheck": "pnpm run --recursive typecheck",
+        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+        "--- DOCKER (Production) ---": "",
+        "docker:wms:up": "docker compose --env-file .env.local up -d --build",
+        "docker:wms:down": "docker compose --env-file .env.local down",
+        "docker:wms:logs": "docker compose --env-file .env.local logs -f",
+        "--- DOCKER (Dev - Live Reload) ---": "",
+        "docker:dev:up": "docker compose -f docker-compose.dev.yml up -d --build",
+        "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
+        "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
+        "docker:dev:rebuild": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d --build",
+        "--- GIT HOOKS ---": "",
+        "prepare": "husky"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.0",
+        "husky": "^9.1.0",
+        "lint-staged": "^15.2.0",
+        "prettier": "^3.4.0",
+        "typescript": "^5.7.0"
+    },
+    "lint-staged": {
+        "*.{ts,tsx,js,jsx}": [
+            "eslint --fix",
+            "prettier --write"
+        ],
+        "*.{json,md,css,yml,yaml}": [
+            "prettier --write"
+        ]
+    }
 }

@@ -45,7 +45,7 @@ export const getCategories = async (_req: Request, res: Response) => {
 
 export const getCategoryById = async (req: Request, res: Response) => {
   try {
-    const category = await fetchCategoryById(req.params.id);
+    const category = await fetchCategoryById(req.params.id as string);
     return sendSuccess(res, category, {
       vi: 'Lấy thông tin danh mục thành công.',
       zh: '获取类别信息成功。',
@@ -102,7 +102,7 @@ export const putCategory = async (req: Request, res: Response) => {
     }
 
     const userId = (req as any).user?.id || 'unknown';
-    await updateCategory(req.params.id, parseResult.data, userId);
+    await updateCategory(req.params.id as string, parseResult.data, userId);
 
     return sendSuccess(res, null, {
       vi: 'Cập nhật danh mục thành công.',
@@ -123,7 +123,7 @@ export const putCategory = async (req: Request, res: Response) => {
 export const removeCategory = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || 'unknown';
-    await deleteCategory(req.params.id, userId);
+    await deleteCategory(req.params.id as string, userId);
 
     return sendSuccess(res, null, {
       vi: 'Xóa danh mục thành công.',

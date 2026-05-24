@@ -18,6 +18,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // ---------------------------------------------------------------------------
 // 1. Firebase Config — Đọc từ biến môi trường NEXT_PUBLIC_*
@@ -83,9 +84,15 @@ try {
 const auth: Auth = getAuth(app);
 
 // ---------------------------------------------------------------------------
-// 5. Export các instance để sử dụng trong toàn bộ Frontend App
+// 5. Initialize Firebase Storage
+// ---------------------------------------------------------------------------
+const storage: FirebaseStorage = getStorage(app);
+
+// ---------------------------------------------------------------------------
+// 6. Export các instance để sử dụng trong toàn bộ Frontend App
 //    - `app`: Firebase App instance (ít dùng trực tiếp).
 //    - `db`: Firestore instance (dùng cho mọi truy vấn dữ liệu).
 //    - `auth`: Firebase Auth instance (dùng cho đăng nhập / phân quyền).
+//    - `storage`: Firebase Storage instance (dùng cho upload file/hình ảnh).
 // ---------------------------------------------------------------------------
-export { app, db, auth };
+export { app, db, auth, storage };

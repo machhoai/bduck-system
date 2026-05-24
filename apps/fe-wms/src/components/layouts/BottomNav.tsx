@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useTranslation } from '../../lib/i18n';
-import { useUserStore } from '../../stores/useUserStore';
-import { useSidebarStore } from '../../stores/useSidebarStore';
-import { menuItems, getVisibleMenuItems } from '../../config/menuConfig';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MoreHorizontal } from "lucide-react";
+import { useTranslation } from "../../lib/i18n";
+import { useUserStore } from "../../stores/useUserStore";
+import { useSidebarStore } from "../../stores/useSidebarStore";
+import { menuItems, getVisibleMenuItems } from "../../config/menuConfig";
 
 /**
  * BottomNav — Mobile bottom navigation bar
@@ -31,12 +32,15 @@ export default function BottomNav() {
         bg-[var(--color-surface-elevated)]/95 backdrop-blur-xl
         border-t border-[var(--color-border-subtle)]
       "
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="flex items-center justify-around h-[var(--bottomnav-height)]">
         {visibleItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-          const label = t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey;
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
+          const label =
+            t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey;
+          const Icon = item.icon;
 
           return (
             <Link
@@ -46,24 +50,14 @@ export default function BottomNav() {
                 flex flex-col items-center justify-center gap-0.5
                 flex-1 h-full
                 transition-colors duration-150
-                ${isActive
-                  ? 'text-[var(--color-text-primary)]'
-                  : 'text-[var(--color-text-muted)]'
+                ${
+                  isActive
+                    ? "text-[var(--color-text-primary)]"
+                    : "text-[var(--color-text-muted)]"
                 }
               `}
             >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={isActive ? '2' : '1.5'}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d={item.iconPath} />
-              </svg>
+              <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
               <span className="text-[10px] font-medium">{label}</span>
             </Link>
           );
@@ -79,11 +73,7 @@ export default function BottomNav() {
             transition-colors duration-150 cursor-pointer
           "
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="1" />
-            <circle cx="19" cy="12" r="1" />
-            <circle cx="5" cy="12" r="1" />
-          </svg>
+          <MoreHorizontal size={22} strokeWidth={1.5} />
           <span className="text-[10px] font-medium">{t.nav.more}</span>
         </button>
       </div>

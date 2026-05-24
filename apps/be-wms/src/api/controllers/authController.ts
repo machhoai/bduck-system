@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { createSessionLogin, logoutSession } from '../../services/authService';
+import { createSessionLogin, logoutSession } from '../../services/authService.js';
 
 const sessionLoginSchema = z.object({
   idToken: z.string().min(1, "idToken is required")

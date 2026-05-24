@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * i18n Provider & Hook — Lightweight dictionary-based i18n
@@ -9,12 +9,20 @@
  *   type-safe hoàn toàn với TypeScript.
  */
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import vi, { type Dictionary } from './vi';
-import zh from './zh';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  type ReactNode,
+} from "react";
+import vi, { type Dictionary } from "./vi";
+import zh from "./zh";
+import { useAppSettingsStore } from "../../stores/useAppSettingsStore";
+import { DEFAULT_LANGUAGE, type AppLanguage } from "../../utils/appSettings";
 
 // ── Supported languages ──
-export type Language = 'vi' | 'zh';
+export type Language = AppLanguage;
 
 const dictionaries: Record<Language, Dictionary> = { vi, zh };
 
@@ -30,24 +38,36 @@ const I18nContext = createContext<I18nContextType | null>(null);
 // ── Provider ──
 export function I18nProvider({
   children,
-  defaultLang = 'vi',
+  defaultLang = DEFAULT_LANGUAGE,
 }: {
   children: ReactNode;
   defaultLang?: Language;
 }) {
-  const [lang, setLangState] = useState<Language>(defaultLang);
+  const lang = useAppSettingsStore((s) => s.language);
+  const isHydrated = useAppSettingsStore((s) => s.isHydrated);
+  const hydrateSettings = useAppSettingsStore((s) => s.hydrateSettings);
+  const setLanguage = useAppSettingsStore((s) => s.setLanguage);
 
-  const setLang = useCallback((newLang: Language) => {
-    setLangState(newLang);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wms-lang', newLang);
-    }
-  }, []);
+  useEffect(() => {
+    hydrateSettings();
+  }, [hydrateSettings]);
 
-  const t = dictionaries[lang];
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const setLang = useCallback(
+    (newLang: Language) => {
+      setLanguage(newLang);
+    },
+    [setLanguage],
+  );
+
+  const currentLang = isHydrated ? lang : defaultLang;
+  const t = dictionaries[currentLang];
 
   return (
-    <I18nContext.Provider value={{ t, lang, setLang }}>
+    <I18nContext.Provider value={{ t, lang: currentLang, setLang }}>
       {children}
     </I18nContext.Provider>
   );
@@ -58,7 +78,7 @@ export function useTranslation() {
   const ctx = useContext(I18nContext);
   if (!ctx) {
     // Fallback khi không bọc Provider (SSR hoặc ngoài context)
-    return { t: vi, lang: 'vi' as Language, setLang: () => {} };
+    return { t: vi, lang: "vi" as Language, setLang: () => {} };
   }
   return ctx;
 }

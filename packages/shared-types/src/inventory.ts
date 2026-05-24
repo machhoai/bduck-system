@@ -1,6 +1,6 @@
 // Tồn kho thực tế và Kiểm kê
 
-import { StockCountType, StockCountSessionStatus, StockCountItemCondition } from "./enums";
+import { StockCountType, StockCountSessionStatus, StockCountItemCondition } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // INVENTORY — ATP Stock Logic (ISO 8.7)
