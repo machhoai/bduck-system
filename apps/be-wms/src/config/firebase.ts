@@ -19,9 +19,9 @@ import {
   getApps,
   cert,
   type ServiceAccount,
-} from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+} from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
 // ---------------------------------------------------------------------------
 // 1. Parse Service Account từ Base64 Environment Variable
@@ -34,26 +34,29 @@ function parseServiceAccount(): ServiceAccount {
 
   if (!base64) {
     throw new Error(
-      '[be-wms] FATAL: Missing FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable. ' +
-        'Server cannot start without Firebase credentials.'
+      "[be-wms] FATAL: Missing FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable. " +
+        "Server cannot start without Firebase credentials.",
     );
   }
 
   try {
-    const jsonString = Buffer.from(base64, 'base64').toString('utf-8');
+    const jsonString = Buffer.from(base64, "base64").toString("utf-8");
     const parsed = JSON.parse(jsonString) as ServiceAccount;
 
     // Kiểm tra tối thiểu: JSON phải chứa project_id
-    if (!parsed.projectId && !(parsed as Record<string, unknown>)['project_id']) {
+    if (
+      !parsed.projectId &&
+      !(parsed as Record<string, unknown>)["project_id"]
+    ) {
       throw new Error('Service Account JSON is missing "project_id" field.');
     }
 
     return parsed;
   } catch (error) {
     throw new Error(
-      '[be-wms] FATAL: Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64. ' +
-        'Ensure the value is a valid Base64-encoded JSON string. ' +
-        `Detail: ${error instanceof Error ? error.message : String(error)}`
+      "[be-wms] FATAL: Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64. " +
+        "Ensure the value is a valid Base64-encoded JSON string. " +
+        `Detail: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -72,8 +75,10 @@ if (!getApps().length) {
   // Log xác nhận kết nối thành công — hiển thị Project ID để dễ debug
   const projectId =
     serviceAccount.projectId ||
-    (serviceAccount as Record<string, unknown>)['project_id'];
-  console.log(`[be-wms] ✅ Firebase Admin initialized for Project: ${projectId}`);
+    (serviceAccount as Record<string, unknown>)["project_id"];
+  console.log(
+    `[be-wms] ✅ Firebase Admin initialized for Project: ${projectId}`,
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Pencil, Trash2, FolderOpen, ChevronRight } from 'lucide-react';
-import { useTranslation } from '../../lib/i18n';
-import type { ProductCategory } from '@bduck/shared-types';
+import { Pencil, Trash2, FolderOpen, ChevronRight } from "lucide-react";
+import { useTranslation } from "../../lib/i18n";
+import type { ProductCategory } from "@bduck/shared-types";
 
 interface CategoryFlatListProps {
   categories: ProductCategory[];
@@ -52,7 +52,11 @@ export default function CategoryFlatList({
                 {cat.name}
               </span>
               <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                {t.categories.types[cat.type as keyof typeof t.categories.types]}
+                {
+                  t.categories.types[
+                    cat.type as keyof typeof t.categories.types
+                  ]
+                }
               </span>
             </div>
             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
@@ -68,7 +72,7 @@ export default function CategoryFlatList({
 
           {/* Right: Actions */}
           <div className="flex shrink-0 items-center gap-1">
-            {hasPermission('category.update') && (
+            {hasPermission("category.update") && (
               <button
                 onClick={() => onEdit(cat)}
                 className="rounded-xl p-2 text-gray-400 transition-colors active:bg-blue-50 active:text-blue-600"
@@ -76,7 +80,7 @@ export default function CategoryFlatList({
                 <Pencil size={16} />
               </button>
             )}
-            {hasPermission('category.delete') && (
+            {hasPermission("category.delete") && (
               <button
                 onClick={() => onDelete(cat)}
                 className="rounded-xl p-2 text-gray-400 transition-colors active:bg-red-50 active:text-red-500"

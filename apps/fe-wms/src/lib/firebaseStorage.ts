@@ -1,6 +1,6 @@
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
-import imageCompression from 'browser-image-compression';
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from "./firebase";
+import imageCompression from "browser-image-compression";
 
 /**
  * Utility: Nén ảnh và chuyển sang WEBP, sau đó upload lên Firebase Storage.
@@ -11,15 +11,15 @@ import imageCompression from 'browser-image-compression';
  */
 export async function uploadImageAsWebp(
   file: File,
-  storagePath: string
+  storagePath: string,
 ): Promise<string> {
   try {
     // 1. Cấu hình nén ảnh
     const options = {
-      maxSizeMB: 1,           // Dung lượng tối đa mong muốn (1MB)
+      maxSizeMB: 1, // Dung lượng tối đa mong muốn (1MB)
       maxWidthOrHeight: 1920, // Kích thước tối đa để không làm vỡ layout
-      useWebWorker: true,     // Dùng worker để không block UI thread
-      fileType: 'image/webp', // Bắt buộc convert sang WEBP theo yêu cầu
+      useWebWorker: true, // Dùng worker để không block UI thread
+      fileType: "image/webp", // Bắt buộc convert sang WEBP theo yêu cầu
       initialQuality: 0.8,
     };
 
@@ -39,9 +39,8 @@ export async function uploadImageAsWebp(
     // 5. Lấy và trả về URL
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
-
   } catch (error) {
-    console.error('Lỗi khi nén hoặc upload ảnh:', error);
-    throw new Error('Không thể tải ảnh lên. Vui lòng thử lại.');
+    console.error("Lỗi khi nén hoặc upload ảnh:", error);
+    throw new Error("Không thể tải ảnh lên. Vui lòng thử lại.");
   }
 }

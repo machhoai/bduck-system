@@ -10,15 +10,15 @@
  * @see wms-core-rules.md §2 — Local-First Architecture
  */
 
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   type Firestore,
-} from 'firebase/firestore';
-import { getAuth, type Auth } from 'firebase/auth';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+} from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 // ---------------------------------------------------------------------------
 // 1. Firebase Config — Đọc từ biến môi trường NEXT_PUBLIC_*
@@ -66,15 +66,15 @@ try {
   // Firestore được khởi tạo trước đó (do hot-reload).
   // Fallback: Sử dụng getFirestore() thay vì initializeFirestore().
   console.warn(
-    '[fe-wms] Persistent cache initialization failed. ' +
-      'Falling back to default Firestore instance. ' +
-      'Offline support may be limited.',
-    error
+    "[fe-wms] Persistent cache initialization failed. " +
+      "Falling back to default Firestore instance. " +
+      "Offline support may be limited.",
+    error,
   );
 
   // Import động getFirestore để dùng làm fallback
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getFirestore } = require('firebase/firestore');
+  const { getFirestore } = require("firebase/firestore");
   db = getFirestore(app);
 }
 

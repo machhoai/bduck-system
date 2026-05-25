@@ -1,10 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 type WarehouseIdExtractor = (req: Request) => string | null | undefined;
 
+const sendPermissionDenied = (res: Response) =>
+  res.status(403).json({
+    success: false,
+    data: null,
+    messages: {
+      vi: "Bạn không có quyền thực hiện hành động này.",
+      zh: "您没有执行此操作的权限。",
+    },
+  });
+
 export const requirePermission = (
-  action: string, 
-  getWarehouseId?: WarehouseIdExtractor
+  action: string,
+  getWarehouseId?: WarehouseIdExtractor,
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user;
@@ -13,17 +23,20 @@ export const requirePermission = (
         success: false,
         data: null,
         messages: {
-          vi: 'Không có quyền truy cập.',
-          zh: '没有访问权限。'
-        }
+          vi: "Không có quyền truy cập.",
+          zh: "没有访问权限。",
+        },
       });
     }
 
-    const permissions = user.permissions as Record<string, Record<string, unknown>>;
-    const globalPerms = permissions['global'] || {};
+    const permissions = user.permissions as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const globalPerms = permissions["global"] || {};
 
     // 1. Check for global admin wildcard
-    if (globalPerms['*'] === true) {
+    if (globalPerms["*"] === true) {
       return next();
     }
 
@@ -37,7 +50,7 @@ export const requirePermission = (
       const warehouseId = getWarehouseId(req);
       if (warehouseId) {
         const warehousePerms = permissions[warehouseId] || {};
-        if (warehousePerms['*'] === true || warehousePerms[action] === true) {
+        if (warehousePerms["*"] === true || warehousePerms[action] === true) {
           return next();
         }
       }
@@ -48,9 +61,34 @@ export const requirePermission = (
       success: false,
       data: null,
       messages: {
-        vi: 'Bạn không có quyền thực hiện hành động này.',
-        zh: '您没有执行此操作的权限。'
-      }
+        vi: "Bạn không có quyền thực hiện hành động này.",
+        zh: "您没有执行此操作的权限。",
+      },
     });
+  };
+};
+
+export const requireAnyScopedPermission = (action: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !user.permissions) {
+      return sendPermissionDenied(res);
+    }
+
+    const permissions = user.permissions as Record<
+      string,
+      Record<string, unknown>
+    >;
+
+    const hasPermission = Object.values(permissions).some(
+      (scopedPermissions) =>
+        scopedPermissions["*"] === true || scopedPermissions[action] === true,
+    );
+
+    if (hasPermission) {
+      return next();
+    }
+
+    return sendPermissionDenied(res);
   };
 };

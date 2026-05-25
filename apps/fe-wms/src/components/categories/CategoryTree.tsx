@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ChevronRight, ChevronDown, Pencil, Trash2, FolderOpen, Folder } from 'lucide-react';
-import { useTranslation } from '../../lib/i18n';
-import type { ProductCategory } from '@bduck/shared-types';
+import { useState } from "react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Pencil,
+  Trash2,
+  FolderOpen,
+  Folder,
+} from "lucide-react";
+import { useTranslation } from "../../lib/i18n";
+import type { ProductCategory } from "@bduck/shared-types";
 
 interface CategoryTreeProps {
   categories: ProductCategory[];
@@ -103,7 +110,7 @@ function TreeItem({
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={`shrink-0 rounded-md p-0.5 text-gray-400 transition-colors
-            ${hasChildren ? 'hover:bg-gray-200 hover:text-gray-600' : 'invisible'}`}
+            ${hasChildren ? "hover:bg-gray-200 hover:text-gray-600" : "invisible"}`}
           disabled={!hasChildren}
         >
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -129,7 +136,7 @@ function TreeItem({
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-1">
-          {hasPermission('category.update') && (
+          {hasPermission("category.update") && (
             <button
               onClick={() => onEdit(node)}
               className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
@@ -138,7 +145,7 @@ function TreeItem({
               <Pencil size={15} />
             </button>
           )}
-          {hasPermission('category.delete') && (
+          {hasPermission("category.delete") && (
             <button
               onClick={() => onDelete(node)}
               className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"

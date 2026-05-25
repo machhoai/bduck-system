@@ -1,6 +1,10 @@
-import { auth } from '../config/firebase.js';
-import { getUserById, getUserWarehouseRoles, getRoleById } from '../repositories/userRepository.js';
-import type { User, UserWarehouseRole, Role } from '@bduck/shared-types';
+import { auth } from "../config/firebase.js";
+import {
+  getUserById,
+  getUserWarehouseRoles,
+  getRoleById,
+} from "../repositories/userRepository.js";
+import type { User, UserWarehouseRole, Role } from "@bduck/shared-types";
 
 export interface AuthSessionResult {
   cookie: string;
@@ -10,36 +14,38 @@ export interface AuthSessionResult {
   permissions: Record<string, unknown>;
 }
 
-export const createSessionLogin = async (idToken: string): Promise<AuthSessionResult> => {
+export const createSessionLogin = async (
+  idToken: string,
+): Promise<AuthSessionResult> => {
   // 1. Verify the ID token first
   const decodedToken = await auth.verifyIdToken(idToken);
-  
+
   // 2. Set session expiration to 14 days
   const expiresIn = 1000 * 60 * 60 * 24 * 14;
-  
+
   // 3. Create the session cookie
   const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-  
+
   // 4. Get the user from DB
   const user = await getUserById(decodedToken.uid);
   if (!user) {
-    throw new Error('USER_NOT_FOUND');
+    throw new Error("USER_NOT_FOUND");
   }
 
   // 5. Get user roles
   const userRoles = await getUserWarehouseRoles(user.id);
-  
+
   // 6. Merge all permissions from assigned roles
   const mergedPermissions: Record<string, unknown> = {};
-  
+
   for (const userRole of userRoles) {
     if (!userRole.is_active) continue;
 
     const roleDef = await getRoleById(userRole.role_id);
     if (!roleDef) continue;
 
-    const scope = userRole.warehouse_id || 'global';
-    
+    const scope = userRole.warehouse_id || "global";
+
     if (!mergedPermissions[scope]) {
       mergedPermissions[scope] = {};
     }
@@ -47,16 +53,16 @@ export const createSessionLogin = async (idToken: string): Promise<AuthSessionRe
     // Merge role permissions into the scope
     mergedPermissions[scope] = {
       ...(mergedPermissions[scope] as Record<string, unknown>),
-      ...roleDef.permissions
+      ...roleDef.permissions,
     };
   }
-  
+
   return {
     cookie: sessionCookie,
     expiresIn,
     user,
     roles: userRoles,
-    permissions: mergedPermissions
+    permissions: mergedPermissions,
   };
 };
 

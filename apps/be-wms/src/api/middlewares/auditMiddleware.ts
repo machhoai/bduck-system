@@ -1,10 +1,10 @@
-import type { Request, Response, NextFunction } from 'express';
-import { logAudit } from '../../services/auditService.js';
-import { AuditAction } from '@bduck/shared-types';
+import type { Request, Response, NextFunction } from "express";
+import { logAudit } from "../../services/auditService.js";
+import { AuditAction } from "@bduck/shared-types";
 
 /**
  * ISO 9001 Audit Logging Middleware
- * 
+ *
  * Intercepts requests to log critical actions (e.g., transfers, stock counts).
  * Ensures a strict audit trail for all business-critical operations.
  */
@@ -15,13 +15,17 @@ export const auditMiddleware = (action: AuditAction, entityType: string) => {
 
     res.json = function (body) {
       // If the request was successful, we log it
-      if (res.statusCode >= 200 && res.statusCode < 300 && body?.success !== false) {
+      if (
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        body?.success !== false
+      ) {
         // We log async without awaiting to not block the response
-        const userId = (req as any).user?.id || 'system';
+        const userId = (req as any).user?.id || "system";
 
         // Entity ID could be in params or body depending on the request type
         // Usually, the newly created ID is in body.data.id, or updated ID in req.params.id
-        const entityId = req.params.id || body?.data?.id || 'unknown';
+        const entityId = req.params.id || body?.data?.id || "unknown";
 
         // Attempt to extract old/new values
         // Note: For a robust system, these values should be set by the service layer
@@ -37,9 +41,9 @@ export const auditMiddleware = (action: AuditAction, entityType: string) => {
           new_value: auditContext.new_value || req.body || null,
           ip_address: req.ip,
           session_token: req.cookies?.__session || null,
-          notes: `Action ${action} on ${entityType} via API`
+          notes: `Action ${action} on ${entityType} via API`,
         }).catch((err: unknown) => {
-          console.error('[auditMiddleware] Failed to log:', err);
+          console.error("[auditMiddleware] Failed to log:", err);
         });
       }
 

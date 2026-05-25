@@ -1,4 +1,4 @@
-import { Skeleton } from '../ui/Skeleton';
+import { Skeleton } from "../ui/Skeleton";
 
 /**
  * DashboardSkeleton — Skeleton loading mô phỏng cấu trúc Dashboard Layout
@@ -51,7 +51,10 @@ export default function DashboardSkeleton() {
         <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="p-4 rounded-xl bg-[var(--color-surface-card)]">
+              <div
+                key={i}
+                className="p-4 rounded-xl bg-[var(--color-surface-card)]"
+              >
                 <Skeleton variant="text" className="w-20 h-3 mb-3" />
                 <Skeleton variant="text" className="w-16 h-6 mb-2" />
                 <Skeleton variant="text" className="w-28 h-3" />

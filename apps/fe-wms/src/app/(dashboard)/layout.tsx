@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUserStore } from '../../stores/useUserStore';
-import { I18nProvider } from '../../lib/i18n';
-import DashboardLayout from '../../components/layouts/DashboardLayout';
-import DashboardSkeleton from '../../components/layouts/DashboardSkeleton';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUserStore } from "../../stores/useUserStore";
+import { I18nProvider } from "../../lib/i18n";
+import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardSkeleton from "../../components/layouts/DashboardSkeleton";
 
 /**
  * Dashboard Group Layout — Auth Guard + Layout wrapper
@@ -30,7 +30,7 @@ export default function DashboardGroupLayout({
 
   useEffect(() => {
     if (isMounted && !isAuthenticated) {
-      router.replace('/login');
+      router.replace("/login");
     }
   }, [isMounted, isAuthenticated, router]);
 
@@ -41,9 +41,7 @@ export default function DashboardGroupLayout({
 
   return (
     <I18nProvider>
-      <DashboardLayout>
-        {children}
-      </DashboardLayout>
+      <DashboardLayout>{children}</DashboardLayout>
     </I18nProvider>
   );
 }

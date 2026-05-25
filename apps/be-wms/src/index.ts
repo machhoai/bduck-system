@@ -4,7 +4,10 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import authRoutes from "./api/routes/authRoutes.js";
 import categoryRoutes from "./api/routes/categoryRoutes.js";
+import locationRoutes from "./api/routes/locationRoutes.js";
+import organizationRoutes from "./api/routes/organizationRoutes.js";
 import productRoutes from "./api/routes/productRoutes.js";
+import warehouseRoutes from "./api/routes/warehouseRoutes.js";
 
 const app = express();
 const PORT = process.env.BE_WMS_PORT || 4000;
@@ -17,7 +20,7 @@ app.use(
   cors({
     origin: process.env.BE_WMS_CORS_ORIGIN?.split(",") ?? [
       "http://localhost:3000",
-      "http://app.wms.localhost"
+      "http://app.wms.localhost",
     ],
     credentials: true,
   }),
@@ -28,9 +31,12 @@ app.use(cookieParser());
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/products', productRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/organizations", organizationRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/warehouses", warehouseRoutes);
+app.use("/api/locations", locationRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

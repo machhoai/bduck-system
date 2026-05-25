@@ -12,6 +12,7 @@ export interface Organization {
     code: string; // UNIQUE
     tax_code: string | null;
     address: string | null;
+    organization_image_url: string | null;
     is_deleted: boolean; // ISO — soft delete only
     created_at: Date;
     updated_at: Date;

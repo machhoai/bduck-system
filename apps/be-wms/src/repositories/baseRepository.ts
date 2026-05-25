@@ -1,5 +1,5 @@
-import { db } from '../config/firebase.js';
-import type { SoftDeletable } from '@bduck/shared-types';
+import { db } from "../config/firebase.js";
+import type { SoftDeletable } from "@bduck/shared-types";
 
 export class BaseRepository<T extends SoftDeletable & { id: string }> {
   protected collectionName: string;
@@ -21,16 +21,19 @@ export class BaseRepository<T extends SoftDeletable & { id: string }> {
 
   async findAll(includeDeleted = false): Promise<T[]> {
     let query: FirebaseFirestore.Query = db.collection(this.collectionName);
-    
+
     if (!includeDeleted) {
-      query = query.where('is_deleted', '==', false);
+      query = query.where("is_deleted", "==", false);
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => doc.data() as T);
+    return snapshot.docs.map((doc) => doc.data() as T);
   }
 
-  async create(id: string, data: Omit<T, 'is_deleted' | 'created_at' | 'updated_at'>): Promise<T> {
+  async create(
+    id: string,
+    data: Omit<T, "is_deleted" | "created_at" | "updated_at">,
+  ): Promise<T> {
     const now = new Date();
     const docData = {
       ...data,
@@ -43,10 +46,13 @@ export class BaseRepository<T extends SoftDeletable & { id: string }> {
     return docData;
   }
 
-  async update(id: string, data: Partial<Omit<T, 'id' | 'is_deleted' | 'created_at' | 'updated_at'>>): Promise<void> {
+  async update(
+    id: string,
+    data: Partial<Omit<T, "id" | "is_deleted" | "created_at" | "updated_at">>,
+  ): Promise<void> {
     const updateData = {
       ...data,
-      updated_at: new Date()
+      updated_at: new Date(),
     };
     await db.collection(this.collectionName).doc(id).update(updateData);
   }
@@ -57,7 +63,7 @@ export class BaseRepository<T extends SoftDeletable & { id: string }> {
   async softDelete(id: string): Promise<void> {
     await db.collection(this.collectionName).doc(id).update({
       is_deleted: true,
-      updated_at: new Date()
+      updated_at: new Date(),
     });
   }
 }

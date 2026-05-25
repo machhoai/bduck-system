@@ -23,28 +23,28 @@
  *       }
  *   );
  */
-import { gooeyToast } from 'goey-toast';
+import { gooeyToast } from "goey-toast";
 
 /** Cấu hình mặc định cho mọi toast trong hệ thống */
 const DEFAULT_CONFIG = {
-    preset: 'snappy' as const,
-    timing: {
-        displayDuration: 6000,
-    },
+  preset: "snappy" as const,
+  timing: {
+    displayDuration: 6000,
+  },
 };
 
 /** Tham số cho showToast.promise() */
 interface PromiseToastMessages {
-    /** Tiêu đề hiển thị khi đang loading */
-    loading: string;
-    /** Tiêu đề hiển thị khi thành công */
-    success: string;
-    /** Tiêu đề hiển thị khi thất bại */
-    error: string;
-    /** Mô tả chi tiết khi thành công */
-    successDescription: string;
-    /** Mô tả chi tiết khi thất bại — chuỗi hoặc hàm nhận error để hiển thị message từ server */
-    errorDescription: string | ((err: unknown) => string);
+  /** Tiêu đề hiển thị khi đang loading */
+  loading: string;
+  /** Tiêu đề hiển thị khi thành công */
+  success: string;
+  /** Tiêu đề hiển thị khi thất bại */
+  error: string;
+  /** Mô tả chi tiết khi thành công */
+  successDescription: string;
+  /** Mô tả chi tiết khi thất bại — chuỗi hoặc hàm nhận error để hiển thị message từ server */
+  errorDescription: string | ((err: unknown) => string);
 }
 
 /**
@@ -52,58 +52,59 @@ interface PromiseToastMessages {
  * Đây là điểm duy nhất gọi goey-toast trong toàn bộ codebase.
  */
 export const showToast = {
-    /** Thông báo thành công — hành động hoàn tất */
-    success(title: string, description: string) {
-        gooeyToast.success(title, {
-            ...DEFAULT_CONFIG,
-            description,
-        });
-    },
+  /** Thông báo thành công — hành động hoàn tất */
+  success(title: string, description: string) {
+    gooeyToast.success(title, {
+      ...DEFAULT_CONFIG,
+      description,
+    });
+  },
 
-    /** Thông báo lỗi — giải thích nguyên nhân và hướng xử lý */
-    error(title: string, description: string) {
-        gooeyToast.error(title, {
-            ...DEFAULT_CONFIG,
-            description,
-        });
-    },
+  /** Thông báo lỗi — giải thích nguyên nhân và hướng xử lý */
+  error(title: string, description: string) {
+    gooeyToast.error(title, {
+      ...DEFAULT_CONFIG,
+      description,
+    });
+  },
 
-    /** Cảnh báo — hành động cần lưu ý, không chặn luồng */
-    warning(title: string, description: string) {
-        gooeyToast.warning(title, {
-            ...DEFAULT_CONFIG,
-            description,
-        });
-    },
+  /** Cảnh báo — hành động cần lưu ý, không chặn luồng */
+  warning(title: string, description: string) {
+    gooeyToast.warning(title, {
+      ...DEFAULT_CONFIG,
+      description,
+    });
+  },
 
-    /** Thông tin — trạng thái trung lập, không phải lỗi cũng không phải thành công */
-    info(title: string, description: string) {
-        gooeyToast.info(title, {
-            ...DEFAULT_CONFIG,
-            description,
-        });
-    },
+  /** Thông tin — trạng thái trung lập, không phải lỗi cũng không phải thành công */
+  info(title: string, description: string) {
+    gooeyToast.info(title, {
+      ...DEFAULT_CONFIG,
+      description,
+    });
+  },
 
-    /**
-     * Promise toast — tự động hiển thị loading → success/error theo kết quả Promise.
-     * Return lại Promise gốc để caller có thể chain/await.
-     */
-    promise<T>(promise: Promise<T>, messages: PromiseToastMessages): Promise<T> {
-        const errorDesc = typeof messages.errorDescription === 'function'
-            ? messages.errorDescription
-            : () => messages.errorDescription as string;
+  /**
+   * Promise toast — tự động hiển thị loading → success/error theo kết quả Promise.
+   * Return lại Promise gốc để caller có thể chain/await.
+   */
+  promise<T>(promise: Promise<T>, messages: PromiseToastMessages): Promise<T> {
+    const errorDesc =
+      typeof messages.errorDescription === "function"
+        ? messages.errorDescription
+        : () => messages.errorDescription as string;
 
-        gooeyToast.promise(promise, {
-            ...DEFAULT_CONFIG,
-            loading: messages.loading,
-            success: messages.success,
-            error: messages.error,
-            description: {
-                success: messages.successDescription,
-                error: errorDesc,
-            },
-        });
+    gooeyToast.promise(promise, {
+      ...DEFAULT_CONFIG,
+      loading: messages.loading,
+      success: messages.success,
+      error: messages.error,
+      description: {
+        success: messages.successDescription,
+        error: errorDesc,
+      },
+    });
 
-        return promise;
-    },
+    return promise;
+  },
 };

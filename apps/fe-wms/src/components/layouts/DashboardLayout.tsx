@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useSidebarStore } from '../../stores/useSidebarStore';
-import Sidebar from './Sidebar';
-import BottomNav from './BottomNav';
-import MobileDrawer from './MobileDrawer';
+import { useSidebarStore } from "../../stores/useSidebarStore";
+import Sidebar from "./Sidebar";
+import BottomNav from "./BottomNav";
+import MobileDrawer from "./MobileDrawer";
 
 /**
  * DashboardLayout — Main layout orchestrator
@@ -11,7 +11,11 @@ import MobileDrawer from './MobileDrawer';
  * ► Desktop (≥1024px): Sidebar (left) + content offset margin-left
  * ► Mobile (<1024px): Full-width content + BottomNav + MobileDrawer
  */
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
 
   return (
@@ -24,13 +28,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className="min-h-screen pb-[var(--bottomnav-height)] lg:pb-0 transition-[margin-left] duration-300 ease-in-out"
         style={{
           marginLeft: isCollapsed
-            ? 'var(--sidebar-width-collapsed)'
-            : 'var(--sidebar-width-expanded)',
+            ? "var(--sidebar-width-collapsed)"
+            : "var(--sidebar-width-expanded)",
         }}
       >
-        <div className="p-4 lg:p-6">
-          {children}
-        </div>
+        <div className="p-4 lg:p-6">{children}</div>
       </main>
 
       <BottomNav />

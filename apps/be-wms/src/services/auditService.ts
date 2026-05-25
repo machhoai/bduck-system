@@ -1,6 +1,6 @@
-import { db } from '../config/firebase.js';
-import { AuditAction } from '@bduck/shared-types';
-import { randomUUID } from 'crypto';
+import { db } from "../config/firebase.js";
+import { AuditAction } from "@bduck/shared-types";
+import { randomUUID } from "crypto";
 
 interface AuditLogParams {
   entity_type: string;
@@ -22,7 +22,7 @@ interface AuditLogParams {
  */
 export const logAudit = async (params: AuditLogParams) => {
   try {
-    const auditRef = db.collection('audit_logs').doc(randomUUID());
+    const auditRef = db.collection("audit_logs").doc(randomUUID());
     const action_time = params.action_time || new Date();
     const sync_time = new Date(); // Server receive time
 
@@ -39,7 +39,7 @@ export const logAudit = async (params: AuditLogParams) => {
       ip_address: params.ip_address || null,
       device_id: params.device_id || null,
       session_token: params.session_token || null,
-      notes: params.notes || null
+      notes: params.notes || null,
     });
 
     return auditRef.id;
@@ -47,7 +47,7 @@ export const logAudit = async (params: AuditLogParams) => {
     // We log the error but usually don't want to throw and crash the main transaction
     // However, for high security systems, failing audit log could fail the transaction.
     // Assuming non-blocking audit logging for now, or this could be part of a batch.
-    console.error('[auditService] Failed to write audit log:', error);
+    console.error("[auditService] Failed to write audit log:", error);
     throw error;
   }
 };

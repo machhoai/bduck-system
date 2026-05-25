@@ -1,8 +1,8 @@
-import { db } from '../config/firebase.js';
-import { BaseRepository } from './baseRepository.js';
-import type { ProductCategory } from '@bduck/shared-types';
+import { db } from "../config/firebase.js";
+import { BaseRepository } from "./baseRepository.js";
+import type { ProductCategory } from "@bduck/shared-types";
 
-const COLLECTION = 'product_categories';
+const COLLECTION = "product_categories";
 
 class CategoryRepository extends BaseRepository<ProductCategory> {
   constructor() {
@@ -15,8 +15,8 @@ class CategoryRepository extends BaseRepository<ProductCategory> {
   async findByCode(code: string): Promise<ProductCategory | null> {
     const snapshot = await db
       .collection(COLLECTION)
-      .where('code', '==', code)
-      .where('is_deleted', '==', false)
+      .where("code", "==", code)
+      .where("is_deleted", "==", false)
       .limit(1)
       .get();
 
@@ -30,11 +30,11 @@ class CategoryRepository extends BaseRepository<ProductCategory> {
   async findByParentId(parentId: string | null): Promise<ProductCategory[]> {
     const snapshot = await db
       .collection(COLLECTION)
-      .where('parent_id', '==', parentId)
-      .where('is_deleted', '==', false)
+      .where("parent_id", "==", parentId)
+      .where("is_deleted", "==", false)
       .get();
 
-    return snapshot.docs.map(doc => doc.data() as ProductCategory);
+    return snapshot.docs.map((doc) => doc.data() as ProductCategory);
   }
 
   /**

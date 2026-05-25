@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import React from 'react';
+import dynamic from "next/dynamic";
+import React from "react";
 
 /**
  * Login Page — Client-Only Rendering
@@ -12,17 +12,14 @@ import React from 'react';
  *
  * `ssr: false` đảm bảo toàn bộ Firebase chỉ được import ở browser.
  */
-const LoginForm = dynamic(
-  () => import('../../../components/auth/LoginForm'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-pulse text-gray-400 text-sm">Đang tải...</div>
-      </div>
-    ),
-  }
-);
+const LoginForm = dynamic(() => import("../../../components/auth/LoginForm"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="animate-pulse text-gray-400 text-sm">Đang tải...</div>
+    </div>
+  ),
+});
 
 export default function LoginPage() {
   return <LoginForm />;

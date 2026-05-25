@@ -27,8 +27,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Organizations: Authenticated users can read for warehouse selector ──
+    match /organizations/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Warehouses: Authenticated users can read ──
     match /warehouses/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Warehouse Locations: Authenticated users can read ──
+    match /warehouse_locations/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;
     }

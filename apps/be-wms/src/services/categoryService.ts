@@ -1,8 +1,8 @@
-import { categoryRepository } from '../repositories/categoryRepository.js';
-import { logAudit } from './auditService.js';
-import { AuditAction } from '@bduck/shared-types';
-import { randomUUID } from 'crypto';
-import type { ProductCategory } from '@bduck/shared-types';
+import { categoryRepository } from "../repositories/categoryRepository.js";
+import { logAudit } from "./auditService.js";
+import { AuditAction } from "@bduck/shared-types";
+import { randomUUID } from "crypto";
+import type { ProductCategory } from "@bduck/shared-types";
 
 const MAX_DEPTH = 3; // Tối đa 3 cấp: Cha → Con → Cháu
 
@@ -25,7 +25,7 @@ interface UpdateCategoryInput {
  */
 export const createCategory = async (
   input: CreateCategoryInput,
-  userId: string
+  userId: string,
 ): Promise<ProductCategory> => {
   // 1. Check unique code
   const existing = await categoryRepository.findByCode(input.code);
@@ -46,8 +46,8 @@ export const createCategory = async (
       throw {
         statusCode: 404,
         messages: {
-          vi: 'Danh mục cha không tồn tại.',
-          zh: '父类别不存在。',
+          vi: "Danh mục cha không tồn tại.",
+          zh: "父类别不存在。",
         },
       };
     }
@@ -77,7 +77,7 @@ export const createCategory = async (
 
   // 4. Audit log
   await logAudit({
-    entity_type: 'product_categories',
+    entity_type: "product_categories",
     entity_id: id,
     action: AuditAction.CREATE,
     user_id: userId,
@@ -98,14 +98,16 @@ export const fetchAllCategories = async (): Promise<ProductCategory[]> => {
 /**
  * Lấy danh mục theo ID
  */
-export const fetchCategoryById = async (id: string): Promise<ProductCategory> => {
+export const fetchCategoryById = async (
+  id: string,
+): Promise<ProductCategory> => {
   const category = await categoryRepository.findById(id);
   if (!category || category.is_deleted) {
     throw {
       statusCode: 404,
       messages: {
-        vi: 'Danh mục không tồn tại.',
-        zh: '类别不存在。',
+        vi: "Danh mục không tồn tại.",
+        zh: "类别不存在。",
       },
     };
   }
@@ -118,7 +120,7 @@ export const fetchCategoryById = async (id: string): Promise<ProductCategory> =>
 export const updateCategory = async (
   id: string,
   input: UpdateCategoryInput,
-  userId: string
+  userId: string,
 ): Promise<void> => {
   const existing = await fetchCategoryById(id);
 
@@ -129,8 +131,8 @@ export const updateCategory = async (
       throw {
         statusCode: 400,
         messages: {
-          vi: 'Không thể đặt danh mục là cha của chính nó.',
-          zh: '不能将类别设为自身的父类别。',
+          vi: "Không thể đặt danh mục là cha của chính nó.",
+          zh: "不能将类别设为自身的父类别。",
         },
       };
     }
@@ -152,7 +154,7 @@ export const updateCategory = async (
   await categoryRepository.update(id, input);
 
   await logAudit({
-    entity_type: 'product_categories',
+    entity_type: "product_categories",
     entity_id: id,
     action: AuditAction.UPDATE,
     user_id: userId,
@@ -167,7 +169,7 @@ export const updateCategory = async (
  */
 export const deleteCategory = async (
   id: string,
-  userId: string
+  userId: string,
 ): Promise<void> => {
   const existing = await fetchCategoryById(id);
 
@@ -176,8 +178,8 @@ export const deleteCategory = async (
     throw {
       statusCode: 400,
       messages: {
-        vi: 'Không thể xóa danh mục có chứa danh mục con. Hãy xóa danh mục con trước.',
-        zh: '无法删除包含子类别的类别。请先删除子类别。',
+        vi: "Không thể xóa danh mục có chứa danh mục con. Hãy xóa danh mục con trước.",
+        zh: "无法删除包含子类别的类别。请先删除子类别。",
       },
     };
   }
@@ -185,7 +187,7 @@ export const deleteCategory = async (
   await categoryRepository.softDelete(id);
 
   await logAudit({
-    entity_type: 'product_categories',
+    entity_type: "product_categories",
     entity_id: id,
     action: AuditAction.SOFT_DELETE,
     user_id: userId,
