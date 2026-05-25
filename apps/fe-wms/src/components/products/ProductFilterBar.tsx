@@ -32,23 +32,23 @@ export function ProductFilterBar({
   ) => onChange({ ...filters, [key]: value });
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+    <div className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative min-w-0 flex-1">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
           />
           <input
             type="text"
             value={filters.search}
             onChange={(event) => updateFilter("search", event.target.value)}
             placeholder={t.products.searchPlaceholder}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-11 pr-4 text-[17px] text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)]"
           />
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+        <div className="flex items-center gap-2 text-[14px] font-normal text-[var(--color-text-muted)]">
           <Filter size={15} />
           {resultCount}/{totalCount} {t.products.items}
         </div>
@@ -123,7 +123,7 @@ export function ProductFilterBar({
       <button
         type="button"
         onClick={() => onChange(defaultProductFilters)}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50"
+        className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] px-4 text-[14px] font-normal text-[var(--color-text-secondary)] transition-all hover:bg-white active:scale-95"
       >
         <X size={14} />
         {t.products.clearFilters}
@@ -145,11 +145,13 @@ function SelectFilter({
 }) {
   return (
     <label className="min-w-0 space-y-1">
-      <span className="block text-xs font-medium text-gray-500">{label}</span>
+      <span className="block text-xs font-normal text-[var(--color-text-muted)]">
+        {label}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        className="h-10 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
       >
         {children}
       </select>

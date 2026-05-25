@@ -240,30 +240,30 @@ export function ProductFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-xl w-[95%] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800">
+      <div className="flex max-h-[90vh] w-[95%] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+          <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
             {isEdit ? "Chỉnh sửa Sản phẩm" : "Thêm Sản phẩm mới"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+            className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)] active:scale-95"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-6 mt-2">
+        <div className="mt-2 flex border-b border-[var(--color-border-soft)] px-6">
           <button
             onClick={() => setActiveTab("info")}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "info" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className={`border-b-2 px-4 py-2 text-sm font-normal transition-colors ${activeTab === "info" ? "border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]" : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"}`}
           >
             Thông tin cơ bản
           </button>
           <button
             onClick={() => setActiveTab("bom")}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "bom" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className={`border-b-2 px-4 py-2 text-sm font-normal transition-colors ${activeTab === "bom" ? "border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]" : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"}`}
           >
             Định mức vật tư (BOM)
           </button>
@@ -278,7 +278,7 @@ export function ProductFormModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Category */}
                 <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Danh mục <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -287,7 +287,7 @@ export function ProductFormModal({
                     onChange={(e) =>
                       setFormData({ ...formData, category_id: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                   >
                     <option value="" disabled>
                       Chọn danh mục
@@ -302,7 +302,7 @@ export function ProductFormModal({
 
                 {/* Type */}
                 <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Loại hình <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -314,7 +314,7 @@ export function ProductFormModal({
                         product_type: e.target.value as ProductType,
                       })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                   >
                     {Object.values(ProductType).map((type) => (
                       <option key={type} value={type}>
@@ -326,7 +326,7 @@ export function ProductFormModal({
 
                 {/* Name */}
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Tên sản phẩm <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -337,13 +337,13 @@ export function ProductFormModal({
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                   />
                 </div>
 
                 {/* Code */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Mã (SKU) <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -355,7 +355,7 @@ export function ProductFormModal({
                     onChange={(e) =>
                       setFormData({ ...formData, code: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
                   />
                   {isEdit && (
                     <p className="text-xs text-gray-400 mt-1">
@@ -366,7 +366,7 @@ export function ProductFormModal({
 
                 {/* Barcode */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Mã vạch (Barcode)
                   </label>
                   <input
@@ -376,14 +376,14 @@ export function ProductFormModal({
                     onChange={(e) =>
                       setFormData({ ...formData, barcode: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                   />
                 </div>
 
                 {/* Unit & Threshold */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                       Đơn vị <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -394,11 +394,11 @@ export function ProductFormModal({
                       onChange={(e) =>
                         setFormData({ ...formData, unit: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                       Tồn tối thiểu
                     </label>
                     <input
@@ -412,7 +412,7 @@ export function ProductFormModal({
                           min_stock_threshold: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                     />
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export function ProductFormModal({
                 {/* Origin & Material */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                       Nguồn gốc
                     </label>
                     <select
@@ -431,7 +431,7 @@ export function ProductFormModal({
                           product_origin: e.target.value as ProductOrigin,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                     >
                       <option value={ProductOrigin.DOMESTIC}>
                         Trong nước (DOMESTIC)
@@ -442,7 +442,7 @@ export function ProductFormModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                       Chất liệu
                     </label>
                     <input
@@ -455,13 +455,13 @@ export function ProductFormModal({
                           product_material: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                     />
                   </div>
                 </div>
 
                 {/* Serialized tracking */}
-                <div className="col-span-2 flex items-center gap-3 p-4 bg-blue-50 text-blue-800 rounded-lg border border-blue-100">
+                <div className="col-span-2 flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-brand-primary)]/25 bg-[var(--color-brand-primary-muted)] p-4 text-[var(--color-text-secondary)]">
                   <input
                     id="is_serialized"
                     type="checkbox"
@@ -473,7 +473,7 @@ export function ProductFormModal({
                         is_serialized: e.target.checked,
                       })
                     }
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-5 w-5 cursor-pointer rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)] focus:ring-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <label
@@ -492,7 +492,7 @@ export function ProductFormModal({
 
                 {/* Description */}
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Mô tả thêm
                   </label>
                   <textarea
@@ -501,13 +501,13 @@ export function ProductFormModal({
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                    className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                   />
                 </div>
 
                 {/* Images */}
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-normal text-[var(--color-text-secondary)]">
                     Hình ảnh sản phẩm (Nén tự động WEBP)
                   </label>
 
@@ -552,9 +552,9 @@ export function ProductFormModal({
                       </div>
                     ))}
 
-                    <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-blue-400 transition-colors">
-                      <Upload size={24} className="text-gray-400 mb-2" />
-                      <span className="text-xs font-medium text-gray-500">
+                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-[var(--radius-sm)] border-2 border-dashed border-[var(--color-border-subtle)] transition-colors hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-surface-card)]">
+                      <Upload size={24} className="mb-2 text-[var(--color-text-muted)]" />
+                      <span className="text-xs font-normal text-[var(--color-text-muted)]">
                         Tải ảnh
                       </span>
                       <input
@@ -576,10 +576,10 @@ export function ProductFormModal({
             >
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="font-medium text-gray-900">
+                  <h3 className="font-semibold text-[var(--color-text-primary)]">
                     Danh sách Phụ tùng / Vật tư
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-[var(--color-text-muted)]">
                     Khai báo những thành phần cần thiết để lắp ráp thành sản
                     phẩm này.
                   </p>
@@ -587,33 +587,33 @@ export function ProductFormModal({
                 <button
                   type="button"
                   onClick={handleAddBomRow}
-                  className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium rounded-lg transition-colors flex items-center gap-2"
+                  className="flex items-center gap-2 rounded-full border border-[var(--color-brand-primary)] px-3 py-1.5 text-sm font-normal text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
                 >
                   <Plus size={16} /> Thêm vật tư
                 </button>
               </div>
 
               {loadingAllProducts ? (
-                <div className="py-8 text-center text-gray-500 flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-center py-8 text-center text-[var(--color-text-muted)]">
                   <Loader2 className="animate-spin mb-2" size={24} />
                   Đang tải danh sách sản phẩm...
                 </div>
               ) : bomList.length === 0 ? (
-                <div className="py-12 border-2 border-dashed border-gray-200 rounded-lg text-center">
-                  <p className="text-gray-500 text-sm mb-3">
+                <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border-subtle)] py-12 text-center">
+                  <p className="mb-3 text-sm text-[var(--color-text-muted)]">
                     Sản phẩm này chưa có định mức vật tư nào.
                   </p>
                   <button
                     type="button"
                     onClick={handleAddBomRow}
-                    className="text-blue-600 font-medium text-sm hover:underline"
+                    className="text-sm font-normal text-[var(--color-brand-primary)] hover:underline"
                   >
                     + Thêm định mức đầu tiên
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-12 gap-3 px-3 pb-2 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <div className="grid grid-cols-12 gap-3 border-b border-[var(--color-border-soft)] px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     <div className="col-span-5">Phụ tùng (Mã SKU)</div>
                     <div className="col-span-2">Số lượng</div>
                     <div className="col-span-4">Ghi chú lắp ráp</div>
@@ -635,7 +635,7 @@ export function ProductFormModal({
                               e.target.value,
                             )
                           }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                          className="w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                           required={activeTab === "bom"}
                         >
                           <option value="" disabled>
@@ -662,7 +662,7 @@ export function ProductFormModal({
                           }
                           placeholder="SL"
                           required={activeTab === "bom"}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          className="w-full rounded-full border border-[var(--color-border-subtle)] px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                       </div>
                       <div className="col-span-4">
@@ -673,14 +673,14 @@ export function ProductFormModal({
                             handleBomChange(item.id, "note", e.target.value)
                           }
                           placeholder="Ghi chú (tuỳ chọn)"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          className="w-full rounded-full border border-[var(--color-border-subtle)] px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                       </div>
                       <div className="col-span-1 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleRemoveBomRow(item.id)}
-                          className="p-2 mt-0.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="mt-0.5 rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-accent-error)] active:scale-95"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -693,12 +693,12 @@ export function ProductFormModal({
           </form>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50">
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-6 py-4">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="rounded-full border border-[var(--color-border-subtle)] bg-white px-4 py-2 font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50"
           >
             Hủy
           </button>
@@ -706,7 +706,7 @@ export function ProductFormModal({
             type="submit"
             form="productForm"
             disabled={isSubmitting}
-            className="px-6 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
+            className="flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-6 py-2 font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

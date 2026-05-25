@@ -832,6 +832,7 @@ export interface AuditLog {
   entity_id: string; // IDX
   action: AuditAction;
   user_id: string; // FK → users
+  user_name?: string | null; // Denormalized display name for read models
   action_time: Date; // ISO — offline time
   sync_time: Date; // ISO — server time
   old_value: Record<string, unknown> | null; // JSONB

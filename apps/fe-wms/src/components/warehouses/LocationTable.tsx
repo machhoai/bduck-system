@@ -27,17 +27,17 @@ export function LocationTable({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-950">
+          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
             {t.warehouses.locationList}
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-[17px] text-[var(--color-text-muted)]">
             {t.warehouses.locationListHint}
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.warehouses.addLocation}
@@ -47,35 +47,35 @@ export function LocationTable({
       {loading ? (
         <WarehouseTableSkeleton />
       ) : locations.length === 0 ? (
-        <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
-          <MapPinned size={42} className="mb-3 text-gray-300" />
-          <h3 className="text-sm font-semibold text-gray-900">
+        <div className="flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
+          <MapPinned size={42} className="mb-3 text-[var(--color-text-muted)]" />
+          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
             {t.warehouses.emptyLocations}
           </h3>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <div className="hidden grid-cols-[1.4fr_0.8fr_0.9fr_1fr] gap-4 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500 md:grid">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+          <div className="hidden grid-cols-[1.4fr_0.8fr_0.9fr_1fr] gap-4 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-4 py-3 text-xs font-semibold uppercase text-[var(--color-text-muted)] md:grid">
             <span>{t.warehouses.locationName}</span>
             <span>{t.warehouses.type}</span>
             <span>{t.warehouses.status}</span>
             <span className="text-right">{t.common.actions}</span>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-[var(--color-border-soft)]">
             {locations.map((location) => (
               <div
                 key={location.id}
                 className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[1.4fr_0.8fr_0.9fr_1fr] md:items-center md:gap-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-950">
+                  <p className="truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
                     {location.name}
                   </p>
-                  <p className="mt-1 truncate text-xs text-gray-500">
+                  <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
                     {location.code}
                   </p>
                 </div>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-[var(--color-text-secondary)]">
                   {t.warehouses.types[location.type]}
                 </span>
                 <StatusBadge status={location.status} />
@@ -83,7 +83,7 @@ export function LocationTable({
                   <button
                     type="button"
                     onClick={() => onEdit(location)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
                     aria-label={t.common.edit}
                   >
                     <Edit3 size={16} />
@@ -91,7 +91,7 @@ export function LocationTable({
                   <button
                     type="button"
                     onClick={() => onDelete(location)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-100 text-red-600 hover:bg-red-50"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-accent-error)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
                     aria-label={t.common.delete}
                   >
                     <Trash2 size={16} />
@@ -110,10 +110,10 @@ function StatusBadge({ status }: { status: LocationStatus }) {
   const { t } = useTranslation();
   const classes =
     status === LocationStatus.ACTIVE
-      ? "bg-emerald-50 text-emerald-700"
+      ? "border border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]"
       : status === LocationStatus.QUARANTINE
-        ? "bg-amber-50 text-amber-700"
-        : "bg-gray-100 text-gray-600";
+        ? "bg-[var(--color-surface-card)] text-[var(--color-accent-warning)]"
+        : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]";
 
   return (
     <span

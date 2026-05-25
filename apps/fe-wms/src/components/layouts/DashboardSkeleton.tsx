@@ -10,7 +10,7 @@ export default function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-base)] flex">
       {/* Sidebar skeleton (desktop only) */}
-      <aside className="hidden lg:flex flex-col w-[var(--sidebar-width-expanded)] h-screen shrink-0 bg-[var(--color-surface-elevated)] border-r border-[var(--color-border-subtle)] p-4">
+      <aside className="hidden h-screen w-[var(--sidebar-width-expanded)] shrink-0 flex-col border-r border-white/10 bg-[var(--color-surface-nav)] p-4 lg:flex">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-6">
           <Skeleton variant="rect" className="w-8 h-8" />
@@ -28,7 +28,7 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* User panel skeleton */}
-        <div className="border-t border-[var(--color-border-subtle)] pt-3 mt-3">
+        <div className="mt-3 border-t border-white/10 pt-3">
           <div className="flex items-center gap-3">
             <Skeleton variant="rect" className="w-9 h-9 rounded-lg" />
             <div className="flex-1 space-y-1.5">
@@ -40,7 +40,7 @@ export default function DashboardSkeleton() {
       </aside>
 
       {/* Main content skeleton */}
-      <main className="flex-1 p-4 lg:p-6">
+      <main className="flex-1 p-4 lg:p-8">
         {/* Title skeleton */}
         <div className="mb-6">
           <Skeleton variant="text" className="w-52 h-7 mb-2" />
@@ -48,12 +48,12 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* Content card skeleton */}
-        <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-6">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="p-4 rounded-xl bg-[var(--color-surface-card)]"
+                className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-4"
               >
                 <Skeleton variant="text" className="w-20 h-3 mb-3" />
                 <Skeleton variant="text" className="w-16 h-6 mb-2" />
@@ -61,12 +61,12 @@ export default function DashboardSkeleton() {
               </div>
             ))}
           </div>
-          <Skeleton variant="rect" className="w-full h-48 rounded-xl" />
+          <Skeleton variant="rect" className="h-48 w-full rounded-[var(--radius-sm)]" />
         </div>
       </main>
 
       {/* Mobile bottom nav skeleton */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[var(--bottomnav-height)] bg-[var(--color-surface-elevated)] border-t border-[var(--color-border-subtle)] flex items-center justify-around px-4">
+      <div className="fixed bottom-0 left-0 right-0 flex h-[var(--bottomnav-height)] items-center justify-around border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-frosted)] px-4 backdrop-blur-xl lg:hidden">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1">
             <Skeleton variant="rect" className="w-6 h-6" />

@@ -62,7 +62,7 @@ export function CategoryManagementPanel() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-950">
+        <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
           {t.categories.title}
         </h2>
         <p className="text-sm text-gray-500">{t.products.categoryHint}</p>

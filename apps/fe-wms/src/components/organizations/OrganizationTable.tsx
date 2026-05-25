@@ -42,15 +42,17 @@ export function OrganizationTable({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-950">
+          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
             {t.organizations.list}
           </h2>
-          <p className="text-sm text-gray-500">{t.organizations.listHint}</p>
+          <p className="text-[17px] text-[var(--color-text-muted)]">
+            {t.organizations.listHint}
+          </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.organizations.addNew}
@@ -60,12 +62,12 @@ export function OrganizationTable({
       {loading ? (
         <WarehouseTableSkeleton />
       ) : organizations.length === 0 ? (
-        <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
-          <Building2 size={42} className="mb-3 text-gray-300" />
-          <h3 className="text-sm font-semibold text-gray-900">
+        <div className="flex min-h-72 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
+          <Building2 size={42} className="mb-3 text-[var(--color-text-muted)]" />
+          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
             {t.organizations.empty}
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
             {t.organizations.emptyHint}
           </p>
         </div>
@@ -74,9 +76,9 @@ export function OrganizationTable({
           {organizations.map((organization) => (
             <article
               key={organization.id}
-              className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+              className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]"
             >
-              <div className="aspect-[16/9] bg-gray-50">
+              <div className="aspect-[16/9] bg-[var(--color-surface-card)]">
                 {organization.organization_image_url ? (
                   <img
                     src={organization.organization_image_url}
@@ -85,7 +87,7 @@ export function OrganizationTable({
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <Building2 size={44} className="text-gray-300" />
+                    <Building2 size={44} className="text-[var(--color-text-muted)]" />
                   </div>
                 )}
               </div>
@@ -93,10 +95,10 @@ export function OrganizationTable({
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold text-gray-950">
+                    <h3 className="truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
                       {organization.name}
                     </h3>
-                    <p className="mt-1 truncate text-xs font-medium uppercase text-gray-500">
+                    <p className="mt-1 truncate text-xs font-normal uppercase text-[var(--color-text-muted)]">
                       {organization.code}
                     </p>
                   </div>
@@ -104,7 +106,7 @@ export function OrganizationTable({
                     <button
                       type="button"
                       onClick={() => onEdit(organization)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
                       aria-label={t.common.edit}
                     >
                       <Edit3 size={16} />
@@ -112,7 +114,7 @@ export function OrganizationTable({
                     <button
                       type="button"
                       onClick={() => onDelete(organization)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-100 text-red-600 hover:bg-red-50"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-accent-error)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
                       aria-label={t.common.delete}
                     >
                       <Trash2 size={16} />
@@ -120,21 +122,21 @@ export function OrganizationTable({
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
                   <div className="flex items-center gap-2">
-                    <Warehouse size={15} className="text-gray-400" />
+                    <Warehouse size={15} className="text-[var(--color-text-muted)]" />
                     <span>
                       {warehouseCounts[organization.id] || 0}{" "}
                       {t.organizations.warehouses}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Building2 size={15} className="text-gray-400" />
+                    <Building2 size={15} className="text-[var(--color-text-muted)]" />
                     <span>{organization.tax_code || t.organizations.noTaxCode}</span>
                   </div>
                   {organization.address && (
                     <div className="flex items-center gap-2">
-                      <MapPin size={15} className="text-gray-400" />
+                      <MapPin size={15} className="text-[var(--color-text-muted)]" />
                       <span className="truncate">{organization.address}</span>
                     </div>
                   )}

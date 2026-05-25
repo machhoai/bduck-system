@@ -80,16 +80,26 @@ async function seed() {
       id: adminRoleId,
       name: 'ADMIN',
       description: 'Full system administrator',
+      color: '#0066cc',
+      parent_id: null,
       permissions: {
         '*': true, // Admin wildcard — full access to everything
       },
+      board_position: { x: 0, y: 0 },
+      is_deleted: false,
       created_at: new Date(),
+      updated_at: new Date(),
     });
     console.log(`\n✅ Created ADMIN role`);
   } else {
     // Always update permissions to latest format
     await db.collection('roles').doc(adminRoleId).update({
       permissions: { '*': true },
+      color: '#0066cc',
+      parent_id: null,
+      board_position: { x: 0, y: 0 },
+      is_deleted: false,
+      updated_at: new Date(),
     });
     console.log(`\n✅ ADMIN role updated with wildcard permissions`);
   }

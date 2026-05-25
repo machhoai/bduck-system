@@ -4,7 +4,7 @@ import type { WarehouseLocation } from "@bduck/shared-types";
 import type { z } from "zod";
 import { locationRepository } from "../repositories/locationRepository.js";
 import { createLocationSchema } from "../utils/zodSchemas.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { fetchWarehouseById } from "./warehouseService.js";
 import {
   canSetLocationQuarantine,
@@ -32,8 +32,8 @@ const assertCanUseStatus = (
   throw {
     statusCode: 403,
     messages: {
-      vi: "Chỉ ADMIN hoặc WAREHOUSE_MANAGER được chuyển vị trí sang QUARANTINE.",
-      zh: "只有管理员或仓库经理可以将库位设置为隔离状态。",
+      vi: "Bạn không có quyền chuyển vị trí sang QUARANTINE.",
+      zh: "您没有权限将库位设置为隔离状态。",
     },
   };
 };
@@ -41,6 +41,7 @@ const assertCanUseStatus = (
 export const createLocation = async (
   input: CreateLocationInput,
   user: RequestUserContext,
+  auditMetadata?: AuditMetadata,
 ): Promise<WarehouseLocation> => {
   await fetchWarehouseById(input.warehouse_id);
   assertCanUseStatus(input.status as LocationStatus, user);
@@ -79,6 +80,7 @@ export const createLocation = async (
     user_id: user.id,
     old_value: null,
     new_value: location as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 
   return location;
@@ -110,6 +112,7 @@ export const updateLocation = async (
   id: string,
   input: UpdateLocationInput,
   user: RequestUserContext,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchLocationById(id);
   const nextWarehouseId = input.warehouse_id || existing.warehouse_id;
@@ -151,12 +154,14 @@ export const updateLocation = async (
     user_id: user.id,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 };
 
 export const deleteLocation = async (
   id: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchLocationById(id);
 
@@ -180,5 +185,6 @@ export const deleteLocation = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: { is_deleted: true },
+    ...auditMetadata,
   });
 };

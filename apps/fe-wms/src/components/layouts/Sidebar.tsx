@@ -19,18 +19,19 @@ export default function Sidebar() {
     <aside
       className={`
         fixed left-0 top-0 z-40 hidden h-screen flex-col border-r
-        border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]
+        border-[var(--color-border-soft)] bg-[var(--color-surface-nav)]
+        text-[var(--color-text-on-dark)]
         transition-[width] duration-300 ease-in-out lg:flex
         ${isCollapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width-expanded)]"}
       `}
     >
       <div
-        className={`flex h-14 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
+        className={`flex h-11 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
       >
         <div
           className="
-            flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
-            bg-[var(--color-brand-primary)] text-[#0A0A0F]
+            flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]
+            bg-[var(--color-text-on-dark)] text-[var(--color-surface-nav)]
           "
         >
           <Warehouse size={18} strokeWidth={2} />
@@ -38,10 +39,10 @@ export default function Sidebar() {
 
         {!isCollapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+            <p className="truncate text-xs font-normal tracking-[-0.12px] text-[var(--color-text-on-dark)]">
               {t.sidebar.systemName}
             </p>
-            <p className="truncate text-[10px] font-medium uppercase text-[var(--color-text-muted)]">
+            <p className="truncate text-[10px] font-normal uppercase tracking-normal text-white/60">
               {t.sidebar.moduleName}
             </p>
           </div>
@@ -50,7 +51,7 @@ export default function Sidebar() {
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
         {!isCollapsed && (
-          <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+          <p className="mb-1.5 px-2.5 text-[10px] font-normal uppercase tracking-normal text-white/50">
             {t.sidebar.navigation}
           </p>
         )}
@@ -69,7 +70,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div className="border-t border-[var(--color-border-subtle)] px-2.5 py-3">
+      <div className="border-t border-white/10 px-2.5 py-3">
         <SidebarUserPanel isCollapsed={isCollapsed} />
         <div className="mt-2.5">
           <SidebarActions isCollapsed={isCollapsed} showCollapse />

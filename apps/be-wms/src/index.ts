@@ -2,11 +2,13 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import auditLogRoutes from "./api/routes/auditLogRoutes.js";
 import authRoutes from "./api/routes/authRoutes.js";
 import categoryRoutes from "./api/routes/categoryRoutes.js";
 import locationRoutes from "./api/routes/locationRoutes.js";
 import organizationRoutes from "./api/routes/organizationRoutes.js";
 import productRoutes from "./api/routes/productRoutes.js";
+import roleRoutes from "./api/routes/roleRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
 
 const app = express();
@@ -32,9 +34,11 @@ app.use(cookieParser());
 // Routes
 // ---------------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/roles", roleRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/locations", locationRoutes);
 

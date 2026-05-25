@@ -8,6 +8,7 @@ import {
   deleteCategory,
 } from "../../services/categoryService.js";
 import { sendSuccess, sendError } from "../../utils/responseHelper.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 // ── Zod Schemas ──────────────────────────────────────────────
 
@@ -86,7 +87,11 @@ export const postCategory = async (req: Request, res: Response) => {
     }
 
     const userId = (req as any).user?.id || "unknown";
-    const category = await createCategory(parseResult.data, userId);
+    const category = await createCategory(
+      parseResult.data,
+      userId,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(
       res,
@@ -129,7 +134,12 @@ export const putCategory = async (req: Request, res: Response) => {
     }
 
     const userId = (req as any).user?.id || "unknown";
-    await updateCategory(req.params.id as string, parseResult.data, userId);
+    await updateCategory(
+      req.params.id as string,
+      parseResult.data,
+      userId,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Cập nhật danh mục thành công.",
@@ -154,7 +164,11 @@ export const putCategory = async (req: Request, res: Response) => {
 export const removeCategory = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || "unknown";
-    await deleteCategory(req.params.id as string, userId);
+    await deleteCategory(
+      req.params.id as string,
+      userId,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Xóa danh mục thành công.",

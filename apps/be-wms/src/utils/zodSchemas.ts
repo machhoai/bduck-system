@@ -105,3 +105,40 @@ export const createLocationSchema = z.object({
     .optional()
     .default("ACTIVE"),
 });
+
+// Roles
+export const roleBoardPositionSchema = z
+  .object({
+    x: z.coerce.number(),
+    y: z.coerce.number(),
+  })
+  .nullable()
+  .optional();
+
+export const permissionsSchema = z.record(z.string().min(1), z.boolean());
+
+export const createRoleSchema = z.object({
+  name: z.string().trim().min(1, { message: "Tên role không được để trống" }),
+  description: z.string().trim().nullable().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, { message: "Màu role phải là mã hex #RRGGBB" }),
+  parent_id: z.string().uuid().nullable().optional(),
+  permissions: permissionsSchema.default({}),
+  board_position: roleBoardPositionSchema,
+});
+
+export const updateRoleSchema = createRoleSchema.partial();
+
+// Audit logs
+export const auditLogQuerySchema = z.object({
+  entity_type: z.string().trim().min(1).optional(),
+  entity_id: z.string().trim().min(1).optional(),
+  action: z.string().trim().min(1).optional(),
+  user_id: z.string().trim().min(1).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
+  sort_by: z.enum(["action_time", "sync_time"]).default("sync_time"),
+  sort_dir: z.enum(["asc", "desc"]).default("desc"),
+});

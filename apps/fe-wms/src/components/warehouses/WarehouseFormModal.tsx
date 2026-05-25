@@ -30,6 +30,9 @@ const initialForm = {
     latitude: "",
 };
 
+const UUID_REGEX =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function WarehouseFormModal({
     isOpen,
     warehouse,
@@ -82,6 +85,16 @@ export function WarehouseFormModal({
     if (!isOpen) return null;
 
     const saveAction = async () => {
+        const managerId = formData.manager_id.trim() || null;
+        if (managerId && !UUID_REGEX.test(managerId)) {
+            gooeyToast.error(t.warehouses.invalidManagerId, {
+                description: t.warehouses.invalidManagerIdDescription,
+                preset: "snappy",
+                timing: { displayDuration: 6000 },
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const hasCoordinate =
@@ -93,7 +106,7 @@ export function WarehouseFormModal({
                 type: formData.type,
                 status: formData.status,
                 address: formData.address || null,
-                manager_id: formData.manager_id || null,
+                manager_id: managerId,
                 warehouse_description: formData.warehouse_description || null,
                 warehouse_image_url: formData.warehouse_image_url || null,
                 coordinate: hasCoordinate
@@ -134,15 +147,15 @@ export function WarehouseFormModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-            <div className="flex max-h-[92vh] w-[90%] flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-                    <h2 className="text-lg font-semibold text-gray-950">
+            <div className="flex max-h-[92vh] w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+                <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
+                    <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
                         {isEdit ? t.warehouses.editWarehouse : t.warehouses.addNew}
                     </h2>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)] active:scale-95"
                     >
                         <X size={18} />
                     </button>
@@ -165,7 +178,7 @@ export function WarehouseFormModal({
                                         organization_id: event.target.value,
                                     })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 <option value="">
                                     {organizationsLoading
@@ -180,7 +193,7 @@ export function WarehouseFormModal({
                             </select>
                             {(organizationsError || organizations.length === 0) &&
                                 !organizationsLoading && (
-                                    <p className="mt-1.5 text-xs text-red-600">
+                                    <p className="mt-1.5 text-xs text-[var(--color-accent-error)]">
                                         {organizationsError || t.warehouses.noOrganizations}
                                     </p>
                                 )}
@@ -192,7 +205,7 @@ export function WarehouseFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, code: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                         <Field label={t.warehouses.name} required>
@@ -202,7 +215,7 @@ export function WarehouseFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, name: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                         <Field label={t.warehouses.managerId}>
@@ -211,8 +224,11 @@ export function WarehouseFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, manager_id: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
+                            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+                                {t.warehouses.managerIdHint}
+                            </p>
                         </Field>
                         <Field label={t.warehouses.type} required>
                             <select
@@ -223,7 +239,7 @@ export function WarehouseFormModal({
                                         type: event.target.value as WarehouseType,
                                     })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 {Object.values(WarehouseType).map((type) => (
                                     <option key={type} value={type}>
@@ -241,7 +257,7 @@ export function WarehouseFormModal({
                                         status: event.target.value as ActiveStatus,
                                     })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 {Object.values(ActiveStatus).map((status) => (
                                     <option key={status} value={status}>
@@ -258,7 +274,7 @@ export function WarehouseFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, longitude: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                         <Field label={t.warehouses.latitude}>
@@ -269,7 +285,7 @@ export function WarehouseFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, latitude: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                     </div>
@@ -280,7 +296,7 @@ export function WarehouseFormModal({
                             onChange={(event) =>
                                 setFormData({ ...formData, address: event.target.value })
                             }
-                            className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                     <Field label={t.warehouses.imageUrl}>
@@ -293,7 +309,7 @@ export function WarehouseFormModal({
                                     warehouse_image_url: event.target.value,
                                 })
                             }
-                            className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                     <Field label={t.warehouses.descriptionField}>
@@ -306,17 +322,17 @@ export function WarehouseFormModal({
                                     warehouse_description: event.target.value,
                                 })
                             }
-                            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                 </form>
 
-                <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="h-10 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="h-10 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50"
                     >
                         {t.common.cancel}
                     </button>
@@ -324,7 +340,7 @@ export function WarehouseFormModal({
                         type="submit"
                         form="warehouseForm"
                         disabled={isSubmitting}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
                     >
                         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                         {t.common.save}
@@ -346,9 +362,9 @@ function Field({
 }) {
     return (
         <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-gray-700">
+            <span className="mb-1.5 block text-sm font-normal text-[var(--color-text-secondary)]">
                 {label}
-                {required && <span className="text-red-500"> *</span>}
+                {required && <span className="text-[var(--color-accent-error)]"> *</span>}
             </span>
             {children}
         </label>

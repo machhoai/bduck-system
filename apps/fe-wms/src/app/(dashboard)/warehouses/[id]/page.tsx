@@ -83,11 +83,11 @@ export default function WarehouseDetailPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full flex-col gap-5">
+    <div className="mx-auto flex h-full w-full flex-col gap-6">
       <div>
         <Link
           href="/warehouses"
-          className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-950"
+          className="mb-3 inline-flex items-center gap-2 text-sm font-normal text-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary-hover)]"
         >
           <ArrowLeft size={16} />
           {t.warehouses.backToList}
@@ -96,36 +96,36 @@ export default function WarehouseDetailPage() {
         {warehousesLoading ? (
           <WarehouseTableSkeleton />
         ) : warehouse ? (
-          <header className="rounded-lg border border-gray-200 bg-white p-5">
+          <header className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="flex gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
                   <WarehouseIcon size={22} />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-950">
+                  <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)]">
                     {warehouse.name}
                   </h1>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                     {warehouse.code} · {t.warehouses.types[warehouse.type]} ·{" "}
                     {t.warehouses.statuses[warehouse.status]}
                   </p>
                   {warehouse.address && (
-                    <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-gray-600">
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)]">
                       <MapPin size={15} />
                       {warehouse.address}
                     </p>
                   )}
                 </div>
               </div>
-              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div className="rounded-full bg-[var(--color-surface-card)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
                 <span className="font-semibold">{locations.length}</span>{" "}
                 {t.warehouses.locations}
               </div>
             </div>
           </header>
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-8 text-center text-sm text-[var(--color-text-muted)]">
             {t.common.noData}
           </div>
         )}

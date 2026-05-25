@@ -25,21 +25,21 @@ export function ProductCard({
     ] || product.product_type;
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
-      <div className="relative aspect-[4/3] bg-gray-100">
+    <article className="group overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] transition-colors duration-200 hover:border-[var(--color-brand-primary)]/40">
+      <div className="relative aspect-[4/3] bg-[var(--color-surface-card)]">
         {primaryImage ? (
           <img
             src={primaryImage}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-            <ImageIcon size={42} className="text-gray-300" />
+          <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface-card)]">
+            <ImageIcon size={42} className="text-[var(--color-text-muted)]" />
           </div>
         )}
 
-        <div className="absolute left-3 top-3 rounded-md bg-white/95 px-2 py-1 text-xs font-semibold text-gray-900 shadow-sm">
+        <div className="absolute left-3 top-3 rounded-full border border-[var(--color-border-subtle)] bg-white/95 px-2.5 py-1 text-xs font-normal text-[var(--color-text-primary)] backdrop-blur-xl">
           {product.code}
         </div>
 
@@ -47,7 +47,7 @@ export function ProductCard({
           <button
             type="button"
             onClick={() => onEdit(product)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-blue-700 shadow-sm transition-colors hover:bg-blue-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
             title={t.common.edit}
           >
             <Edit2 size={16} />
@@ -55,7 +55,7 @@ export function ProductCard({
           <button
             type="button"
             onClick={() => onDelete(product)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-red-600 shadow-sm transition-colors hover:bg-red-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white text-[var(--color-accent-error)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
             title={t.common.delete}
           >
             <Trash2 size={16} />
@@ -65,10 +65,10 @@ export function ProductCard({
 
       <div className="space-y-3 p-3">
         <div className="min-h-[3.25rem]">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-gray-950">
+          <h3 className="line-clamp-2 text-[17px] font-semibold leading-[1.24] tracking-[-0.374px] text-[var(--color-text-primary)]">
             {product.name}
           </h3>
-          <p className="mt-1 line-clamp-1 text-xs text-gray-500">
+          <p className="mt-1 line-clamp-1 text-[14px] leading-[1.43] tracking-[-0.224px] text-[var(--color-text-muted)]">
             {category
               ? `${category.name} (${category.code})`
               : t.products.noCategory}
@@ -76,36 +76,36 @@ export function ProductCard({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+          <span className="inline-flex items-center rounded-full border border-[var(--color-brand-primary)] px-2 py-1 text-xs font-normal text-[var(--color-brand-primary)]">
             {typeLabel}
           </span>
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+          <span className="inline-flex items-center rounded-full bg-[var(--color-surface-card)] px-2 py-1 text-xs font-normal text-[var(--color-text-secondary)]">
             {product.unit}
           </span>
           {product.is_serialized && (
-            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-              Serial
+            <span className="inline-flex items-center rounded-full bg-[var(--color-surface-card)] px-2 py-1 text-xs font-normal text-[var(--color-text-secondary)]">
+              {t.products.serialized}
             </span>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 rounded-md bg-gray-50 p-2 text-xs">
+        <div className="grid grid-cols-2 gap-2 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-2 text-xs">
           <div>
-            <p className="text-gray-500">{t.products.origin}</p>
-            <p className="mt-0.5 truncate font-medium text-gray-800">
+            <p className="text-[var(--color-text-muted)]">{t.products.origin}</p>
+            <p className="mt-0.5 truncate font-normal text-[var(--color-text-primary)]">
               {product.product_origin || t.common.noData}
             </p>
           </div>
           <div>
-            <p className="text-gray-500">{t.products.minStock}</p>
-            <p className="mt-0.5 truncate font-medium text-gray-800">
+            <p className="text-[var(--color-text-muted)]">{t.products.minStock}</p>
+            <p className="mt-0.5 truncate font-normal text-[var(--color-text-primary)]">
               {product.min_stock_threshold ?? t.common.noData}
             </p>
           </div>
         </div>
 
         {product.barcode && (
-          <div className="flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 border-t border-[var(--color-border-soft)] pt-2 text-xs text-[var(--color-text-muted)]">
             <Package size={14} />
             <span className="truncate">{product.barcode}</span>
           </div>

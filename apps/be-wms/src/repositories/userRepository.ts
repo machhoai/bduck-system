@@ -40,8 +40,14 @@ export const getRoleById = async (roleId: string): Promise<Role | null> => {
   if (!roleSnap.exists) {
     return null;
   }
-  return {
+  const role = {
     id: roleSnap.id,
     ...roleSnap.data(),
   } as Role;
+
+  if (role.is_deleted) {
+    return null;
+  }
+
+  return role;
 };

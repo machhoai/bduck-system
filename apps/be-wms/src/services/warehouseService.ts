@@ -5,7 +5,7 @@ import type { z } from "zod";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import { locationRepository } from "../repositories/locationRepository.js";
 import { createWarehouseSchema } from "../utils/zodSchemas.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { fetchOrganizationById } from "./organizationService.js";
 import {
   getAccessibleWarehouseIds,
@@ -26,6 +26,7 @@ const notFoundError = {
 export const createWarehouse = async (
   input: CreateWarehouseInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<Warehouse> => {
   await fetchOrganizationById(input.organization_id);
 
@@ -62,6 +63,7 @@ export const createWarehouse = async (
     user_id: userId,
     old_value: null,
     new_value: warehouse as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 
   return warehouse;
@@ -92,6 +94,7 @@ export const updateWarehouse = async (
   id: string,
   input: UpdateWarehouseInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchWarehouseById(id);
 
@@ -124,12 +127,14 @@ export const updateWarehouse = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 };
 
 export const deleteWarehouse = async (
   id: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchWarehouseById(id);
 
@@ -165,5 +170,6 @@ export const deleteWarehouse = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: { is_deleted: true },
+    ...auditMetadata,
   });
 };

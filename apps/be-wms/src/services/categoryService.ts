@@ -1,5 +1,5 @@
 import { categoryRepository } from "../repositories/categoryRepository.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { AuditAction } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import type { ProductCategory } from "@bduck/shared-types";
@@ -26,6 +26,7 @@ interface UpdateCategoryInput {
 export const createCategory = async (
   input: CreateCategoryInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<ProductCategory> => {
   // 1. Check unique code
   const existing = await categoryRepository.findByCode(input.code);
@@ -83,6 +84,7 @@ export const createCategory = async (
     user_id: userId,
     old_value: null,
     new_value: category as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 
   return category;
@@ -121,6 +123,7 @@ export const updateCategory = async (
   id: string,
   input: UpdateCategoryInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchCategoryById(id);
 
@@ -160,6 +163,7 @@ export const updateCategory = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 };
 
@@ -170,6 +174,7 @@ export const updateCategory = async (
 export const deleteCategory = async (
   id: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchCategoryById(id);
 
@@ -193,5 +198,6 @@ export const deleteCategory = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: { is_deleted: true },
+    ...auditMetadata,
   });
 };

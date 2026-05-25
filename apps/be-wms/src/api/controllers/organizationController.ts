@@ -12,6 +12,7 @@ import {
   createOrganizationSchema,
   idParamSchema,
 } from "../../utils/zodSchemas.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 const updateOrganizationSchema = createOrganizationSchema.partial();
 const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
@@ -50,10 +51,7 @@ const handleOrganizationError = (res: Response, error: unknown) => {
   );
 };
 
-export const getOrganizationsHandler = async (
-  _req: Request,
-  res: Response,
-) => {
+export const getOrganizationsHandler = async (_req: Request, res: Response) => {
   try {
     const organizations = await fetchOrganizations();
 
@@ -89,7 +87,11 @@ export const createOrganizationHandler = async (
 ) => {
   try {
     const data = createOrganizationSchema.parse(req.body);
-    const organization = await createOrganization(data, getRequestUserId(req));
+    const organization = await createOrganization(
+      data,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(
       res,
@@ -112,7 +114,12 @@ export const updateOrganizationHandler = async (
   try {
     const { id } = idParamSchema.parse(req.params);
     const data = updateOrganizationSchema.parse(req.body);
-    await updateOrganization(id, data, getRequestUserId(req));
+    await updateOrganization(
+      id,
+      data,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Cập nhật tổ chức thành công.",
@@ -129,7 +136,11 @@ export const deleteOrganizationHandler = async (
 ) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    await deleteOrganization(id, getRequestUserId(req));
+    await deleteOrganization(
+      id,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Xóa tổ chức thành công.",

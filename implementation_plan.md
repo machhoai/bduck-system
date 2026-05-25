@@ -197,16 +197,10 @@ total_quantity = atp_quantity + on_hold_quantity + in_transit_quantity + quarant
 | Repository | `importVoucherRepository.ts` | `import_vouchers` + `import_voucher_items` |
 
 **Status Flow (từ flowchart "Quy trình nhập kho"):**
-```mermaid
-stateDiagram-v2
-    [*] --> DRAFT: Creator tạo phiếu
-    DRAFT --> PENDING_APPROVAL: Submit
-    PENDING_APPROVAL --> APPROVED: Approver duyệt (≠ creator)
-    PENDING_APPROVAL --> CANCELLED: Approver từ chối
-    APPROVED --> RECEIVING: Warehouse staff bắt đầu nhận
-    RECEIVING --> COMPLETED: Xác nhận SL thực tế, cập nhật inventory
-    DRAFT --> CANCELLED: Creator hủy
-```
+Step 1: Người dùng được phân quyền (có quyền tạo lệnh nhập kho) tạo lệnh nhập kho, điền số lượng nhập và mặt hàng nhập kho (upload các giấy tờ kèm theo, bắt buộc word hoặc pdf, kích thước file tối đa 10mb)
+Step 2: Hệ thống tự động duyệt lệnh nhập kho đó
+Step 3: Hệ thống tạo phiên nhập liệu, cho phép người tạo lệnh nhập kho nhập mặt hàng và số lượng hàng hóa thực nhận (tối đa phiên là 24h nếu trong 24 giờ đó không hoàn thành phiên sẽ tự động đóng). Trong lúc người dùng nhập, hệ thống sẽ lưu những gì người dùng đã nhập dở, khi submit thì dữ liệu mới được đưa lên hệ thống. Nếu quá 24h nhưng chưa submit thì hệ thống sẽ tự động đóng phiên nhập.
+Step 4: Sau khi hoàn thành phiên nhập, hệ thống sẽ tự động kiểm tra và tạo phiếu không phù hợp (Nonconformity Report) nếu có chênh lệch giữa số lượng thực tế và số lượng nhập.
 
 **Business Rules:**
 - `creator_id ≠ approver_id` (SOD)
@@ -223,17 +217,12 @@ stateDiagram-v2
 | Service | `purchaseOrderService.ts` | DRAFT→PENDING→APPROVED→**PACKING**→ORDERED→RECEIVING→COMPLETED |
 
 **Status Flow (từ flowchart "Quy trình đặt hàng"):**
-```mermaid
-stateDiagram-v2
-    [*] --> DRAFT: Store tạo đơn
-    DRAFT --> PENDING_APPROVAL: Submit lên Office
-    PENDING_APPROVAL --> APPROVED: Office duyệt
-    PENDING_APPROVAL --> CANCELLED: Office từ chối
-    APPROVED --> PACKING: Warehouse chấp nhận đóng gói
-    PACKING --> ORDERED: Warehouse xác nhận xuất
-    ORDERED --> RECEIVING: Store nhận hàng
-    RECEIVING --> COMPLETED: Store xác nhận đủ SL
-```
+Bước 1: Người dùng có quyền đặt hàng / điều chuyển (các kho có thể đặt hàng nhau) tạo lệnh yêu cầu đặt hàng / điều chuyển, chọn kho nhận và kho xuất (Nếu người dùng chỉ có quyền ở một kho duy nhất thì kho nhận không thể thay đổi mà sẽ là kho của người dùng). Trong lệnh đó yêu cầu bắt buộc phải có 2 loại giấy tờ là Bảng đề xuất hàng hóa (PDF) và bảng số lượng (Điền form hoặc đưa excel lên hệ thống đọc và tự điền vào form, cho phép người dùng tải xuống tệp mẫu) [sử dụng excel.js]
+Bước 2: Hệ thống chuyển lệnh đặt hàng ở trạng thái chờ duyệt và chuyển đơn đặt hàng đó đến bộ phân liên quan (do sự phân phối, điều chỉnh của admin).
+Bước 3: Sau khi bộ phận được phân quyền duyệt đơn đặt hàng, hệ thống sẽ tự động chuyển sang trạng thái đã được duyệt. Nếu không được duyệt thì bộ phận từ chối phải có lý do cụ thể, file đính kèm, yêu cầu sửa lại hoặc hủy lệnh.
+Bước 4: Hệ thống tạo lệnh xuất kho, gửi thông báo yêu cầu lập phiếu xuất kho đến người được phân quyền và bắt đầu thực hiện quy trình xuất kho, hệ thống cập nhật sang trạng thái PACKING.
+Bước 5: Sau khi quy trình xuất kho được thực hiện, hàng hóa đến kho nhận, kho nhận thực hiện quy trình nhận hàng điều chuyển, hệ thống cập nhật sang trạng thái RECEIVED.
+Bước 6: Hệ thống ghi nhận hoàn thành và đóng phiếu
 
 ### Frontend
 
@@ -259,16 +248,35 @@ stateDiagram-v2
 | Service | `transferOrderService.ts` | DRAFT→PENDING→APPROVED→IN_TRANSIT→RECEIVED→COMPLETED |
 
 **Status Flow (từ flowchart "Quy trình xuất kho"):**
-```mermaid
-stateDiagram-v2
-    [*] --> DRAFT: Tạo lệnh chuyển
-    DRAFT --> PENDING_APPROVAL: Submit
-    PENDING_APPROVAL --> APPROVED: Manager duyệt
-    APPROVED --> IN_TRANSIT: Dispatch (trừ ATP source, tăng in_transit)
-    IN_TRANSIT --> RECEIVED: Kho đích nhận hàng
-    RECEIVED --> COMPLETED: Xác nhận SL, cập nhật inventory đích
-    note right of IN_TRANSIT: runTransaction:\n1. source.atp -= qty\n2. source.in_transit += qty\n3. status = IN_TRANSIT\n4. Fail → ROLLBACK ALL
-```
+Bước 1: Bắt đầu quy trình. Bộ phận liên quan phát sinh nhu cầu xuất kho.
+Bước 2: Kế toán lập phiếu xuất kho
+Kế toán tạo phiếu xuất kho dựa trên yêu cầu xuất hàng.
+Bước 3: Trình phê duyệt đề nghị
+Đơn đề nghị xuất kho được gửi cho đơn vị phụ trách hoặc Ban Giám đốc phê duyệt.
+Bước 4: Xử lý kết quả phê duyệt
+Nếu từ chối, yêu cầu xuất kho bị hủy và quy trình kết thúc.
+Nếu phê duyệt, chuyển sang bước kiểm tra tồn kho.
+Bước 5: Hệ thống kiểm tra tồn kho khả dụng
+Hệ thống kiểm tra số lượng hàng còn có thể xuất trong kho, tức là tồn kho khả dụng.
+Bước 6: Xử lý theo tình trạng tồn kho
+Nếu thiếu hàng, thực hiện quy trình xử lý sự cố hàng hóa, sau đó kết thúc tạm hoặc chờ hàng.
+Nếu đủ hàng, tiếp tục lập và in phiếu xuất kho.
+Bước 7: Kế toán lập và in phiếu xuất kho
+Kế toán lập và in Phiếu xuất kho gồm 2 liên.
+Bước 8: Thủ kho thực hiện lấy hàng
+Thủ kho tiến hành Picking, tức là lấy hàng theo phiếu xuất kho.
+Bước 9: Kiểm tra chéo và đóng gói
+Kế toán hoặc bộ phận liên quan thực hiện kiểm tra chéo, đóng gói, kiểm tra chất lượng hàng hóa.
+Bước 10: Xử lý sau kiểm tra
+Nếu phát hiện hàng hư hỏng, thực hiện quy trình xử lý sự cố.
+Nếu phát hiện lấy sai hoặc thiếu mã, từ chối và yêu cầu thủ kho Picking lại.
+Nếu hàng đạt chuẩn, chuyển sang bàn giao.
+Bước 11: Bàn giao và ký xác nhận chứng từ
+Các bên liên quan bàn giao hàng và ký xác nhận trên chứng từ xuất kho.
+Bước 12: Kế toán cập nhật hệ thống
+Kế toán cập nhật trạng thái trên hệ thống là SHIPPED.
+Bước 13: Kết thúc quy trình
+Quy trình xuất kho hoàn tất.
 
 **Critical Transaction Logic:**
 ```typescript

@@ -34,7 +34,7 @@ export default function SidebarActions({
           type="button"
           onClick={toggleCollapsed}
           className="
-            flex h-6 w-6 shrink-0 items-center justify-center rounded-full absolute top-0 left-full bg-white translate-x-1/2 border-[var(--color-border-subtle)] border text-[var(--color-text-primary)] transition-all duration-200 cursor-pointer
+            absolute left-full top-0 flex h-7 w-7 shrink-0 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white text-[var(--color-text-primary)] transition-all duration-200 active:scale-95
           "
           title={isCollapsed ? t.sidebar.expand : t.sidebar.collapse}
           aria-label={isCollapsed ? t.sidebar.expand : t.sidebar.collapse}
@@ -49,9 +49,9 @@ export default function SidebarActions({
           onClick={logout}
           disabled={isLoading}
           className={`
-          flex h-10 shrink-0 items-center justify-center rounded-lg flex-1
-          text-[var(--color-text-muted)] transition-all duration-200
-          hover:bg-[var(--color-accent-error)]/10 hover:text-[var(--color-accent-error)]
+          flex h-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] flex-1
+          text-white/65 transition-all duration-200 active:scale-95
+          hover:bg-white/10 hover:text-white
           disabled:cursor-not-allowed disabled:opacity-40
         `}
           title={t.user.logout}

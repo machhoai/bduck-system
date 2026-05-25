@@ -29,10 +29,10 @@ export default function BottomNav() {
     <nav
       className="
         lg:hidden fixed bottom-0 left-0 right-0 z-50
-        bg-[var(--color-surface-elevated)]/95 backdrop-blur-xl
+        bg-[var(--color-surface-frosted)] backdrop-blur-xl
         border-t border-[var(--color-border-subtle)]
+        pb-[env(safe-area-inset-bottom,0px)]
       "
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="flex items-center justify-around h-[var(--bottomnav-height)]">
         {visibleItems.map((item) => {
@@ -49,10 +49,10 @@ export default function BottomNav() {
               className={`
                 flex flex-col items-center justify-center gap-0.5
                 flex-1 h-full
-                transition-colors duration-150
+                transition-all duration-150 active:scale-95
                 ${
                   isActive
-                    ? "text-[var(--color-text-primary)]"
+                    ? "text-[var(--color-brand-primary)]"
                     : "text-[var(--color-text-muted)]"
                 }
               `}
@@ -70,7 +70,7 @@ export default function BottomNav() {
             flex flex-col items-center justify-center gap-0.5
             flex-1 h-full
             text-[var(--color-text-muted)]
-            transition-colors duration-150 cursor-pointer
+            transition-all duration-150 cursor-pointer active:scale-95
           "
         >
           <MoreHorizontal size={22} strokeWidth={1.5} />

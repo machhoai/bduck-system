@@ -38,8 +38,8 @@ export default function SidebarUserPanel({
     >
       <div
         className="
-          flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
-          bg-[var(--color-brand-primary)] text-xs font-bold text-[#0A0A0F]
+          flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]
+          bg-white text-xs font-semibold text-[var(--color-surface-nav)]
         "
         title={isCollapsed ? user.full_name : undefined}
       >
@@ -48,11 +48,11 @@ export default function SidebarUserPanel({
 
       {!isCollapsed && (
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+          <p className="truncate text-sm font-normal text-white">
             {user.full_name}
           </p>
           {roleName && (
-            <p className="truncate text-xs text-[var(--color-text-muted)]">
+            <p className="truncate text-xs text-white/55">
               {roleName}
             </p>
           )}

@@ -13,6 +13,7 @@ import {
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import type { RequestUserContext } from "../../services/warehouseAccess.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 const updateWarehouseSchema = createWarehouseSchema.partial();
 
@@ -88,7 +89,11 @@ export const getWarehouseByIdHandler = async (req: Request, res: Response) => {
 export const createWarehouseHandler = async (req: Request, res: Response) => {
   try {
     const data = createWarehouseSchema.parse(req.body);
-    const warehouse = await createWarehouse(data, getRequestUser(req).id);
+    const warehouse = await createWarehouse(
+      data,
+      getRequestUser(req).id,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(
       res,
@@ -108,7 +113,12 @@ export const updateWarehouseHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const data = updateWarehouseSchema.parse(req.body);
-    await updateWarehouse(id, data, getRequestUser(req).id);
+    await updateWarehouse(
+      id,
+      data,
+      getRequestUser(req).id,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Cập nhật kho thành công.",
@@ -122,7 +132,11 @@ export const updateWarehouseHandler = async (req: Request, res: Response) => {
 export const deleteWarehouseHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    await deleteWarehouse(id, getRequestUser(req).id);
+    await deleteWarehouse(
+      id,
+      getRequestUser(req).id,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Xóa kho thành công.",

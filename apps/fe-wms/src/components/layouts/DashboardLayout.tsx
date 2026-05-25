@@ -25,14 +25,14 @@ export default function DashboardLayout({
 
       <main
         id="wms-main-content"
-        className="min-h-screen pb-[var(--bottomnav-height)] lg:pb-0 transition-[margin-left] duration-300 ease-in-out"
-        style={{
-          marginLeft: isCollapsed
-            ? "var(--sidebar-width-collapsed)"
-            : "var(--sidebar-width-expanded)",
-        }}
+        className={`flex h-screen flex-col pb-[calc(var(--bottomnav-height)+env(safe-area-inset-bottom,0px))] transition-[margin-left] duration-300 ease-in-out lg:pb-0 ${isCollapsed
+          ? "lg:ml-[var(--sidebar-width-collapsed)]"
+          : "lg:ml-[var(--sidebar-width-expanded)]"
+          }`}
       >
-        <div className="p-4 lg:p-6">{children}</div>
+        <div className="mx-auto flex w-full flex-1 flex-col overflow-y-auto p-4">
+          {children}
+        </div>
       </main>
 
       <BottomNav />

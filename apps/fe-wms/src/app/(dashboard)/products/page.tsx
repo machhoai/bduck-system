@@ -91,15 +91,17 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full flex-col gap-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="mx-auto flex h-full w-full flex-col gap-6">
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-950">
+          <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
             {t.products.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">{t.products.description}</p>
+          <p className="text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
+            {t.products.description}
+          </p>
         </div>
-        <div className="grid grid-cols-2 rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+        <div className="grid grid-cols-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">
           <TabButton
             active={activeTab === "products"}
             icon={<Package size={16} />}
@@ -153,11 +155,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-9 min-w-28 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold transition-colors ${
-        active
-          ? "bg-blue-600 text-white shadow-sm"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-      }`}
+      className={`inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-full px-4 text-[14px] font-normal tracking-[-0.224px] transition-all active:scale-95 ${active
+        ? "bg-[var(--color-brand-primary)] text-white"
+        : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+        }`}
     >
       {icon}
       {label}

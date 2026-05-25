@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { logAudit } from "../../services/auditService.js";
 import { AuditAction } from "@bduck/shared-types";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 /**
  * ISO 9001 Audit Logging Middleware
@@ -39,8 +40,7 @@ export const auditMiddleware = (action: AuditAction, entityType: string) => {
           user_id: userId,
           old_value: auditContext.old_value || null,
           new_value: auditContext.new_value || req.body || null,
-          ip_address: req.ip,
-          session_token: req.cookies?.__session || null,
+          ...getAuditRequestMetadata(req),
           notes: `Action ${action} on ${entityType} via API`,
         }).catch((err: unknown) => {
           console.error("[auditMiddleware] Failed to log:", err);

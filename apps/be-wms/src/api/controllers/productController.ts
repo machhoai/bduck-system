@@ -13,6 +13,7 @@ import {
   paginationSchema,
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 // Schema for updating (omits code and is_serialized)
 const updateProductSchema = createProductSchema.partial().omit({
@@ -103,7 +104,11 @@ export const createProductHandler = async (
     const data = createProductSchema.parse(req.body);
     const userId = getRequestUserId(req);
 
-    const product = await createProduct(data, userId);
+    const product = await createProduct(
+      data,
+      userId,
+      getAuditRequestMetadata(req),
+    );
 
     sendSuccess(res, product, {
       vi: "Tạo sản phẩm thành công",
@@ -124,7 +129,7 @@ export const updateProductHandler = async (
     const data = updateProductSchema.parse(req.body);
     const userId = getRequestUserId(req);
 
-    await updateProduct(id, data, userId);
+    await updateProduct(id, data, userId, getAuditRequestMetadata(req));
 
     sendSuccess(res, null, {
       vi: "Cập nhật sản phẩm thành công",
@@ -144,7 +149,7 @@ export const deleteProductHandler = async (
     const { id } = idParamSchema.parse(req.params);
     const userId = getRequestUserId(req);
 
-    await deleteProduct(id, userId);
+    await deleteProduct(id, userId, getAuditRequestMetadata(req));
 
     sendSuccess(res, null, {
       vi: "Xóa sản phẩm thành công",

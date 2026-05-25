@@ -1,6 +1,12 @@
 "use client";
 
-import { Building2, Warehouse as WarehouseIcon } from "lucide-react";
+import {
+  Building2,
+  LayoutGrid,
+  List,
+  Map as MapIcon,
+  Warehouse as WarehouseIcon,
+} from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { gooeyToast } from "goey-toast";
@@ -8,12 +14,15 @@ import type { Organization, Warehouse } from "@bduck/shared-types";
 import { OrganizationFormModal } from "@/components/organizations/OrganizationFormModal";
 import { OrganizationTable } from "@/components/organizations/OrganizationTable";
 import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
+import { WarehouseGridView } from "@/components/warehouses/WarehouseGridView";
+import { WarehouseMapView } from "@/components/warehouses/WarehouseMapView";
 import { WarehouseTable } from "@/components/warehouses/WarehouseTable";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 
 type WarehouseTab = "warehouses" | "organizations";
+type ViewMode = "map" | "grid" | "list";
 
 export default function WarehousesPage() {
   const { t } = useTranslation();
@@ -33,6 +42,7 @@ export default function WarehousesPage() {
   } = useOrganizations();
   const { locations, loading: locationsLoading } = useWarehouseLocations();
   const [activeTab, setActiveTab] = useState<WarehouseTab>("warehouses");
+  const [viewMode, setViewMode] = useState<ViewMode>("map");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(
     null,
@@ -142,41 +152,90 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full flex-col gap-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className={`mx-auto flex w-full flex-col gap-6 ${viewMode === "map" && activeTab === "warehouses" ? "h-full" : ""}`}>
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-950">
+          <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
             {t.warehouses.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
             {t.warehouses.description}
           </p>
         </div>
-        <div className="grid grid-cols-2 rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
-          <TabButton
-            active={activeTab === "warehouses"}
-            icon={<WarehouseIcon size={16} />}
-            label={t.warehouses.tabWarehouses}
-            onClick={() => setActiveTab("warehouses")}
-          />
-          <TabButton
-            active={activeTab === "organizations"}
-            icon={<Building2 size={16} />}
-            label={t.warehouses.tabOrganizations}
-            onClick={() => setActiveTab("organizations")}
-          />
+
+        <div className="flex items-center gap-2">
+          {/* View mode switcher — only visible on warehouses tab */}
+          {activeTab === "warehouses" && (
+            <div className="flex rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">
+              <ViewModeButton
+                active={viewMode === "map"}
+                icon={<MapIcon size={16} />}
+                label={t.warehouses.viewMap}
+                onClick={() => setViewMode("map")}
+              />
+              <ViewModeButton
+                active={viewMode === "grid"}
+                icon={<LayoutGrid size={16} />}
+                label={t.warehouses.viewGrid}
+                onClick={() => setViewMode("grid")}
+              />
+              <ViewModeButton
+                active={viewMode === "list"}
+                icon={<List size={16} />}
+                label={t.warehouses.viewList}
+                onClick={() => setViewMode("list")}
+              />
+            </div>
+          )}
+
+          {/* Tab switcher */}
+          <div className="grid grid-cols-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">
+            <TabButton
+              active={activeTab === "warehouses"}
+              icon={<WarehouseIcon size={16} />}
+              label={t.warehouses.tabWarehouses}
+              onClick={() => setActiveTab("warehouses")}
+            />
+            <TabButton
+              active={activeTab === "organizations"}
+              icon={<Building2 size={16} />}
+              label={t.warehouses.tabOrganizations}
+              onClick={() => setActiveTab("organizations")}
+            />
+          </div>
         </div>
       </header>
 
       {activeTab === "warehouses" ? (
-        <WarehouseTable
-          warehouses={warehouses}
-          locations={locations}
-          loading={loading || locationsLoading}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        <>
+          {viewMode === "map" && (
+            <WarehouseMapView
+              warehouses={warehouses}
+              loading={loading}
+              onAdd={handleAdd}
+            />
+          )}
+          {viewMode === "grid" && (
+            <WarehouseGridView
+              warehouses={warehouses}
+              locations={locations}
+              loading={loading || locationsLoading}
+              onAdd={handleAdd}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+          {viewMode === "list" && (
+            <WarehouseTable
+              warehouses={warehouses}
+              locations={locations}
+              loading={loading || locationsLoading}
+              onAdd={handleAdd}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+        </>
       ) : (
         <OrganizationTable
           organizations={organizations}
@@ -220,14 +279,39 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-9 min-w-28 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold transition-colors ${
-        active
-          ? "bg-blue-600 text-white shadow-sm"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-      }`}
+      className={`inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-full px-4 text-[14px] font-normal tracking-[-0.224px] transition-all active:scale-95 ${active
+        ? "bg-[var(--color-brand-primary)] text-white"
+        : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+        }`}
     >
       {icon}
       {label}
+    </button>
+  );
+}
+
+function ViewModeButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={`inline-flex h-8 w-9 items-center justify-center rounded-full transition-all active:scale-95 ${active
+        ? "bg-[var(--color-brand-primary)] text-white"
+        : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+        }`}
+    >
+      {icon}
     </button>
   );
 }

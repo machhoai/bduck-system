@@ -1,9 +1,7 @@
-import { RoleName } from "@bduck/shared-types";
-
 export interface RequestUserContext {
   id: string;
   permissions?: Record<string, Record<string, unknown>>;
-  roleNames?: RoleName[];
+  roleNames?: string[];
 }
 
 export const getAccessibleWarehouseIds = (
@@ -29,13 +27,7 @@ export const getAccessibleWarehouseIds = (
 
 export const canSetLocationQuarantine = (user: RequestUserContext): boolean => {
   const globalPerms = user.permissions?.global || {};
-  if (globalPerms["*"] === true) return true;
-
-  return Boolean(
-    user.roleNames?.some(
-      (role) => role === RoleName.ADMIN || role === RoleName.WAREHOUSE_MANAGER,
-    ),
-  );
+  return globalPerms["*"] === true || globalPerms["locations.quarantine"] === true;
 };
 
 export const canReadWarehouse = (

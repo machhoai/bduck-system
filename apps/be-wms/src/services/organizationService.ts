@@ -5,7 +5,7 @@ import type { z } from "zod";
 import { organizationRepository } from "../repositories/organizationRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import { createOrganizationSchema } from "../utils/zodSchemas.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 
 type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 type UpdateOrganizationInput = Partial<CreateOrganizationInput>;
@@ -35,6 +35,7 @@ export const fetchOrganizationById = async (
 export const createOrganization = async (
   input: CreateOrganizationInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<Organization> => {
   const existingCode = await organizationRepository.findByCode(input.code);
   if (existingCode) {
@@ -64,6 +65,7 @@ export const createOrganization = async (
     user_id: userId,
     old_value: null,
     new_value: organization as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 
   return organization;
@@ -73,6 +75,7 @@ export const updateOrganization = async (
   id: string,
   input: UpdateOrganizationInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchOrganizationById(id);
 
@@ -98,12 +101,14 @@ export const updateOrganization = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 };
 
 export const deleteOrganization = async (
   id: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchOrganizationById(id);
 
@@ -127,5 +132,6 @@ export const deleteOrganization = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: { is_deleted: true },
+    ...auditMetadata,
   });
 };

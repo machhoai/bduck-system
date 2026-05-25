@@ -2,21 +2,27 @@
 
 import dynamic from "next/dynamic";
 import React from "react";
+import { Skeleton } from "../../../components/ui/Skeleton";
 
-/**
- * Login Page — Client-Only Rendering
- *
- * LoginForm sử dụng Firebase Client SDK (auth), nên KHÔNG THỂ
- * pre-render/SSR lúc build time vì biến NEXT_PUBLIC_FIREBASE_*
- * chỉ tồn tại ở runtime (trong container hoặc browser).
- *
- * `ssr: false` đảm bảo toàn bộ Firebase chỉ được import ở browser.
- */
 const LoginForm = dynamic(() => import("../../../components/auth/LoginForm"), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-pulse text-gray-400 text-sm">Đang tải...</div>
+    <div className="grid min-h-screen grid-cols-1 bg-[var(--color-surface-base)] lg:grid-cols-[minmax(0,1fr)_480px]">
+      <div className="hidden bg-[var(--color-surface-elevated)] px-10 lg:flex lg:items-center lg:justify-center">
+        <div className="w-full max-w-[720px] space-y-6">
+          <Skeleton variant="rect" className="h-11 w-44 rounded-full" />
+          <Skeleton variant="text" className="h-14 w-4/5" />
+          <Skeleton variant="text" className="h-8 w-2/3" />
+        </div>
+      </div>
+      <div className="flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[400px] space-y-5">
+          <Skeleton variant="text" className="h-10 w-44" />
+          <Skeleton variant="rect" className="h-11 w-full rounded-full" />
+          <Skeleton variant="rect" className="h-11 w-full rounded-full" />
+          <Skeleton variant="rect" className="h-11 w-full rounded-full" />
+        </div>
+      </div>
     </div>
   ),
 });

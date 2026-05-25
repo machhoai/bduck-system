@@ -17,6 +17,7 @@ import {
   canReadWarehouse,
   type RequestUserContext,
 } from "../../services/warehouseAccess.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 const updateLocationSchema = createLocationSchema.partial();
 
@@ -104,7 +105,11 @@ export const getLocationByIdHandler = async (req: Request, res: Response) => {
 export const createLocationHandler = async (req: Request, res: Response) => {
   try {
     const data = createLocationSchema.parse(req.body);
-    const location = await createLocation(data, getRequestUser(req));
+    const location = await createLocation(
+      data,
+      getRequestUser(req),
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(
       res,
@@ -124,7 +129,12 @@ export const updateLocationHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const data = updateLocationSchema.parse(req.body);
-    await updateLocation(id, data, getRequestUser(req));
+    await updateLocation(
+      id,
+      data,
+      getRequestUser(req),
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Cập nhật vị trí thành công.",
@@ -138,7 +148,11 @@ export const updateLocationHandler = async (req: Request, res: Response) => {
 export const deleteLocationHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    await deleteLocation(id, getRequestUser(req).id);
+    await deleteLocation(
+      id,
+      getRequestUser(req).id,
+      getAuditRequestMetadata(req),
+    );
 
     return sendSuccess(res, null, {
       vi: "Xóa vị trí thành công.",

@@ -101,15 +101,15 @@ export function LocationFormModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-            <div className="flex max-h-[92vh] w-[90%] flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-                    <h2 className="text-lg font-semibold text-gray-950">
+            <div className="flex max-h-[92vh] w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+                <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
+                    <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
                         {isEdit ? t.warehouses.editLocation : t.warehouses.addLocation}
                     </h2>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)] active:scale-95"
                     >
                         <X size={18} />
                     </button>
@@ -128,7 +128,7 @@ export function LocationFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, code: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                         <Field label={t.warehouses.locationName} required>
@@ -138,7 +138,7 @@ export function LocationFormModal({
                                 onChange={(event) =>
                                     setFormData({ ...formData, name: event.target.value })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
                         </Field>
                         <Field label={t.warehouses.type} required>
@@ -150,7 +150,7 @@ export function LocationFormModal({
                                         type: event.target.value as LocationType,
                                     })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 {Object.values(LocationType).map((type) => (
                                     <option key={type} value={type}>
@@ -168,7 +168,7 @@ export function LocationFormModal({
                                         status: event.target.value as LocationStatus,
                                     })
                                 }
-                                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 {Object.values(LocationStatus).map((status) => (
                                     <option key={status} value={status}>
@@ -189,7 +189,7 @@ export function LocationFormModal({
                                     warehouse_location_image_url: event.target.value,
                                 })
                             }
-                            className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                     <Field label={t.warehouses.descriptionField}>
@@ -202,17 +202,17 @@ export function LocationFormModal({
                                     warehouse_location_description: event.target.value,
                                 })
                             }
-                            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                 </form>
 
-                <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="h-10 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="h-10 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50"
                     >
                         {t.common.cancel}
                     </button>
@@ -220,7 +220,7 @@ export function LocationFormModal({
                         type="submit"
                         form="locationForm"
                         disabled={isSubmitting}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
                     >
                         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                         {t.common.save}
@@ -242,9 +242,9 @@ function Field({
 }) {
     return (
         <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-gray-700">
+            <span className="mb-1.5 block text-sm font-normal text-[var(--color-text-secondary)]">
                 {label}
-                {required && <span className="text-red-500"> *</span>}
+                {required && <span className="text-[var(--color-accent-error)]"> *</span>}
             </span>
             {children}
         </label>

@@ -8,6 +8,7 @@ import {
   updateProductBom,
 } from "../../services/productBomService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 
 const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
 
@@ -61,7 +62,7 @@ export const updateProductBomHandler = async (
     const { bom_items } = updateProductBomSchema.parse(req.body);
     const userId = getRequestUserId(req);
 
-    await updateProductBom(id, bom_items, userId);
+    await updateProductBom(id, bom_items, userId, getAuditRequestMetadata(req));
 
     sendSuccess(res, null, {
       vi: "Cập nhật định mức vật tư thành công",

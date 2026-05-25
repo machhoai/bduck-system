@@ -1,6 +1,6 @@
 // Tài khoản, phân quyền, RBAC
 
-import { UserStatus, RoleName } from "./enums.js";
+import { UserStatus } from "./enums.js";
 
 // ─────────────────────────────────────────────
 // USERS & RBAC (ISO 5.3 — Segregation of Duties)
@@ -21,10 +21,18 @@ export interface User {
 
 export interface Role {
     id: string; // UUID, PK
-    name: RoleName; // UNIQUE
+    name: string; // UNIQUE, admin-defined
     description: string | null;
-    permissions: Record<string, unknown>; // JSONB
+    color: string; // Hex color used across the UI
+    parent_id: string | null; // FK → roles, nullable = root role
+    permissions: Record<string, boolean>; // JSONB permission map
+    board_position: {
+        x: number;
+        y: number;
+    } | null; // Free-form org chart canvas position
+    is_deleted: boolean; // ISO — soft delete only
     created_at: Date;
+    updated_at: Date;
 }
 
 /**

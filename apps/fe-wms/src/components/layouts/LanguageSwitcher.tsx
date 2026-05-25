@@ -24,17 +24,17 @@ export default function LanguageSwitcher({
       title={title}
       aria-label={title}
       className={`
-        relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg flex-1 aspect-square
-        text-[var(--color-text-muted)] transition-all duration-200
-        hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]
+        relative flex h-10 w-10 shrink-0 flex-1 aspect-square items-center justify-center rounded-[var(--radius-sm)]
+        text-white/65 transition-all duration-200 active:scale-95
+        hover:bg-white/10 hover:text-white
         ${className}
       `}
     >
       <Languages size={18} strokeWidth={1.7} />
       <span
         className="
-          absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full
-          bg-[var(--color-brand-primary)] px-1 text-[9px] font-bold text-[#0A0A0F]
+          absolute -right-1 -top-1 flex size-5 aspect-square items-center justify-center rounded-full
+          bg-[var(--color-brand-primary)] px-1 text-[9px] font-semibold text-white
         "
       >
         {lang.toUpperCase()}

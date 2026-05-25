@@ -5,7 +5,14 @@
  * ► Sidebar và BottomNav đều đọc từ config này → Single Source of Truth.
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
-import { Home, Package, Warehouse, LucideIcon } from "lucide-react";
+import {
+  FileClock,
+  Home,
+  Package,
+  ShieldCheck,
+  Warehouse,
+  LucideIcon,
+} from "lucide-react";
 
 export interface MenuItem {
   id: string;
@@ -45,6 +52,20 @@ export const menuItems: MenuItem[] = [
     href: "/warehouses",
     permission: "warehouses.read",
     showInBottomNav: true,
+  },
+  {
+    id: "roles",
+    labelKey: "roles",
+    icon: ShieldCheck,
+    href: "/roles",
+    permission: "roles.read",
+  },
+  {
+    id: "auditLogs",
+    labelKey: "auditLogs",
+    icon: FileClock,
+    href: "/audit-logs",
+    permission: "audit.read",
   },
   // ── Thêm module mới vào đây ──
 ];

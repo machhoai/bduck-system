@@ -1,6 +1,6 @@
 import { productRepository } from "../repositories/productRepository.js";
 import { categoryRepository } from "../repositories/categoryRepository.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { createProductSchema } from "../utils/zodSchemas.js";
 import { AuditAction } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
@@ -15,6 +15,7 @@ type UpdateProductInput = Partial<
 export const createProduct = async (
   input: CreateProductInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<Product> => {
   // 1. Validate category_id exists
   const categoryExists = await categoryRepository.findById(input.category_id);
@@ -80,6 +81,7 @@ export const createProduct = async (
     user_id: userId,
     old_value: null,
     new_value: product as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 
   return product;
@@ -111,6 +113,7 @@ export const updateProduct = async (
   id: string,
   input: UpdateProductInput,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchProductById(id);
 
@@ -153,12 +156,14 @@ export const updateProduct = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
+    ...auditMetadata,
   });
 };
 
 export const deleteProduct = async (
   id: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchProductById(id);
 
@@ -188,5 +193,6 @@ export const deleteProduct = async (
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: { is_deleted: true },
+    ...auditMetadata,
   });
 };

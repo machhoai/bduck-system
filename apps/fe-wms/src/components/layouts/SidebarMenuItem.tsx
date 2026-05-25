@@ -31,19 +31,19 @@ export default function SidebarMenuItem({
       href={item.href}
       title={isCollapsed ? label : undefined}
       className={`
-        group relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5
-        transition-all duration-200 cursor-pointer
+        group relative flex min-h-11 items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5
+        cursor-pointer transition-all duration-200 active:scale-95
         ${isCollapsed ? "justify-center" : ""}
         ${
           isActive
-            ? "bg-[var(--color-brand-primary)]/10 text-[var(--color-brand-primary)]"
-            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+            ? "bg-white text-[var(--color-surface-nav)]"
+            : "text-white/70 hover:bg-white/10 hover:text-white"
         }
       `}
     >
       {/* Active indicator */}
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--color-brand-primary)]" />
+        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--color-brand-primary)]" />
       )}
 
       {/* Icon */}
@@ -51,19 +51,20 @@ export default function SidebarMenuItem({
 
       {/* Label */}
       {!isCollapsed && (
-        <span className="text-sm font-medium truncate">{label}</span>
+        <span className="truncate text-[14px] font-normal tracking-[-0.224px]">
+          {label}
+        </span>
       )}
 
       {/* Tooltip khi collapsed */}
       {isCollapsed && (
         <span
           className="
-          absolute left-full ml-2 px-2 py-1 rounded-md text-xs font-medium
-          bg-[var(--color-surface-card)] text-[var(--color-text-primary)]
+          absolute left-full ml-2 rounded-[var(--radius-sm)] px-2 py-1 text-xs font-normal
+          bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]
           border border-[var(--color-border-subtle)]
           opacity-0 pointer-events-none group-hover:opacity-100
           transition-opacity duration-150 whitespace-nowrap z-50
-          shadow-lg
         "
         >
           {label}

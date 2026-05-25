@@ -41,21 +41,21 @@ export default function MobileDrawer() {
       <div
         className={`
           fixed left-0 top-0 z-50 flex h-full w-[300px] max-w-[88vw] flex-col lg:hidden
-          border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]
+          border-r border-white/10 bg-[var(--color-surface-nav)] text-white
           transition-transform duration-300 ease-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between px-4">
+        <div className="flex h-11 shrink-0 items-center justify-between px-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-primary)] text-[#0A0A0F]">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white text-[var(--color-surface-nav)]">
               <Warehouse size={19} strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+              <p className="truncate text-xs font-normal text-white">
                 {t.sidebar.systemName}
               </p>
-              <p className="truncate text-[11px] font-medium uppercase text-[var(--color-text-muted)]">
+              <p className="truncate text-[10px] font-normal uppercase text-white/60">
                 {t.sidebar.moduleName}
               </p>
             </div>
@@ -66,8 +66,8 @@ export default function MobileDrawer() {
             onClick={closeDrawer}
             className="
               flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
-              text-[var(--color-text-muted)] transition-colors
-              hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]
+              text-white/70 transition-all active:scale-95
+              hover:bg-white/10 hover:text-white
             "
             title={t.common.cancel}
           >
@@ -76,7 +76,7 @@ export default function MobileDrawer() {
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+          <p className="mb-2 px-3 text-[10px] font-normal uppercase text-white/50">
             {t.sidebar.navigation}
           </p>
           <nav className="space-y-1" onClick={closeDrawer}>
@@ -94,10 +94,7 @@ export default function MobileDrawer() {
         </div>
 
         <div
-          className="space-y-3 border-t border-[var(--color-border-subtle)] px-3 pb-3 pt-3"
-          style={{
-            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-          }}
+          className="space-y-3 border-t border-white/10 px-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-3"
         >
           <SidebarUserPanel isCollapsed={false} />
           <SidebarActions />

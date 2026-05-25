@@ -16,6 +16,11 @@ interface AuditLogParams {
   notes?: string | null;
 }
 
+export type AuditMetadata = Pick<
+  AuditLogParams,
+  "action_time" | "ip_address" | "device_id" | "session_token"
+>;
+
 /**
  * Audit Service (ISO 9001 Compliance)
  * IMMUTABLE operations: Only inserts are allowed for audit logs.

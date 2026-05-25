@@ -1,6 +1,6 @@
 import { productBomRepository } from "../repositories/productBomRepository.js";
 import { productRepository } from "../repositories/productRepository.js";
-import { logAudit } from "./auditService.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuditAction } from "@bduck/shared-types";
 import type { ProductBOM } from "@bduck/shared-types";
@@ -24,6 +24,7 @@ export const updateProductBom = async (
     note?: string | null;
   }>,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const db = productBomRepository.getDbInstance();
   let existingBoms: ProductBOM[] = [];
@@ -130,5 +131,6 @@ export const updateProductBom = async (
     old_value: { items: existingBoms } as unknown as Record<string, unknown>,
     new_value: { items: bomItems } as unknown as Record<string, unknown>,
     notes: "Bulk updated BOM items",
+    ...auditMetadata,
   });
 };

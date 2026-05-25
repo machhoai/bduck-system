@@ -45,15 +45,17 @@ export function ProductCatalog({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-950">
+          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
             {t.products.catalog}
           </h2>
-          <p className="text-sm text-gray-500">{t.products.catalogHint}</p>
+          <p className="text-sm text-gray-500">
+            {t.products.catalogHint}
+          </p>
         </div>
         <button
           type="button"
           onClick={onAddNew}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.products.addNew}
@@ -71,12 +73,14 @@ export function ProductCatalog({
       {loading ? (
         <ProductGridSkeleton />
       ) : filteredProducts.length === 0 ? (
-        <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
-          <Package size={42} className="mb-3 text-gray-300" />
-          <h3 className="text-sm font-semibold text-gray-900">
+        <div className="flex min-h-72 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
+          <Package size={42} className="mb-3 text-[var(--color-text-muted)]" />
+          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
             {t.products.empty}
           </h3>
-          <p className="mt-1 text-sm text-gray-500">{t.products.emptyHint}</p>
+          <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
+            {t.products.emptyHint}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

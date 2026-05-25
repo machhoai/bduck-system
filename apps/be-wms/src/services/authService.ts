@@ -4,7 +4,7 @@ import {
   getUserWarehouseRoles,
   getRoleById,
 } from "../repositories/userRepository.js";
-import type { User, UserWarehouseRole, Role } from "@bduck/shared-types";
+import type { User, UserWarehouseRole } from "@bduck/shared-types";
 
 export interface AuthSessionResult {
   cookie: string;
