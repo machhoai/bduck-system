@@ -14,6 +14,8 @@ import { uploadImageAsWebp } from "@/lib/firebaseStorage";
 import { useCategories } from "@/hooks/useCategories";
 import { useProducts } from "@/hooks/useProducts";
 import { useProductBOM } from "@/hooks/useProductBOM";
+import { ProductExcelImportTab } from "./ProductExcelImportTab";
+import type { ProductImportPayload } from "@/utils/productExcelImport";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -43,7 +45,7 @@ export function ProductFormModal({
   // Lấy BOM realtime từ Backend nếu đang Edit
   const { boms: existingBOMs, updateBOM } = useProductBOM(product?.id);
 
-  const [activeTab, setActiveTab] = useState<"info" | "bom">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "bom" | "excel">("info");
 
   const [formData, setFormData] = useState({
     category_id: "",
@@ -238,6 +240,28 @@ export function ProductFormModal({
     });
   };
 
+  const handleImportProducts = async (payloads: ProductImportPayload[]) => {
+    setIsSubmitting(true);
+    let createdCount = 0;
+
+    try {
+      for (const payload of payloads) {
+        await onSave(payload);
+        createdCount += 1;
+      }
+
+      return createdCount;
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? `Đã tạo ${createdCount}/${payloads.length} sản phẩm. ${error.message}`
+          : `Đã tạo ${createdCount}/${payloads.length} sản phẩm trước khi xảy ra lỗi.`,
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-[95%] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] animate-in fade-in zoom-in duration-200">
@@ -267,6 +291,14 @@ export function ProductFormModal({
           >
             Định mức vật tư (BOM)
           </button>
+          {!isEdit && (
+            <button
+              onClick={() => setActiveTab("excel")}
+              className={`border-b-2 px-4 py-2 text-sm font-normal transition-colors ${activeTab === "excel" ? "border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]" : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"}`}
+            >
+              Tạo bằng Excel
+            </button>
+          )}
         </div>
 
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
@@ -690,6 +722,20 @@ export function ProductFormModal({
                 </div>
               )}
             </div>
+
+            {!isEdit && (
+              <div
+                className={`space-y-4 ${activeTab === "excel" ? "block" : "hidden"}`}
+              >
+                <ProductExcelImportTab
+                  products={allProducts}
+                  categories={categories}
+                  disabled={isSubmitting}
+                  onImport={handleImportProducts}
+                  onImported={onClose}
+                />
+              </div>
+            )}
           </form>
         </div>
 
@@ -702,22 +748,24 @@ export function ProductFormModal({
           >
             Hủy
           </button>
-          <button
-            type="submit"
-            form="productForm"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-6 py-2 font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={18} className="animate-spin" /> Đang lưu...
-              </>
-            ) : isEdit ? (
-              "Lưu thay đổi"
-            ) : (
-              "Hoàn tất"
-            )}
-          </button>
+          {activeTab !== "excel" && (
+            <button
+              type="submit"
+              form="productForm"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-6 py-2 font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Đang lưu...
+                </>
+              ) : isEdit ? (
+                "Lưu thay đổi"
+              ) : (
+                "Hoàn tất"
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

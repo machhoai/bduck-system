@@ -14,12 +14,14 @@ import { StockCountType, StockCountSessionStatus, StockCountItemCondition } from
  *
  * UNIQUE(warehouse_location_id, product_id)
  * All export/transfer operations deduct from atp_quantity only.
+ * warehouse_id is denormalized from warehouse_locations for direct query.
  */
 export interface Inventory {
     id: string; // UUID, PK
+    warehouse_id: string; // FK → warehouses (denormalized)
     warehouse_location_id: string; // FK → warehouse_locations
     product_id: string; // FK → products
-    total_quantity: number; // ATP
+    total_quantity: number; // Computed: sum of all quantity buckets
     atp_quantity: number; // Available To Promise
     on_hold_quantity: number;
     in_transit_quantity: number;

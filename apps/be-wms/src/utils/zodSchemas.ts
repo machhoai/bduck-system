@@ -142,3 +142,31 @@ export const auditLogQuerySchema = z.object({
   sort_by: z.enum(["action_time", "sync_time"]).default("sync_time"),
   sort_dir: z.enum(["asc", "desc"]).default("desc"),
 });
+
+// ============================================================
+// INVENTORY SCHEMAS (Phase 2)
+// ============================================================
+
+export const createInventorySchema = z.object({
+  warehouse_id: z.string().uuid(),
+  warehouse_location_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  atp_quantity: z.number().int().min(0, "Số lượng ATP không được âm").default(0),
+  on_hold_quantity: z.number().int().min(0).default(0),
+  in_transit_quantity: z.number().int().min(0).default(0),
+  quarantine_quantity: z.number().int().min(0).default(0),
+});
+
+export const updateInventorySchema = z.object({
+  atp_quantity: z.number().int().min(0, "Số lượng ATP không được âm").optional(),
+  on_hold_quantity: z.number().int().min(0).optional(),
+  in_transit_quantity: z.number().int().min(0).optional(),
+  quarantine_quantity: z.number().int().min(0).optional(),
+});
+
+export const inventoryQuerySchema = z.object({
+  warehouse_id: z.string().uuid().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+  product_id: z.string().uuid().optional(),
+});
+
