@@ -283,28 +283,26 @@ export default function CreateVoucherTab({
 
     const retryAction = () => handleSubmit();
 
-    gooeyToast.promise(submitAction(), {
-      loading: (t as any).importVoucher?.toast?.creating ?? "Đang tạo phiếu nhập kho...",
-      success: (t as any).importVoucher?.toast?.createSuccess ?? "Đã tạo phiếu nhập kho",
-      error: (t as any).importVoucher?.toast?.createError ?? "Lỗi khi tạo phiếu nhập kho",
-      description: {
-        success:
-          (t as any).importVoucher?.toast?.createSuccessDesc ??
-          "Phiếu đã được gửi vào quy trình duyệt.",
-        error:
-          (t as any).importVoucher?.toast?.createErrorDesc ??
-          "Vui lòng thử lại hoặc liên hệ quản trị viên.",
-      },
-      action: {
-        error: {
-          label: (t as any).common?.retry ?? "Thử lại",
-          onClick: retryAction,
-        },
-      },
-    });
-
     try {
-      await submitAction();
+      await gooeyToast.promise(submitAction(), {
+        loading: (t as any).importVoucher?.toast?.creating ?? "Đang tạo phiếu nhập kho...",
+        success: (t as any).importVoucher?.toast?.createSuccess ?? "Đã tạo phiếu nhập kho",
+        error: (t as any).importVoucher?.toast?.createError ?? "Lỗi khi tạo phiếu nhập kho",
+        description: {
+          success:
+            (t as any).importVoucher?.toast?.createSuccessDesc ??
+            "Phiếu đã được gửi vào quy trình duyệt.",
+          error:
+            (t as any).importVoucher?.toast?.createErrorDesc ??
+            "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+        },
+        action: {
+          error: {
+            label: (t as any).common?.retry ?? "Thử lại",
+            onClick: retryAction,
+          },
+        },
+      });
       onCreated();
     } catch {
       // Toast already shows error

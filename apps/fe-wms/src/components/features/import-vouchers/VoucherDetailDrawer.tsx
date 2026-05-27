@@ -57,17 +57,24 @@ interface EnrichedItem {
 
 function formatDate(val: unknown): string {
     if (!val) return "—";
-    const d = val instanceof Date ? val : new Date(
-        typeof val === "object" && (val as any)?.toDate
-            ? (val as any).toDate()
-            : (val as string),
-    );
+    let d: Date;
+    if (val instanceof Date) {
+        d = val;
+    } else if (typeof val === "object" && val !== null && "toDate" in val && typeof (val as any).toDate === "function") {
+        d = (val as any).toDate();
+    } else if (typeof val === "object" && val !== null && "seconds" in val) {
+        d = new Date((val as any).seconds * 1000);
+    } else {
+        d = new Date(val as string);
+    }
+    if (isNaN(d.getTime())) return "—";
     return d.toLocaleDateString("vi-VN", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
     });
 }
 
