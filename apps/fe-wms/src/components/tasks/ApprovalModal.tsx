@@ -46,8 +46,8 @@ export default function ApprovalModal({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            instanceId: task.instance_id,
-            taskId: task.id,
+            instance_id: task.instance_id,
+            task_id: task.id,
             result: {
               approved: mode === "approve",
               comments: comment || null,

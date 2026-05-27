@@ -4,6 +4,7 @@
  * FileUploadField — Reusable document upload component
  *
  * Hỗ trợ PDF, DOCX, XLSX, CSV (max 20MB).
+ * Hỗ trợ cả CLICK để mở file picker VÀ DRAG-AND-DROP.
  * Hiển thị danh sách file đã chọn với icon theo loại, tên, dung lượng.
  * Cho phép xóa file khỏi danh sách trước khi submit.
  *
@@ -11,7 +12,7 @@
  */
 
 import { FileText, FileSpreadsheet, X, Upload, FileUp } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   validateFile,
   getFileTypeLabel,
@@ -84,18 +85,20 @@ export function FileUploadField({
   label,
   hint,
 }: FileUploadFieldProps) {
-  const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = event.target.files;
-      event.target.value = "";
-      if (!selected || selected.length === 0) return;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // ─── Process selected/dropped files ───
+  const processFiles = useCallback(
+    (fileList: FileList | File[]) => {
+      const arr = Array.from(fileList);
+      if (arr.length === 0) return;
 
       const newFiles: SelectedFile[] = [];
 
-      for (let i = 0; i < selected.length; i++) {
+      for (const file of arr) {
         if (files.length + newFiles.length >= maxFiles) break;
 
-        const file = selected[i];
         const validationErr = validateFile(file);
 
         newFiles.push({
@@ -110,11 +113,64 @@ export function FileUploadField({
         });
       }
 
-      onFilesChange([...files, ...newFiles]);
+      if (newFiles.length > 0) {
+        onFilesChange([...files, ...newFiles]);
+      }
     },
     [files, maxFiles, onFilesChange],
   );
 
+  // ─── Click to open file picker ───
+  const handleClick = useCallback(() => {
+    if (disabled) return;
+    inputRef.current?.click();
+  }, [disabled]);
+
+  // ─── Native file input change ───
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = event.target.files;
+      if (selected && selected.length > 0) {
+        processFiles(selected);
+      }
+      // Reset input so same file can be selected again
+      event.target.value = "";
+    },
+    [processFiles],
+  );
+
+  // ─── Drag and drop ───
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) setIsDragging(true);
+    },
+    [disabled],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      if (disabled) return;
+
+      const droppedFiles = e.dataTransfer.files;
+      if (droppedFiles && droppedFiles.length > 0) {
+        processFiles(droppedFiles);
+      }
+    },
+    [disabled, processFiles],
+  );
+
+  // ─── Remove file ───
   const handleRemove = useCallback(
     (id: string) => {
       onFilesChange(files.filter((f) => f.id !== id));
@@ -132,6 +188,55 @@ export function FileUploadField({
       </p>
       {hint && (
         <p className="text-xs text-[var(--color-text-muted)]">{hint}</p>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        multiple
+        disabled={disabled}
+        className="hidden"
+        onChange={handleInputChange}
+      />
+
+      {/* Dropzone / Upload button */}
+      {canAddMore && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed px-4 py-8 text-sm transition-all active:scale-[0.98] ${
+            isDragging
+              ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+              : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
+          } ${disabled ? "pointer-events-none opacity-50" : ""}`}
+        >
+          {files.length === 0 ? (
+            <Upload size={24} className="opacity-60" />
+          ) : (
+            <FileUp size={20} className="opacity-60" />
+          )}
+          <span className="text-center">
+            {files.length === 0
+              ? "Nhấn để chọn hoặc kéo thả tệp vào đây"
+              : `Thêm tệp (${files.length}/${maxFiles})`}
+          </span>
+          <span className="text-[11px] opacity-60">
+            PDF, DOCX, XLSX, CSV · tối đa 20MB
+          </span>
+        </div>
       )}
 
       {/* File list */}
@@ -185,7 +290,10 @@ export function FileUploadField({
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => handleRemove(f.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemove(f.id);
+                  }}
                   className="shrink-0 rounded-full p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-border-subtle)] hover:text-[var(--color-accent-error)]"
                   aria-label="Remove file"
                 >
@@ -195,34 +303,6 @@ export function FileUploadField({
             </div>
           ))}
         </div>
-      )}
-
-      {/* Upload button */}
-      {canAddMore && (
-        <label
-          className={`flex cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-4 py-6 text-sm text-[var(--color-text-muted)] transition-all hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)] active:scale-[0.98] ${
-            disabled ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          {files.length === 0 ? (
-            <Upload size={20} />
-          ) : (
-            <FileUp size={16} />
-          )}
-          <span>
-            {files.length === 0
-              ? label
-              : `Thêm tệp (${files.length}/${maxFiles})`}
-          </span>
-          <input
-            type="file"
-            accept={ACCEPT}
-            multiple
-            disabled={disabled}
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        </label>
       )}
     </div>
   );

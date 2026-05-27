@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import type { ImportVoucher } from "@bduck/shared-types";
 import { useTranslation } from "../../../lib/i18n";
+import VoucherDetailDrawer from "./VoucherDetailDrawer";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -55,6 +56,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
     status: "",
     warehouse_id: "",
   });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // ── Client-side filtering ──
   const filtered = useMemo(() => {
@@ -135,6 +137,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
             >
               <option value="">Tất cả</option>
               <option value="COMPLETED">Hoàn thành</option>
+              <option value="REJECTED">Từ chối</option>
               <option value="CANCELLED">Đã hủy</option>
             </select>
           </div>
@@ -182,6 +185,23 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
         <div className="space-y-2">
           {filtered.map((voucher) => {
             const isCompleted = voucher.status === "COMPLETED";
+            const isRejected = voucher.status === "REJECTED";
+
+            const statusIcon = isCompleted ? (
+              <CheckCircle size={16} />
+            ) : (
+              <XCircle size={16} />
+            );
+            const statusColor = isCompleted
+              ? "bg-emerald-50 text-[var(--color-accent-success)]"
+              : isRejected
+                ? "bg-amber-50 text-amber-600"
+                : "bg-red-50 text-[var(--color-accent-error)]";
+            const statusLabel = isCompleted
+              ? "Hoàn thành"
+              : isRejected
+                ? "Từ chối"
+                : "Đã hủy";
 
             return (
               <div
@@ -190,17 +210,9 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
               >
                 {/* Status icon */}
                 <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                    isCompleted
-                      ? "bg-emerald-50 text-[var(--color-accent-success)]"
-                      : "bg-red-50 text-[var(--color-accent-error)]"
-                  }`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${statusColor}`}
                 >
-                  {isCompleted ? (
-                    <CheckCircle size={16} />
-                  ) : (
-                    <XCircle size={16} />
-                  )}
+                  {statusIcon}
                 </div>
 
                 {/* Info */}
@@ -210,13 +222,9 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
                       {voucher.voucher_number}
                     </p>
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
-                        isCompleted
-                          ? "bg-emerald-50 text-[var(--color-accent-success)]"
-                          : "bg-red-50 text-[var(--color-accent-error)]"
-                      }`}
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${statusColor}`}
                     >
-                      {isCompleted ? "Hoàn thành" : "Đã hủy"}
+                      {statusLabel}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)]">
@@ -240,6 +248,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
                 <div className="flex shrink-0 gap-1">
                   <button
                     type="button"
+                    onClick={() => setSelectedId(voucher.id)}
                     className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
                     title="Xem chi tiết"
                   >
@@ -266,6 +275,18 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
           })}
         </div>
       )}
+
+      {/* Detail Drawer */}
+      {selectedId && (() => {
+        const selected = vouchers.find((v) => v.id === selectedId);
+        if (!selected) return null;
+        return (
+          <VoucherDetailDrawer
+            voucher={selected}
+            onClose={() => setSelectedId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

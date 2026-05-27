@@ -191,9 +191,29 @@ export const publishWorkflowVersion = async (
   validateNodeConfigs(version.nodes);
   validateDagStructure(version.nodes, version.edges);
 
-  // Atomically: set version as published + update definition's current_version_id
+  // ── Deactivate competing definitions (same entity_type) ──
+  // Ensures only ONE active workflow per entity_type to avoid
+  // non-deterministic behavior in findActiveDefinitionForEntity.
+  const allDefs = await repo.findDefinitions();
+  const competing = allDefs.filter(
+    (d) =>
+      d.id !== definitionId &&
+      d.entity_type === definition.entity_type &&
+      d.status === WorkflowDefinitionStatus.ACTIVE,
+  );
+
+  // Atomically: deactivate old + set version published + update definition
   const db = repo.getDb();
   const batch = db.batch();
+
+  // Deactivate competing definitions → DRAFT (not deleted, just inactive)
+  for (const comp of competing) {
+    const compRef = db.collection("workflow_definitions").doc(comp.id);
+    batch.update(compRef, {
+      status: WorkflowDefinitionStatus.DRAFT,
+      updated_at: new Date(),
+    });
+  }
 
   // Update version with publish timestamp
   const versionRef = db
@@ -216,6 +236,20 @@ export const publishWorkflowVersion = async (
 
   await batch.commit();
 
+  // Audit: deactivated competing definitions
+  for (const comp of competing) {
+    await logAudit({
+      entity_type: "workflow_definitions",
+      entity_id: comp.id,
+      action: AuditAction.UPDATE,
+      user_id: userId,
+      old_value: { status: comp.status },
+      new_value: { status: WorkflowDefinitionStatus.DRAFT },
+      notes: `Auto-deactivated: new definition "${definition.name}" published for ${definition.entity_type}`,
+      ...meta,
+    });
+  }
+
   await logAudit({
     entity_type: "workflow_definitions",
     entity_id: definitionId,
@@ -223,7 +257,10 @@ export const publishWorkflowVersion = async (
     user_id: userId,
     old_value: { current_version_id: definition.current_version_id },
     new_value: { current_version_id: versionId, status: "ACTIVE" },
-    notes: `Published version v${version.version_number}`,
+    notes: `Published version v${version.version_number}` +
+      (competing.length > 0
+        ? ` — deactivated ${competing.length} competing definition(s)`
+        : ""),
     ...meta,
   });
 };

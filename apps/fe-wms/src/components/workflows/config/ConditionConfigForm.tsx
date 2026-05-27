@@ -2,11 +2,11 @@
  * ConditionConfigForm — Config sub-form for CONDITION nodes.
  *
  * Fields:
- *   - field (text input — dot-notation path, e.g. "total_amount")
+ *   - field (dropdown — common entity fields)
  *   - operator (enum select: EQ | NEQ | GT | GTE | LT | LTE | CONTAINS | NOT_CONTAINS)
  *   - value (text input — compared against the field value at runtime)
  *
- * Sync strategy: on-blur for text inputs → immediate Zustand update.
+ * Sync strategy: dropdown → immediate Zustand update, text → on-blur.
  */
 "use client";
 
@@ -37,6 +37,19 @@ const OPERATOR_LABELS: Record<ConditionOperator, string> = {
   [ConditionOperator.NOT_CONTAINS]: "Không chứa",
 };
 
+/** Common entity data fields available in entityPayload */
+const FIELD_OPTIONS: { value: string; label: string }[] = [
+  { value: "has_discrepancy", label: "Có chênh lệch (has_discrepancy)" },
+  { value: "total_actual", label: "Tổng thực nhận (total_actual)" },
+  { value: "total_expected", label: "Tổng dự kiến (total_expected)" },
+  { value: "items_count", label: "Số lượng sản phẩm (items_count)" },
+  { value: "receiving_completed", label: "Đã kiểm đếm (receiving_completed)" },
+  { value: "approved", label: "Đã duyệt (approved)" },
+  { value: "status", label: "Trạng thái (status)" },
+  { value: "voucher_id", label: "Mã phiếu (voucher_id)" },
+  { value: "entity_type", label: "Loại đối tượng (entity_type)" },
+];
+
 export function ConditionConfigForm({
   nodeId,
   config,
@@ -46,10 +59,6 @@ export function ConditionConfigForm({
     (s) => s.updateNodeConfig,
   );
 
-  // Local state for text fields (sync on blur to avoid excessive re-renders)
-  const [localField, setLocalField] = useState(
-    (config.field as string) || "",
-  );
   const [localValue, setLocalValue] = useState(
     String(config.value ?? ""),
   );
@@ -68,16 +77,16 @@ export function ConditionConfigForm({
 
   return (
     <div className="space-y-3">
-      {/* Target Field */}
+      {/* Target Field — dropdown */}
       <ConfigField
         label={t.workflows.config.field}
-        hint='VD: "total_amount", "expected_quantity"'
+        hint="Trường dữ liệu từ entityPayload"
       >
-        <ConfigInput
-          value={localField}
-          onChange={setLocalField}
-          onBlur={() => syncField("field", localField)}
-          placeholder="total_amount"
+        <ConfigSelect
+          value={(config.field as string) || ""}
+          onChange={(val) => syncField("field", val)}
+          options={FIELD_OPTIONS}
+          placeholder="Chọn trường dữ liệu..."
         />
       </ConfigField>
 
@@ -94,7 +103,7 @@ export function ConditionConfigForm({
       {/* Expected Value */}
       <ConfigField
         label={t.workflows.config.value}
-        hint="Số hoặc chuỗi so sánh"
+        hint="Số hoặc chuỗi so sánh (VD: true, 100)"
       >
         <ConfigInput
           value={localValue}
@@ -109,13 +118,15 @@ export function ConditionConfigForm({
             ];
             const op = config.operator as ConditionOperator;
             const parsed = Number(localValue);
-            const finalValue =
-              numericOps.includes(op) && !Number.isNaN(parsed)
-                ? parsed
-                : localValue;
+            // Also handle "true"/"false" as booleans
+            let finalValue: unknown = localValue;
+            if (localValue === "true") finalValue = true;
+            else if (localValue === "false") finalValue = false;
+            else if (numericOps.includes(op) && !Number.isNaN(parsed))
+              finalValue = parsed;
             syncField("value", finalValue);
           }}
-          placeholder="100"
+          placeholder="true"
         />
       </ConfigField>
     </div>

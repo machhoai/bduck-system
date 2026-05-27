@@ -42,7 +42,12 @@ export const useAuth = () => {
       }
 
       const { data, messages } = await response.json();
-      setAuthData(data.user, data.permissions);
+      // Extract unique role_ids from user_warehouse_roles for task matching
+      const roleIds = (data.roles || [])
+        .filter((r: any) => r.is_active)
+        .map((r: any) => r.role_id)
+        .filter((id: string, i: number, arr: string[]) => arr.indexOf(id) === i);
+      setAuthData(data.user, data.permissions, roleIds);
 
       return messages;
     };

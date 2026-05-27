@@ -12,6 +12,7 @@ import {
   type ProductImportPreviewRow,
 } from "@/utils/productExcelImport";
 import { downloadProductImportTemplate } from "@/utils/productExcelTemplate";
+import { useTranslation } from "@/lib/i18n";
 import {
   ConfirmSkipInvalidRowsModal,
   ProductImportPreviewTable,
@@ -33,6 +34,7 @@ export function ProductExcelImportTab({
   onImport,
   onImported,
 }: ProductExcelImportTabProps) {
+  const { lang } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<ProductImportPreviewRow[]>([]);
@@ -100,7 +102,7 @@ export function ProductExcelImportTab({
 
   const handleDownloadTemplate = async () => {
     try {
-      await downloadProductImportTemplate(categories);
+      await downloadProductImportTemplate(categories, lang);
     } catch (error) {
       console.error("[ProductExcelImportTab] template error:", error);
       gooeyToast.error("Không thể tạo tệp mẫu", {

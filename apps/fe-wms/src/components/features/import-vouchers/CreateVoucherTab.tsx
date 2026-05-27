@@ -26,6 +26,9 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  Search,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { useTranslation } from "../../../lib/i18n";
@@ -33,6 +36,9 @@ import { useUserStore } from "../../../stores/useUserStore";
 import { createImportVoucher } from "../../../hooks/useImportVoucherApi";
 import { uploadFile } from "../../../lib/uploadFile";
 import { FileUploadField, type SelectedFile } from "../../shared/FileUploadField";
+import { useWarehouses } from "../../../hooks/useWarehouses";
+import { useProducts } from "../../../hooks/useProducts";
+import { useWarehouseLocations } from "../../../hooks/useWarehouses";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -81,23 +87,6 @@ const STEPS: StepConfig[] = [
   { id: 3, icon: CheckCircle2, labelKey: "confirm", fallback: "Xác nhận" },
 ];
 
-// ─────────────────────────────────────────────
-// EMPTY ITEM FACTORY
-// ─────────────────────────────────────────────
-
-function createEmptyItem(): VoucherItemData {
-  return {
-    id: crypto.randomUUID(),
-    product_id: "",
-    product_name: "",
-    warehouse_location_id: "",
-    expected_quantity: 0,
-    actual_quantity: 0,
-    unit_price: 0,
-    condition: "NEW",
-    notes: "",
-  };
-}
 
 // ─────────────────────────────────────────────
 // COMPONENT
@@ -109,8 +98,11 @@ export default function CreateVoucherTab({
 }: CreateVoucherTabProps) {
   const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
+  const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const { products, loading: productsLoading } = useProducts();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   // ── File upload state ──
   const [files, setFiles] = useState<SelectedFile[]>([]);
@@ -121,8 +113,31 @@ export default function CreateVoucherTab({
     supplier_name: "",
     purchase_order_id: "",
     notes: "",
-    items: [createEmptyItem()],
+    items: [],
   });
+
+  // ── Locations depend on selected warehouse (must come after formData) ──
+  const { locations, loading: locationsLoading } = useWarehouseLocations(
+    formData.warehouse_id || undefined,
+  );
+
+  // ── Filtered products for picker ──
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return products;
+    const q = productSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q)),
+    );
+  }, [products, productSearch]);
+
+  // ── Already-added product IDs (to prevent duplicates) ──
+  const addedProductIds = useMemo(
+    () => new Set(formData.items.map((i) => i.product_id)),
+    [formData.items],
+  );
 
   // ── Step labels from i18n ──
   const stepLabels = useMemo(() => {
@@ -148,7 +163,7 @@ export default function CreateVoucherTab({
               ...item,
               id: crypto.randomUUID(),
             }))
-          : [createEmptyItem()],
+          : [],
       });
       // Skip to step 1 (info) since we're cloning, no new upload needed
       setStep(1);
@@ -183,9 +198,27 @@ export default function CreateVoucherTab({
   };
 
   // ── Item management ──
-  const addItem = () => {
-    setFormData((d) => ({ ...d, items: [...d.items, createEmptyItem()] }));
-  };
+  const addProductToList = useCallback(
+    (productId: string) => {
+      const product = products.find((p) => p.id === productId);
+      if (!product || addedProductIds.has(productId)) return;
+
+      const newItem: VoucherItemData = {
+        id: crypto.randomUUID(),
+        product_id: product.id,
+        product_name: product.name,
+        warehouse_location_id: "",
+        expected_quantity: 1,
+        actual_quantity: 0,
+        unit_price: 0,
+        condition: "GOOD",
+        notes: "",
+      };
+
+      setFormData((d) => ({ ...d, items: [...d.items, newItem] }));
+    },
+    [products, addedProductIds],
+  );
 
   const removeItem = (id: string) => {
     setFormData((d) => ({
@@ -234,9 +267,10 @@ export default function CreateVoucherTab({
         supplier_name: formData.supplier_name,
         purchase_order_id: formData.purchase_order_id || undefined,
         notes: formData.notes || undefined,
+        attachment_urls: uploadedUrls,
         items: formData.items.map((item) => ({
           product_id: item.product_id,
-          warehouse_location_id: item.warehouse_location_id,
+          warehouse_location_id: item.warehouse_location_id || null,
           expected_quantity: item.expected_quantity,
           actual_quantity: item.actual_quantity,
           unit_price: item.unit_price,
@@ -344,15 +378,27 @@ export default function CreateVoucherTab({
               <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
                 {(t as any).importVoucher?.form?.warehouse ?? "Kho nhận hàng"} *
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.warehouse_id}
                 onChange={(e) =>
                   setFormData({ ...formData, warehouse_id: e.target.value })
                 }
-                placeholder="Chọn kho nhận hàng..."
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
-              />
+                disabled={warehousesLoading}
+                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] disabled:opacity-50"
+              >
+                <option value="">
+                  {warehousesLoading
+                    ? "Đang tải danh sách kho..."
+                    : warehouses.length === 0
+                      ? "Không có kho nào"
+                      : "— Chọn kho nhận hàng —"}
+                </option>
+                {warehouses.map((wh) => (
+                  <option key={wh.id} value={wh.id}>
+                    {wh.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -404,117 +450,210 @@ export default function CreateVoucherTab({
 
         {/* Step 2: Items */}
         {step === 2 && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                {(t as any).importVoucher?.form?.itemList ?? "Danh sách sản phẩm"}
+          <div className="space-y-4">
+            {/* ── Product search + picker ── */}
+            <div>
+              <p className="mb-2 text-sm font-medium text-[var(--color-text-secondary)]">
+                {(t as any).importVoucher?.form?.selectProduct ?? "Chọn sản phẩm từ danh mục"}
               </p>
-              <button
-                type="button"
-                onClick={addItem}
-                className="rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98]"
-              >
-                + {(t as any).importVoucher?.form?.addItem ?? "Thêm sản phẩm"}
-              </button>
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+                />
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Tìm theo tên, mã SKU hoặc barcode..."
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] py-2.5 pl-9 pr-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+                />
+              </div>
+
+              {/* Product list */}
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]">
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
+                    Đang tải sản phẩm...
+                  </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
+                    {productSearch ? "Không tìm thấy sản phẩm" : "Chưa có sản phẩm trong hệ thống"}
+                  </div>
+                ) : (
+                  filteredProducts.map((p) => {
+                    const isAdded = addedProductIds.has(p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        className={`flex items-center gap-3 border-b border-[var(--color-border-soft)] px-3 py-2 last:border-b-0 ${
+                          isAdded
+                            ? "bg-[var(--color-brand-primary-muted)] opacity-60"
+                            : "hover:bg-[var(--color-surface-elevated)]"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                            {p.name}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                            <span>SKU: {p.code}</span>
+                            {p.barcode && <span>· {p.barcode}</span>}
+                            <span>· {p.unit}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isAdded}
+                          onClick={() => addProductToList(p.id)}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-primary)] text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+                          title={isAdded ? "Đã thêm" : "Thêm vào danh sách"}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
-            {formData.items.length === 0 && (
-              <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
-                Chưa có sản phẩm. Nhấn "Thêm sản phẩm" để bắt đầu.
-              </p>
-            )}
-
-            <div className="space-y-2">
-              {formData.items.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                      #{idx + 1}
+            {/* ── Selected items list ── */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+                  {(t as any).importVoucher?.form?.itemList ?? "Sản phẩm đã chọn"}
+                  {formData.items.length > 0 && (
+                    <span className="ml-1.5 text-xs text-[var(--color-text-muted)]">
+                      ({formData.items.length})
                     </span>
-                    {formData.items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="text-xs text-[var(--color-accent-error)] hover:underline"
-                      >
-                        {(t as any).common?.delete ?? "Xóa"}
-                      </button>
-                    )}
-                  </div>
+                  )}
+                </p>
+              </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <input
-                      type="text"
-                      placeholder="Mã sản phẩm *"
-                      value={item.product_id}
-                      onChange={(e) =>
-                        updateItem(item.id, "product_id", e.target.value)
-                      }
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Vị trí kho"
-                      value={item.warehouse_location_id}
-                      onChange={(e) =>
-                        updateItem(item.id, "warehouse_location_id", e.target.value)
-                      }
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    />
-                    <input
-                      type="number"
-                      placeholder="SL dự kiến *"
-                      value={item.expected_quantity || ""}
-                      onChange={(e) =>
-                        updateItem(
-                          item.id,
-                          "expected_quantity",
-                          Number(e.target.value),
-                        )
-                      }
-                      min={0}
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Đơn giá"
-                      value={item.unit_price || ""}
-                      onChange={(e) =>
-                        updateItem(
-                          item.id,
-                          "unit_price",
-                          Number(e.target.value),
-                        )
-                      }
-                      min={0}
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    />
-                    <select
-                      value={item.condition}
-                      onChange={(e) =>
-                        updateItem(item.id, "condition", e.target.value)
-                      }
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    >
-                      <option value="NEW">Mới</option>
-                      <option value="USED">Đã qua sử dụng</option>
-                      <option value="DAMAGED">Hư hỏng</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Ghi chú"
-                      value={item.notes}
-                      onChange={(e) =>
-                        updateItem(item.id, "notes", e.target.value)
-                      }
-                      className="rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                    />
-                  </div>
+              {formData.items.length === 0 ? (
+                <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-8 text-center text-sm text-[var(--color-text-muted)]">
+                  Chọn sản phẩm từ danh mục ở trên để thêm vào phiếu nhập.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {formData.items.map((item, idx) => {
+                    const product = products.find((p) => p.id === item.product_id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3"
+                      >
+                        {/* Item header */}
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-brand-primary-muted)] text-[10px] font-semibold text-[var(--color-brand-primary)]">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                              {item.product_name}
+                            </span>
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              {product?.code} · {product?.unit}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="flex items-center gap-1 rounded-[var(--radius-xs)] px-1.5 py-0.5 text-xs text-[var(--color-accent-error)] transition-colors hover:bg-red-50"
+                          >
+                            <Trash2 size={12} />
+                            {(t as any).common?.delete ?? "Xóa"}
+                          </button>
+                        </div>
+
+                        {/* Item fields */}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div>
+                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                              SL dự kiến *
+                            </label>
+                            <input
+                              type="number"
+                              value={item.expected_quantity || ""}
+                              onChange={(e) =>
+                                updateItem(item.id, "expected_quantity", Number(e.target.value))
+                              }
+                              min={1}
+                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                              Đơn giá
+                            </label>
+                            <input
+                              type="number"
+                              value={item.unit_price || ""}
+                              onChange={(e) =>
+                                updateItem(item.id, "unit_price", Number(e.target.value))
+                              }
+                              min={0}
+                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                              Vị trí kho
+                            </label>
+                            <select
+                              value={item.warehouse_location_id}
+                              onChange={(e) =>
+                                updateItem(item.id, "warehouse_location_id", e.target.value)
+                              }
+                              disabled={locationsLoading || !formData.warehouse_id}
+                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                            >
+                              <option value="">
+                                {!formData.warehouse_id
+                                  ? "Chọn kho trước"
+                                  : locationsLoading
+                                    ? "Đang tải..."
+                                    : "— Chọn vị trí —"}
+                              </option>
+                              {locations.map((loc) => (
+                                <option key={loc.id} value={loc.id}>
+                                  {loc.name} ({loc.code})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                              Tình trạng
+                            </label>
+                            <select
+                              value={item.condition}
+                              onChange={(e) =>
+                                updateItem(item.id, "condition", e.target.value)
+                              }
+                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
+                            >
+                              <option value="GOOD">Tốt</option>
+                              <option value="DAMAGED">Hư hỏng</option>
+                              <option value="MISSING">Thiếu</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Notes (optional) */}
+                        <input
+                          type="text"
+                          placeholder="Ghi chú cho sản phẩm này..."
+                          value={item.notes}
+                          onChange={(e) => updateItem(item.id, "notes", e.target.value)}
+                          className="mt-2 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -529,7 +668,7 @@ export default function CreateVoucherTab({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
                 <span className="text-[var(--color-text-muted)]">Kho nhận</span>
-                <span className="font-medium">{formData.warehouse_id || "—"}</span>
+                <span className="font-medium">{warehouses.find((w) => w.id === formData.warehouse_id)?.name || formData.warehouse_id || "—"}</span>
               </div>
               <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
                 <span className="text-[var(--color-text-muted)]">Nhà cung cấp</span>

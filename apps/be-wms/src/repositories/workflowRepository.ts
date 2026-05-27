@@ -40,8 +40,15 @@ export const findDefinitions = async (
   if (!includeDeleted) {
     query = query.where("is_deleted", "==", false);
   }
-  const snap = await query.orderBy("created_at", "desc").get();
-  return snap.docs.map((d) => d.data() as WorkflowDefinition);
+  // Note: orderBy("created_at", "desc") requires a composite index.
+  // Sort client-side to avoid FAILED_PRECONDITION on fresh setups.
+  const snap = await query.get();
+  const results = snap.docs.map((d) => d.data() as WorkflowDefinition);
+  return results.sort((a, b) => {
+    const aTime = a.created_at instanceof Date ? a.created_at.getTime() : new Date(a.created_at as any).getTime();
+    const bTime = b.created_at instanceof Date ? b.created_at.getTime() : new Date(b.created_at as any).getTime();
+    return bTime - aTime;
+  });
 };
 
 export const findActiveDefinitionForEntity = async (

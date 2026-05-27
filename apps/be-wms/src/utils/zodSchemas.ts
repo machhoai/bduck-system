@@ -220,55 +220,62 @@ const safeString = z.string().trim().min(1).refine(
 );
 
 // --- Node config schemas (1 per WorkflowNodeType) ---
+// NOTE: All fields are optional with defaults to allow saving incomplete drafts.
+// Strict validation (required fields) is enforced at PUBLISH time by the service layer.
 
 const triggerNodeConfigSchema = z.object({
-  event: safeString,
+  event: safeString.optional().default("ENTITY_CREATED"),
 });
 
 const approvalNodeConfigSchema = z.object({
-  assigned_role_id: z.string().uuid().nullable(),
-  assigned_user_id: z.string().uuid().nullable(),
-  approval_method: z.enum(["STANDARD", "TWO_FACTOR"]),
-  timeout_hours: z.number().positive().nullable(),
-  timeout_action: z.enum(["AUTO_APPROVE", "AUTO_REJECT", "ESCALATE"]).nullable(),
+  assigned_role_id: z.string().uuid().nullable().optional().default(null),
+  assigned_user_id: z.string().uuid().nullable().optional().default(null),
+  approval_method: z.enum(["STANDARD", "TWO_FACTOR"]).optional().default("STANDARD"),
+  timeout_hours: z.number().positive().nullable().optional().default(null),
+  timeout_action: z.enum(["AUTO_APPROVE", "AUTO_REJECT", "ESCALATE"]).nullable().optional().default(null),
 });
 
 const systemActionNodeConfigSchema = z.object({
-  action_type: safeString,
-  params: z.record(z.string(), z.unknown()).optional(),
+  action_type: safeString.optional().default("NOOP"),
+  params: z.record(z.string(), z.unknown()).optional().default({}),
 });
 
 const timerNodeConfigSchema = z.object({
-  duration_hours: z.number().int().min(0),
-  duration_minutes: z.number().int().min(0).max(59),
+  duration_hours: z.number().int().min(0).optional().default(0),
+  duration_minutes: z.number().int().min(0).max(59).optional().default(0),
 });
 
 const conditionNodeConfigSchema = z.object({
-  field: safeString,
-  operator: z.enum(["EQ", "NEQ", "GT", "GTE", "LT", "LTE", "CONTAINS", "NOT_CONTAINS"]),
-  value: z.unknown(),
+  field: safeString.optional().default("status"),
+  operator: z.enum(["EQ", "NEQ", "GT", "GTE", "LT", "LTE", "CONTAINS", "NOT_CONTAINS"]).optional().default("EQ"),
+  value: z.unknown().optional().default(null),
 });
 
 const notificationNodeConfigSchema = z.object({
-  channel: z.enum(["IN_APP", "EMAIL", "PUSH"]),
-  target_role_id: z.string().uuid().nullable(),
-  target_user_id: z.string().uuid().nullable(),
-  template_key: safeString,
+  channel: z.enum(["IN_APP", "EMAIL", "PUSH"]).optional().default("IN_APP"),
+  target_role_id: z.string().uuid().nullable().optional().default(null),
+  target_user_id: z.string().uuid().nullable().optional().default(null),
+  template_key: safeString.optional().default("default"),
 });
 
 const forkNodeConfigSchema = z.object({});
 const joinNodeConfigSchema = z.object({
-  join_type: z.enum(["ALL", "ANY"]),
+  join_type: z.enum(["ALL", "ANY"]).optional().default("ALL"),
 });
 const subWorkflowNodeConfigSchema = z.object({
-  workflow_definition_id: z.string().uuid(),
+  workflow_definition_id: z.string().uuid().optional(),
 });
 const webhookNodeConfigSchema = z.object({
-  url: z.string().url(),
-  method: z.enum(["GET", "POST", "PUT"]),
-  headers: z.record(z.string(), z.string()).optional(),
-  body_template: z.string().nullable(),
-  timeout_seconds: z.number().int().min(1).max(120).default(30),
+  url: z.string().url().optional(),
+  method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+  headers: z.record(z.string(), z.string()).optional().default({}),
+  body_template: z.string().nullable().optional().default(null),
+  timeout_seconds: z.number().int().min(1).max(120).optional().default(30),
+});
+
+const dataInputNodeConfigSchema = z.object({
+  input_type: z.enum(["RECEIVING_SESSION", "QUALITY_INSPECTION"]).optional().default("RECEIVING_SESSION"),
+  assigned_role_id: z.string().uuid().nullable().optional().default(null),
 });
 
 /** Union of all node config schemas — validated at runtime based on node.type */
@@ -283,6 +290,7 @@ const nodeConfigSchemaMap: Record<string, z.ZodTypeAny> = {
   JOIN: joinNodeConfigSchema,
   SUB_WORKFLOW: subWorkflowNodeConfigSchema,
   WEBHOOK: webhookNodeConfigSchema,
+  DATA_INPUT: dataInputNodeConfigSchema,
 };
 
 // --- Node & Edge schemas ---
@@ -292,7 +300,7 @@ const workflowNodeSchema = z.object({
   type: z.enum([
     "TRIGGER", "APPROVAL", "SYSTEM_ACTION", "TIMER",
     "CONDITION", "NOTIFICATION", "FORK", "JOIN",
-    "SUB_WORKFLOW", "WEBHOOK",
+    "SUB_WORKFLOW", "WEBHOOK", "DATA_INPUT",
   ]),
   label: z.string().min(1).max(200),
   position: z.object({

@@ -5,12 +5,15 @@ import type { User } from "@bduck/shared-types";
 interface UserState {
   user: User | null;
   permissions: Record<string, Record<string, unknown>>;
+  /** List of role_ids the current user holds (across all warehouses) */
+  roleIds: string[];
   isAuthenticated: boolean;
 
   // Actions
   setAuthData: (
     user: User,
     permissions: Record<string, Record<string, unknown>>,
+    roleIds?: string[],
   ) => void;
   clearAuth: () => void;
 
@@ -23,13 +26,14 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       user: null,
       permissions: {},
+      roleIds: [],
       isAuthenticated: false,
 
-      setAuthData: (user, permissions) =>
-        set({ user, permissions, isAuthenticated: true }),
+      setAuthData: (user, permissions, roleIds = []) =>
+        set({ user, permissions, roleIds, isAuthenticated: true }),
 
       clearAuth: () =>
-        set({ user: null, permissions: {}, isAuthenticated: false }),
+        set({ user: null, permissions: {}, roleIds: [], isAuthenticated: false }),
 
       hasPermission: (action: string, warehouseId?: string) => {
         const { permissions } = get();

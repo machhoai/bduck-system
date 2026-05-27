@@ -105,14 +105,15 @@ export interface CreateImportVoucherPayload {
   purchase_order_id?: string | null;
   items: Array<{
     product_id: string;
-    warehouse_location_id: string;
+    warehouse_location_id: string | null;
     expected_quantity: number;
-    actual_quantity: number;
+    actual_quantity?: number;
     unit_price: number;
     condition: string;
     notes?: string | null;
   }>;
   notes?: string | null;
+  attachment_urls?: string[];
   action_time?: string;
 }
 

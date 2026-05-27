@@ -35,9 +35,9 @@ import { logAudit } from "./auditService.js";
 
 const importVoucherItemSchema = z.object({
   product_id: z.string().uuid(),
-  warehouse_location_id: z.string().uuid(),
+  warehouse_location_id: z.string().uuid().nullable().optional(),
   expected_quantity: z.number().int().positive(),
-  actual_quantity: z.number().int().min(0),
+  actual_quantity: z.number().int().min(0).optional().default(0),
   unit_price: z.number().min(0),
   condition: z.nativeEnum(ItemCondition),
   notes: z.string().max(500).nullable().optional(),
@@ -49,6 +49,8 @@ export const createImportVoucherSchema = z.object({
   purchase_order_id: z.string().uuid().nullable().optional(),
   items: z.array(importVoucherItemSchema).min(1),
   notes: z.string().max(1000).nullable().optional(),
+  /** Firebase Storage download URLs for attached documents */
+  attachment_urls: z.array(z.string().url()).max(10).optional().default([]),
   /** ISO — client offline time */
   action_time: z.string().datetime().optional(),
 });
@@ -92,6 +94,7 @@ export const createImportVoucher = async (
     action_time: actionTime,
     sync_time: now,
     notes: input.notes ?? null,
+    attachment_urls: input.attachment_urls ?? [],
     is_deleted: false,
     created_at: now,
     updated_at: now,
@@ -102,7 +105,7 @@ export const createImportVoucher = async (
     id: randomUUID(),
     import_voucher_id: voucherId,
     product_id: item.product_id,
-    warehouse_location_id: item.warehouse_location_id,
+    warehouse_location_id: item.warehouse_location_id ?? null,
     expected_quantity: item.expected_quantity,
     actual_quantity: item.actual_quantity,
     unit_price: item.unit_price,

@@ -21,7 +21,6 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
@@ -41,6 +40,7 @@ const ACTIVE_STATUSES: string[] = [
 
 const COMPLETED_STATUSES: string[] = [
   ImportVoucherStatus.COMPLETED,
+  ImportVoucherStatus.REJECTED,
   ImportVoucherStatus.CANCELLED,
 ];
 
@@ -87,11 +87,12 @@ export function useImportVouchers(): UseImportVouchersReturn {
       return;
     }
 
-    // Query all non-deleted vouchers ordered by creation date
+    // Query all non-deleted vouchers
+    // Note: compound query (is_deleted + orderBy created_at) needs composite index.
+    // Sort client-side to work on fresh setups without index.
     const q = query(
       collection(db, "import_vouchers"),
       where("is_deleted", "==", false),
-      orderBy("created_at", "desc"),
     );
 
     const unsubscribe = onSnapshot(
@@ -115,7 +116,13 @@ export function useImportVouchers(): UseImportVouchersReturn {
           }
         });
 
-        setRawVouchers(vouchers);
+        setRawVouchers(
+          vouchers.sort((a, b) => {
+            const aTime = a.created_at instanceof Date ? a.created_at.getTime() : new Date(a.created_at as any).getTime();
+            const bTime = b.created_at instanceof Date ? b.created_at.getTime() : new Date(b.created_at as any).getTime();
+            return bTime - aTime;
+          }),
+        );
         setLoading(false);
       },
       (error) => {

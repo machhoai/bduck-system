@@ -14,6 +14,7 @@ import {
 import type { ImportVoucher } from "@bduck/shared-types";
 import { ImportVoucherStatus } from "@bduck/shared-types";
 import { useTranslation } from "../../../lib/i18n";
+import VoucherDetailDrawer from "./VoucherDetailDrawer";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -199,6 +200,18 @@ export default function InProgressTab({ vouchers, onClone }: InProgressTabProps)
           </div>
         );
       })}
+
+      {/* Detail Drawer */}
+      {selectedId && (() => {
+        const selected = vouchers.find((v) => v.id === selectedId);
+        if (!selected) return null;
+        return (
+          <VoucherDetailDrawer
+            voucher={selected}
+            onClose={() => setSelectedId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

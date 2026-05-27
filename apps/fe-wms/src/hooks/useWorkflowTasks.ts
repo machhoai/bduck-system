@@ -18,7 +18,6 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
@@ -34,13 +33,7 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
   const [allRawTasks, setAllRawTasks] = useState<WorkflowTask[]>([]);
   const [loading, setLoading] = useState(true);
   const user = useUserStore((s) => s.user);
-  const permissions = useUserStore((s) => s.permissions);
-
-  // Extract user's role IDs from permissions structure
-  const userRoleScopes = useMemo(() => {
-    if (!permissions) return [];
-    return Object.keys(permissions);
-  }, [permissions]);
+  const userRoleIds = useUserStore((s) => s.roleIds);
 
   useEffect(() => {
     if (!user?.id) {
@@ -51,10 +44,11 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
 
     // Query: all PENDING or IN_PROGRESS tasks from the "tasks" subcollection
     // across all workflow_instances using collectionGroup
+    // Note: collectionGroup + compound query needs COLLECTION_GROUP index.
+    // Sort client-side to avoid index requirement.
     const q = query(
       collectionGroup(db, "tasks"),
       where("status", "in", ["PENDING", "IN_PROGRESS"]),
-      orderBy("started_at", "desc"),
     );
 
     const unsubscribe = onSnapshot(
@@ -63,6 +57,12 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
         const tasks: WorkflowTask[] = [];
         snapshot.forEach((doc) => {
           tasks.push({ id: doc.id, ...doc.data() } as WorkflowTask);
+        });
+        // Sort client-side (newest first)
+        tasks.sort((a, b) => {
+          const aTime = a.started_at instanceof Date ? a.started_at.getTime() : new Date(a.started_at as any).getTime();
+          const bTime = b.started_at instanceof Date ? b.started_at.getTime() : new Date(b.started_at as any).getTime();
+          return bTime - aTime;
         });
         setAllRawTasks(tasks);
         setLoading(false);
@@ -84,11 +84,9 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
       // Directly assigned to this user
       if (task.assigned_to === user.id) return true;
 
-      // Assigned to a role that the user has
+      // Assigned to a role that the user holds
       if (task.assigned_role_id) {
-        // The user's permissions map has scopes (warehouse IDs or "global")
-        // If any scope contains the assigned role, the user can see the task
-        return userRoleScopes.length > 0;
+        return userRoleIds.includes(task.assigned_role_id);
       }
 
       // Tasks with no assignee are visible to everyone (admins)
@@ -96,7 +94,7 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
 
       return false;
     });
-  }, [allRawTasks, user?.id, userRoleScopes]);
+  }, [allRawTasks, user?.id, userRoleIds]);
 
   return {
     myTasks,

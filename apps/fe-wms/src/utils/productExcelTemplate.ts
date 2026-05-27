@@ -1,45 +1,446 @@
 import { ProductOrigin, ProductType } from "@bduck/shared-types";
 import type { ProductCategory } from "@bduck/shared-types";
 import ExcelJS from "exceljs";
+import type { Language } from "@/lib/i18n";
 
-export async function downloadProductImportTemplate(categories: ProductCategory[]) {
+type TemplateLanguage = Language;
+
+type ProductColumnKey =
+  | "category_code"
+  | "name"
+  | "code"
+  | "barcode"
+  | "unit"
+  | "product_type"
+  | "product_material"
+  | "product_origin"
+  | "min_stock_threshold"
+  | "is_serialized"
+  | "description";
+
+type TemplateText = {
+  sheets: {
+    products: string;
+    guide: string;
+    refs: string;
+  };
+  fileName: string;
+  columns: Record<
+    ProductColumnKey,
+    {
+      label: string;
+      note: string;
+      width: number;
+      required?: boolean;
+    }
+  >;
+  sample: Record<ProductColumnKey, string | number>;
+  prompts: {
+    title: string;
+    invalidTitle: string;
+    invalidList: string;
+    invalidMinStock: string;
+    category: string;
+    unit: string;
+    type: string;
+    origin: string;
+    serialized: string;
+  };
+  refs: {
+    group: string;
+    value: string;
+    meaning: string;
+    category: string;
+    productType: string;
+    origin: string;
+    serialized: string;
+    unit: string;
+    noCategory: string;
+  };
+  guideHeaders: {
+    section: string;
+    guide: string;
+  };
+  guides: Array<{ section: string; guide: string }>;
+  typeLabels: Record<ProductType, string>;
+  originLabels: Record<ProductOrigin, string>;
+  serializedLabels: Record<"false" | "true", string>;
+  unitOptions: string[];
+};
+
+const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
+  vi: {
+    sheets: {
+      products: "San_pham",
+      guide: "Huong_dan",
+      refs: "Gia_tri_chon",
+    },
+    fileName: "mau-import-san-pham.xlsx",
+    columns: {
+      category_code: {
+        label: "Danh mục sản phẩm *",
+        note: "Bắt buộc. Chọn danh mục trong danh sách; hệ thống dùng mã trước dấu '-'.",
+        width: 36,
+        required: true,
+      },
+      name: {
+        label: "Tên sản phẩm *",
+        note: "Bắt buộc. Tên hiển thị của sản phẩm.",
+        width: 32,
+        required: true,
+      },
+      code: {
+        label: "SKU/Mã sản phẩm *",
+        note: "Bắt buộc và không được trùng trong hệ thống hoặc trong cùng file.",
+        width: 22,
+        required: true,
+      },
+      barcode: {
+        label: "Barcode",
+        note: "Không bắt buộc. Nếu nhập thì barcode phải là duy nhất.",
+        width: 22,
+      },
+      unit: {
+        label: "Đơn vị tính *",
+        note: "Bắt buộc. Có thể chọn gợi ý hoặc nhập đơn vị khác.",
+        width: 16,
+        required: true,
+      },
+      product_type: {
+        label: "Loại sản phẩm *",
+        note: "Bắt buộc. Chọn theo danh sách ở sheet Gia_tri_chon.",
+        width: 28,
+        required: true,
+      },
+      product_material: {
+        label: "Chất liệu",
+        note: "Không bắt buộc. Ví dụ: Nhựa, kim loại, vải.",
+        width: 22,
+      },
+      product_origin: {
+        label: "Nguồn gốc",
+        note: "Không bắt buộc. DOMESTIC là trong nước, INTERNATIONAL là nhập khẩu.",
+        width: 28,
+      },
+      min_stock_threshold: {
+        label: "Tồn tối thiểu",
+        note: "Không bắt buộc. Nhập số nguyên không âm để cảnh báo sắp hết hàng.",
+        width: 18,
+      },
+      is_serialized: {
+        label: "Theo dõi serial *",
+        note: "Bắt buộc. Chọn true nếu mỗi sản phẩm cần quản lý theo serial riêng.",
+        width: 28,
+        required: true,
+      },
+      description: {
+        label: "Mô tả",
+        note: "Không bắt buộc. Ghi chú nội bộ cho sản phẩm.",
+        width: 38,
+      },
+    },
+    sample: {
+      category_code: "CATEGORY_CODE - Tên danh mục",
+      name: "Tên sản phẩm mẫu",
+      code: "SKU-001",
+      barcode: "893000000001",
+      unit: "Cái",
+      product_type: "EQUIPMENT - Thiết bị",
+      product_material: "Nhựa",
+      product_origin: "DOMESTIC - Trong nước",
+      min_stock_threshold: 5,
+      is_serialized: "false - Không theo dõi serial",
+      description: "Mô tả tùy chọn",
+    },
+    prompts: {
+      title: "BDuck WMS",
+      invalidTitle: "Giá trị không hợp lệ",
+      invalidList: "Vui lòng chọn một giá trị trong danh sách.",
+      invalidMinStock: "Tồn tối thiểu phải là số nguyên không âm.",
+      category: "Chọn danh mục. Hệ thống lấy mã danh mục ở trước dấu '-'.",
+      unit: "Chọn đơn vị phổ biến hoặc nhập đơn vị khác nếu cần.",
+      type: "Chọn loại sản phẩm theo nghiệp vụ.",
+      origin: "Chọn nguồn gốc sản phẩm nếu đã biết.",
+      serialized: "Chọn true nếu cần quản lý serial cho từng đơn vị sản phẩm.",
+    },
+    refs: {
+      group: "Nhóm",
+      value: "Giá trị chọn trong file",
+      meaning: "Ý nghĩa",
+      category: "Danh mục",
+      productType: "Loại sản phẩm",
+      origin: "Nguồn gốc",
+      serialized: "Theo dõi serial",
+      unit: "Đơn vị tính",
+      noCategory: "CATEGORY_CODE - Tên danh mục",
+    },
+    guideHeaders: {
+      section: "Mục",
+      guide: "Hướng dẫn",
+    },
+    guides: [
+      {
+        section: "Cách nhập dữ liệu",
+        guide:
+          "Nhập từ dòng 2 trở xuống. Các cột có dấu * và nền đỏ là bắt buộc.",
+      },
+      {
+        section: "Danh mục sản phẩm",
+        guide:
+          "Chọn giá trị dạng 'Mã danh mục - Tên danh mục'. Khi import, hệ thống chỉ dùng mã danh mục.",
+      },
+      {
+        section: "SKU và barcode",
+        guide:
+          "SKU bắt buộc và phải duy nhất. Barcode không bắt buộc, nhưng nếu nhập thì cũng phải duy nhất.",
+      },
+      {
+        section: "Loại sản phẩm",
+        guide:
+          "EQUIPMENT: thiết bị; SOUVENIR_SALE: quà lưu niệm để bán; SOUVENIR_GIFT: quà lưu niệm để tặng.",
+      },
+      {
+        section: "Nguồn gốc",
+        guide:
+          "DOMESTIC: hàng trong nước. INTERNATIONAL: hàng nhập khẩu. Có thể để trống nếu chưa xác định.",
+      },
+      {
+        section: "Theo dõi serial",
+        guide:
+          "false: quản lý theo số lượng thông thường. true: mỗi đơn vị có serial riêng và khó thay đổi sau khi tạo sản phẩm.",
+      },
+      {
+        section: "Tồn tối thiểu",
+        guide:
+          "Nhập số nguyên không âm để hệ thống cảnh báo khi tồn kho thấp; để trống nếu chưa cấu hình.",
+      },
+    ],
+    typeLabels: {
+      [ProductType.EQUIPMENT]: "Thiết bị",
+      [ProductType.SOUVENIR_SALE]: "Quà lưu niệm để bán",
+      [ProductType.SOUVENIR_GIFT]: "Quà lưu niệm để tặng",
+    },
+    originLabels: {
+      [ProductOrigin.DOMESTIC]: "Trong nước",
+      [ProductOrigin.INTERNATIONAL]: "Nhập khẩu",
+    },
+    serializedLabels: {
+      false: "Không theo dõi serial",
+      true: "Theo dõi serial",
+    },
+    unitOptions: ["Cái", "Bộ", "Thùng", "Hộp", "Kg", "Mét"],
+  },
+  zh: {
+    sheets: {
+      products: "Chan_pin",
+      guide: "Shuo_ming",
+      refs: "Ke_xuan_zhi",
+    },
+    fileName: "product-import-template.xlsx",
+    columns: {
+      category_code: {
+        label: "产品分类 *",
+        note: "必填。请选择分类，系统会使用 '-' 前面的分类编码。",
+        width: 36,
+        required: true,
+      },
+      name: {
+        label: "产品名称 *",
+        note: "必填。产品在系统中的显示名称。",
+        width: 32,
+        required: true,
+      },
+      code: {
+        label: "SKU/产品编码 *",
+        note: "必填。不能与系统内或本文件内其他产品重复。",
+        width: 22,
+        required: true,
+      },
+      barcode: {
+        label: "条形码",
+        note: "选填。如填写，条形码必须唯一。",
+        width: 22,
+      },
+      unit: {
+        label: "单位 *",
+        note: "必填。可选择常用单位，也可以输入其他单位。",
+        width: 16,
+        required: true,
+      },
+      product_type: {
+        label: "产品类型 *",
+        note: "必填。请按业务含义选择。",
+        width: 28,
+        required: true,
+      },
+      product_material: {
+        label: "材质",
+        note: "选填。例如：塑料、金属、布料。",
+        width: 22,
+      },
+      product_origin: {
+        label: "来源",
+        note: "选填。DOMESTIC 为国内，INTERNATIONAL 为进口。",
+        width: 28,
+      },
+      min_stock_threshold: {
+        label: "最低库存",
+        note: "选填。请输入非负整数，用于低库存提醒。",
+        width: 18,
+      },
+      is_serialized: {
+        label: "序列号管理 *",
+        note: "必填。每件商品需要单独序列号时选择 true。",
+        width: 28,
+        required: true,
+      },
+      description: {
+        label: "描述",
+        note: "选填。产品内部备注。",
+        width: 38,
+      },
+    },
+    sample: {
+      category_code: "CATEGORY_CODE - 分类名称",
+      name: "示例产品",
+      code: "SKU-001",
+      barcode: "893000000001",
+      unit: "件",
+      product_type: "EQUIPMENT - 设备",
+      product_material: "塑料",
+      product_origin: "DOMESTIC - 国内",
+      min_stock_threshold: 5,
+      is_serialized: "false - 不管理序列号",
+      description: "选填描述",
+    },
+    prompts: {
+      title: "BDuck WMS",
+      invalidTitle: "无效值",
+      invalidList: "请从下拉列表中选择一个值。",
+      invalidMinStock: "最低库存必须是非负整数。",
+      category: "请选择分类。系统会读取 '-' 前面的分类编码。",
+      unit: "请选择常用单位，或按需要输入其他单位。",
+      type: "请选择产品类型。",
+      origin: "如已知来源，请选择产品来源。",
+      serialized: "每件产品需要单独序列号时请选择 true。",
+    },
+    refs: {
+      group: "分组",
+      value: "文件中可选择的值",
+      meaning: "说明",
+      category: "产品分类",
+      productType: "产品类型",
+      origin: "来源",
+      serialized: "序列号管理",
+      unit: "单位",
+      noCategory: "CATEGORY_CODE - 分类名称",
+    },
+    guideHeaders: {
+      section: "项目",
+      guide: "说明",
+    },
+    guides: [
+      {
+        section: "填写方式",
+        guide: "请从第 2 行开始填写。带 * 且红色表头的列为必填。",
+      },
+      {
+        section: "产品分类",
+        guide:
+          "请选择 '分类编码 - 分类名称'。导入时系统只使用分类编码。",
+      },
+      {
+        section: "SKU 与条形码",
+        guide:
+          "SKU 必填且必须唯一。条形码选填，如填写也必须唯一。",
+      },
+      {
+        section: "产品类型",
+        guide:
+          "EQUIPMENT: 设备；SOUVENIR_SALE: 销售纪念品；SOUVENIR_GIFT: 赠品纪念品。",
+      },
+      {
+        section: "来源",
+        guide:
+          "DOMESTIC: 国内。INTERNATIONAL: 进口。未知时可留空。",
+      },
+      {
+        section: "序列号管理",
+        guide:
+          "false: 按数量管理。true: 每件单独管理序列号，产品创建后不建议更改。",
+      },
+      {
+        section: "最低库存",
+        guide:
+          "请输入非负整数，用于低库存提醒；暂未配置时可留空。",
+      },
+    ],
+    typeLabels: {
+      [ProductType.EQUIPMENT]: "设备",
+      [ProductType.SOUVENIR_SALE]: "销售纪念品",
+      [ProductType.SOUVENIR_GIFT]: "赠品纪念品",
+    },
+    originLabels: {
+      [ProductOrigin.DOMESTIC]: "国内",
+      [ProductOrigin.INTERNATIONAL]: "进口",
+    },
+    serializedLabels: {
+      false: "不管理序列号",
+      true: "管理序列号",
+    },
+    unitOptions: ["件", "套", "箱", "盒", "Kg", "米"],
+  },
+};
+
+const PRODUCT_COLUMNS: ProductColumnKey[] = [
+  "category_code",
+  "name",
+  "code",
+  "barcode",
+  "unit",
+  "product_type",
+  "product_material",
+  "product_origin",
+  "min_stock_threshold",
+  "is_serialized",
+  "description",
+];
+
+export async function downloadProductImportTemplate(
+  categories: ProductCategory[],
+  language: TemplateLanguage = "vi",
+) {
+  const text = TEMPLATE_TEXT[language];
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "BDuck WMS";
   workbook.created = new Date();
 
-  const productSheet = workbook.addWorksheet("products", {
+  const productSheet = workbook.addWorksheet(text.sheets.products, {
     views: [{ state: "frozen", ySplit: 1 }],
   });
-  const guideSheet = workbook.addWorksheet("Huong_dan");
-  const refsSheet = workbook.addWorksheet("refs");
+  const guideSheet = workbook.addWorksheet(text.sheets.guide);
+  const refsSheet = workbook.addWorksheet(text.sheets.refs);
 
-  productSheet.columns = [
-    { header: "category_code", key: "category_code", width: 34 },
-    { header: "name", key: "name", width: 32 },
-    { header: "code", key: "code", width: 20 },
-    { header: "barcode", key: "barcode", width: 22 },
-    { header: "unit", key: "unit", width: 14 },
-    { header: "product_type", key: "product_type", width: 22 },
-    { header: "product_material", key: "product_material", width: 20 },
-    { header: "product_origin", key: "product_origin", width: 18 },
-    { header: "min_stock_threshold", key: "min_stock_threshold", width: 20 },
-    { header: "is_serialized", key: "is_serialized", width: 16 },
-    { header: "description", key: "description", width: 36 },
-  ];
+  productSheet.columns = PRODUCT_COLUMNS.map((key) => ({
+    header: text.columns[key].label,
+    key,
+    width: text.columns[key].width,
+  }));
 
-  const refs = buildTemplateRefs(categories);
-  fillRefsSheet(refsSheet, refs);
-  addSampleRow(productSheet, refs.categoryOptions[0]);
-  styleProductSheet(productSheet);
+  const refs = buildTemplateRefs(categories, text);
+  fillRefsSheet(refsSheet, refs, text);
+  addSampleRow(productSheet, refs.categoryOptions[0] ?? text.refs.noCategory, text);
+  styleProductSheet(productSheet, text);
   addProductSheetValidations(productSheet, {
     categoryCount: refs.categoryOptions.length,
     typeCount: refs.typeOptions.length,
     originCount: refs.originOptions.length,
     serializedCount: refs.serializedOptions.length,
     unitCount: refs.unitOptions.length,
+    refsSheetName: text.sheets.refs,
+    text,
   });
-  addGuideSheet(guideSheet);
-  refsSheet.state = "veryHidden";
+  addGuideSheet(guideSheet, text);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -48,55 +449,72 @@ export async function downloadProductImportTemplate(categories: ProductCategory[
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "product-import-template.xlsx";
+  link.download = text.fileName;
   link.click();
   URL.revokeObjectURL(url);
 }
 
-function buildTemplateRefs(categories: ProductCategory[]) {
+function buildTemplateRefs(categories: ProductCategory[], text: TemplateText) {
   return {
     categoryOptions:
       categories.length > 0
         ? categories.map((category) => `${category.code} - ${category.name}`)
-        : ["CATEGORY_CODE - Tên danh mục"],
-    typeOptions: Object.values(ProductType),
-    originOptions: Object.values(ProductOrigin),
-    serializedOptions: ["false", "true"],
-    unitOptions: ["Cái", "Bộ", "Thùng", "Hộp", "Kg", "Mét"],
+        : [text.refs.noCategory],
+    typeOptions: Object.values(ProductType).map(
+      (type) => `${type} - ${text.typeLabels[type]}`,
+    ),
+    originOptions: Object.values(ProductOrigin).map(
+      (origin) => `${origin} - ${text.originLabels[origin]}`,
+    ),
+    serializedOptions: (["false", "true"] as const).map(
+      (value) => `${value} - ${text.serializedLabels[value]}`,
+    ),
+    unitOptions: text.unitOptions,
   };
 }
 
-function addSampleRow(sheet: ExcelJS.Worksheet, categoryOption: string) {
+function addSampleRow(
+  sheet: ExcelJS.Worksheet,
+  categoryOption: string,
+  text: TemplateText,
+) {
   sheet.addRow({
+    ...text.sample,
     category_code: categoryOption,
-    name: "Tên sản phẩm mẫu",
-    code: "SKU-001",
-    barcode: "893000000001",
-    unit: "Cái",
-    product_type: ProductType.EQUIPMENT,
-    product_material: "Nhựa",
-    product_origin: ProductOrigin.DOMESTIC,
-    min_stock_threshold: 5,
-    is_serialized: "false",
-    description: "Mô tả tùy chọn",
   });
 }
 
 function fillRefsSheet(
   sheet: ExcelJS.Worksheet,
   refs: ReturnType<typeof buildTemplateRefs>,
+  text: TemplateText,
 ) {
-  const headers = ["categories", "product_types", "origins", "serialized", "units"];
-  sheet.addRow(headers);
-  headers.forEach((_, index) => {
-    const cell = sheet.getCell(1, index + 1);
-    cell.font = { bold: true };
+  sheet.columns = [
+    { header: text.refs.group, key: "group", width: 22 },
+    { header: text.refs.value, key: "value", width: 44 },
+    { header: text.refs.meaning, key: "meaning", width: 72 },
+    { header: "_categories", key: "_categories", width: 1 },
+    { header: "_types", key: "_types", width: 1 },
+    { header: "_origins", key: "_origins", width: 1 },
+    { header: "_serialized", key: "_serialized", width: 1 },
+    { header: "_units", key: "_units", width: 1 },
+  ];
+
+  sheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FFE8F0FE" },
+      fgColor: { argb: "FF0F172A" },
     };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
   });
+
+  addReferenceGroup(sheet, text.refs.category, refs.categoryOptions);
+  addReferenceGroup(sheet, text.refs.productType, refs.typeOptions);
+  addReferenceGroup(sheet, text.refs.origin, refs.originOptions);
+  addReferenceGroup(sheet, text.refs.serialized, refs.serializedOptions);
+  addReferenceGroup(sheet, text.refs.unit, refs.unitOptions);
 
   const maxRows = Math.max(
     refs.categoryOptions.length,
@@ -107,36 +525,63 @@ function fillRefsSheet(
   );
 
   for (let rowIndex = 0; rowIndex < maxRows; rowIndex += 1) {
-    sheet.addRow([
-      refs.categoryOptions[rowIndex] ?? "",
-      refs.typeOptions[rowIndex] ?? "",
-      refs.originOptions[rowIndex] ?? "",
-      refs.serializedOptions[rowIndex] ?? "",
-      refs.unitOptions[rowIndex] ?? "",
-    ]);
+    const rowNumber = rowIndex + 2;
+    sheet.getCell(rowNumber, 4).value = refs.categoryOptions[rowIndex] ?? "";
+    sheet.getCell(rowNumber, 5).value = refs.typeOptions[rowIndex] ?? "";
+    sheet.getCell(rowNumber, 6).value = refs.originOptions[rowIndex] ?? "";
+    sheet.getCell(rowNumber, 7).value = refs.serializedOptions[rowIndex] ?? "";
+    sheet.getCell(rowNumber, 8).value = refs.unitOptions[rowIndex] ?? "";
+  }
+
+  [4, 5, 6, 7, 8].forEach((columnNumber) => {
+    sheet.getColumn(columnNumber).hidden = true;
+  });
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+      cell.border = thinBorder("FFE2E8F0");
+    });
+  });
+}
+
+function addReferenceGroup(
+  sheet: ExcelJS.Worksheet,
+  group: string,
+  values: string[],
+) {
+  for (const value of values) {
+    const [code, meaning] = splitOption(value);
+    sheet.addRow({
+      group,
+      value,
+      meaning: meaning || code,
+    });
   }
 }
 
-function styleProductSheet(sheet: ExcelJS.Worksheet) {
+function splitOption(value: string) {
+  const [code, ...rest] = value.split(" - ");
+  return [code.trim(), rest.join(" - ").trim()];
+}
+
+function styleProductSheet(sheet: ExcelJS.Worksheet, text: TemplateText) {
   const headerRow = sheet.getRow(1);
-  headerRow.height = 26;
-  headerRow.eachCell((cell) => {
+  headerRow.height = 34;
+  PRODUCT_COLUMNS.forEach((key, index) => {
+    const cell = headerRow.getCell(index + 1);
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.alignment = { vertical: "middle", horizontal: "center" };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FF2563EB" },
+      fgColor: {
+        argb: text.columns[key].required ? "FFDC2626" : "FF2563EB",
+      },
     };
     cell.border = thinBorder("FFCBD5E1");
-  });
-
-  [1, 2, 3, 5, 6, 10].forEach((colNumber) => {
-    sheet.getCell(1, colNumber).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFDC2626" },
-    };
+    cell.note = text.columns[key].note;
   });
 
   for (let rowNumber = 2; rowNumber <= 201; rowNumber += 1) {
@@ -151,32 +596,39 @@ function styleProductSheet(sheet: ExcelJS.Worksheet) {
 
 function addProductSheetValidations(
   sheet: ExcelJS.Worksheet,
-  counts: {
+  config: {
     categoryCount: number;
     typeCount: number;
     originCount: number;
     serializedCount: number;
     unitCount: number;
+    refsSheetName: string;
+    text: TemplateText;
   },
 ) {
+  const refsName = quoteSheetName(config.refsSheetName);
   for (let rowNumber = 2; rowNumber <= 201; rowNumber += 1) {
     sheet.getCell(`A${rowNumber}`).dataValidation = listValidation(
-      `refs!$A$2:$A$${counts.categoryCount + 1}`,
-      "Chọn danh mục từ danh sách.",
+      `${refsName}!$D$2:$D$${config.categoryCount + 1}`,
+      config.text.prompts.category,
+      config.text,
     );
     sheet.getCell(`E${rowNumber}`).dataValidation = listValidation(
-      `refs!$E$2:$E$${counts.unitCount + 1}`,
-      "Chọn đơn vị phổ biến hoặc nhập giá trị khác nếu cần.",
+      `${refsName}!$H$2:$H$${config.unitCount + 1}`,
+      config.text.prompts.unit,
+      config.text,
       true,
       false,
     );
     sheet.getCell(`F${rowNumber}`).dataValidation = listValidation(
-      `refs!$B$2:$B$${counts.typeCount + 1}`,
-      "Chọn đúng loại sản phẩm.",
+      `${refsName}!$E$2:$E$${config.typeCount + 1}`,
+      config.text.prompts.type,
+      config.text,
     );
     sheet.getCell(`H${rowNumber}`).dataValidation = listValidation(
-      `refs!$C$2:$C$${counts.originCount + 1}`,
-      "Chọn nguồn gốc sản phẩm.",
+      `${refsName}!$F$2:$F$${config.originCount + 1}`,
+      config.text.prompts.origin,
+      config.text,
       true,
     );
     sheet.getCell(`I${rowNumber}`).dataValidation = {
@@ -185,19 +637,25 @@ function addProductSheetValidations(
       formulae: [0],
       allowBlank: true,
       showErrorMessage: true,
-      errorTitle: "Giá trị không hợp lệ",
-      error: "Tồn tối thiểu phải là số nguyên không âm.",
+      errorTitle: config.text.prompts.invalidTitle,
+      error: config.text.prompts.invalidMinStock,
     };
     sheet.getCell(`J${rowNumber}`).dataValidation = listValidation(
-      `refs!$D$2:$D$${counts.serializedCount + 1}`,
-      "Chọn true nếu sản phẩm theo dõi serial.",
+      `${refsName}!$G$2:$G$${config.serializedCount + 1}`,
+      config.text.prompts.serialized,
+      config.text,
     );
   }
+}
+
+function quoteSheetName(sheetName: string) {
+  return `'${sheetName.replace(/'/g, "''")}'`;
 }
 
 function listValidation(
   range: string,
   prompt: string,
+  text: TemplateText,
   allowBlank = false,
   showErrorMessage = true,
 ): ExcelJS.DataValidation {
@@ -207,43 +665,20 @@ function listValidation(
     formulae: [range],
     showErrorMessage,
     showInputMessage: true,
-    promptTitle: "BDuck WMS",
+    promptTitle: text.prompts.title,
     prompt,
-    errorTitle: "Giá trị không hợp lệ",
-    error: "Vui lòng chọn một giá trị trong danh sách.",
+    errorTitle: text.prompts.invalidTitle,
+    error: text.prompts.invalidList,
   };
 }
 
-function addGuideSheet(sheet: ExcelJS.Worksheet) {
+function addGuideSheet(sheet: ExcelJS.Worksheet, text: TemplateText) {
   sheet.columns = [
-    { header: "Mục", key: "section", width: 28 },
-    { header: "Hướng dẫn", key: "guide", width: 86 },
+    { header: text.guideHeaders.section, key: "section", width: 28 },
+    { header: text.guideHeaders.guide, key: "guide", width: 92 },
   ];
 
-  sheet.addRows([
-    {
-      section: "Cột màu đỏ",
-      guide: "Bắt buộc nhập: category_code, name, code, unit, product_type, is_serialized.",
-    },
-    {
-      section: "Danh mục",
-      guide: "Chọn trong dropdown ở cột category_code. File hiển thị cả mã và tên để tránh phải tra cứu thủ công.",
-    },
-    {
-      section: "SKU và Barcode",
-      guide: "SKU bắt buộc và phải duy nhất. Barcode không bắt buộc nhưng nếu nhập thì cũng phải duy nhất.",
-    },
-    { section: "product_type", guide: Object.values(ProductType).join(", ") },
-    { section: "product_origin", guide: Object.values(ProductOrigin).join(", ") },
-    {
-      section: "is_serialized",
-      guide: "Chọn false hoặc true. Trường này không thể đổi sau khi sản phẩm đã được tạo.",
-    },
-    {
-      section: "min_stock_threshold",
-      guide: "Nhập số nguyên không âm hoặc để trống nếu chưa cấu hình tồn tối thiểu.",
-    },
-  ]);
+  sheet.addRows(text.guides);
 
   sheet.getRow(1).eachCell((cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };

@@ -4,6 +4,11 @@ import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { UserCheck } from "lucide-react";
 
+/**
+ * ApprovalNode has 2 source handles: "approved" (left) and "rejected" (right).
+ * This allows the admin to wire separate edges for approve/reject outcomes.
+ * Mirrors the ConditionNode pattern with "true"/"false" handles.
+ */
 function ApprovalNodeComponent({ data, selected }: NodeProps) {
   return (
     <div
@@ -31,11 +36,26 @@ function ApprovalNodeComponent({ data, selected }: NodeProps) {
           </p>
         </div>
       </div>
+      {/* Approved branch → Bottom-left */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-3 !w-3 !border-2 !border-white !bg-blue-500"
+        id="approved"
+        className="!h-3 !w-3 !border-2 !border-white !bg-emerald-500"
+        style={{ left: "30%" }}
       />
+      {/* Rejected branch → Bottom-right */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="rejected"
+        className="!h-3 !w-3 !border-2 !border-white !bg-red-500"
+        style={{ left: "70%" }}
+      />
+      <div className="mt-2 flex justify-between px-1 text-[9px] font-bold uppercase tracking-wider">
+        <span className="text-emerald-500">Duyệt</span>
+        <span className="text-red-500">Từ chối</span>
+      </div>
     </div>
   );
 }

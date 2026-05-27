@@ -24,6 +24,9 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
   "text/csv": ".csv",
 };
 
+/** Fallback: also accept by extension when browser MIME type is empty/wrong */
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".xlsx", ".csv"]);
+
 /** Max 20MB per file (LUẬT THÉP §9) */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -36,8 +39,18 @@ export interface FileValidationError {
   message: { vi: string; zh: string };
 }
 
+/** Extract file extension from filename (lowercase, with leading dot) */
+function getExtension(filename: string): string {
+  const dotIndex = filename.lastIndexOf(".");
+  if (dotIndex === -1) return "";
+  return filename.slice(dotIndex).toLowerCase();
+}
+
 export function validateFile(file: File): FileValidationError | null {
-  if (!ALLOWED_MIME_TYPES[file.type]) {
+  const hasMimeMatch = !!ALLOWED_MIME_TYPES[file.type];
+  const hasExtMatch = ALLOWED_EXTENSIONS.has(getExtension(file.name));
+
+  if (!hasMimeMatch && !hasExtMatch) {
     return {
       type: "INVALID_TYPE",
       message: {
@@ -85,7 +98,7 @@ export async function uploadFile(
   }
 
   // 2. Generate unique filename preserving extension
-  const ext = ALLOWED_MIME_TYPES[file.type] || ".bin";
+  const ext = ALLOWED_MIME_TYPES[file.type] || getExtension(file.name) || ".bin";
   const uniqueFileName = `${crypto.randomUUID()}${ext}`;
   const fullPath = `${storagePath}/${uniqueFileName}`;
   const storageRef = ref(storage, fullPath);

@@ -45,9 +45,9 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Users: Only own profile readable ──
+    // ── Users: Authenticated users can read (for user lists, approver pickers) ──
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated();
       allow write: if false;
     }
 
@@ -63,9 +63,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Audit Logs: No client access ──
+    // ── Audit Logs: Authenticated read (for admin audit trail) ──
     match /audit_logs/{docId} {
-      allow read, write: if false;
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Product BOM: Authenticated read ──
+    match /product_bom/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
 
     // ── Vouchers (Import/Export/Transfer): Authenticated read ──
@@ -76,6 +83,62 @@ service cloud.firestore {
 
     // ── Inventory: Authenticated read ──
     match /inventory/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Workflow Definitions: Authenticated read (+ versions subcollection) ──
+    match /workflow_definitions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      match /versions/{versionId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
+    // ── Workflow Instances: Authenticated read (+ tasks subcollection) ──
+    match /workflow_instances/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      match /tasks/{taskId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
+    // ── CollectionGroup: tasks (required for collectionGroup queries) ──
+    // collectionGroup("tasks") bypasses nested match rules above.
+    match /{path=**}/tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Import Vouchers: Authenticated read (+ items subcollection) ──
+    match /import_vouchers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      match /items/{itemId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
+    // ── In-App Notifications: Read own + mark as read ──
+    match /in_app_notifications/{docId} {
+      allow read: if isAuthenticated();
+      // Allow user to mark own notifications as read
+      allow update: if isAuthenticated()
+        && resource.data.target_user_id == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
+      allow create, delete: if false;
+    }
+
+    // ── Nonconformity Reports: Authenticated read ──
+    match /nonconformity_reports/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;
     }

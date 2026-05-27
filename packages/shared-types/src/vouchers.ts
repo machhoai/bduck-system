@@ -19,6 +19,7 @@ export interface ImportVoucher {
     action_time: Date; // ISO — client offline time
     sync_time: Date; // ISO — server receive time
     notes: string | null;
+    attachment_urls: string[]; // Firebase Storage download URLs
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;
@@ -28,7 +29,7 @@ export interface ImportVoucherItem {
     id: string; // UUID, PK
     import_voucher_id: string; // FK → import_vouchers
     product_id: string; // FK → products
-    warehouse_location_id: string; // FK → warehouse_locations
+    warehouse_location_id: string | null; // FK → warehouse_locations (nullable until receiving)
     expected_quantity: number;
     actual_quantity: number;
     unit_price: number; // DECIMAL

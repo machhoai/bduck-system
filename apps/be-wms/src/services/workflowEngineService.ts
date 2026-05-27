@@ -45,11 +45,13 @@ import type {
   ConditionNodeConfig,
   SystemActionNodeConfig,
   DataInputNodeConfig,
+  NotificationNodeConfig,
 } from "@bduck/shared-types";
 import * as repo from "../repositories/workflowRepository.js";
 import { scheduleTimerTask } from "../utils/workflowTimerService.js";
 import { evaluateCondition } from "../utils/conditionEvaluator.js";
 import { executeSystemAction } from "./systemActionRegistry.js";
+import { createNotification } from "./notificationService.js";
 import { logAudit } from "./auditService.js";
 
 const ENTITY_COLLECTIONS: Record<string, string> = {
@@ -212,6 +214,11 @@ export const completeTask = async (
       );
     }
 
+    // ── Self-Approval Block (Segregation of Duties — ISO 9001) ──
+    if (task.node_type === WorkflowNodeType.APPROVAL) {
+      await enforceSelfApprovalBlock(instance, userId);
+    }
+
     const now = new Date();
     txn.update(taskRef, {
       status: WorkflowTaskStatus.COMPLETED,
@@ -244,7 +251,14 @@ export const completeTask = async (
     },
   });
 
-  await advanceFromNode(instanceId, version, completedTask.node_id, userId, result);
+  // Enrich result with entity context for downstream SYSTEM_ACTION nodes
+  const enrichedResult = {
+    ...result,
+    voucher_id: instance.entity_id,
+    entity_type: instance.entity_type,
+  };
+
+  await advanceFromNode(instanceId, version, completedTask.node_id, userId, enrichedResult);
 };
 
 // ─────────────────────────────────────────────
@@ -269,6 +283,27 @@ async function advanceFromNode(
   userId: string,
   entityPayload: Record<string, unknown> = {},
 ): Promise<void> {
+  // Check if the completed node is an APPROVAL — branch by decision
+  const completedNode = version.nodes.find((n) => n.id === completedNodeId);
+  if (completedNode?.type === WorkflowNodeType.APPROVAL) {
+    const approved = entityPayload.approved === true;
+    const handle = approved ? "approved" : "rejected";
+    const matchingEdge = version.edges.find(
+      (e) => e.source === completedNodeId && e.source_handle === handle,
+    );
+    if (matchingEdge) {
+      const nextNode = version.nodes.find((n) => n.id === matchingEdge.target);
+      if (nextNode) {
+        await processNode(instanceId, version, nextNode, userId, entityPayload);
+      }
+    } else {
+      // No matching edge — treat as terminal
+      await completeInstance(instanceId, userId);
+    }
+    return;
+  }
+
+  // Default: follow ALL outgoing edges
   const nextNodeIds = getNextNodes(version, completedNodeId);
 
   if (nextNodeIds.length === 0) {
@@ -343,8 +378,11 @@ async function processNode(
     case WorkflowNodeType.DATA_INPUT: {
       // Create pending task — waits for human data input (e.g., Receiving Session)
       const diConfig = node.config as DataInputNodeConfig;
+      // Read instance to get entity_id for FE (ReceivingSessionDrawer needs it)
+      const diInstance = await repo.findInstanceById(instanceId);
       await createPendingTask(instanceId, node, {
         assigned_role_id: diConfig.assigned_role_id || null,
+        entity_id: diInstance?.entity_id ?? null,
       });
       await updateCurrentNodes(instanceId, node.id, "add");
       break;
@@ -408,8 +446,26 @@ async function processNode(
     }
 
     case WorkflowNodeType.NOTIFICATION: {
-      // Send notification → auto-complete → advance
-      // TODO: Integrate with notification service
+      // Send in-app notification via notificationService
+      const notifConfig = node.config as NotificationNodeConfig;
+      const notifInstance = await repo.findInstanceById(instanceId);
+
+      await createNotification({
+        target_user_id: notifConfig.target_user_id || null,
+        target_role_id: notifConfig.target_role_id || null,
+        template_key: notifConfig.template_key || "notification.workflow_update",
+        template_params: {
+          entity_id: notifInstance?.entity_id,
+          entity_type: notifInstance?.entity_type,
+          ...entityPayload,
+        },
+        channel: notifConfig.channel || "IN_APP",
+        source_instance_id: instanceId,
+        source_entity_id: notifInstance?.entity_id || null,
+        source_entity_type: notifInstance?.entity_type || null,
+      });
+
+      // Auto-complete notification task
       await repo.createTask(instanceId, {
         instance_id: instanceId,
         node_id: node.id,
@@ -418,7 +474,7 @@ async function processNode(
         assigned_to: null,
         assigned_role_id: null,
         completed_by: "SYSTEM",
-        result: { sent: true, channel: (node.config as any).channel },
+        result: { sent: true, channel: notifConfig.channel },
         started_at: now,
         completed_at: now,
         due_at: null,
@@ -590,6 +646,38 @@ async function handleJoinNode(
 }
 
 // ─────────────────────────────────────────────
+// SELF-APPROVAL BLOCK (ISO 9001 — Segregation of Duties)
+// ─────────────────────────────────────────────
+
+/**
+ * Prevents the voucher creator from approving their own voucher.
+ * Reads the entity document to compare creator_id with the current userId.
+ *
+ * Called inside completeTask() transaction for APPROVAL-type tasks.
+ */
+async function enforceSelfApprovalBlock(
+  instance: WorkflowInstance,
+  userId: string,
+): Promise<void> {
+  const collection = ENTITY_COLLECTIONS[instance.entity_type];
+  if (!collection) return; // Unknown entity type — skip check
+
+  const entitySnap = await db.collection(collection).doc(instance.entity_id).get();
+  if (!entitySnap.exists) return;
+
+  const entityData = entitySnap.data()!;
+  const creatorId = entityData.creator_id as string | undefined;
+
+  if (creatorId && creatorId === userId) {
+    apiError(
+      "Bạn không thể tự duyệt phiếu do mình tạo (Segregation of Duties).",
+      "您不能审批自己创建的单据（职责分离）。",
+      403,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────
 
@@ -602,7 +690,12 @@ function getNextNodes(version: WorkflowVersion, nodeId: string): string[] {
 async function createPendingTask(
   instanceId: string,
   node: WorkflowNode,
-  extra: { assigned_to?: string | null; assigned_role_id?: string | null; due_at?: Date | null },
+  extra: {
+    assigned_to?: string | null;
+    assigned_role_id?: string | null;
+    due_at?: Date | null;
+    entity_id?: string | null;
+  },
 ): Promise<WorkflowTask> {
   const now = new Date();
   return repo.createTask(instanceId, {
@@ -613,7 +706,7 @@ async function createPendingTask(
     assigned_to: extra.assigned_to ?? null,
     assigned_role_id: extra.assigned_role_id ?? null,
     completed_by: null,
-    result: null,
+    result: extra.entity_id ? { entity_id: extra.entity_id } : null,
     started_at: now,
     completed_at: null,
     due_at: extra.due_at ?? null,

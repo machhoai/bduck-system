@@ -41,6 +41,7 @@ export const sessionLogin = async (req: Request, res: Response) => {
       data: {
         user: sessionResult.user,
         permissions: sessionResult.permissions,
+        roles: sessionResult.roles,
       },
       messages: {
         vi: "Đăng nhập thành công.",

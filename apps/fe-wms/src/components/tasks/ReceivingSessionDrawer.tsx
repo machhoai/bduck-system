@@ -181,8 +181,8 @@ export default function ReceivingSessionDrawer({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            instanceId: task.instance_id,
-            taskId: task.id,
+            instance_id: task.instance_id,
+            task_id: task.id,
             result: {
               receiving_completed: true,
               items_count: items.length,

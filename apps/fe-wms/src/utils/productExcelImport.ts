@@ -52,32 +52,46 @@ const HEADER_ALIASES: Record<string, (typeof PRODUCT_TEMPLATE_HEADERS)[number]> 
     category: "category_code",
     ma_danh_muc: "category_code",
     danh_muc: "category_code",
+    danh_muc_san_pham: "category_code",
+    产品分类: "category_code",
     name: "name",
     product_name: "name",
     ten: "name",
     ten_san_pham: "name",
+    产品名称: "name",
     code: "code",
     sku: "code",
     ma_sku: "code",
     ma_san_pham: "code",
+    sku_ma_san_pham: "code",
+    sku_产品编码: "code",
     barcode: "barcode",
     ma_vach: "barcode",
+    条形码: "barcode",
     unit: "unit",
     don_vi: "unit",
+    don_vi_tinh: "unit",
+    单位: "unit",
     product_type: "product_type",
     loai: "product_type",
     loai_san_pham: "product_type",
+    产品类型: "product_type",
     product_material: "product_material",
     chat_lieu: "product_material",
+    材质: "product_material",
     product_origin: "product_origin",
     nguon_goc: "product_origin",
+    来源: "product_origin",
     min_stock_threshold: "min_stock_threshold",
     ton_toi_thieu: "min_stock_threshold",
+    最低库存: "min_stock_threshold",
     is_serialized: "is_serialized",
     serial: "is_serialized",
     theo_doi_serial: "is_serialized",
+    序列号管理: "is_serialized",
     description: "description",
     mo_ta: "description",
+    描述: "description",
   };
 
 const normalizeText = (value: unknown) =>
@@ -91,13 +105,14 @@ const normalizeText = (value: unknown) =>
 const normalizeKey = (value: unknown) =>
   normalizeText(value)
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
     .replace(/^_+|_+$/g, "");
 
 const cleanCell = (value: unknown) => String(value ?? "").trim();
+const extractOptionCode = (value: string) => value.split(" - ")[0].trim();
 
 const parseBoolean = (value: string): boolean | null => {
-  const normalized = normalizeKey(value);
+  const normalized = normalizeKey(extractOptionCode(value));
   if (!normalized) return null;
   if (["true", "1", "yes", "y", "co", "c", "serialized"].includes(normalized)) {
     return true;
@@ -121,7 +136,7 @@ const countBy = <T,>(items: T[], getKey: (item: T) => string | null) => {
 const normalizeIdentity = (value: string | null | undefined) =>
   normalizeText(value).toLowerCase();
 
-const extractCategoryCode = (value: string) => value.split(" - ")[0].trim();
+const extractCategoryCode = extractOptionCode;
 
 function normalizeRow(
   row: Record<string, unknown>,
@@ -203,8 +218,8 @@ export async function parseProductImportFile(
     const warnings: string[] = [];
     const categoryCode = extractCategoryCode(raw.category_code);
     const category = categoryByCode.get(normalizeIdentity(categoryCode));
-    const productType = raw.product_type as ProductType;
-    const productOrigin = raw.product_origin as ProductOrigin;
+    const productType = extractOptionCode(raw.product_type) as ProductType;
+    const productOrigin = extractOptionCode(raw.product_origin) as ProductOrigin;
     const parsedSerialized = parseBoolean(raw.is_serialized);
     const thresholdText = raw.min_stock_threshold.trim();
     const thresholdNumber = thresholdText ? Number(thresholdText) : null;
