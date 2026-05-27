@@ -14,6 +14,7 @@ export const fetchAuditLogs = async (
   const params: AuditLogSearchParams = {
     entity_type: input.entity_type,
     entity_id: input.entity_id,
+    warehouse_id: input.warehouse_id,
     action: input.action,
     user_id: input.user_id,
     from: input.from,

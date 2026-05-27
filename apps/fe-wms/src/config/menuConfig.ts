@@ -6,24 +6,28 @@
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
 import {
-  FileClock,
-  Home,
-  Package,
-  ShieldCheck,
-  Warehouse,
-  LucideIcon,
+    ClipboardCheck,
+    FileClock,
+    Home,
+    Package,
+    PackagePlus,
+    ShieldCheck,
+    Users,
+    Warehouse,
+    LucideIcon,
+    FolderSymlink,
 } from "lucide-react";
 
 export interface MenuItem {
-  id: string;
-  labelKey: string;
-  /** SVG path data cho icon (24x24 viewBox) */
-  icon: LucideIcon;
-  href: string;
-  /** Permission key cần check. Nếu undefined = public cho authenticated users */
-  permission?: string;
-  /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
-  showInBottomNav?: boolean;
+    id: string;
+    labelKey: string;
+    /** SVG path data cho icon (24x24 viewBox) */
+    icon: LucideIcon;
+    href: string;
+    /** Permission key cần check. Nếu undefined = public cho authenticated users */
+    permission?: string;
+    /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
+    showInBottomNav?: boolean;
 }
 
 /**
@@ -31,54 +35,82 @@ export interface MenuItem {
  * ► labelKey tương ứng với key trong `t.nav.*`
  */
 export const menuItems: MenuItem[] = [
-  {
-    id: "dashboard",
-    labelKey: "dashboard",
-    icon: Home,
-    href: "/dashboard",
-    showInBottomNav: true,
-  },
-  {
-    id: "products",
-    labelKey: "products",
-    icon: Package,
-    href: "/products",
-    permission: "products.read",
-  },
-  {
-    id: "warehouses",
-    labelKey: "warehouses",
-    icon: Warehouse,
-    href: "/warehouses",
-    permission: "warehouses.read",
-    showInBottomNav: true,
-  },
-  {
-    id: "roles",
-    labelKey: "roles",
-    icon: ShieldCheck,
-    href: "/roles",
-    permission: "roles.read",
-  },
-  {
-    id: "auditLogs",
-    labelKey: "auditLogs",
-    icon: FileClock,
-    href: "/audit-logs",
-    permission: "audit.read",
-  },
-  // ── Thêm module mới vào đây ──
+    {
+        id: "dashboard",
+        labelKey: "dashboard",
+        icon: Home,
+        href: "/dashboard",
+        showInBottomNav: true,
+    },
+    {
+        id: "tasks",
+        labelKey: "tasks",
+        icon: ClipboardCheck,
+        href: "/tasks",
+        showInBottomNav: true,
+    },
+    {
+        id: "products",
+        labelKey: "products",
+        icon: Package,
+        href: "/products",
+        permission: "products.read",
+    },
+    {
+        id: "warehouses",
+        labelKey: "warehouses",
+        icon: Warehouse,
+        href: "/warehouses",
+        permission: "warehouses.read",
+        showInBottomNav: true,
+    },
+    {
+        id: "workflow",
+        labelKey: "workflows",
+        icon: FolderSymlink,
+        href: "/workflows",
+        permission: "workflow.read",
+    },
+    {
+        id: "importVouchers",
+        labelKey: "importVoucher",
+        icon: PackagePlus,
+        href: "/import-vouchers",
+        permission: "vouchers.read",
+    },
+    {
+        id: "users",
+        labelKey: "users",
+        icon: Users,
+        href: "/users",
+        permission: "users.read",
+    },
+    {
+        id: "roles",
+        labelKey: "roles",
+        icon: ShieldCheck,
+        href: "/roles",
+        permission: "roles.read",
+    },
+    {
+        id: "auditLogs",
+        labelKey: "auditLogs",
+        icon: FileClock,
+        href: "/audit-logs",
+        permission: "audit.read",
+    },
+    // ── Thêm module mới vào đây ──
 ];
 
 /**
  * Filter menu items theo permissions của user
  */
 export function getVisibleMenuItems(
-  items: MenuItem[],
-  hasPermission: (action: string) => boolean,
+    items: MenuItem[],
+    hasPermission: (action: string) => boolean,
 ): MenuItem[] {
-  return items.filter((item) => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
-  });
+    return items.filter((item) => {
+        if (!item.permission) return true;
+        return hasPermission(item.permission);
+    });
 }

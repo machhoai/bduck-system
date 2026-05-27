@@ -12,8 +12,27 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { Inventory } from "@bduck/shared-types";
+import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+
+async function fetchInventoryFromApi(signal?: AbortSignal) {
+  const response = await fetch(`${API_BASE_URL}/api/inventory`, {
+    method: "GET",
+    credentials: "include",
+    signal,
+  });
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.messages?.vi || "Không thể tải dữ liệu tồn kho.");
+  }
+
+  return (body.data || []) as Inventory[];
+}
 
 function getAccessibleWarehouseIds(
   permissions: Record<string, Record<string, unknown>>,
@@ -41,9 +60,17 @@ export function useInventory() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const abortController = new AbortController();
     const accessibleWarehouseIds = getAccessibleWarehouseIds(permissions);
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
+
+    const applyInventoryFilter = (data: Inventory[]) =>
+      accessibleWarehouseIds
+        ? data.filter((item) =>
+            accessibleWarehouseIds.includes(item.warehouse_id),
+          )
+        : data;
 
     // If user has no warehouse access, return empty
     if (accessibleWarehouseIds && accessibleWarehouseIds.length === 0) {
@@ -52,6 +79,30 @@ export function useInventory() {
       return;
     }
 
+    const loadApiFallback = async () => {
+      try {
+        const data = await fetchInventoryFromApi(abortController.signal);
+        if (isDisposed) return;
+        setInventory(applyInventoryFilter(data));
+        setError(null);
+      } catch (apiError) {
+        if (isDisposed) return;
+        console.error("[useInventory] API fallback error:", apiError);
+        setInventory([]);
+        setError(
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể tải dữ liệu tồn kho.",
+        );
+      } finally {
+        if (!isDisposed) setLoading(false);
+      }
+    };
+
+    const unsubscribeMutation = subscribeDataMutation("inventory", () => {
+      void loadApiFallback();
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -59,10 +110,7 @@ export function useInventory() {
       }
 
       if (!user) {
-        if (!isDisposed) {
-          setInventory([]);
-          setLoading(false);
-        }
+        void loadApiFallback();
         return;
       }
 
@@ -77,28 +125,21 @@ export function useInventory() {
             id: doc.id,
           })) as Inventory[];
 
-          // RBAC filter: only show inventory from accessible warehouses
-          const filtered = accessibleWarehouseIds
-            ? data.filter((item) =>
-                accessibleWarehouseIds.includes(item.warehouse_id),
-              )
-            : data;
-
-          setInventory(filtered);
+          setInventory(applyInventoryFilter(data));
           setLoading(false);
           setError(null);
         },
         (snapshotError) => {
-          if (isDisposed) return;
           console.error("[useInventory] onSnapshot error:", snapshotError);
-          setError("Không thể tải dữ liệu tồn kho.");
-          setLoading(false);
+          void loadApiFallback();
         },
       );
     });
 
     return () => {
       isDisposed = true;
+      abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };

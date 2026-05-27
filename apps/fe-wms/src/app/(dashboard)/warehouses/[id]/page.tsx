@@ -10,6 +10,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   ArrowRightLeft,
+  Pencil,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { WarehouseLocation } from "@bduck/shared-types";
@@ -17,6 +18,7 @@ import type { WarehouseLocation } from "@bduck/shared-types";
 // Existing Location Components
 import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
 import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
+import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
 import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
 
 // Dashboard Components
@@ -43,7 +45,8 @@ export default function WarehouseDetailPage() {
   const warehouseId = params.id;
 
   // ── Data hooks (real-time) ──
-  const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const { warehouses, loading: warehousesLoading, updateWarehouse } =
+    useWarehouses();
   const {
     locations,
     loading: locationsLoading,
@@ -55,6 +58,7 @@ export default function WarehouseDetailPage() {
   const { products, loading: prodLoading } = useProducts();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] =
     useState<WarehouseLocation | null>(null);
 
@@ -125,6 +129,10 @@ export default function WarehouseDetailPage() {
     return createLocation(payload);
   };
 
+  const handleSaveWarehouse = async (payload: unknown) => {
+    return updateWarehouse(warehouseId, payload);
+  };
+
   const isLoading = warehousesLoading || invLoading || prodLoading;
 
   if (isLoading) {
@@ -154,8 +162,16 @@ export default function WarehouseDetailPage() {
         <header className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] text-[var(--color-brand-primary)]">
-                <WarehouseIcon size={24} strokeWidth={1.5} />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] text-[var(--color-brand-primary)]">
+                {warehouse.warehouse_image_url ? (
+                  <img
+                    src={warehouse.warehouse_image_url}
+                    alt={warehouse.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <WarehouseIcon size={24} strokeWidth={1.5} />
+                )}
               </div>
               <div>
                 <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[34px]">
@@ -171,9 +187,7 @@ export default function WarehouseDetailPage() {
                     className={
                       warehouse.status === "ACTIVE"
                         ? "text-[var(--color-text-success)]"
-                        : warehouse.status === "QUARANTINE"
-                          ? "text-[var(--color-text-danger)]"
-                          : ""
+                        : "text-[var(--color-text-muted)]"
                     }
                   >
                     {t.warehouses.statuses[warehouse.status]}
@@ -189,6 +203,14 @@ export default function WarehouseDetailPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsWarehouseModalOpen(true)}
+                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+              >
+                <Pencil size={16} />
+                {t.warehouses.editWarehouse}
+              </button>
               <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2 hidden sm:inline-block">
                 {t.warehouses.quickActions}:
               </span>
@@ -291,6 +313,12 @@ export default function WarehouseDetailPage() {
         location={editingLocation}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveLocation}
+      />
+      <WarehouseFormModal
+        isOpen={isWarehouseModalOpen}
+        warehouse={warehouse}
+        onClose={() => setIsWarehouseModalOpen(false)}
+        onSave={handleSaveWarehouse}
       />
     </div>
   );

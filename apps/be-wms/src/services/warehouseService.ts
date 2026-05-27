@@ -59,6 +59,7 @@ export const createWarehouse = async (
   await logAudit({
     entity_type: "warehouses",
     entity_id: id,
+    warehouse_id: id,
     action: AuditAction.CREATE,
     user_id: userId,
     old_value: null,
@@ -123,6 +124,7 @@ export const updateWarehouse = async (
   await logAudit({
     entity_type: "warehouses",
     entity_id: id,
+    warehouse_id: id,
     action: AuditAction.UPDATE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
@@ -166,6 +168,7 @@ export const deleteWarehouse = async (
   await logAudit({
     entity_type: "warehouses",
     entity_id: id,
+    warehouse_id: id,
     action: AuditAction.SOFT_DELETE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,

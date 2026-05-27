@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
 import { gooeyToast } from "goey-toast";
 import type { ProductCategory } from "@bduck/shared-types";
+import { emitDataMutation } from "@/lib/dataInvalidation";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -105,6 +106,7 @@ export default function CategoryFormModal({
           },
         },
       });
+      emitDataMutation(["product_categories", "products", "audit_logs"]);
       onClose();
     } catch (error) {
       console.error("[CategoryFormModal] save error:", error);

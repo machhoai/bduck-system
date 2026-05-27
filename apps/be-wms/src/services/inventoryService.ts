@@ -89,6 +89,7 @@ export const createInventory = async (
   await logAudit({
     entity_type: "inventory",
     entity_id: id,
+    warehouse_id: input.warehouse_id,
     action: AuditAction.CREATE,
     user_id: userId,
     old_value: null,
@@ -116,6 +117,9 @@ export const fetchInventory = async (filters?: {
 export const fetchInventoryById = async (id: string): Promise<Inventory> => {
   const record = await inventoryRepo.findById(id);
   if (!record) {
+    throw notFoundError;
+  }
+  if ("is_deleted" in record && record.is_deleted) {
     throw notFoundError;
   }
   return record;
@@ -153,6 +157,7 @@ export const updateInventory = async (
   await logAudit({
     entity_type: "inventory",
     entity_id: id,
+    warehouse_id: existing.warehouse_id,
     action: AuditAction.UPDATE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
@@ -187,6 +192,7 @@ export const deleteInventory = async (
   await logAudit({
     entity_type: "inventory",
     entity_id: id,
+    warehouse_id: existing.warehouse_id,
     action: AuditAction.SOFT_DELETE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,

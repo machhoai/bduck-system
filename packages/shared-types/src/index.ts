@@ -10,3 +10,4 @@ export * from './vouchers.js';
 export * from './sales-operations.js';
 export * from './quality-control.js';
 export * from './system.js';
+export * from './workflow.js';

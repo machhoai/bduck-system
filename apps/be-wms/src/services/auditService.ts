@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 interface AuditLogParams {
   entity_type: string;
   entity_id: string;
+  warehouse_id?: string | null;
   action: AuditAction;
   user_id: string;
   old_value: Record<string, unknown> | null;
@@ -35,6 +36,7 @@ export const logAudit = async (params: AuditLogParams) => {
       id: auditRef.id,
       entity_type: params.entity_type,
       entity_id: params.entity_id,
+      warehouse_id: params.warehouse_id || null,
       action: params.action,
       user_id: params.user_id,
       action_time: action_time,

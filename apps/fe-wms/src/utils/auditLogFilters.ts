@@ -5,6 +5,7 @@ export type AuditSortField =
   | "action_time"
   | "action"
   | "entity_type"
+  | "warehouse_id"
   | "user_id";
 export type AuditSortDirection = "asc" | "desc";
 export type AuditValueState = "all" | "has_old" | "has_new" | "has_both";
@@ -13,6 +14,7 @@ export interface AuditLogFilters {
   search: string;
   entityType: string;
   entityId: string;
+  warehouseId: string;
   userId: string;
   action: string;
   fromDate: string;
@@ -30,6 +32,7 @@ export const defaultAuditLogFilters: AuditLogFilters = {
   search: "",
   entityType: "all",
   entityId: "",
+  warehouseId: "",
   userId: "",
   action: "all",
   fromDate: "",
@@ -108,6 +111,7 @@ export function filterAuditLogs(
         log.id,
         log.entity_type,
         log.entity_id,
+        log.warehouse_id,
         log.action,
         log.user_id,
         log.ip_address,
@@ -131,6 +135,12 @@ export function filterAuditLogs(
         return false;
       if (filters.entityId && !log.entity_id.includes(filters.entityId))
         return false;
+      if (
+        filters.warehouseId &&
+        !(log.warehouse_id || "").includes(filters.warehouseId)
+      ) {
+        return false;
+      }
       if (filters.userId && !log.user_id.includes(filters.userId)) return false;
       if (fromTime !== null && actionTime < fromTime) return false;
       if (toTime !== null && actionTime > toTime) return false;

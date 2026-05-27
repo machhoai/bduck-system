@@ -6,6 +6,7 @@ const COLLECTION = "audit_logs";
 export interface AuditLogSearchParams {
   entity_type?: string;
   entity_id?: string;
+  warehouse_id?: string;
   action?: string;
   user_id?: string;
   from?: Date;
@@ -28,6 +29,10 @@ class AuditLogRepository {
 
     if (params.entity_id) {
       query = query.where("entity_id", "==", params.entity_id);
+    }
+
+    if (params.warehouse_id) {
+      query = query.where("warehouse_id", "==", params.warehouse_id);
     }
 
     if (params.action) {

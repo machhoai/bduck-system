@@ -285,3 +285,86 @@ export enum FileType {
     VIDEO = 'VIDEO',
     DOCUMENT = 'DOCUMENT',
 }
+
+// ============================================================
+// DYNAMIC WORKFLOW ENGINE
+// ============================================================
+
+/** Workflow definition lifecycle */
+export enum WorkflowDefinitionStatus {
+    DRAFT = 'DRAFT',
+    ACTIVE = 'ACTIVE',
+    ARCHIVED = 'ARCHIVED',
+}
+
+/** All supported node types in the visual builder */
+export enum WorkflowNodeType {
+    TRIGGER = 'TRIGGER',
+    APPROVAL = 'APPROVAL',
+    SYSTEM_ACTION = 'SYSTEM_ACTION',
+    TIMER = 'TIMER',
+    CONDITION = 'CONDITION',
+    NOTIFICATION = 'NOTIFICATION',
+    FORK = 'FORK',
+    JOIN = 'JOIN',
+    SUB_WORKFLOW = 'SUB_WORKFLOW',
+    WEBHOOK = 'WEBHOOK',
+    DATA_INPUT = 'DATA_INPUT',
+}
+
+/** Runtime workflow instance status */
+export enum WorkflowInstanceStatus {
+    RUNNING = 'RUNNING',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED',
+    ERROR = 'ERROR',
+}
+
+/** Per-node task execution status */
+export enum WorkflowTaskStatus {
+    PENDING = 'PENDING',
+    IN_PROGRESS = 'IN_PROGRESS',
+    COMPLETED = 'COMPLETED',
+    SKIPPED = 'SKIPPED',
+    FAILED = 'FAILED',
+    TIMED_OUT = 'TIMED_OUT',
+}
+
+/** Condition node comparison operators */
+export enum ConditionOperator {
+    EQ = 'EQ',
+    NEQ = 'NEQ',
+    GT = 'GT',
+    GTE = 'GTE',
+    LT = 'LT',
+    LTE = 'LTE',
+    CONTAINS = 'CONTAINS',
+    NOT_CONTAINS = 'NOT_CONTAINS',
+}
+
+/** Notification delivery channel */
+export enum NotificationChannel {
+    IN_APP = 'IN_APP',
+    EMAIL = 'EMAIL',
+    PUSH = 'PUSH',
+}
+
+/** Action when a node times out */
+export enum TimeoutAction {
+    AUTO_APPROVE = 'AUTO_APPROVE',
+    AUTO_REJECT = 'AUTO_REJECT',
+    ESCALATE = 'ESCALATE',
+}
+
+/** Parallel gateway join strategy */
+export enum JoinType {
+    ALL = 'ALL',   // Wait for ALL incoming branches
+    ANY = 'ANY',   // First completed branch wins
+}
+
+/** HTTP method for webhook nodes */
+export enum WebhookMethod {
+    GET = 'GET',
+    POST = 'POST',
+    PUT = 'PUT',
+}

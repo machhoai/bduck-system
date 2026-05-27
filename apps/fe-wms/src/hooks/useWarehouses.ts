@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
+import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 
@@ -122,6 +123,10 @@ export function useWarehouses() {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("warehouses", () => {
+      void loadApiFallback();
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -167,22 +172,41 @@ export function useWarehouses() {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, [permissions]);
 
   const createWarehouse = useCallback(
-    (payload: unknown) => callWarehouseApi("/api/warehouses", "POST", payload),
+    async (payload: unknown) => {
+      const result = await callWarehouseApi("/api/warehouses", "POST", payload);
+      emitDataMutation(["warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const updateWarehouse = useCallback(
-    (id: string, payload: unknown) =>
-      callWarehouseApi(`/api/warehouses/${id}`, "PUT", payload),
+    async (id: string, payload: unknown) => {
+      const result = await callWarehouseApi(
+        `/api/warehouses/${id}`,
+        "PUT",
+        payload,
+      );
+      emitDataMutation(["warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const deleteWarehouse = useCallback(
-    (id: string) => callWarehouseApi(`/api/warehouses/${id}`, "DELETE"),
+    async (id: string) => {
+      const result = await callWarehouseApi(
+        `/api/warehouses/${id}`,
+        "DELETE",
+      );
+      emitDataMutation(["warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
 
@@ -251,6 +275,13 @@ export function useWarehouseLocations(warehouseId?: string) {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation(
+      "warehouse_locations",
+      () => {
+        void loadApiFallback();
+      },
+    );
+
     setLoading(true);
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
@@ -307,22 +338,38 @@ export function useWarehouseLocations(warehouseId?: string) {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, [warehouseId, permissions]);
 
   const createLocation = useCallback(
-    (payload: unknown) => callWarehouseApi("/api/locations", "POST", payload),
+    async (payload: unknown) => {
+      const result = await callWarehouseApi("/api/locations", "POST", payload);
+      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const updateLocation = useCallback(
-    (id: string, payload: unknown) =>
-      callWarehouseApi(`/api/locations/${id}`, "PUT", payload),
+    async (id: string, payload: unknown) => {
+      const result = await callWarehouseApi(
+        `/api/locations/${id}`,
+        "PUT",
+        payload,
+      );
+      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const deleteLocation = useCallback(
-    (id: string) => callWarehouseApi(`/api/locations/${id}`, "DELETE"),
+    async (id: string) => {
+      const result = await callWarehouseApi(`/api/locations/${id}`, "DELETE");
+      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
+      return result;
+    },
     [],
   );
 

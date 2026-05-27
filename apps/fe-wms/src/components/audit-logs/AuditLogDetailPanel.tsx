@@ -22,6 +22,7 @@ interface AuditLogDetailPanelProps {
     actionTime: string;
     syncTime: string;
     userId: string;
+    warehouseId: string;
     ipAddress: string;
     deviceId: string;
     sessionToken: string;
@@ -92,6 +93,11 @@ export function AuditLogDetailPanel({ log, labels }: AuditLogDetailPanelProps) {
                 />
                 <DetailLine label={labels.entity} value={presentation.entity} />
                 <DetailLine label={labels.record} value={presentation.record} />
+                <DetailLine
+                  icon={<MapPinned size={15} />}
+                  label={labels.warehouseId}
+                  value={log.warehouse_id || labels.noData}
+                />
                 <DetailLine
                   label={labels.changedFields}
                   value={

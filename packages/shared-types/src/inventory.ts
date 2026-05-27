@@ -28,6 +28,7 @@ export interface Inventory {
     quarantine_quantity: number;
     last_count_at: Date | null;
     last_updated_at: Date;
+    is_deleted?: boolean;
 }
 
 // ─────────────────────────────────────────────

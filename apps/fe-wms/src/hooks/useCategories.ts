@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { ProductCategory } from "@bduck/shared-types";
+import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "../lib/firebase";
 
 const API_BASE_URL =
@@ -71,6 +72,13 @@ export const useCategories = () => {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation(
+      "product_categories",
+      () => {
+        void loadApiFallback("Categories changed locally.");
+      },
+    );
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -114,6 +122,7 @@ export const useCategories = () => {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();

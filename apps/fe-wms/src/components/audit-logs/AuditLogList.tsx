@@ -17,6 +17,7 @@ interface AuditLogListProps {
     syncTime: string;
     operation: string;
     performedBy: string;
+    warehouseId: string;
     summary: string;
     page: string;
     record: string;
@@ -117,6 +118,11 @@ export function AuditLogList({
                 <span className="truncate">
                   {labels.record}: {presentation.entity} / {presentation.record}
                 </span>
+                {log.warehouse_id && (
+                  <span className="truncate">
+                    {labels.warehouseId}: {log.warehouse_id}
+                  </span>
+                )}
                 <span className="truncate">
                   {labels.changedFields}: {presentation.changedText}
                 </span>

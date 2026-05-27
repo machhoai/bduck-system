@@ -20,6 +20,7 @@ import { FolderOpen, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { gooeyToast } from "goey-toast";
 import type { ProductCategory } from "@bduck/shared-types";
+import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTranslation } from "../../lib/i18n";
 import {
   applyOptimisticCategoryMove,
@@ -192,6 +193,8 @@ export default function CategoryTreeView({
       const errorData = await response.json().catch(() => null);
       throw new Error(errorData?.messages?.vi || t.categories.moveError);
     }
+
+    emitDataMutation(["product_categories", "products", "audit_logs"]);
   };
 
   const runMoveRequestWithToast = async (

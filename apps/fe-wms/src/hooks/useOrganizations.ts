@@ -4,6 +4,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type { Organization } from "@bduck/shared-types";
+import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -80,6 +81,10 @@ export function useOrganizations() {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("organizations", () => {
+      void loadApiFallback();
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -119,21 +124,34 @@ export function useOrganizations() {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, []);
 
   const createOrganization = useCallback(
-    (payload: unknown) => callOrganizationApi("POST", undefined, payload),
+    async (payload: unknown) => {
+      const result = await callOrganizationApi("POST", undefined, payload);
+      emitDataMutation(["organizations", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const updateOrganization = useCallback(
-    (id: string, payload: unknown) => callOrganizationApi("PUT", id, payload),
+    async (id: string, payload: unknown) => {
+      const result = await callOrganizationApi("PUT", id, payload);
+      emitDataMutation(["organizations", "audit_logs"]);
+      return result;
+    },
     [],
   );
   const deleteOrganization = useCallback(
-    (id: string) => callOrganizationApi("DELETE", id),
+    async (id: string) => {
+      const result = await callOrganizationApi("DELETE", id);
+      emitDataMutation(["organizations", "audit_logs"]);
+      return result;
+    },
     [],
   );
 

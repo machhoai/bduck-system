@@ -8,9 +8,8 @@ import type { Inventory } from "@bduck/shared-types";
  * Each document represents a UNIQUE(warehouse_location_id, product_id) pair.
  * warehouse_id is denormalized for direct queries.
  *
- * NOTE: Inventory records are NOT soft-deleted in the traditional sense.
- * They represent current stock state. Deletion here means removing
- * the tracking record (only via admin).
+ * NOTE: Inventory records are soft-deleted to preserve audit evidence.
+ * Deleted records are zeroed out and excluded from normal reads.
  */
 
 const COLLECTION = "inventory";
@@ -21,7 +20,9 @@ const COLLECTION = "inventory";
 
 export const findById = async (id: string): Promise<Inventory | null> => {
   const doc = await db.collection(COLLECTION).doc(id).get();
-  return doc.exists ? (doc.data() as Inventory) : null;
+  if (!doc.exists) return null;
+  const record = doc.data() as Inventory;
+  return record.is_deleted ? null : record;
 };
 
 export const findByLocationAndProduct = async (
@@ -36,7 +37,8 @@ export const findByLocationAndProduct = async (
     .get();
 
   if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as Inventory;
+  const record = snapshot.docs[0].data() as Inventory;
+  return record.is_deleted ? null : record;
 };
 
 export const findByWarehouse = async (
@@ -47,7 +49,9 @@ export const findByWarehouse = async (
     .where("warehouse_id", "==", warehouseId)
     .get();
 
-  return snapshot.docs.map((doc) => doc.data() as Inventory);
+  return snapshot.docs
+    .map((doc) => doc.data() as Inventory)
+    .filter((record) => record.is_deleted !== true);
 };
 
 export const findByProduct = async (
@@ -58,7 +62,9 @@ export const findByProduct = async (
     .where("product_id", "==", productId)
     .get();
 
-  return snapshot.docs.map((doc) => doc.data() as Inventory);
+  return snapshot.docs
+    .map((doc) => doc.data() as Inventory)
+    .filter((record) => record.is_deleted !== true);
 };
 
 export const findAll = async (filters?: {
@@ -83,7 +89,9 @@ export const findAll = async (filters?: {
   }
 
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => doc.data() as Inventory);
+  return snapshot.docs
+    .map((doc) => doc.data() as Inventory)
+    .filter((record) => record.is_deleted !== true);
 };
 
 // ---------------------------------------------------------------------------
@@ -97,6 +105,7 @@ export const create = async (
   const now = new Date();
   const record: Inventory = {
     ...data,
+    is_deleted: false,
     last_updated_at: now,
   };
 
@@ -173,6 +182,7 @@ export const upsertQuantityInTransaction = async (
       total_quantity: atpQty + onHoldQty + inTransitQty + quarantineQty,
       last_count_at: null,
       last_updated_at: now,
+      is_deleted: false,
     };
 
     txn.set(db.collection(COLLECTION).doc(newId), record);
@@ -200,6 +210,13 @@ export const upsertQuantityInTransaction = async (
 };
 
 export const softDelete = async (id: string): Promise<void> => {
-  // For inventory, we zero out rather than truly deleting
-  await db.collection(COLLECTION).doc(id).delete();
+  await db.collection(COLLECTION).doc(id).update({
+    atp_quantity: 0,
+    on_hold_quantity: 0,
+    in_transit_quantity: 0,
+    quarantine_quantity: 0,
+    total_quantity: 0,
+    is_deleted: true,
+    last_updated_at: new Date(),
+  });
 };

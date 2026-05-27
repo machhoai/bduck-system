@@ -12,6 +12,7 @@ interface AuditLogFiltersPanelProps {
     search: string;
     entityType: string;
     entityId: string;
+    warehouseId: string;
     userId: string;
     action: string;
     fromDate: string;
@@ -109,6 +110,11 @@ export function AuditLogFiltersPanel({
           onChange={(value) => update("entityId", value)}
         />
         <InputField
+          label={labels.warehouseId}
+          value={filters.warehouseId}
+          onChange={(value) => update("warehouseId", value)}
+        />
+        <InputField
           label={labels.userId}
           value={filters.userId}
           onChange={(value) => update("userId", value)}
@@ -150,6 +156,7 @@ export function AuditLogFiltersPanel({
           <option value="action_time">action_time</option>
           <option value="action">action</option>
           <option value="entity_type">entity_type</option>
+          <option value="warehouse_id">warehouse_id</option>
           <option value="user_id">user_id</option>
         </SelectField>
       </div>

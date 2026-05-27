@@ -62,7 +62,7 @@ export function LocationCardGrid({
           {locations.map((location) => {
             // Lọc inventory thuộc về location này
             const locationInventory = inventory.filter(
-              (inv) => inv.location_id === location.id
+              (inv) => inv.warehouse_location_id === location.id
             );
 
             // Gom nhóm theo product_id để hiển thị (tổng số lượng)

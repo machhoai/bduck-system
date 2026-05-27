@@ -2,8 +2,9 @@
 
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Role } from "@bduck/shared-types";
+import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -75,6 +76,10 @@ export function useRoles() {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("roles", () => {
+      void loadApiFallback();
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -110,18 +115,29 @@ export function useRoles() {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, []);
 
-  return {
-    roles,
-    isLoading,
-    error,
-    createRole: (payload: unknown) => mutateRole("/api/roles", "POST", payload),
-    updateRole: (id: string, payload: unknown) =>
-      mutateRole(`/api/roles/${id}`, "PUT", payload),
-    deleteRole: (id: string) => mutateRole(`/api/roles/${id}`, "DELETE"),
-  };
+  const createRole = useCallback(async (payload: unknown) => {
+    const result = await mutateRole("/api/roles", "POST", payload);
+    emitDataMutation(["roles", "audit_logs"]);
+    return result;
+  }, []);
+
+  const updateRole = useCallback(async (id: string, payload: unknown) => {
+    const result = await mutateRole(`/api/roles/${id}`, "PUT", payload);
+    emitDataMutation(["roles", "users", "audit_logs"]);
+    return result;
+  }, []);
+
+  const deleteRole = useCallback(async (id: string) => {
+    const result = await mutateRole(`/api/roles/${id}`, "DELETE");
+    emitDataMutation(["roles", "users", "audit_logs"]);
+    return result;
+  }, []);
+
+  return { roles, isLoading, error, createRole, updateRole, deleteRole };
 }

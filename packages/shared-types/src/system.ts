@@ -54,6 +54,7 @@ export interface AuditLog {
   id: string; // UUID, PK
   entity_type: string; // IDX
   entity_id: string; // IDX
+  warehouse_id?: string | null; // Optional warehouse scope for warehouse-related events
   action: AuditAction;
   user_id: string; // FK → users
   user_name?: string | null; // Denormalized display name for read models

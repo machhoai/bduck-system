@@ -5,6 +5,7 @@ import { gooeyToast } from "goey-toast";
 import { useState } from "react";
 import type { ProductCategory } from "@bduck/shared-types";
 import { useCategories } from "@/hooks/useCategories";
+import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import CategorySkeleton from "./CategorySkeleton";
@@ -54,6 +55,7 @@ export function CategoryManagementPanel() {
           },
         },
       });
+      emitDataMutation(["product_categories", "products", "audit_logs"]);
     } catch (error) {
       console.error("[CategoryManagementPanel] delete error:", error);
     }

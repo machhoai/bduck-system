@@ -75,10 +75,10 @@ export function WarehouseInventoryTable({
         <thead className="border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
           <tr>
             <th className="px-4 py-3 font-medium text-[var(--color-text-secondary)]">
-              {t.products.code}
+              {t.warehouses.code}
             </th>
             <th className="px-4 py-3 font-medium text-[var(--color-text-secondary)]">
-              {t.products.name}
+              {t.warehouses.name}
             </th>
             <th className="px-4 py-3 text-right font-medium text-[var(--color-text-secondary)]">
               ATP
@@ -90,7 +90,7 @@ export function WarehouseInventoryTable({
               In Transit
             </th>
             <th className="px-4 py-3 text-right font-medium text-[var(--color-text-secondary)]">
-              {t.inventoryDashboard.quarantine}
+              Quarantine
             </th>
             <th className="px-4 py-3 text-right font-medium text-[var(--color-text-secondary)]">
               {t.inventoryDashboard.totalQuantity}

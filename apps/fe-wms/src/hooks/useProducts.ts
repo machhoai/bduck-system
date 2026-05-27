@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@bduck/shared-types";
+import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -87,6 +88,10 @@ export function useProducts(categoryId?: string) {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("products", () => {
+      void loadApiFallback("Products changed locally.");
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -141,6 +146,7 @@ export function useProducts(categoryId?: string) {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -174,6 +180,7 @@ export function useProducts(categoryId?: string) {
         throw new Error(errorMsg);
       }
 
+      emitDataMutation(["products", "audit_logs"]);
       return data;
     },
     [],

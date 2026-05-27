@@ -76,6 +76,7 @@ export const createLocation = async (
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,
+    warehouse_id: input.warehouse_id,
     action: AuditAction.CREATE,
     user_id: user.id,
     old_value: null,
@@ -147,6 +148,7 @@ export const updateLocation = async (
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,
+    warehouse_id: nextWarehouseId,
     action:
       input.status === LocationStatus.QUARANTINE
         ? AuditAction.QUARANTINE
@@ -181,6 +183,7 @@ export const deleteLocation = async (
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,
+    warehouse_id: existing.warehouse_id,
     action: AuditAction.SOFT_DELETE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,

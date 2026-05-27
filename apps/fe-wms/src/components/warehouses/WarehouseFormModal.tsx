@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { Loader2, X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { ActiveStatus, WarehouseType } from "@bduck/shared-types";
+import { ActiveStatus, UserStatus, WarehouseType } from "@bduck/shared-types";
 import type { Warehouse } from "@bduck/shared-types";
+import { ImageUploadField } from "@/components/shared/ImageUploadField";
 import { useOrganizations } from "@/hooks/useOrganizations";
+import { useUsers } from "@/hooks/useUsers";
+import { uploadImageAsWebp } from "@/lib/firebaseStorage";
 import { useTranslation } from "@/lib/i18n";
+import { WarehouseManagerSelect } from "./WarehouseManagerSelect";
 
 interface WarehouseFormModalProps {
     isOpen: boolean;
@@ -30,8 +34,8 @@ const initialForm = {
     latitude: "",
 };
 
-const UUID_REGEX =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function WarehouseFormModal({
     isOpen,
@@ -45,9 +49,23 @@ export function WarehouseFormModal({
         loading: organizationsLoading,
         error: organizationsError,
     } = useOrganizations();
+    const { users, isLoading: usersLoading, error: usersError } = useUsers();
     const isEdit = Boolean(warehouse);
     const [formData, setFormData] = useState(initialForm);
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const managerOptions = useMemo(
+        () =>
+            users
+                .filter(
+                    (user) =>
+                        user.status === UserStatus.ACTIVE ||
+                        user.id === formData.manager_id,
+                )
+                .sort((a, b) => a.full_name.localeCompare(b.full_name, "vi")),
+        [formData.manager_id, users],
+    );
 
     useEffect(() => {
         if (!isOpen) return;
@@ -66,10 +84,12 @@ export function WarehouseFormModal({
                 longitude: warehouse.coordinate?.longitude?.toString() || "",
                 latitude: warehouse.coordinate?.latitude?.toString() || "",
             });
+            setSelectedImage(null);
             return;
         }
 
         setFormData(initialForm);
+        setSelectedImage(null);
     }, [warehouse, isOpen]);
 
     useEffect(() => {
@@ -86,19 +106,16 @@ export function WarehouseFormModal({
 
     const saveAction = async () => {
         const managerId = formData.manager_id.trim() || null;
-        if (managerId && !UUID_REGEX.test(managerId)) {
-            gooeyToast.error(t.warehouses.invalidManagerId, {
-                description: t.warehouses.invalidManagerIdDescription,
-                preset: "snappy",
-                timing: { displayDuration: 6000 },
-            });
-            return;
-        }
 
         setIsSubmitting(true);
         try {
             const hasCoordinate =
                 formData.longitude !== "" && formData.latitude !== "";
+            let imageUrl = formData.warehouse_image_url || null;
+            if (selectedImage) {
+                imageUrl = await uploadImageAsWebp(selectedImage, "warehouses");
+            }
+
             const payload = {
                 organization_id: formData.organization_id,
                 name: formData.name,
@@ -108,7 +125,7 @@ export function WarehouseFormModal({
                 address: formData.address || null,
                 manager_id: managerId,
                 warehouse_description: formData.warehouse_description || null,
-                warehouse_image_url: formData.warehouse_image_url || null,
+                warehouse_image_url: imageUrl,
                 coordinate: hasCoordinate
                     ? {
                         longitude: Number(formData.longitude),
@@ -143,6 +160,28 @@ export function WarehouseFormModal({
                 },
             },
         });
+    };
+
+    const handleImageChange = (file: File) => {
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            gooeyToast.error(t.warehouses.invalidImage, {
+                description: t.warehouses.invalidImageDescription,
+                preset: "snappy",
+                timing: { displayDuration: 6000 },
+            });
+            return;
+        }
+
+        if (file.size > MAX_IMAGE_SIZE) {
+            gooeyToast.error(t.warehouses.imageTooLarge, {
+                description: t.warehouses.imageTooLargeDescription,
+                preset: "snappy",
+                timing: { displayDuration: 6000 },
+            });
+            return;
+        }
+
+        setSelectedImage(file);
     };
 
     return (
@@ -219,16 +258,16 @@ export function WarehouseFormModal({
                             />
                         </Field>
                         <Field label={t.warehouses.managerId}>
-                            <input
+                            <WarehouseManagerSelect
+                                users={managerOptions}
                                 value={formData.manager_id}
-                                onChange={(event) =>
-                                    setFormData({ ...formData, manager_id: event.target.value })
+                                loading={usersLoading}
+                                error={usersError}
+                                disabled={usersLoading}
+                                onChange={(managerId) =>
+                                    setFormData({ ...formData, manager_id: managerId })
                                 }
-                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             />
-                            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-                                {t.warehouses.managerIdHint}
-                            </p>
                         </Field>
                         <Field label={t.warehouses.type} required>
                             <select
@@ -299,18 +338,18 @@ export function WarehouseFormModal({
                             className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
-                    <Field label={t.warehouses.imageUrl}>
-                        <input
-                            type="url"
-                            value={formData.warehouse_image_url}
-                            onChange={(event) =>
-                                setFormData({
-                                    ...formData,
-                                    warehouse_image_url: event.target.value,
-                                })
-                            }
-                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
-                        />
+                    <Field label={t.warehouses.image}>
+                        <div className="max-w-[220px]">
+                            <ImageUploadField
+                                inputId="warehouseImageUpload"
+                                previewUrl={formData.warehouse_image_url}
+                                selectedFile={selectedImage}
+                                alt={formData.name || t.warehouses.image}
+                                buttonLabel={t.warehouses.uploadImage}
+                                disabled={isSubmitting}
+                                onFileChange={handleImageChange}
+                            />
+                        </div>
                     </Field>
                     <Field label={t.warehouses.descriptionField}>
                         <textarea

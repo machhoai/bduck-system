@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { AuditLog } from "@bduck/shared-types";
+import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -59,6 +60,10 @@ export function useAuditLogs() {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("audit_logs", () => {
+      void loadApiFallback();
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -95,6 +100,7 @@ export function useAuditLogs() {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };

@@ -434,6 +434,7 @@ export interface UserWarehouseRole {
  */
 export interface Inventory {
   id: string; // UUID, PK
+  warehouse_id: string; // FK → warehouses (denormalized)
   warehouse_location_id: string; // FK → warehouse_locations
   product_id: string; // FK → products
   total_quantity: number; // ATP
@@ -443,6 +444,7 @@ export interface Inventory {
   quarantine_quantity: number;
   last_count_at: Date | null;
   last_updated_at: Date;
+  is_deleted?: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -830,6 +832,7 @@ export interface AuditLog {
   id: string; // UUID, PK
   entity_type: string; // IDX
   entity_id: string; // IDX
+  warehouse_id?: string | null; // Optional warehouse scope for warehouse-related events
   action: AuditAction;
   user_id: string; // FK → users
   user_name?: string | null; // Denormalized display name for read models

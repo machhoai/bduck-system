@@ -4,6 +4,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type { ProductBOM } from "@bduck/shared-types";
+import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -74,6 +75,10 @@ export function useProductBOM(productId?: string) {
       }
     };
 
+    const unsubscribeMutation = subscribeDataMutation("product_bom", () => {
+      void loadApiFallback("Product BOM changed locally.");
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -119,6 +124,7 @@ export function useProductBOM(productId?: string) {
     return () => {
       isDisposed = true;
       abortController.abort();
+      unsubscribeMutation();
       unsubscribeAuth();
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -157,6 +163,7 @@ export function useProductBOM(productId?: string) {
         throw new Error(errorMsg);
       }
 
+      emitDataMutation(["product_bom", "products", "audit_logs"]);
       return data;
     },
     [],
