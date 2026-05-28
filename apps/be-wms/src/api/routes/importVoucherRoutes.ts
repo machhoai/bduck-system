@@ -35,13 +35,13 @@ router.get("/:id/timeline", requireAnyScopedPermission("vouchers.read"), getImpo
 // ── WRITE ──
 router.post(
   "/",
-  requirePermission("vouchers.write"),
+  requireAnyScopedPermission("vouchers.write"),
   createImportVoucherHandler,
 );
 
 router.put(
   "/:id/actuals",
-  requirePermission("vouchers.write"),
+  requireAnyScopedPermission("vouchers.write"),
   saveActuals,
 );
 

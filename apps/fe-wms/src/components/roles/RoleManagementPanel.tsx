@@ -15,6 +15,10 @@ type ViewMode = "tree" | "board";
 type BoardPosition = { x: number; y: number };
 type TreeRole = { role: Role; depth: number };
 
+interface RoleManagementPanelProps {
+  isEmbedded?: boolean;
+}
+
 function buildTree(
   roles: Role[],
   parentId: string | null = null,
@@ -28,10 +32,13 @@ function buildTree(
     ]);
 }
 
-export function RoleManagementPanel() {
+export function RoleManagementPanel({
+  isEmbedded = false,
+}: RoleManagementPanelProps = {}) {
   const { t } = useTranslation();
   const hasPermission = useUserStore((s) => s.hasPermission);
-  const { roles, isLoading, createRole, updateRole, deleteRole } = useRoles();
+  const { roles, isLoading, error, createRole, updateRole, deleteRole } =
+    useRoles();
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,10 +165,18 @@ export function RoleManagementPanel() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
+          <h1
+            className={`font-[var(--font-display)] font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] ${
+              isEmbedded ? "text-[24px]" : "text-[34px] lg:text-[40px]"
+            }`}
+          >
             {t.rbac.title}
           </h1>
-          <p className="mt-2 text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
+          <p
+            className={`mt-2 leading-7 text-[var(--color-text-secondary)] ${
+              isEmbedded ? "text-[15px]" : "text-[17px]"
+            }`}
+          >
             {t.rbac.description}
           </p>
         </div>
@@ -191,6 +206,12 @@ export function RoleManagementPanel() {
           )}
         </div>
       </header>
+
+      {error && (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-accent-error)] bg-white p-4 text-[var(--color-accent-error)]">
+          {error}
+        </div>
+      )}
 
       {isLoading ? (
         <RoleSkeleton />

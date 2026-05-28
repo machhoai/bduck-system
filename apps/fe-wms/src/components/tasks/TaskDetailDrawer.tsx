@@ -38,6 +38,7 @@ import { useTranslation } from "@/lib/i18n";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
 import AttachmentSection from "./AttachmentSection";
+import ReceivingSessionDrawer from "./ReceivingSessionDrawer";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -151,9 +152,11 @@ export default function TaskDetailDrawer({
 
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showReceiving, setShowReceiving] = useState(false);
 
     const isLoading = loadingInstance || loadingVoucher;
     const isApprovalTask = task.node_type === WorkflowNodeType.APPROVAL;
+    const isDataInputTask = task.node_type === WorkflowNodeType.DATA_INPUT;
 
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
@@ -243,18 +246,23 @@ export default function TaskDetailDrawer({
         [isSubmitting, comment, task, onClose, t],
     );
 
+    // ── Open Receiving Session (DATA_INPUT) ──
+    const handleOpenReceivingSession = useCallback(() => {
+        setShowReceiving(true);
+    }, []);
+
     const attachmentUrls = voucher?.attachment_urls || [];
 
     return (
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
+                className="fixed left-0 top-0 h-full z-40 bg-black/40 backdrop-blur-xs transition-opacity"
                 onClick={onClose}
             />
 
             {/* Drawer */}
-            <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
+            <div className="fixed top-0 right-0 z-50 flex h-[calc(100vh-68px)] md:h-full w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <div>
@@ -428,10 +436,11 @@ export default function TaskDetailDrawer({
                 )}
 
                 {/* DATA_INPUT footer */}
-                {task.node_type === WorkflowNodeType.DATA_INPUT && !isLoading && voucher && (
+                {isDataInputTask && !isLoading && voucher && (
                     <div className="border-t border-gray-100 bg-white px-6 py-4">
                         <button
                             type="button"
+                            onClick={handleOpenReceivingSession}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:bg-blue-800"
                         >
                             <ClipboardEdit className="h-4 w-4" />
@@ -440,6 +449,18 @@ export default function TaskDetailDrawer({
                     </div>
                 )}
             </div>
+
+            {/* Receiving Session Drawer (full-screen overlay) */}
+            {showReceiving && (
+                <ReceivingSessionDrawer
+                    task={task}
+                    onClose={() => {
+                        setShowReceiving(false);
+                        onClose();
+                    }}
+                />
+            )}
         </>
     );
 }
+

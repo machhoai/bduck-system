@@ -22,7 +22,7 @@ import {
   timerCallbackHandler,
 } from "../controllers/workflowController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requirePermission, requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
@@ -55,8 +55,8 @@ router.post(
 // ENGINE — requires workflows.execute permission
 // ─────────────────────────────────────────────
 
-router.post("/engine/start", requirePermission("workflows.execute"), startWorkflowHandler);
-router.post("/engine/complete-task", requirePermission("workflows.execute"), completeTaskHandler);
+router.post("/engine/start", requireAnyScopedPermission("workflows.execute"), startWorkflowHandler);
+router.post("/engine/complete-task", requireAnyScopedPermission("workflows.execute"), completeTaskHandler);
 
 // Timer callback — internal endpoint for Cloud Tasks
 // NOTE: In production, this should be protected by a service-to-service auth mechanism

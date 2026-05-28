@@ -16,17 +16,17 @@ const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireAnyScopedPermission("warehouses.read"), getOrganizationsHandler);
+router.get("/", requireAnyScopedPermission("organizations.read"), getOrganizationsHandler);
 router.get(
   "/:id",
-  requireAnyScopedPermission("warehouses.read"),
+  requireAnyScopedPermission("organizations.read"),
   getOrganizationByIdHandler,
 );
-router.post("/", requirePermission("warehouses.write"), createOrganizationHandler);
-router.put("/:id", requirePermission("warehouses.write"), updateOrganizationHandler);
+router.post("/", requirePermission("organizations.write"), createOrganizationHandler);
+router.put("/:id", requirePermission("organizations.write"), updateOrganizationHandler);
 router.delete(
   "/:id",
-  requirePermission("warehouses.write"),
+  requirePermission("organizations.write"),
   deleteOrganizationHandler,
 );
 

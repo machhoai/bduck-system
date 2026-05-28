@@ -12,7 +12,13 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { UserFormModal } from "./UserFormModal";
 
-export function UserManagementPanel() {
+interface UserManagementPanelProps {
+  isEmbedded?: boolean;
+}
+
+export function UserManagementPanel({
+  isEmbedded = false,
+}: UserManagementPanelProps = {}) {
   const { t } = useTranslation();
   const hasPermission = useUserStore((state) => state.hasPermission);
   const { users, isLoading, error, createUser, updateUser, deleteUser } =
@@ -105,10 +111,18 @@ export function UserManagementPanel() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
+          <h1
+            className={`font-[var(--font-display)] font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] ${
+              isEmbedded ? "text-[24px]" : "text-[34px] lg:text-[40px]"
+            }`}
+          >
             {t.users.title}
           </h1>
-          <p className="mt-2 text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
+          <p
+            className={`mt-2 leading-7 text-[var(--color-text-secondary)] ${
+              isEmbedded ? "text-[15px]" : "text-[17px]"
+            }`}
+          >
             {t.users.description}
           </p>
         </div>

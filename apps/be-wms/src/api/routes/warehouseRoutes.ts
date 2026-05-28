@@ -7,13 +7,16 @@ import {
   updateWarehouseHandler,
 } from "../controllers/warehouseController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import {
+  requireAnyScopedPermission,
+  requirePermission,
+} from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", getWarehousesHandler);
+router.get("/", requireAnyScopedPermission("warehouses.read"), getWarehousesHandler);
 router.get(
   "/:id",
   requirePermission("warehouses.read", (req) =>

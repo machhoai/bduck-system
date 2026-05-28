@@ -1,5 +1,5 @@
-import { UserManagementPanel } from "@/components/users/UserManagementPanel";
+import { UserAccessWorkspace } from "@/components/users/UserAccessWorkspace";
 
 export default function UsersPage() {
-  return <UserManagementPanel />;
+  return <UserAccessWorkspace />;
 }

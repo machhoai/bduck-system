@@ -25,17 +25,38 @@ interface AttachmentSectionProps {
     t: Dictionary;
 }
 
-/** Extract filename from Firebase Storage URL */
+/** Extract human-readable filename from Firebase Storage URL */
 function extractFileName(url: string): string {
     try {
         const decoded = decodeURIComponent(url);
+        // Firebase Storage URL pattern: .../<storagePath>/<filename>?alt=media&token=...
         const match = decoded.match(/\/([^/?]+)\?/);
-        if (match) return match[1];
-        // Fallback: last path segment
-        const parts = new URL(url).pathname.split("/");
-        return parts[parts.length - 1] || "file";
+        let rawName = "";
+        if (match) {
+            rawName = match[1];
+        } else {
+            // Fallback: last path segment
+            const parts = new URL(url).pathname.split("/");
+            rawName = parts[parts.length - 1] || "file";
+        }
+
+        // Strip timestamp prefix (e.g. "1716888000000_Report_nhap_kho.pdf" → "Report_nhap_kho.pdf")
+        const timestamped = rawName.match(/^\d{13,}_(.+)$/);
+        if (timestamped) {
+            rawName = timestamped[1];
+        }
+
+        // If it's a pure UUID filename (old format), show extension-based name
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\./i;
+        if (uuidPattern.test(rawName)) {
+            const ext = rawName.split(".").pop()?.toUpperCase() || "FILE";
+            return `Tệp đính kèm.${ext.toLowerCase()}`;
+        }
+
+        // Replace underscores with spaces for readability
+        return rawName.replace(/_/g, " ");
     } catch {
-        return "file";
+        return "Tệp đính kèm";
     }
 }
 

@@ -15,21 +15,25 @@ router.use(requireAuth);
 
 router.get(
   "/",
-  requirePermission("warehouses.read", (req) =>
+  requirePermission("locations.read", (req) =>
     typeof req.query.warehouse_id === "string" ? req.query.warehouse_id : null,
   ),
   getLocationsHandler,
 );
-router.get("/:id", getLocationByIdHandler);
-router.post("/", requirePermission("warehouses.write"), createLocationHandler);
+router.get(
+  "/:id",
+  requirePermission("locations.read"),
+  getLocationByIdHandler,
+);
+router.post("/", requirePermission("locations.write"), createLocationHandler);
 router.put(
   "/:id",
-  requirePermission("warehouses.write"),
+  requirePermission("locations.write"),
   updateLocationHandler,
 );
 router.delete(
   "/:id",
-  requirePermission("warehouses.write"),
+  requirePermission("locations.write"),
   deleteLocationHandler,
 );
 

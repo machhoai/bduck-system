@@ -53,6 +53,18 @@ const zh: Dictionary = {
     STORE_MANAGER: "门店经理",
   },
 
+  identity: {
+    title: "用户与权限",
+    subtitle:
+      "在同一个工作区管理账户、角色和访问范围，并以系统 permission registry 作为展示依据。",
+    badge: "实时 RBAC",
+    readOnly: "只读",
+    writeAccess: "可编辑",
+    noAccessTitle: "没有访问权限",
+    noAccessHint:
+      "您的账户需要 users.read 或 roles.read 权限才能打开用户工作区。",
+  },
+
   dashboard: {
     title: "首页",
     welcome: "你好",
@@ -260,6 +272,8 @@ const zh: Dictionary = {
     parentRole: "父级角色",
     rootRole: "根角色",
     permissions: "权限",
+    permissionsSelected: "个权限已选",
+    toggleAll: "全选 / 取消全选",
     noRoles: "暂无角色",
     noRolesHint: "创建第一个角色以开始配置系统权限。",
     boardHint: "在图中拖动角色以保存显示位置。",
@@ -323,7 +337,7 @@ const zh: Dictionary = {
     search: "搜索全部审计日志",
     entityType: "数据表",
     entityId: "记录 ID",
-    warehouseId: "仓库 ID",
+    warehouseId: "仓库",
     userId: "用户",
     action: "操作",
     fromDate: "开始日期",

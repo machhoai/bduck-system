@@ -1,7 +1,5 @@
-"use client";
-
-import { RoleManagementPanel } from "@/components/roles/RoleManagementPanel";
+import { redirect } from "next/navigation";
 
 export default function RolesPage() {
-  return <RoleManagementPanel />;
+  redirect("/users");
 }

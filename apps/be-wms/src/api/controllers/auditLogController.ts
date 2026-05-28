@@ -32,7 +32,10 @@ const handleAuditLogError = (res: Response, error: unknown) => {
 export const getAuditLogsHandler = async (req: Request, res: Response) => {
   try {
     const query = auditLogQuerySchema.parse(req.query);
-    const logs = await fetchAuditLogs(query);
+    const user = (req as any).user;
+    const userPermissions = user?.permissions || {};
+
+    const logs = await fetchAuditLogs(query, userPermissions);
 
     return sendSuccess(res, logs, {
       vi: "Lấy audit log thành công.",

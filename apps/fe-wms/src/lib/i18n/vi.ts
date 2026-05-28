@@ -51,6 +51,18 @@ const vi = {
     STORE_MANAGER: "Quản lý cửa hàng",
   },
 
+  identity: {
+    title: "Người dùng & phân quyền",
+    subtitle:
+      "Quản trị tài khoản, role và phạm vi truy cập trên cùng một workspace dựa trên permission registry của hệ thống.",
+    badge: "RBAC theo thời gian thực",
+    readOnly: "Chỉ xem",
+    writeAccess: "Có quyền sửa",
+    noAccessTitle: "Không có quyền truy cập",
+    noAccessHint:
+      "Tài khoản của bạn cần quyền users.read hoặc roles.read để mở workspace người dùng.",
+  },
+
   dashboard: {
     title: "Trang chủ",
     welcome: "Xin chào",
@@ -263,6 +275,8 @@ const vi = {
     parentRole: "Role cha",
     rootRole: "Role gốc",
     permissions: "Phân quyền",
+    permissionsSelected: "quyền đã chọn",
+    toggleAll: "Chọn / bỏ chọn tất cả",
     noRoles: "Chưa có role nào",
     noRolesHint: "Tạo role đầu tiên để bắt đầu phân quyền hệ thống.",
     boardHint: "Kéo role trên sơ đồ để lưu vị trí hiển thị.",
@@ -327,7 +341,7 @@ const vi = {
     search: "Tìm kiếm toàn bộ audit log",
     entityType: "Bảng",
     entityId: "Mã bản ghi",
-    warehouseId: "Mã kho",
+    warehouseId: "Kho hàng",
     userId: "Người dùng",
     action: "Hành động",
     fromDate: "Từ ngày",

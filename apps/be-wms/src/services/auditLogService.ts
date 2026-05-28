@@ -8,9 +8,46 @@ import { auditLogQuerySchema } from "../utils/zodSchemas.js";
 
 export type AuditLogQueryInput = z.infer<typeof auditLogQuerySchema>;
 
+/**
+ * User permissions shape injected by authMiddleware.
+ * Keys are "global" or warehouse UUIDs, values are permission maps.
+ */
+type UserPermissions = Record<string, Record<string, unknown>>;
+
+/**
+ * Extract the warehouse IDs that a user has `audit.read` permission for.
+ * Returns `undefined` if the user has global access (no restriction needed).
+ */
+function extractAllowedWarehouseIds(
+  permissions: UserPermissions,
+): string[] | undefined {
+  const globalPerms = permissions["global"] || {};
+
+  // Global admin or global audit.read → unrestricted
+  if (globalPerms["*"] === true || globalPerms["audit.read"] === true) {
+    return undefined;
+  }
+
+  // Collect warehouse-scoped audit.read permissions
+  const warehouseIds: string[] = [];
+  for (const [scope, scopePerms] of Object.entries(permissions)) {
+    if (scope === "global") continue;
+    if (scopePerms["*"] === true || scopePerms["audit.read"] === true) {
+      warehouseIds.push(scope);
+    }
+  }
+
+  return warehouseIds;
+}
+
 export const fetchAuditLogs = async (
   input: AuditLogQueryInput,
+  userPermissions?: UserPermissions,
 ): Promise<AuditLog[]> => {
+  const allowedWarehouseIds = userPermissions
+    ? extractAllowedWarehouseIds(userPermissions)
+    : undefined;
+
   const params: AuditLogSearchParams = {
     entity_type: input.entity_type,
     entity_id: input.entity_id,
@@ -22,6 +59,7 @@ export const fetchAuditLogs = async (
     limit: input.limit,
     sort_by: input.sort_by,
     sort_dir: input.sort_dir,
+    allowed_warehouse_ids: allowedWarehouseIds,
   };
 
   return auditLogRepository.findAuditLogs(params);

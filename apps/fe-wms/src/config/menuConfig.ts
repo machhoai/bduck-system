@@ -11,12 +11,12 @@ import {
     Home,
     Package,
     PackagePlus,
-    ShieldCheck,
     Users,
     Warehouse,
     LucideIcon,
     FolderSymlink,
 } from "lucide-react";
+import { PERMISSION_REGISTRY } from "@bduck/shared-types";
 
 export interface MenuItem {
     id: string;
@@ -26,9 +26,16 @@ export interface MenuItem {
     href: string;
     /** Permission key cần check. Nếu undefined = public cho authenticated users */
     permission?: string;
+    permissionsAny?: string[];
     /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
     showInBottomNav?: boolean;
 }
+
+const userAccessReadPermissions = PERMISSION_REGISTRY.filter(
+    (permission) =>
+        ["users", "roles"].includes(permission.group) &&
+        permission.key.endsWith(".read"),
+).map((permission) => permission.key);
 
 /**
  * Danh sách menu items
@@ -83,14 +90,7 @@ export const menuItems: MenuItem[] = [
         labelKey: "users",
         icon: Users,
         href: "/users",
-        permission: "users.read",
-    },
-    {
-        id: "roles",
-        labelKey: "roles",
-        icon: ShieldCheck,
-        href: "/roles",
-        permission: "roles.read",
+        permissionsAny: userAccessReadPermissions,
     },
     {
         id: "auditLogs",
@@ -110,7 +110,10 @@ export function getVisibleMenuItems(
     hasPermission: (action: string) => boolean,
 ): MenuItem[] {
     return items.filter((item) => {
-        if (!item.permission) return true;
-        return hasPermission(item.permission);
+        if (item.permission && hasPermission(item.permission)) return true;
+        if (item.permissionsAny?.some((permission) => hasPermission(permission))) {
+            return true;
+        }
+        return !item.permission && !item.permissionsAny;
     });
 }

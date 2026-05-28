@@ -97,9 +97,16 @@ export async function uploadFile(
     throw new Error(validationError.message.vi);
   }
 
-  // 2. Generate unique filename preserving extension
+  // 2. Generate unique filename preserving original name for readability
   const ext = ALLOWED_MIME_TYPES[file.type] || getExtension(file.name) || ".bin";
-  const uniqueFileName = `${crypto.randomUUID()}${ext}`;
+  // Sanitize original name: remove extension, replace special chars with underscore
+  const baseName = file.name
+    .replace(/\.[^.]+$/, "")           // remove extension
+    .replace(/[^a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF\u4E00-\u9FFF_\-\s]/g, "") // keep letters, numbers, Vietnamese, Chinese
+    .replace(/\s+/g, "_")              // spaces → underscores
+    .slice(0, 80);                     // limit length
+  const timestamp = Date.now();
+  const uniqueFileName = `${timestamp}_${baseName}${ext}`;
   const fullPath = `${storagePath}/${uniqueFileName}`;
   const storageRef = ref(storage, fullPath);
 
