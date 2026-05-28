@@ -7,12 +7,12 @@
  * Two modes:
  * 1. /workflows/new   → Shows a "Create Workflow" form, then redirects
  *    to /workflows/{uuid} once the definition is created.
- * 2. /workflows/{uuid} → Loads the full builder canvas.
+ * 2. /workflows/{uuid} → Loads the latest version from BE → populates canvas.
  * ═══════════════════════════════════════════════════════════════
  */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ReactFlowProvider } from "@xyflow/react";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -25,9 +25,13 @@ import { WorkflowCanvas } from "@/components/workflows/WorkflowCanvas";
 import { WorkflowSidebar } from "@/components/workflows/WorkflowSidebar";
 import { WorkflowToolbar } from "@/components/workflows/WorkflowToolbar";
 import { NodeConfigPanel } from "@/components/workflows/NodeConfigPanel";
-import { serializeCanvasToDAG } from "@/utils/workflowSerializer";
+import {
+    serializeCanvasToDAG,
+    deserializeDAGToCanvas,
+} from "@/utils/workflowSerializer";
 import {
     createWorkflowDefinition,
+    fetchWorkflowDefinitionById,
     saveWorkflowVersion,
     publishWorkflowVersion,
 } from "@/hooks/useWorkflowApi";
@@ -58,11 +62,48 @@ export default function WorkflowBuilderPage() {
     // ─── State ───
     const [isSaving, setIsSaving] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const [isLoadingCanvas, setIsLoadingCanvas] = useState(!isNewMode);
 
     // ─── New Workflow Form ───
     const [newName, setNewName] = useState("");
     const [newDesc, setNewDesc] = useState("");
     const [newEntityType, setNewEntityType] = useState<string>("IMPORT_VOUCHER");
+
+    // ─── Load existing workflow (builder mode) ───
+    useEffect(() => {
+        if (isNewMode) return;
+
+        const loadWorkflow = async () => {
+            setIsLoadingCanvas(true);
+            try {
+                const data = (await fetchWorkflowDefinitionById(rawId)) as any;
+                const version = data?.latest_version;
+
+                if (version?.nodes?.length) {
+                    const { nodes, edges } = deserializeDAGToCanvas(version);
+                    useWorkflowCanvasStore.getState().loadCanvas(nodes, edges);
+                } else {
+                    // No version saved yet → empty canvas
+                    useWorkflowCanvasStore.getState().clearCanvas();
+                }
+            } catch (error) {
+                console.error("[WorkflowBuilder] Load failed:", error);
+                gooeyToast.error("Không thể tải quy trình", {
+                    description: "Vui lòng thử lại sau.",
+                    preset: "snappy",
+                });
+            } finally {
+                setIsLoadingCanvas(false);
+            }
+        };
+
+        loadWorkflow();
+
+        // Clean up canvas on unmount to prevent stale state
+        return () => {
+            useWorkflowCanvasStore.getState().clearCanvas();
+        };
+    }, [rawId, isNewMode]);
 
     // ─── Create Definition (new mode) ───
     const handleCreate = useCallback(async () => {
@@ -283,7 +324,21 @@ export default function WorkflowBuilderPage() {
                     {/* Main 3-panel layout */}
                     <div className="flex flex-1 overflow-hidden">
                         <WorkflowSidebar />
-                        <WorkflowCanvas />
+                        {isLoadingCanvas ? (
+                            <div className="flex flex-1 items-center justify-center bg-[var(--color-surface-base)]">
+                                <div className="flex flex-col items-center gap-3">
+                                    <Loader2
+                                        size={28}
+                                        className="animate-spin text-[var(--color-brand-primary)]"
+                                    />
+                                    <p className="text-sm text-[var(--color-text-muted)]">
+                                        Đang tải quy trình...
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <WorkflowCanvas />
+                        )}
                         <NodeConfigPanel />
                     </div>
                 </ReactFlowProvider>

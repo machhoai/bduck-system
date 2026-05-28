@@ -5,6 +5,7 @@ import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import { getVisibleMenuItems, menuItems } from "../../config/menuConfig";
+import { useMenuBadges } from "../../hooks/useMenuBadges";
 import SidebarActions from "./SidebarActions";
 import SidebarMenuItem from "./SidebarMenuItem";
 import SidebarUserPanel from "./SidebarUserPanel";
@@ -14,6 +15,7 @@ export default function Sidebar() {
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const hasPermission = useUserStore((s) => s.hasPermission);
   const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
+  const badges = useMenuBadges();
 
   return (
     <aside
@@ -64,6 +66,11 @@ export default function Sidebar() {
               isCollapsed={isCollapsed}
               label={
                 t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey
+              }
+              badgeCount={
+                item.badgeKey
+                  ? badges[item.badgeKey as keyof typeof badges] || 0
+                  : 0
               }
             />
           ))}

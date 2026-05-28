@@ -89,7 +89,25 @@ export const getWorkflowByIdHandler = async (req: Request, res: Response) => {
         404,
       );
     }
-    return sendSuccess(res, definition, {
+
+    // Include latest version (nodes + edges) if available
+    let latestVersion = null;
+    if (definition.current_version_id) {
+      const version = await defService.fetchVersionById(id, definition.current_version_id);
+      if (version) {
+        latestVersion = version;
+      }
+    }
+
+    // Fallback: if no published version, try the most recent draft
+    if (!latestVersion) {
+      const versions = await defService.fetchVersionsByDefinition(id);
+      if (versions.length > 0) {
+        latestVersion = versions[0]; // Already sorted desc by version_number
+      }
+    }
+
+    return sendSuccess(res, { ...definition, latest_version: latestVersion }, {
       vi: "Lấy quy trình thành công.",
       zh: "成功获取流程。",
     });

@@ -749,6 +749,13 @@ const zh: Dictionary = {
       openSession: "开始清点",
     },
   },
+
+  forbidden: {
+    title: "无权访问",
+    description: "您无权访问此页面。请联系管理员获取权限。",
+    goBack: "返回",
+    goHome: "回到首页",
+  },
 };
 
 export default zh;

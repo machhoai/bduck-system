@@ -29,6 +29,8 @@ export interface MenuItem {
     permissionsAny?: string[];
     /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
     showInBottomNav?: boolean;
+    /** Key mapping to MenuBadges for realtime count display */
+    badgeKey?: string;
 }
 
 const userAccessReadPermissions = PERMISSION_REGISTRY.filter(
@@ -55,6 +57,7 @@ export const menuItems: MenuItem[] = [
         icon: ClipboardCheck,
         href: "/tasks",
         showInBottomNav: true,
+        badgeKey: "tasks",
     },
     {
         id: "products",
@@ -84,6 +87,7 @@ export const menuItems: MenuItem[] = [
         icon: PackagePlus,
         href: "/import-vouchers",
         permission: "vouchers.read",
+        badgeKey: "importVouchers",
     },
     {
         id: "users",

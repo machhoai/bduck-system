@@ -59,6 +59,12 @@ interface WorkflowCanvasState {
     nodeId: string,
     config: Record<string, unknown>,
   ) => void;
+
+  /** Load entire canvas state at once (used when opening existing workflow) */
+  loadCanvas: (nodes: Node[], edges: Edge[]) => void;
+
+  /** Clear canvas (used on unmount to prevent stale data) */
+  clearCanvas: () => void;
 }
 
 /**
@@ -104,5 +110,11 @@ export const useWorkflowCanvasStore = create<WorkflowCanvasState>()(
           config: { ...data.config, ...config },
         })),
       })),
+
+    loadCanvas: (nodes, edges) =>
+      set({ nodes, edges, selectedNodeId: null }),
+
+    clearCanvas: () =>
+      set({ nodes: [], edges: [], selectedNodeId: null }),
   }),
 );

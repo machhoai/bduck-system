@@ -21,8 +21,7 @@ interface SystemActionConfigFormProps {
 }
 
 const SYSTEM_ACTIONS = [
-  { value: "UPDATE_INVENTORY", label: "Cập nhật tồn kho (ATP)" },
-  { value: "AUTO_APPROVE", label: "Tự động duyệt" },
+  { value: "UPDATE_INVENTORY_ATP", label: "Cập nhật tồn kho (ATP)" },
   { value: "CHANGE_VOUCHER_STATUS", label: "Đổi trạng thái phiếu" },
   { value: "CREATE_NONCONFORMITY", label: "Tạo biên bản sai lệch (NC)" },
 ];

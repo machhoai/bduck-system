@@ -8,6 +8,8 @@ interface SidebarMenuItemProps {
   item: MenuItem;
   isCollapsed: boolean;
   label: string;
+  /** Realtime badge count (0 = hidden) */
+  badgeCount?: number;
 }
 
 /**
@@ -15,21 +17,24 @@ interface SidebarMenuItemProps {
  *
  * ► Active state: highlight bằng brand-yellow left border + background tint
  * ► Collapsed mode: chỉ hiện icon, tooltip hiện label khi hover
+ * ► Badge: realtime count pill (red dot when collapsed, number when expanded)
  */
 export default function SidebarMenuItem({
   item,
   isCollapsed,
   label,
+  badgeCount = 0,
 }: SidebarMenuItemProps) {
   const pathname = usePathname();
   const isActive =
     pathname === item.href || pathname.startsWith(item.href + "/");
   const Icon = item.icon;
+  const showBadge = badgeCount > 0;
 
   return (
     <Link
       href={item.href}
-      title={isCollapsed ? label : undefined}
+      title={isCollapsed ? `${label}${showBadge ? ` (${badgeCount})` : ""}` : undefined}
       className={`
         group relative flex min-h-11 items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5
         cursor-pointer transition-all duration-200 active:scale-95
@@ -46,14 +51,34 @@ export default function SidebarMenuItem({
         <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--color-brand-primary)]" />
       )}
 
-      {/* Icon */}
-      <Icon size={19} strokeWidth={1.8} className="shrink-0" />
+      {/* Icon + dot badge (collapsed mode) */}
+      <span className="relative shrink-0">
+        <Icon size={19} strokeWidth={1.8} />
+        {isCollapsed && showBadge && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white shadow-sm">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        )}
+      </span>
 
-      {/* Label */}
+      {/* Label + badge (expanded mode) */}
       {!isCollapsed && (
-        <span className="truncate text-[14px] font-normal tracking-[-0.224px]">
-          {label}
-        </span>
+        <>
+          <span className="min-w-0 flex-1 truncate text-[14px] font-normal tracking-[-0.224px]">
+            {label}
+          </span>
+          {showBadge && (
+            <span
+              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-sm ${
+                isActive
+                  ? "bg-red-500 text-white"
+                  : "bg-red-500/90 text-white"
+              }`}
+            >
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          )}
+        </>
       )}
 
       {/* Tooltip khi collapsed */}
@@ -68,6 +93,11 @@ export default function SidebarMenuItem({
         "
         >
           {label}
+          {showBadge && (
+            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+              {badgeCount}
+            </span>
+          )}
         </span>
       )}
     </Link>

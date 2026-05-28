@@ -760,6 +760,13 @@ const vi = {
       openSession: "Mở phiên kiểm đếm",
     },
   },
+
+  forbidden: {
+    title: "Không có quyền truy cập",
+    description: "Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên để được cấp quyền.",
+    goBack: "Quay lại",
+    goHome: "Về trang chủ",
+  },
 };
 
 export type Dictionary = typeof vi;

@@ -67,3 +67,54 @@ export function serializeCanvasToDAG(
 
   return { nodes: serializedNodes, edges: serializedEdges };
 }
+
+// ─────────────────────────────────────────────
+// DESERIALIZE: Backend DAG → React Flow canvas state
+// ─────────────────────────────────────────────
+
+/**
+ * Convert saved DAG (from Firestore version) back into React Flow
+ * Nodes + Edges to populate the canvas store.
+ *
+ * This is the reverse of `serializeCanvasToDAG`.
+ */
+export function deserializeDAGToCanvas(
+  dag: {
+    nodes: Array<{
+      id: string;
+      type: string;
+      label: string;
+      position: { x: number; y: number };
+      config: Record<string, unknown>;
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      source_handle?: string | null;
+      label?: string | null;
+    }>;
+  },
+): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = dag.nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    position: { x: n.position.x, y: n.position.y },
+    data: {
+      label: n.label,
+      config: n.config || {},
+    },
+  }));
+
+  const edges: Edge[] = dag.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.source_handle || undefined,
+    animated: true,
+    style: { strokeWidth: 2, stroke: "var(--color-brand-primary)" },
+    label: e.label || undefined,
+  }));
+
+  return { nodes, edges };
+}

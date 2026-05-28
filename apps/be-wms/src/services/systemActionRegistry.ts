@@ -62,6 +62,8 @@ function registerAction(
 
 registerAction("CHANGE_VOUCHER_STATUS", changeVoucherStatus);
 registerAction("UPDATE_INVENTORY_ATP", updateInventoryATP);
+// Backward compat: old workflow definitions used "UPDATE_INVENTORY" (no _ATP suffix)
+registerAction("UPDATE_INVENTORY", updateInventoryATP);
 registerAction("CREATE_NONCONFORMITY", createNonconformity);
 
 // ─────────────────────────────────────────────

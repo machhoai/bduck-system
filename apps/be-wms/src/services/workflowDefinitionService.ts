@@ -272,6 +272,7 @@ export const publishWorkflowVersion = async (
 export const fetchWorkflowDefinitions = repo.findDefinitions;
 export const fetchWorkflowDefinitionById = repo.findDefinitionById;
 export const fetchVersionsByDefinition = repo.findVersionsByDefinition;
+export const fetchVersionById = repo.findVersionById;
 
 // ─────────────────────────────────────────────
 // VALIDATION HELPERS
