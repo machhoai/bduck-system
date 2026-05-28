@@ -71,6 +71,8 @@ services:
       # Mount source code for hot reload (tsx watch)
       - ./apps/be-wms/src:/app/apps/be-wms/src
       - ./apps/be-wms/tsconfig.json:/app/apps/be-wms/tsconfig.json
+      # Mount .env.local so tsx --env-file=../../.env.local resolves correctly
+      - ./.env.local:/app/.env.local:ro
       # Mount shared packages
       - ./packages/shared-types/src:/app/packages/shared-types/src
       # Prevent host node_modules from overriding container's
