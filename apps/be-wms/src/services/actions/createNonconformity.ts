@@ -24,7 +24,7 @@ import { logAudit } from "../auditService.js";
 import type {
   SystemActionContext,
   SystemActionResult,
-} from "../systemActionRegistry.js";
+} from "./updateInventoryATP.js";
 
 export async function createNonconformity(
   _params: Record<string, unknown>,

@@ -12,8 +12,9 @@ import productRoutes from "./api/routes/productRoutes.js";
 import roleRoutes from "./api/routes/roleRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
-import workflowRoutes from "./api/routes/workflowRoutes.js";
 import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
+import approvalRoutes from "./api/routes/approvalRoutes.js";
+import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 
 const app = express();
 const PORT = process.env.BE_WMS_PORT || 4000;
@@ -47,8 +48,9 @@ app.use("/api/roles", roleRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/locations", locationRoutes);
-app.use("/api/workflows", workflowRoutes);
 app.use("/api/import-vouchers", importVoucherRoutes);
+app.use("/api/approvals", approvalRoutes);
+app.use("/api/process-configs", processConfigRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

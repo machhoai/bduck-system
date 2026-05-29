@@ -1,11 +1,11 @@
 /**
- * UPDATE_INVENTORY_ATP — System Action Handler
+ * UPDATE_INVENTORY_ATP — Standalone Inventory Action
  *
  * Atomically adds actual_quantity from import voucher items
  * to the warehouse inventory using Firestore Transaction.
  *
- * ctx.entityPayload must contain { voucher_id }
- * The handler reads import_voucher items to get actual_quantity per product.
+ * Called directly by importVoucherService.completeReceiving()
+ * (no registry lookup needed).
  *
  * ATP Formula: total_quantity = atp_quantity + on_hold + in_transit + quarantine
  * Only atp_quantity is increased during import receiving.
@@ -13,20 +13,34 @@
  * IDEMPOTENCY: Checks if this instance already executed ATP update
  * by verifying a flag on the voucher document.
  *
- * ARCHITECTURE (v2):
- * Uses inventoryRepository.upsertQuantityInTransaction() to ensure
- * consistent record shape (is_deleted, total_quantity recalc, etc.)
+ * FIRESTORE TRANSACTION RULE:
+ * All reads MUST execute before any writes. This handler uses a
+ * 2-phase transaction: Phase 1 reads all inventory records,
+ * Phase 2 writes all creates/updates.
  */
 
 import { db } from "../../config/firebase.js";
 import { AuditAction } from "@bduck/shared-types";
+import type { Inventory } from "@bduck/shared-types";
 import { logAudit } from "../auditService.js";
-import * as inventoryRepo from "../../repositories/inventoryRepository.js";
-import type {
-  SystemActionContext,
-  SystemActionResult,
-} from "../systemActionRegistry.js";
 import { randomUUID } from "crypto";
+
+/** Context passed from the calling service */
+export interface SystemActionContext {
+  instanceId: string;
+  entityPayload: Record<string, unknown>;
+  userId: string;
+}
+
+/** Result returned to the calling service */
+export type SystemActionResult = Record<string, unknown>;
+
+/** Validated item ready for inventory update */
+interface ValidItem {
+  productId: string;
+  locationId: string;
+  actualQty: number;
+}
 
 export async function updateInventoryATP(
   _params: Record<string, unknown>,
@@ -77,44 +91,103 @@ export async function updateInventoryATP(
     );
   }
 
-  const items = itemsSnap.docs.map((d) => d.data());
-  let totalUpdated = 0;
+  // Pre-validate items outside the transaction
+  const rawItems = itemsSnap.docs.map((d) => d.data());
+  const validItems: ValidItem[] = [];
   const skippedItems: string[] = [];
 
+  for (const item of rawItems) {
+    const productId = item.product_id as string;
+    const locationId = item.warehouse_location_id as string | null;
+    const actualQty = (item.actual_quantity as number) || 0;
+
+    if (actualQty <= 0) {
+      skippedItems.push(`${productId} (qty=0)`);
+      continue;
+    }
+    if (!locationId) {
+      skippedItems.push(`${productId} (no location_id)`);
+      console.warn(
+        `[updateInventoryATP] Item product_id=${productId} has null warehouse_location_id. Skipping.`,
+      );
+      continue;
+    }
+    validItems.push({ productId, locationId, actualQty });
+  }
+
+  if (validItems.length === 0) {
+    throw new Error(
+      `[updateInventoryATP] All ${rawItems.length} items were skipped ` +
+        `(reasons: ${skippedItems.join(", ")}). No inventory records created.`,
+    );
+  }
+
   console.log(
-    `[updateInventoryATP] Processing ${items.length} items for voucher ${voucherId} (warehouse: ${warehouseId})`,
+    `[updateInventoryATP] Processing ${validItems.length} valid items for voucher ${voucherId} (warehouse: ${warehouseId})`,
   );
 
-  // Transaction: update inventory for each item atomically
+  // ══════════════════════════════════════════════════════════════
+  // 2-PHASE TRANSACTION (Firestore rule: all reads before writes)
+  // ══════════════════════════════════════════════════════════════
+  let totalUpdated = 0;
+
   await db.runTransaction(async (txn) => {
-    for (const item of items) {
-      const productId = item.product_id as string;
-      const locationId = item.warehouse_location_id as string | null;
-      const actualQty = (item.actual_quantity as number) || 0;
+    // ── PHASE 1: READ all existing inventory records ──
+    const inventoryQueries = validItems.map((vi) =>
+      db
+        .collection("inventory")
+        .where("warehouse_id", "==", warehouseId)
+        .where("warehouse_location_id", "==", vi.locationId)
+        .where("product_id", "==", vi.productId)
+        .limit(1),
+    );
 
-      if (actualQty <= 0) {
-        skippedItems.push(`${productId} (qty=0)`);
-        continue;
+    // Execute ALL reads first
+    const inventorySnapshots = await Promise.all(
+      inventoryQueries.map((q) => txn.get(q)),
+    );
+
+    // ── PHASE 2: WRITE all creates/updates ──
+    const now = new Date();
+
+    for (let i = 0; i < validItems.length; i++) {
+      const vi = validItems[i];
+      const invSnap = inventorySnapshots[i];
+
+      if (invSnap.empty) {
+        // Create new inventory record
+        const newId = randomUUID();
+        const newRef = db.collection("inventory").doc(newId);
+        const record: Inventory = {
+          id: newId,
+          warehouse_id: warehouseId,
+          warehouse_location_id: vi.locationId,
+          product_id: vi.productId,
+          atp_quantity: vi.actualQty,
+          on_hold_quantity: 0,
+          in_transit_quantity: 0,
+          quarantine_quantity: 0,
+          total_quantity: vi.actualQty,
+          last_count_at: null,
+          last_updated_at: now,
+          is_deleted: false,
+        };
+        txn.set(newRef, record);
+      } else {
+        // Update existing — increment atp_quantity + total_quantity
+        const existing = invSnap.docs[0].data() as Inventory;
+        const docRef = db.collection("inventory").doc(existing.id);
+        const newAtp = existing.atp_quantity + vi.actualQty;
+        const newOnHold = existing.on_hold_quantity;
+        const newInTransit = existing.in_transit_quantity;
+        const newQuarantine = existing.quarantine_quantity;
+
+        txn.update(docRef, {
+          atp_quantity: newAtp,
+          total_quantity: newAtp + newOnHold + newInTransit + newQuarantine,
+          last_updated_at: now,
+        });
       }
-
-      if (!locationId) {
-        // warehouse_location_id is required for inventory tracking
-        skippedItems.push(`${productId} (no location_id)`);
-        console.warn(
-          `[updateInventoryATP] Item product_id=${productId} has null warehouse_location_id. Skipping.`,
-        );
-        continue;
-      }
-
-      // Use repository pattern — consistent record shape with is_deleted, total_quantity recalc
-      await inventoryRepo.upsertQuantityInTransaction(
-        txn,
-        warehouseId,
-        locationId,
-        productId,
-        { atp_quantity: actualQty },
-        randomUUID(),
-      );
 
       totalUpdated++;
     }
@@ -122,16 +195,9 @@ export async function updateInventoryATP(
     // Mark voucher as ATP-updated (idempotency flag)
     txn.update(db.collection("import_vouchers").doc(voucherId), {
       atp_updated: true,
-      updated_at: new Date(),
+      updated_at: now,
     });
   });
-
-  if (totalUpdated === 0 && skippedItems.length > 0) {
-    throw new Error(
-      `[updateInventoryATP] All ${items.length} items were skipped ` +
-        `(reasons: ${skippedItems.join(", ")}). No inventory records created.`,
-    );
-  }
 
   console.log(
     `[updateInventoryATP] ✅ Updated ${totalUpdated} inventory records for voucher ${voucherId}` +

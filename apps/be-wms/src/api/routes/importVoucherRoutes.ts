@@ -4,8 +4,8 @@
  * All routes require authentication (requireAuth middleware).
  * GET  /             — List vouchers (RBAC-scoped, filtered)
  * GET  /:id          — Voucher detail (items + attachments)
- * GET  /:id/timeline — Audit + workflow timeline
- * POST /             — Create Import Voucher + trigger Workflow Engine
+ * GET  /:id/timeline — Audit + approval timeline
+ * POST /             — Create Import Voucher + trigger Fixed Pipeline
  * PUT  /:id/actuals  — Save Receiving Session actual_quantity data
  */
 

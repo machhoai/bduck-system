@@ -20,6 +20,7 @@ const vi = {
     settings: "Cài đặt",
     tasks: "Việc cần xử lý",
     workflows: "Quy trình",
+    processConfigs: "Cấu hình quy trình",
     more: "Thêm",
   },
 
@@ -709,6 +710,14 @@ const vi = {
     nodeType: {
       APPROVAL: "Phê duyệt",
       DATA_INPUT: "Nhập liệu",
+    },
+    entityType: {
+      IMPORT_VOUCHER: "Phiếu nhập",
+      EXPORT_VOUCHER: "Phiếu xuất",
+      TRANSFER_ORDER: "Chuyển kho",
+      PURCHASE_ORDER: "Đơn mua hàng",
+      ADJUSTMENT_VOUCHER: "Điều chỉnh",
+      GIFT_SESSION: "Quà tặng",
     },
     detail: {
       title: "Chi tiết lệnh",

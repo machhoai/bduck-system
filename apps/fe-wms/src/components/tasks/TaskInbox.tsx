@@ -6,7 +6,7 @@
  * Flow: Task list → Click card → TaskDetailDrawer (with approve/reject)
  *
  * LUẬT THÉP:
- * - Realtime via useWorkflowTasks (onSnapshot)
+ * - Realtime via useApprovalTasks (onSnapshot on pending_approvals)
  * - Skeleton loading (no spinners)
  * - Light Theme only
  * - i18n (vi + zh)
@@ -14,9 +14,9 @@
 
 import { useState, useCallback } from "react";
 import { ClipboardCheck, Inbox } from "lucide-react";
-import type { WorkflowTask } from "@bduck/shared-types";
+import type { ApprovalRecord } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
-import { useWorkflowTasks } from "@/hooks/useWorkflowTasks";
+import { useApprovalTasks } from "@/hooks/useApprovalTasks";
 import TaskCard from "./TaskCard";
 import TaskDetailDrawer from "./TaskDetailDrawer";
 
@@ -42,10 +42,10 @@ function TaskSkeleton() {
 
 export default function TaskInbox() {
     const { t } = useTranslation();
-    const { myTasks, loading } = useWorkflowTasks();
-    const [selectedTask, setSelectedTask] = useState<WorkflowTask | null>(null);
+    const { myTasks, loading } = useApprovalTasks();
+    const [selectedTask, setSelectedTask] = useState<ApprovalRecord | null>(null);
 
-    const handleOpenDetail = useCallback((task: WorkflowTask) => {
+    const handleOpenDetail = useCallback((task: ApprovalRecord) => {
         setSelectedTask(task);
     }, []);
 
@@ -88,7 +88,7 @@ export default function TaskInbox() {
                     {myTasks.map((task) => (
                         <TaskCard
                             key={task.id}
-                            task={task}
+                            approval={task}
                             onOpenDetail={handleOpenDetail}
                             t={t}
                         />
@@ -98,7 +98,7 @@ export default function TaskInbox() {
 
             {/* Detail Drawer */}
             {selectedTask && (
-                <TaskDetailDrawer task={selectedTask} onClose={handleCloseDetail} />
+                <TaskDetailDrawer approval={selectedTask} onClose={handleCloseDetail} />
             )}
         </div>
     );

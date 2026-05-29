@@ -288,17 +288,22 @@ export enum FileType {
 }
 
 // ============================================================
-// DYNAMIC WORKFLOW ENGINE
+// DYNAMIC WORKFLOW ENGINE — @deprecated
+// ============================================================
+// These enums are DEPRECATED. They belong to the old DAG-based
+// workflow engine which has been replaced by the Fixed Pipeline
+// pattern (see process.ts). Kept temporarily to avoid breaking
+// existing Firestore data. Will be DELETED after full migration.
 // ============================================================
 
-/** Workflow definition lifecycle */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum WorkflowDefinitionStatus {
     DRAFT = 'DRAFT',
     ACTIVE = 'ACTIVE',
     ARCHIVED = 'ARCHIVED',
 }
 
-/** All supported node types in the visual builder */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum WorkflowNodeType {
     TRIGGER = 'TRIGGER',
     APPROVAL = 'APPROVAL',
@@ -313,7 +318,7 @@ export enum WorkflowNodeType {
     DATA_INPUT = 'DATA_INPUT',
 }
 
-/** Runtime workflow instance status */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum WorkflowInstanceStatus {
     RUNNING = 'RUNNING',
     COMPLETED = 'COMPLETED',
@@ -321,7 +326,7 @@ export enum WorkflowInstanceStatus {
     ERROR = 'ERROR',
 }
 
-/** Per-node task execution status */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum WorkflowTaskStatus {
     PENDING = 'PENDING',
     IN_PROGRESS = 'IN_PROGRESS',
@@ -331,7 +336,7 @@ export enum WorkflowTaskStatus {
     TIMED_OUT = 'TIMED_OUT',
 }
 
-/** Condition node comparison operators */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum ConditionOperator {
     EQ = 'EQ',
     NEQ = 'NEQ',
@@ -343,27 +348,27 @@ export enum ConditionOperator {
     NOT_CONTAINS = 'NOT_CONTAINS',
 }
 
-/** Notification delivery channel */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum NotificationChannel {
     IN_APP = 'IN_APP',
     EMAIL = 'EMAIL',
     PUSH = 'PUSH',
 }
 
-/** Action when a node times out */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum TimeoutAction {
     AUTO_APPROVE = 'AUTO_APPROVE',
     AUTO_REJECT = 'AUTO_REJECT',
     ESCALATE = 'ESCALATE',
 }
 
-/** Parallel gateway join strategy */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum JoinType {
-    ALL = 'ALL',   // Wait for ALL incoming branches
-    ANY = 'ANY',   // First completed branch wins
+    ALL = 'ALL',
+    ANY = 'ANY',
 }
 
-/** HTTP method for webhook nodes */
+/** @deprecated Use Fixed Pipeline pattern instead */
 export enum WebhookMethod {
     GET = 'GET',
     POST = 'POST',

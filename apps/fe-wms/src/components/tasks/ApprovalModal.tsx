@@ -1,32 +1,29 @@
 "use client";
 
 /**
- * ApprovalModal — Modal for Approve/Reject workflow tasks
+ * ApprovalModal — Standalone modal for quick Approve/Reject
  *
  * LUẬT THÉP:
  * - gooeyToast.promise for API calls
- * - Dual-language messages
+ * - Dual-language messages (i18n)
  * - Disable button while loading (anti-double-click)
  */
 
 import { useState } from "react";
 import { X, CheckCircle, XCircle } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { WorkflowTask } from "@bduck/shared-types";
-import { emitDataMutation } from "@/lib/dataInvalidation";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+import type { ApprovalRecord } from "@bduck/shared-types";
+import { approveRecord, rejectRecord } from "@/hooks/useApprovalApi";
 
 interface ApprovalModalProps {
-  task: WorkflowTask;
+  approval: ApprovalRecord;
   onClose: () => void;
   /** "approve" or "reject" — determines default action */
   mode: "approve" | "reject";
 }
 
 export default function ApprovalModal({
-  task,
+  approval,
   onClose,
   mode,
 }: ApprovalModalProps) {
@@ -39,33 +36,11 @@ export default function ApprovalModal({
     setIsSubmitting(true);
 
     const submitAction = async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/api/workflows/engine/complete-task`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            instance_id: task.instance_id,
-            task_id: task.id,
-            result: {
-              approved: mode === "approve",
-              comments: comment || null,
-              decision_time: new Date().toISOString(),
-            },
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.messages?.vi || "Không thể xử lý yêu cầu.",
-        );
+      if (mode === "approve") {
+        return approveRecord(approval.id, comment || undefined);
+      } else {
+        return rejectRecord(approval.id, comment);
       }
-
-      emitDataMutation(["workflow_tasks", "audit_logs"]);
-      return response.json();
     };
 
     try {
@@ -124,15 +99,15 @@ export default function ApprovalModal({
           </button>
         </div>
 
-        {/* Task info */}
+        {/* Entity info */}
         <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
           <p>
-            <span className="font-medium text-gray-800">Instance:</span>{" "}
-            {task.instance_id?.slice(0, 12)}...
+            <span className="font-medium text-gray-800">Loại:</span>{" "}
+            {approval.entity_type}
           </p>
           <p className="mt-1">
-            <span className="font-medium text-gray-800">Node:</span>{" "}
-            {task.node_id?.slice(0, 12)}...
+            <span className="font-medium text-gray-800">Mã phiếu:</span>{" "}
+            {approval.entity_id?.slice(0, 12)}...
           </p>
         </div>
 

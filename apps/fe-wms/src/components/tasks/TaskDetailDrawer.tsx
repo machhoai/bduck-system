@@ -3,7 +3,8 @@
 /**
  * TaskDetailDrawer — Slide-over drawer showing voucher detail + approve/reject
  *
- * Flow: Click task card → open drawer → read voucher info → approve or reject
+ * SIMPLIFIED: Only APPROVAL actions. DATA_INPUT (receiving) is now
+ * handled via the Import Voucher page's RECEIVING status, not via tasks.
  *
  * LUẬT THÉP:
  * - i18n (vi + zh) via useTranslation
@@ -11,7 +12,7 @@
  * - Skeleton loading (no spinners)
  * - gooeyToast.promise for API calls
  * - Anti-double-click
- * - Code < 300 lines (sub-components extracted)
+ * - Code < 300 lines
  */
 
 import { useState, useCallback, useMemo } from "react";
@@ -25,26 +26,19 @@ import {
     Calendar,
     Hash,
     FileText,
-    AlertTriangle,
-    ClipboardEdit,
     Loader2,
     Barcode,
     Ruler,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { WorkflowNodeType } from "@bduck/shared-types";
-import type { WorkflowTask } from "@bduck/shared-types";
+import type { ApprovalRecord } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
-import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
+import { approveRecord, rejectRecord } from "@/hooks/useApprovalApi";
 import AttachmentSection from "./AttachmentSection";
-import ReceivingSessionDrawer from "./ReceivingSessionDrawer";
-
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 interface TaskDetailDrawerProps {
-    task: WorkflowTask;
+    approval: ApprovalRecord;
     onClose: () => void;
 }
 
@@ -55,10 +49,10 @@ function formatDate(val: unknown): string {
     let d: Date;
     if (val instanceof Date) {
         d = val;
-    } else if (typeof val === "object" && val !== null && "toDate" in val && typeof (val as any).toDate === "function") {
-        d = (val as any).toDate();
+    } else if (typeof val === "object" && val !== null && "toDate" in val && typeof (val as Record<string, unknown>).toDate === "function") {
+        d = (val as { toDate: () => Date }).toDate();
     } else if (typeof val === "object" && val !== null && "seconds" in val) {
-        d = new Date((val as any).seconds * 1000);
+        d = new Date((val as { seconds: number }).seconds * 1000);
     } else {
         d = new Date(val as string);
     }
@@ -79,15 +73,7 @@ function formatCurrency(val: number): string {
 
 // ── Sub-components ──
 
-function Field({
-    icon: Icon,
-    label,
-    value,
-}: {
-    icon: React.ElementType;
-    label: string;
-    value: React.ReactNode;
-}) {
+function Field({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
     return (
         <div className="flex items-start gap-3 py-2.5">
             <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400">
@@ -95,9 +81,7 @@ function Field({
             </div>
             <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-gray-400">{label}</p>
-                <p className="mt-0.5 break-all text-sm font-medium text-gray-900">
-                    {value || "—"}
-                </p>
+                <p className="mt-0.5 break-all text-sm font-medium text-gray-900">{value || "—"}</p>
             </div>
         </div>
     );
@@ -118,45 +102,20 @@ function DetailSkeleton() {
                     </div>
                 ))}
             </div>
-            <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex gap-3 rounded-lg bg-gray-50 p-3">
-                        <div className="h-10 w-10 rounded bg-gray-200" />
-                        <div className="flex-1 space-y-1.5">
-                            <div className="h-3 w-32 rounded bg-gray-200" />
-                            <div className="h-3 w-20 rounded bg-gray-100" />
-                        </div>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 }
 
 // ── Main Component ──
 
-export default function TaskDetailDrawer({
-    task,
-    onClose,
-}: TaskDetailDrawerProps) {
+export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawerProps) {
     const { t } = useTranslation();
-    const {
-        voucher,
-        items,
-        creatorName,
-        warehouseName,
-        loadingInstance,
-        loadingVoucher,
-        loadingItems,
-    } = useTaskDetailData(task);
+    const { voucher, items, creatorName, warehouseName, loadingVoucher, loadingItems } = useTaskDetailData(approval);
 
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showReceiving, setShowReceiving] = useState(false);
 
-    const isLoading = loadingInstance || loadingVoucher;
-    const isApprovalTask = task.node_type === WorkflowNodeType.APPROVAL;
-    const isDataInputTask = task.node_type === WorkflowNodeType.DATA_INPUT;
+    const isLoading = loadingVoucher;
 
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
@@ -179,7 +138,7 @@ export default function TaskDetailDrawer({
         [items],
     );
 
-    // ── Approve / Reject ──
+    // ── Approve / Reject via new API ──
     const handleDecision = useCallback(
         async (approved: boolean) => {
             if (isSubmitting) return;
@@ -195,31 +154,11 @@ export default function TaskDetailDrawer({
             setIsSubmitting(true);
 
             const submitAction = async () => {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/workflows/engine/complete-task`,
-                    {
-                        method: "POST",
-                        credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            instance_id: task.instance_id,
-                            task_id: task.id,
-                            result: {
-                                approved,
-                                comments: comment || null,
-                                decision_time: new Date().toISOString(),
-                            },
-                        }),
-                    },
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => null);
-                    throw new Error(errorData?.messages?.vi || "Không thể xử lý yêu cầu.");
+                if (approved) {
+                    return approveRecord(approval.id, comment || undefined);
+                } else {
+                    return rejectRecord(approval.id, comment);
                 }
-
-                emitDataMutation(["workflow_tasks", "import_vouchers", "audit_logs"]);
-                return response.json();
             };
 
             try {
@@ -243,13 +182,8 @@ export default function TaskDetailDrawer({
                 setIsSubmitting(false);
             }
         },
-        [isSubmitting, comment, task, onClose, t],
+        [isSubmitting, comment, approval, onClose, t],
     );
-
-    // ── Open Receiving Session (DATA_INPUT) ──
-    const handleOpenReceivingSession = useCallback(() => {
-        setShowReceiving(true);
-    }, []);
 
     const attachmentUrls = voucher?.attachment_urls || [];
 
@@ -268,7 +202,7 @@ export default function TaskDetailDrawer({
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">{t.tasks.detail.title}</h2>
                         <p className="mt-0.5 text-xs text-gray-500">
-                            {voucher?.voucher_number || task.instance_id?.slice(0, 12) + "..."}
+                            {voucher?.voucher_number || approval.entity_id?.slice(0, 12) + "..."}
                         </p>
                     </div>
                     <button
@@ -287,9 +221,7 @@ export default function TaskDetailDrawer({
                     ) : !voucher ? (
                         <div className="flex flex-col items-center justify-center p-12 text-center">
                             <FileText className="h-12 w-12 text-gray-300" />
-                            <p className="mt-3 text-sm font-medium text-gray-500">
-                                {t.tasks.detail.notFound}
-                            </p>
+                            <p className="mt-3 text-sm font-medium text-gray-500">{t.tasks.detail.notFound}</p>
                         </div>
                     ) : (
                         <>
@@ -302,7 +234,7 @@ export default function TaskDetailDrawer({
                                 )}
                             </div>
 
-                            {/* Fields — names resolved */}
+                            {/* Fields */}
                             <div className="px-6 pt-2">
                                 <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                                 <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
@@ -312,7 +244,7 @@ export default function TaskDetailDrawer({
                                 {voucher.notes && <Field icon={FileText} label={t.tasks.detail.notes} value={voucher.notes} />}
                             </div>
 
-                            {/* Items — product details */}
+                            {/* Items */}
                             <div className="mt-4 px-6">
                                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                                     {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
@@ -331,16 +263,10 @@ export default function TaskDetailDrawer({
                                 ) : (
                                     <div className="space-y-2">
                                         {items.map((item, idx) => (
-                                            <div
-                                                key={item.id || idx}
-                                                className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3"
-                                            >
-                                                {/* Product name + SKU */}
+                                            <div key={item.id || idx} className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-semibold text-gray-900">
-                                                            {item.product_name}
-                                                        </p>
+                                                        <p className="truncate text-sm font-semibold text-gray-900">{item.product_name}</p>
                                                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                                             {item.product_code && (
                                                                 <span className="flex items-center gap-0.5">
@@ -367,12 +293,9 @@ export default function TaskDetailDrawer({
                                                         </p>
                                                     </div>
                                                 </div>
-                                                {/* Qty × Price */}
                                                 <div className="mt-1.5 text-xs text-gray-500">
                                                     {t.tasks.detail.quantity}: {formatCurrency(item.expected_quantity)}
-                                                    {item.unit_price > 0 && (
-                                                        <> × {formatCurrency(item.unit_price)}đ</>
-                                                    )}
+                                                    {item.unit_price > 0 && <> × {formatCurrency(item.unit_price)}đ</>}
                                                 </div>
                                             </div>
                                         ))}
@@ -388,22 +311,14 @@ export default function TaskDetailDrawer({
                                 )}
                             </div>
 
-                            {/* Attachments with file viewer */}
+                            {/* Attachments */}
                             <AttachmentSection urls={attachmentUrls} t={t} />
-
-                            {/* Overdue warning */}
-                            {task.due_at && new Date(task.due_at as any) < new Date() && (
-                                <div className="mx-6 mt-4 mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">
-                                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium">{t.tasks.detail.overdueWarning}</span>
-                                </div>
-                            )}
                         </>
                     )}
                 </div>
 
-                {/* Footer: Approval actions */}
-                {isApprovalTask && !isLoading && voucher && (
+                {/* Footer: Approval actions (always show — all tasks are approvals) */}
+                {!isLoading && voucher && (
                     <div className="border-t border-gray-100 bg-white px-6 py-4">
                         <textarea
                             value={comment}
@@ -434,33 +349,7 @@ export default function TaskDetailDrawer({
                         </div>
                     </div>
                 )}
-
-                {/* DATA_INPUT footer */}
-                {isDataInputTask && !isLoading && voucher && (
-                    <div className="border-t border-gray-100 bg-white px-6 py-4">
-                        <button
-                            type="button"
-                            onClick={handleOpenReceivingSession}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:bg-blue-800"
-                        >
-                            <ClipboardEdit className="h-4 w-4" />
-                            {t.tasks.dataInput.openSession}
-                        </button>
-                    </div>
-                )}
             </div>
-
-            {/* Receiving Session Drawer (full-screen overlay) */}
-            {showReceiving && (
-                <ReceivingSessionDrawer
-                    task={task}
-                    onClose={() => {
-                        setShowReceiving(false);
-                        onClose();
-                    }}
-                />
-            )}
         </>
     );
 }
-

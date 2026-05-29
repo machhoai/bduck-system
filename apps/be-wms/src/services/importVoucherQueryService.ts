@@ -8,8 +8,7 @@
  * RBAC: Every query filters by the user's warehouse scope.
  * Users see: vouchers they created + vouchers in their scoped warehouses.
  *
- * AUDIT TRAIL: Read ops don't write audit logs (ISO 9001 only
- * requires logging mutations).
+ * TIMELINE: Uses audit_logs + pending_approvals (Fixed Pipeline).
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -18,8 +17,7 @@ import type {
   ImportVoucher,
   ImportVoucherItem,
   AuditLog,
-  WorkflowInstance,
-  WorkflowTask,
+  ApprovalRecord,
   Attachment,
 } from "@bduck/shared-types";
 
@@ -50,7 +48,7 @@ export interface ImportVoucherDetail extends ImportVoucher {
 
 export interface TimelineEvent {
   id: string;
-  type: "audit" | "workflow_task";
+  type: "audit" | "approval";
   action: string;
   user_id: string | null;
   user_name?: string | null;
@@ -220,7 +218,7 @@ export async function fetchImportVoucherById(
 }
 
 // ─────────────────────────────────────────────
-// 3. FETCH TIMELINE (Audit + Workflow events)
+// 3. FETCH TIMELINE (Audit + Approval events)
 // ─────────────────────────────────────────────
 
 export async function fetchImportVoucherTimeline(
@@ -253,54 +251,29 @@ export async function fetchImportVoucherTimeline(
     });
   }
 
-  // ── Workflow tasks for this voucher ──
-  const instanceSnap = await db
-    .collection("workflow_instances")
+  // ── Approval records for this voucher (Fixed Pipeline) ──
+  const approvalSnap = await db
+    .collection("pending_approvals")
+    .where("entity_type", "==", "IMPORT_VOUCHER")
     .where("entity_id", "==", voucherId)
-    .limit(1)
     .get();
 
-  if (!instanceSnap.empty) {
-    const instance = instanceSnap.docs[0].data() as WorkflowInstance;
-
-    // Add instance creation event
+  for (const doc of approvalSnap.docs) {
+    const approval = doc.data() as ApprovalRecord;
     events.push({
-      id: `instance-${instanceSnap.docs[0].id}`,
-      type: "workflow_task",
-      action: "WORKFLOW_STARTED",
-      user_id: instance.started_by,
-      timestamp: instance.started_at,
+      id: doc.id,
+      type: "approval",
+      action: `APPROVAL_${approval.status}`,
+      user_id: approval.approver_id || approval.creator_id,
+      timestamp: approval.approved_at || approval.created_at,
       details: {
-        status: instance.status,
-        workflow_definition_id: instance.workflow_definition_id,
+        level: approval.level,
+        role_id: approval.role_id,
+        status: approval.status,
+        rejected_reason: approval.rejected_reason,
+        comments: approval.comments,
       },
     });
-
-    // Fetch tasks
-    const tasksSnap = await db
-      .collection("workflow_instances")
-      .doc(instanceSnap.docs[0].id)
-      .collection("tasks")
-      .orderBy("started_at", "asc")
-      .get();
-
-    for (const taskDoc of tasksSnap.docs) {
-      const task = taskDoc.data() as WorkflowTask;
-      events.push({
-        id: taskDoc.id,
-        type: "workflow_task",
-        action: `TASK_${task.status}`,
-        user_id: task.completed_by || task.assigned_to,
-        timestamp: task.completed_at || task.started_at,
-        details: {
-          node_type: task.node_type,
-          node_id: task.node_id,
-          result: task.result,
-          status: task.status,
-          assigned_role_id: task.assigned_role_id,
-        },
-      });
-    }
   }
 
   // ── Sort all events by timestamp DESC ──

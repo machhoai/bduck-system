@@ -143,6 +143,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Pending Approvals: Authenticated read (for TaskInbox realtime) ──
+    match /pending_approvals/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Write only via Admin SDK (BE)
+    }
+
+    // ── Process Configs: Authenticated read (for admin config page) ──
+    match /process_configs/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Default: Deny all ──
     match /{document=**} {
       allow read, write: if false;

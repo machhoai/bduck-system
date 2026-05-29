@@ -22,6 +22,7 @@ const zh: Dictionary = {
     settings: "设置",
     tasks: "待处理任务",
     workflows: "流程",
+    processConfigs: "流程配置",
     more: "更多",
   },
 
@@ -698,6 +699,14 @@ const zh: Dictionary = {
     nodeType: {
       APPROVAL: "审批",
       DATA_INPUT: "数据录入",
+    },
+    entityType: {
+      IMPORT_VOUCHER: "入库单",
+      EXPORT_VOUCHER: "出库单",
+      TRANSFER_ORDER: "调拨单",
+      PURCHASE_ORDER: "采购单",
+      ADJUSTMENT_VOUCHER: "调整单",
+      GIFT_SESSION: "礼品会话",
     },
     detail: {
       title: "单据详情",

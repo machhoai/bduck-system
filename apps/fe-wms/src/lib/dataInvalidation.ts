@@ -6,6 +6,8 @@ export type DataInvalidationKey =
   | "import_vouchers"
   | "inventory"
   | "organizations"
+  | "pending_approvals"
+  | "process_configs"
   | "product_bom"
   | "product_categories"
   | "products"

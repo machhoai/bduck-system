@@ -1,0 +1,186 @@
+/**
+ * Approval Controller — REST endpoints for approval actions
+ *
+ * GET  /pending              — List pending approvals for current user
+ * GET  /:entityType/:entityId — Approval timeline for a specific entity
+ * POST /:id/approve          — Approve a record
+ * POST /:id/reject           — Reject a record
+ *
+ * ARCHITECTURE: Controller → Service → Repository (layered)
+ * All routes require authentication (requireAuth middleware).
+ */
+
+import type { Request, Response, NextFunction } from "express";
+import * as approvalService from "../../services/approvalService.js";
+
+/**
+ * GET /api/approvals/pending
+ * Returns pending approvals for the current user's roles.
+ * Replaces the old workflow tasks collectionGroup query.
+ */
+export async function getPendingApprovals(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userRoleIds = (req as any).user?.roleIds ?? [];
+
+    const records = await approvalService.getPendingTasksForRoles(userRoleIds);
+
+    res.json({
+      success: true,
+      data: records,
+      messages: {
+        vi: `Tìm thấy ${records.length} phiếu chờ duyệt.`,
+        zh: `找到 ${records.length} 个待审批单据。`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/approvals/:entityType/:entityId
+ * Returns the full approval timeline for a voucher/order.
+ */
+export async function getApprovalTimeline(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const entityType = req.params.entityType as string;
+    const entityId = req.params.entityId as string;
+
+    const records = await approvalService.getApprovalTimeline(
+      entityType as any,
+      entityId,
+    );
+
+    res.json({
+      success: true,
+      data: records,
+      messages: {
+        vi: "Đã tải timeline phê duyệt.",
+        zh: "已加载审批时间线。",
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/approvals/:id/approve
+ * Approve a specific approval record.
+ *
+ * Body: { comments?: string }
+ */
+export async function approveHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const approvalId = req.params.id as string;
+    const userId = (req as any).user?.id;
+    const { comments } = req.body ?? {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Không xác định được người dùng.",
+          zh: "无法识别用户。",
+        },
+      });
+      return;
+    }
+
+    const result = await approvalService.approveLevel(
+      approvalId,
+      userId,
+      comments,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        allApproved: result.allApproved,
+        levelCompleted: result.levelCompleted,
+      },
+      messages: {
+        vi: result.allApproved
+          ? "Tất cả cấp phê duyệt đã hoàn thành."
+          : "Đã phê duyệt thành công.",
+        zh: result.allApproved
+          ? "所有审批级别已完成。"
+          : "审批成功。",
+      },
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        messages: error.messages || { vi: error.message, zh: error.message },
+      });
+      return;
+    }
+    next(error);
+  }
+}
+
+/**
+ * POST /api/approvals/:id/reject
+ * Reject a specific approval record.
+ *
+ * Body: { reason: string }
+ */
+export async function rejectHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const approvalId = req.params.id as string;
+    const userId = (req as any).user?.id;
+    const { reason } = req.body ?? {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Không xác định được người dùng.",
+          zh: "无法识别用户。",
+        },
+      });
+      return;
+    }
+
+    await approvalService.rejectApproval(approvalId, userId, reason);
+
+    res.json({
+      success: true,
+      data: null,
+      messages: {
+        vi: "Đã từ chối phê duyệt.",
+        zh: "已拒绝审批。",
+      },
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        messages: error.messages || { vi: error.message, zh: error.message },
+      });
+      return;
+    }
+    next(error);
+  }
+}

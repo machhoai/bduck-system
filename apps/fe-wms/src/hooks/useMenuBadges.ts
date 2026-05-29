@@ -5,14 +5,13 @@
  *
  * LUẬT THÉP: Realtime via onSnapshot, no reload buttons.
  * Badge counts:
- * - tasks: pending workflow tasks assigned to current user/role
+ * - tasks: pending approval records assigned to current user's roles
  * - importVouchers: vouchers in processing status
  */
 
 import { useEffect, useState, useMemo } from "react";
 import {
     collection,
-    collectionGroup,
     query,
     where,
     onSnapshot,
@@ -26,50 +25,49 @@ export interface MenuBadges {
 }
 
 export function useMenuBadges(): MenuBadges {
-    const [rawTaskCount, setRawTaskCount] = useState(0);
-    const [rawTasks, setRawTasks] = useState<Array<{ assigned_to?: string; assigned_role_id?: string }>>([]);
+    const [pendingRecords, setPendingRecords] = useState<
+        Array<{ role_id?: string; creator_id?: string }>
+    >([]);
     const [voucherCount, setVoucherCount] = useState(0);
 
     const user = useUserStore((s) => s.user);
     const roleIds = useUserStore((s) => s.roleIds);
 
-    // ── Pending tasks count (realtime) ──
-    // Uses same collectionGroup pattern as useWorkflowTasks
+    // ── Pending approvals count (realtime) ──
+    // Queries flat pending_approvals collection (no collectionGroup needed)
     useEffect(() => {
-        if (!user?.id) return;
+        if (!user?.id || roleIds.length === 0) return;
+
+        const roleSlice = roleIds.slice(0, 30);
 
         const q = query(
-            collectionGroup(db, "tasks"),
-            where("status", "in", ["PENDING", "IN_PROGRESS"]),
+            collection(db, "pending_approvals"),
+            where("role_id", "in", roleSlice),
+            where("status", "==", "PENDING"),
         );
 
         const unsub = onSnapshot(
             q,
             (snap) => {
-                const tasks = snap.docs.map((doc) => ({
-                    assigned_to: doc.data().assigned_to as string | undefined,
-                    assigned_role_id: doc.data().assigned_role_id as string | undefined,
+                const records = snap.docs.map((doc) => ({
+                    role_id: doc.data().role_id as string | undefined,
+                    creator_id: doc.data().creator_id as string | undefined,
                 }));
-                setRawTasks(tasks);
+                setPendingRecords(records);
             },
             (err) => {
-                console.error("[useMenuBadges] tasks error:", err);
+                console.error("[useMenuBadges] approvals error:", err);
             },
         );
 
         return () => unsub();
-    }, [user?.id]);
+    }, [user?.id, roleIds]);
 
-    // Filter client-side for user-specific count
+    // Filter out self-created records (Self-Approval Block for badge)
     const tasksCount = useMemo(() => {
         if (!user?.id) return 0;
-        return rawTasks.filter((t) => {
-            if (t.assigned_to === user.id) return true;
-            if (t.assigned_role_id && roleIds.includes(t.assigned_role_id)) return true;
-            if (!t.assigned_to && !t.assigned_role_id) return true;
-            return false;
-        }).length;
-    }, [rawTasks, user?.id, roleIds]);
+        return pendingRecords.filter((r) => r.creator_id !== user.id).length;
+    }, [pendingRecords, user?.id]);
 
     // ── Import vouchers in processing (realtime) ──
     useEffect(() => {
@@ -78,7 +76,7 @@ export function useMenuBadges(): MenuBadges {
         const vouchersRef = collection(db, "import_vouchers");
         const q = query(
             vouchersRef,
-            where("status", "in", ["PENDING_APPROVAL", "IN_PROGRESS"]),
+            where("status", "in", ["PENDING_APPROVAL", "APPROVED", "RECEIVING"]),
             where("is_deleted", "==", false),
         );
 

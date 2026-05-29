@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * useTaskDetailData — Hook to load & resolve task detail data
+ * useTaskDetailData — Hook to load & resolve approval task detail data
  *
- * Resolves:
- * - WorkflowInstance from task.instance_id
- * - ImportVoucher from instance.entity_id (realtime)
- * - Voucher items with product info (name, SKU, barcode)
- * - Creator name from users collection
- * - Warehouse name from warehouses collection
+ * REPLACES: Old version that loaded WorkflowInstance → then entity.
+ *
+ * NEW DESIGN:
+ * - ApprovalRecord already contains entity_type + entity_id
+ * - No intermediate workflow_instances lookup needed
+ * - Direct: ApprovalRecord → ImportVoucher → Items + Product resolution
  *
  * LUẬT THÉP: Realtime via onSnapshot, no reload buttons
  */
@@ -22,7 +22,7 @@ import {
     getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { WorkflowTask, WorkflowInstance } from "@bduck/shared-types";
+import type { ApprovalRecord, ENTITY_COLLECTIONS, ProcessEntityType } from "@bduck/shared-types";
 import type { ImportVoucher } from "@bduck/shared-types";
 
 /** Enriched item with product details resolved */
@@ -41,54 +41,43 @@ export interface EnrichedVoucherItem {
 }
 
 interface TaskDetailState {
-    instance: WorkflowInstance | null;
     voucher: ImportVoucher | null;
     items: EnrichedVoucherItem[];
     creatorName: string;
     warehouseName: string;
-    loadingInstance: boolean;
     loadingVoucher: boolean;
     loadingItems: boolean;
 }
 
-export function useTaskDetailData(task: WorkflowTask): TaskDetailState {
-    const [instance, setInstance] = useState<WorkflowInstance | null>(null);
+/** Map entity_type to Firestore collection name */
+const COLLECTION_MAP: Record<string, string> = {
+    IMPORT_VOUCHER: "import_vouchers",
+    EXPORT_VOUCHER: "export_vouchers",
+    TRANSFER_ORDER: "transfer_orders",
+    PURCHASE_ORDER: "purchase_orders",
+    ADJUSTMENT_VOUCHER: "adjustment_vouchers",
+    GIFT_SESSION: "gift_sessions",
+};
+
+export function useTaskDetailData(approval: ApprovalRecord): TaskDetailState {
     const [voucher, setVoucher] = useState<ImportVoucher | null>(null);
     const [items, setItems] = useState<EnrichedVoucherItem[]>([]);
     const [creatorName, setCreatorName] = useState("");
     const [warehouseName, setWarehouseName] = useState("");
-    const [loadingInstance, setLoadingInstance] = useState(true);
     const [loadingVoucher, setLoadingVoucher] = useState(true);
     const [loadingItems, setLoadingItems] = useState(true);
 
-    // ── Step 1: Load workflow instance ──
-    useEffect(() => {
-        const unsub = onSnapshot(
-            doc(db, "workflow_instances", task.instance_id),
-            (snap) => {
-                if (snap.exists()) {
-                    setInstance({ id: snap.id, ...snap.data() } as WorkflowInstance);
-                }
-                setLoadingInstance(false);
-            },
-            (err) => {
-                console.error("[useTaskDetailData] instance error:", err);
-                setLoadingInstance(false);
-            },
-        );
-        return () => unsub();
-    }, [task.instance_id]);
+    const collectionName = COLLECTION_MAP[approval.entity_type] || "import_vouchers";
 
-    // ── Step 2: Load voucher + resolve creator/warehouse ──
+    // ── Step 1: Load voucher + resolve creator/warehouse ──
     useEffect(() => {
-        if (!instance?.entity_id) {
+        if (!approval.entity_id) {
             setLoadingVoucher(false);
             return;
         }
 
-        const collectionName = "import_vouchers";
         const unsub = onSnapshot(
-            doc(db, collectionName, instance.entity_id),
+            doc(db, collectionName, approval.entity_id),
             async (snap) => {
                 if (snap.exists()) {
                     const data = { id: snap.id, ...snap.data() } as ImportVoucher;
@@ -127,17 +116,17 @@ export function useTaskDetailData(task: WorkflowTask): TaskDetailState {
             },
         );
         return () => unsub();
-    }, [instance?.entity_id, instance?.entity_type]);
+    }, [approval.entity_id, collectionName]);
 
-    // ── Step 3: Load items + resolve product info ──
+    // ── Step 2: Load items + resolve product info ──
     useEffect(() => {
-        if (!instance?.entity_id) {
+        if (!approval.entity_id) {
             setLoadingItems(false);
             return;
         }
 
         const itemsQuery = fsQuery(
-            collection(db, "import_vouchers", instance.entity_id, "items"),
+            collection(db, collectionName, approval.entity_id, "items"),
         );
 
         const unsub = onSnapshot(itemsQuery, async (snap) => {
@@ -145,18 +134,18 @@ export function useTaskDetailData(task: WorkflowTask): TaskDetailState {
 
             // Resolve product details for each item
             const enriched: EnrichedVoucherItem[] = await Promise.all(
-                rawItems.map(async (item: any) => {
-                    let productName = item.product_id || "";
+                rawItems.map(async (item: Record<string, unknown>) => {
+                    let productName = (item.product_id as string) || "";
                     let productCode = "";
                     let barcode: string | null = null;
                     let unit = "";
 
                     if (item.product_id) {
                         try {
-                            const pSnap = await getDoc(doc(db, "products", item.product_id));
+                            const pSnap = await getDoc(doc(db, "products", item.product_id as string));
                             if (pSnap.exists()) {
                                 const p = pSnap.data();
-                                productName = p?.name || item.product_id;
+                                productName = p?.name || (item.product_id as string);
                                 productCode = p?.code || "";
                                 barcode = p?.barcode || null;
                                 unit = p?.unit || "";
@@ -167,17 +156,17 @@ export function useTaskDetailData(task: WorkflowTask): TaskDetailState {
                     }
 
                     return {
-                        id: item.id,
-                        product_id: item.product_id || "",
+                        id: item.id as string,
+                        product_id: (item.product_id as string) || "",
                         product_name: productName,
                         product_code: productCode,
                         barcode,
                         unit,
-                        expected_quantity: item.expected_quantity || 0,
-                        actual_quantity: item.actual_quantity || 0,
-                        unit_price: item.unit_price || 0,
-                        condition: item.condition || "",
-                        notes: item.notes || null,
+                        expected_quantity: (item.expected_quantity as number) || 0,
+                        actual_quantity: (item.actual_quantity as number) || 0,
+                        unit_price: (item.unit_price as number) || 0,
+                        condition: (item.condition as string) || "",
+                        notes: (item.notes as string) || null,
                     };
                 }),
             );
@@ -187,15 +176,13 @@ export function useTaskDetailData(task: WorkflowTask): TaskDetailState {
         });
 
         return () => unsub();
-    }, [instance?.entity_id]);
+    }, [approval.entity_id, collectionName]);
 
     return {
-        instance,
         voucher,
         items,
         creatorName,
         warehouseName,
-        loadingInstance,
         loadingVoucher,
         loadingItems,
     };

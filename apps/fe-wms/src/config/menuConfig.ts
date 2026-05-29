@@ -75,10 +75,10 @@ export const menuItems: MenuItem[] = [
         showInBottomNav: true,
     },
     {
-        id: "workflow",
-        labelKey: "workflows",
+        id: "processConfigs",
+        labelKey: "processConfigs",
         icon: FolderSymlink,
-        href: "/workflows",
+        href: "/process-configs",
         permission: "workflow.read",
     },
     {

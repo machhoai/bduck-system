@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * TaskCard — Individual task card in the Task Inbox
+ * TaskCard — Individual approval card in the Task Inbox
  *
- * Cards are clickable (opens detail drawer).
- * Approve/Reject buttons moved to TaskDetailDrawer.
+ * SIMPLIFIED: No more WorkflowNodeType branching.
+ * All pending_approvals are APPROVAL type by definition.
  *
  * LUẬT THÉP: i18n (vi + zh), light theme only
  */
@@ -12,59 +12,59 @@
 import { useMemo } from "react";
 import {
     CheckCircle,
-    ClipboardEdit,
     Clock,
-    User,
-    AlertTriangle,
     ChevronRight,
+    Layers,
 } from "lucide-react";
-import { WorkflowNodeType } from "@bduck/shared-types";
-import type { WorkflowTask } from "@bduck/shared-types";
+import type { ApprovalRecord } from "@bduck/shared-types";
 import type { Dictionary } from "@/lib/i18n";
 
 interface TaskCardProps {
-    task: WorkflowTask;
-    onOpenDetail: (task: WorkflowTask) => void;
+    approval: ApprovalRecord;
+    onOpenDetail: (approval: ApprovalRecord) => void;
     t: Dictionary;
 }
 
-/** Node type → icon + color */
-function getNodeMeta(nodeType: string, t: Dictionary) {
-    const map: Record<string, { label: string; color: string; bgIcon: string; icon: React.ElementType }> = {
-        [WorkflowNodeType.APPROVAL]: {
-            label: t.tasks.nodeType.APPROVAL,
+/** Map entity_type to label + color */
+function getEntityMeta(entityType: string, t: Dictionary) {
+    const map: Record<string, { label: string; color: string; bgIcon: string }> = {
+        IMPORT_VOUCHER: {
+            label: t.tasks.entityType?.IMPORT_VOUCHER || "Phiếu nhập",
             color: "border-amber-200 bg-amber-50 text-amber-700",
             bgIcon: "bg-amber-100 text-amber-600",
-            icon: CheckCircle,
         },
-        [WorkflowNodeType.DATA_INPUT]: {
-            label: t.tasks.nodeType.DATA_INPUT,
+        EXPORT_VOUCHER: {
+            label: t.tasks.entityType?.EXPORT_VOUCHER || "Phiếu xuất",
             color: "border-blue-200 bg-blue-50 text-blue-700",
             bgIcon: "bg-blue-100 text-blue-600",
-            icon: ClipboardEdit,
+        },
+        TRANSFER_ORDER: {
+            label: t.tasks.entityType?.TRANSFER_ORDER || "Lệnh chuyển kho",
+            color: "border-purple-200 bg-purple-50 text-purple-700",
+            bgIcon: "bg-purple-100 text-purple-600",
+        },
+        PURCHASE_ORDER: {
+            label: t.tasks.entityType?.PURCHASE_ORDER || "Đơn mua hàng",
+            color: "border-emerald-200 bg-emerald-50 text-emerald-700",
+            bgIcon: "bg-emerald-100 text-emerald-600",
         },
     };
 
-    return map[nodeType] || {
-        label: nodeType,
+    return map[entityType] || {
+        label: entityType,
         color: "border-gray-200 bg-gray-50 text-gray-600",
         bgIcon: "bg-gray-100 text-gray-500",
-        icon: Clock,
     };
 }
 
-export default function TaskCard({ task, onOpenDetail, t }: TaskCardProps) {
-    const meta = useMemo(() => getNodeMeta(task.node_type, t), [task.node_type, t]);
-
-    const isOverdue = useMemo(() => {
-        if (!task.due_at) return false;
-        const dueDate = task.due_at instanceof Date ? task.due_at : new Date(task.due_at as any);
-        return dueDate < new Date();
-    }, [task.due_at]);
+export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
+    const meta = useMemo(() => getEntityMeta(approval.entity_type, t), [approval.entity_type, t]);
 
     const timeAgo = useMemo(() => {
-        if (!task.started_at) return "";
-        const d = task.started_at instanceof Date ? task.started_at : new Date(task.started_at as any);
+        if (!approval.created_at) return "";
+        const d = approval.created_at instanceof Date
+            ? approval.created_at
+            : new Date(approval.created_at as unknown as string);
         const diff = Date.now() - d.getTime();
         const minutes = Math.floor(diff / 60000);
         if (minutes < 60) return `${minutes}${t.tasks.timeAgo.minutes}`;
@@ -72,53 +72,43 @@ export default function TaskCard({ task, onOpenDetail, t }: TaskCardProps) {
         if (hours < 24) return `${hours}${t.tasks.timeAgo.hours}`;
         const days = Math.floor(hours / 24);
         return `${days} ${t.tasks.timeAgo.days}`;
-    }, [task.started_at, t]);
-
-    const IconComponent = meta.icon;
+    }, [approval.created_at, t]);
 
     return (
         <button
             type="button"
-            onClick={() => onOpenDetail(task)}
-            className={`group relative w-full rounded-xl border bg-white p-4 text-left shadow-sm
-                transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]
-                ${isOverdue ? "border-red-300 bg-red-50/30" : "border-gray-100"}`}
+            onClick={() => onOpenDetail(approval)}
+            className="group relative w-full rounded-xl border border-gray-100 bg-white p-4 text-left shadow-sm
+                transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]"
         >
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.bgIcon}`}>
-                        <IconComponent className="h-5 w-5" />
+                        <CheckCircle className="h-5 w-5" />
                     </div>
                     <div>
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.color}`}>
                             {meta.label}
                         </span>
                         <p className="mt-1 text-sm font-semibold text-gray-900">
-                            {task.instance_id?.slice(0, 8)}...
+                            {approval.entity_id?.slice(0, 8)}...
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {isOverdue && (
-                        <div className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-                            <AlertTriangle className="h-3 w-3" />
-                            {t.tasks.overdue}
-                        </div>
-                    )}
+                    {/* Approval level badge */}
+                    <div className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                        <Layers className="h-3 w-3" />
+                        Lv.{approval.level + 1}
+                    </div>
                     <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-gray-500" />
                 </div>
             </div>
 
             {/* Meta info */}
             <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                {task.assigned_role_id && (
-                    <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        <span>{task.assigned_role_id.slice(0, 8)}</span>
-                    </div>
-                )}
                 {timeAgo && (
                     <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />

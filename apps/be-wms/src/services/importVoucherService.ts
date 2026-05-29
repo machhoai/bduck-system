@@ -1,18 +1,19 @@
 /**
- * Import Voucher Service — Minimal Workflow Integration Hook
+ * Import Voucher Service — Fixed Pipeline State Machine
  *
  * ═══════════════════════════════════════════════════════════════
- * This service handles ONLY the creation of Import Vouchers
- * and the trigger to the Workflow Engine.
+ * REPLACES: Dynamic Workflow Engine integration.
+ *
+ * STATE MACHINE:
+ *   DRAFT → PENDING_APPROVAL → APPROVED → RECEIVING → COMPLETED
+ *                            ↘ REJECTED → DRAFT (resubmit)
+ *                                       → CANCELLED
  *
  * DESIGN DECISIONS:
- * 1. Voucher status stays PENDING — the engine is decoupled.
- *    Only a SYSTEM_ACTION node of type "CHANGE_STATUS" may change it.
- * 2. entity_payload is computed here and passed to startWorkflow()
- *    so ConditionNodes can evaluate without DB lookups.
- * 3. Self-Approval Block: creator_id will never equal approver_id
- *    because approver_id starts as null. The workflow engine's
- *    APPROVAL node assigns the approver dynamically.
+ * 1. Status transitions are explicit — no DAG traversal.
+ * 2. Approval is handled by approvalService (Fixed Pipeline).
+ * 3. Inventory update (ATP) is called DIRECTLY — no registry.
+ * 4. Self-Approval Block enforced by approvalService.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -23,10 +24,9 @@ import {
   ImportVoucherStatus,
   ItemCondition,
   AuditAction,
-  ApprovalEntityType,
 } from "@bduck/shared-types";
 import type { ImportVoucher, ImportVoucherItem } from "@bduck/shared-types";
-import { startWorkflow } from "./workflowEngineService.js";
+import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
 
 // ─────────────────────────────────────────────
@@ -65,7 +65,13 @@ export type CreateImportVoucherInput = z.infer<
 
 /**
  * Creates an Import Voucher, writes audit log, and triggers
- * the Workflow Engine for the IMPORT_VOUCHER entity type.
+ * the Fixed Pipeline approval chain.
+ *
+ * Flow:
+ * 1. Create voucher + items in Firestore (batch)
+ * 2. Set status to PENDING_APPROVAL
+ * 3. Create approval records via approvalService
+ * 4. Write audit log
  *
  * @param input  Validated input from the controller
  * @param userId Authenticated user ID from JWT middleware
@@ -87,9 +93,9 @@ export const createImportVoucher = async (
     warehouse_id: input.warehouse_id,
     supplier_name: input.supplier_name,
     purchase_order_id: input.purchase_order_id ?? null,
-    status: ImportVoucherStatus.DRAFT,
+    status: ImportVoucherStatus.PENDING_APPROVAL,
     creator_id: userId,
-    approver_id: null, // Self-Approval Block: approver is assigned by engine
+    approver_id: null, // Self-Approval Block: assigned by approvalService
     approved_at: null,
     action_time: actionTime,
     sync_time: now,
@@ -134,7 +140,7 @@ export const createImportVoucher = async (
 
   // ── 4. Write audit log (ISO 9001) ──
   await logAudit({
-    entity_type: ApprovalEntityType.IMPORT_VOUCHER,
+    entity_type: "IMPORT_VOUCHER",
     entity_id: voucherId,
     warehouse_id: voucher.warehouse_id,
     action: AuditAction.CREATE,
@@ -144,23 +150,27 @@ export const createImportVoucher = async (
     action_time: actionTime,
   });
 
-  // ── 5. Build entity_payload for ConditionNode evaluation ──
-  const entityPayload = buildEntityPayload(voucher, items);
-
-  // ── 6. Trigger Workflow Engine ──
+  // ── 5. Create approval records (Fixed Pipeline) ──
   try {
-    await startWorkflow(
-      ApprovalEntityType.IMPORT_VOUCHER,
+    const approvals = await approvalService.createApprovalsForEntity(
+      "IMPORT_VOUCHER",
       voucherId,
       voucher.warehouse_id,
       userId,
-      entityPayload,
     );
+
+    // If no approval chain configured → auto-advance to APPROVED
+    if (approvals.length === 0) {
+      await db.collection("import_vouchers").doc(voucherId).update({
+        status: ImportVoucherStatus.APPROVED,
+        updated_at: new Date(),
+      });
+    }
   } catch (error) {
     // Log but don't fail the voucher creation.
-    // The voucher is saved; workflow can be re-triggered manually.
+    // Approval records can be re-created manually.
     console.error(
-      "[importVoucherService] Workflow trigger failed:",
+      "[importVoucherService] Approval creation failed:",
       error,
     );
   }
@@ -169,38 +179,124 @@ export const createImportVoucher = async (
 };
 
 // ─────────────────────────────────────────────
-// HELPERS
+// STATE MACHINE — Callbacks
 // ─────────────────────────────────────────────
 
 /**
- * Compute aggregate payload for the Condition Evaluator.
- * This payload is passed to `startWorkflow()` and threaded
- * through the entire DAG traversal.
+ * Called by approvalController when all approval levels are completed.
+ * Advances voucher from PENDING_APPROVAL → APPROVED.
  */
-function buildEntityPayload(
-  voucher: ImportVoucher,
-  items: ImportVoucherItem[],
-): Record<string, unknown> {
-  const totalAmount = items.reduce(
-    (sum, i) => sum + i.unit_price * i.expected_quantity,
-    0,
-  );
-  const totalExpectedQty = items.reduce(
-    (sum, i) => sum + i.expected_quantity,
-    0,
+export async function onApprovalCompleted(
+  voucherId: string,
+  approverId: string,
+): Promise<void> {
+  const now = new Date();
+  await db.collection("import_vouchers").doc(voucherId).update({
+    status: ImportVoucherStatus.APPROVED,
+    approver_id: approverId,
+    approved_at: now,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  await logAudit({
+    entity_type: "IMPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: null,
+    action: AuditAction.APPROVE,
+    user_id: approverId,
+    old_value: { status: ImportVoucherStatus.PENDING_APPROVAL },
+    new_value: { status: ImportVoucherStatus.APPROVED },
+  });
+}
+
+/**
+ * Called by approvalController when an approval is rejected.
+ * Advances voucher from PENDING_APPROVAL → REJECTED.
+ */
+export async function onApprovalRejected(
+  voucherId: string,
+  rejectorId: string,
+  reason: string,
+): Promise<void> {
+  const now = new Date();
+  await db.collection("import_vouchers").doc(voucherId).update({
+    status: ImportVoucherStatus.REJECTED,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  await logAudit({
+    entity_type: "IMPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: null,
+    action: AuditAction.REJECT,
+    user_id: rejectorId,
+    old_value: { status: ImportVoucherStatus.PENDING_APPROVAL },
+    new_value: { status: ImportVoucherStatus.REJECTED, reason },
+  });
+}
+
+/**
+ * Called when receiving session data is saved and user completes receiving.
+ * Advances voucher from APPROVED → RECEIVING.
+ */
+export async function startReceiving(voucherId: string): Promise<void> {
+  const now = new Date();
+  await db.collection("import_vouchers").doc(voucherId).update({
+    status: ImportVoucherStatus.RECEIVING,
+    updated_at: now,
+    sync_time: now,
+  });
+}
+
+/**
+ * Called when receiving session is completed and inventory needs updating.
+ * Advances voucher from RECEIVING → COMPLETED.
+ * Calls updateInventoryATP DIRECTLY (no registry).
+ */
+export async function completeReceiving(
+  voucherId: string,
+  userId: string,
+): Promise<void> {
+  // Import dynamically to avoid circular dependency
+  const { updateInventoryATP } = await import("./actions/updateInventoryATP.js");
+
+  // Call ATP update directly — no registry lookup
+  await updateInventoryATP(
+    {},
+    {
+      instanceId: `direct_${voucherId}`,
+      entityPayload: {
+        voucher_id: voucherId,
+        entity_type: "IMPORT_VOUCHER",
+      },
+      userId,
+    },
   );
 
-  return {
-    voucher_id: voucher.id,
-    voucher_number: voucher.voucher_number,
-    warehouse_id: voucher.warehouse_id,
-    supplier_name: voucher.supplier_name,
-    total_amount: totalAmount,
-    expected_quantity: totalExpectedQty,
-    item_count: items.length,
-    status: voucher.status,
-  };
+  // Advance status to COMPLETED
+  const now = new Date();
+  await db.collection("import_vouchers").doc(voucherId).update({
+    status: ImportVoucherStatus.COMPLETED,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  await logAudit({
+    entity_type: "IMPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: null,
+    action: AuditAction.UPDATE,
+    user_id: userId,
+    old_value: { status: ImportVoucherStatus.RECEIVING },
+    new_value: { status: ImportVoucherStatus.COMPLETED },
+  });
 }
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
 
 /**
  * Generate sequential voucher number: IMP-YYYYMMDD-XXX

@@ -7,7 +7,7 @@
  *   ReceivingSessionDrawer (frontend) and persists them
  *   to Firestore as a batch update.
  * - It does NOT change voucher status or update ATP.
- *   Those are handled by SYSTEM_ACTION nodes in the workflow DAG.
+ *   Those are handled by importVoucherService state machine.
  *
  * SECURITY:
  * - Input validated via Zod
