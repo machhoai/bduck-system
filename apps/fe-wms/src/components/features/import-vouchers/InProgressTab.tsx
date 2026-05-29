@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Eye,
   Copy,
@@ -11,10 +11,14 @@ import {
   XCircle,
   PackageOpen,
 } from "lucide-react";
-import type { ImportVoucher } from "@bduck/shared-types";
-import { ImportVoucherStatus } from "@bduck/shared-types";
+import type { ImportVoucher, WorkflowTask, WorkflowInstance } from "@bduck/shared-types";
+import { ImportVoucherStatus, WorkflowNodeType } from "@bduck/shared-types";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useTranslation } from "../../../lib/i18n";
+import { useWorkflowTasks } from "../../../hooks/useWorkflowTasks";
 import VoucherDetailDrawer from "./VoucherDetailDrawer";
+import ReceivingSessionDrawer from "../../tasks/ReceivingSessionDrawer";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -81,6 +85,57 @@ function StatusBadge({ status }: { status: string }) {
 export default function InProgressTab({ vouchers, onClone }: InProgressTabProps) {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [receivingTask, setReceivingTask] = useState<WorkflowTask | null>(null);
+  const { myTasks } = useWorkflowTasks();
+
+  // Map: entity_id (voucher_id) → instance_id from workflow instances
+  const [instanceMap, setInstanceMap] = useState<Map<string, string>>(new Map());
+
+  // Fetch workflow instances to build entity_id → instance_id mapping
+  useEffect(() => {
+    const approvedVoucherIds = vouchers
+      .filter((v) => v.status === ImportVoucherStatus.APPROVED)
+      .map((v) => v.id);
+
+    if (approvedVoucherIds.length === 0) {
+      setInstanceMap(new Map());
+      return;
+    }
+
+    // Firestore "in" query supports max 30 items
+    const batchIds = approvedVoucherIds.slice(0, 30);
+    const q = query(
+      collection(db, "workflow_instances"),
+      where("entity_id", "in", batchIds),
+      where("status", "==", "RUNNING"),
+    );
+
+    getDocs(q)
+      .then((snap) => {
+        const map = new Map<string, string>();
+        snap.forEach((doc) => {
+          const data = doc.data() as WorkflowInstance;
+          map.set(data.entity_id, doc.id);
+        });
+        setInstanceMap(map);
+      })
+      .catch((err) => console.error("[InProgressTab] instance lookup:", err));
+  }, [vouchers]);
+
+  // Helper: find DATA_INPUT PENDING task for a given voucher
+  const findReceivingTask = (voucherId: string): WorkflowTask | null => {
+    const instanceId = instanceMap.get(voucherId);
+    if (!instanceId) return null;
+
+    return (
+      myTasks.find(
+        (t) =>
+          t.instance_id === instanceId &&
+          t.node_type === WorkflowNodeType.DATA_INPUT &&
+          (t.status === "PENDING" || t.status === "IN_PROGRESS"),
+      ) ?? null
+    );
+  };
 
   if (vouchers.length === 0) {
     return (
@@ -184,18 +239,29 @@ export default function InProgressTab({ vouchers, onClone }: InProgressTabProps)
                 </button>
               )}
 
-              {canContinue && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    /* TODO: Open ReceivingSessionDrawer */
-                  }}
-                  className="flex items-center gap-1 rounded-[var(--radius-xs)] bg-[var(--color-accent-success)] px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:brightness-95"
-                >
-                  <Play size={12} />
-                  Tiếp tục
-                </button>
-              )}
+              {canContinue && (() => {
+                const task = findReceivingTask(voucher.id);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (task) {
+                        setReceivingTask(task);
+                      }
+                    }}
+                    disabled={!task}
+                    title={!task ? "Chưa có bước kiểm đếm hoặc đang chờ xử lý trước đó" : "Mở phiên kiểm đếm"}
+                    className={`flex items-center gap-1 rounded-[var(--radius-xs)] px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                      task
+                        ? "bg-[var(--color-accent-success)] text-white hover:brightness-95"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <Play size={12} />
+                    Tiếp tục
+                  </button>
+                );
+              })()}
             </div>
           </div>
         );
@@ -212,6 +278,14 @@ export default function InProgressTab({ vouchers, onClone }: InProgressTabProps)
           />
         );
       })()}
+
+      {/* Receiving Session Drawer */}
+      {receivingTask && (
+        <ReceivingSessionDrawer
+          task={receivingTask}
+          onClose={() => setReceivingTask(null)}
+        />
+      )}
     </div>
   );
 }

@@ -35,7 +35,7 @@ import { logAudit } from "./auditService.js";
 
 const importVoucherItemSchema = z.object({
   product_id: z.string().uuid(),
-  warehouse_location_id: z.string().uuid().nullable().optional(),
+  warehouse_location_id: z.string().uuid(),
   expected_quantity: z.number().int().positive(),
   actual_quantity: z.number().int().min(0).optional().default(0),
   unit_price: z.number().min(0),
@@ -105,7 +105,7 @@ export const createImportVoucher = async (
     id: randomUUID(),
     import_voucher_id: voucherId,
     product_id: item.product_id,
-    warehouse_location_id: item.warehouse_location_id ?? null,
+    warehouse_location_id: item.warehouse_location_id,
     expected_quantity: item.expected_quantity,
     actual_quantity: item.actual_quantity,
     unit_price: item.unit_price,

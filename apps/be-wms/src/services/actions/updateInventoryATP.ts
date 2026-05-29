@@ -12,15 +12,21 @@
  *
  * IDEMPOTENCY: Checks if this instance already executed ATP update
  * by verifying a flag on the voucher document.
+ *
+ * ARCHITECTURE (v2):
+ * Uses inventoryRepository.upsertQuantityInTransaction() to ensure
+ * consistent record shape (is_deleted, total_quantity recalc, etc.)
  */
 
 import { db } from "../../config/firebase.js";
 import { AuditAction } from "@bduck/shared-types";
 import { logAudit } from "../auditService.js";
+import * as inventoryRepo from "../../repositories/inventoryRepository.js";
 import type {
   SystemActionContext,
   SystemActionResult,
 } from "../systemActionRegistry.js";
+import { randomUUID } from "crypto";
 
 export async function updateInventoryATP(
   _params: Record<string, unknown>,
@@ -29,6 +35,31 @@ export async function updateInventoryATP(
   const voucherId = ctx.entityPayload.voucher_id as string;
   if (!voucherId) {
     return { skipped: true, reason: "missing_voucher_id" };
+  }
+
+  // Read voucher document
+  const voucherSnap = await db.collection("import_vouchers").doc(voucherId).get();
+  if (!voucherSnap.exists) {
+    throw new Error(
+      `[updateInventoryATP] Voucher ${voucherId} not found in Firestore.`,
+    );
+  }
+
+  const voucher = voucherSnap.data()!;
+  const warehouseId = voucher.warehouse_id as string;
+
+  if (!warehouseId) {
+    throw new Error(
+      `[updateInventoryATP] Voucher ${voucherId} has no warehouse_id.`,
+    );
+  }
+
+  // Idempotency: check if ATP was already updated for this voucher
+  if (voucher.atp_updated === true) {
+    console.log(
+      `[updateInventoryATP] Skipping — ATP already updated for voucher ${voucherId}.`,
+    );
+    return { skipped: true, reason: "atp_already_updated" };
   }
 
   // Read voucher items
@@ -40,75 +71,50 @@ export async function updateInventoryATP(
     .get();
 
   if (itemsSnap.empty) {
-    return { skipped: true, reason: "no_items_found" };
+    throw new Error(
+      `[updateInventoryATP] No items found for voucher ${voucherId}. ` +
+        `Cannot update inventory without items.`,
+    );
   }
 
-  const voucherSnap = await db.collection("import_vouchers").doc(voucherId).get();
-  if (!voucherSnap.exists) {
-    return { skipped: true, reason: "voucher_not_found" };
-  }
-
-  const voucher = voucherSnap.data()!;
-  const warehouseId = voucher.warehouse_id as string;
-
-  // Idempotency: check if ATP was already updated for this voucher
-  if (voucher.atp_updated === true) {
-    return { skipped: true, reason: "atp_already_updated" };
-  }
-
-  // Build item list
   const items = itemsSnap.docs.map((d) => d.data());
   let totalUpdated = 0;
+  const skippedItems: string[] = [];
+
+  console.log(
+    `[updateInventoryATP] Processing ${items.length} items for voucher ${voucherId} (warehouse: ${warehouseId})`,
+  );
 
   // Transaction: update inventory for each item atomically
   await db.runTransaction(async (txn) => {
     for (const item of items) {
       const productId = item.product_id as string;
-      const locationId = item.warehouse_location_id as string;
+      const locationId = item.warehouse_location_id as string | null;
       const actualQty = (item.actual_quantity as number) || 0;
 
-      if (actualQty <= 0) continue;
-
-      // Find or create inventory record for this product+location pair
-      const invQuery = db
-        .collection("inventory")
-        .where("warehouse_id", "==", warehouseId)
-        .where("warehouse_location_id", "==", locationId)
-        .where("product_id", "==", productId)
-        .limit(1);
-
-      const invSnap = await txn.get(invQuery);
-      const now = new Date();
-
-      if (invSnap.empty) {
-        // Create new inventory record
-        const newRef = db.collection("inventory").doc();
-        txn.set(newRef, {
-          id: newRef.id,
-          warehouse_id: warehouseId,
-          warehouse_location_id: locationId,
-          product_id: productId,
-          total_quantity: actualQty,
-          atp_quantity: actualQty,
-          on_hold_quantity: 0,
-          in_transit_quantity: 0,
-          quarantine_quantity: 0,
-          last_count_at: null,
-          last_updated_at: now,
-        });
-      } else {
-        // Update existing inventory
-        const invDoc = invSnap.docs[0];
-        const invData = invDoc.data();
-        const newAtp = (invData.atp_quantity as number) + actualQty;
-        const newTotal = (invData.total_quantity as number) + actualQty;
-
-        txn.update(invDoc.ref, {
-          atp_quantity: newAtp,
-          total_quantity: newTotal,
-          last_updated_at: now,
-        });
+      if (actualQty <= 0) {
+        skippedItems.push(`${productId} (qty=0)`);
+        continue;
       }
+
+      if (!locationId) {
+        // warehouse_location_id is required for inventory tracking
+        skippedItems.push(`${productId} (no location_id)`);
+        console.warn(
+          `[updateInventoryATP] Item product_id=${productId} has null warehouse_location_id. Skipping.`,
+        );
+        continue;
+      }
+
+      // Use repository pattern — consistent record shape with is_deleted, total_quantity recalc
+      await inventoryRepo.upsertQuantityInTransaction(
+        txn,
+        warehouseId,
+        locationId,
+        productId,
+        { atp_quantity: actualQty },
+        randomUUID(),
+      );
 
       totalUpdated++;
     }
@@ -119,6 +125,20 @@ export async function updateInventoryATP(
       updated_at: new Date(),
     });
   });
+
+  if (totalUpdated === 0 && skippedItems.length > 0) {
+    throw new Error(
+      `[updateInventoryATP] All ${items.length} items were skipped ` +
+        `(reasons: ${skippedItems.join(", ")}). No inventory records created.`,
+    );
+  }
+
+  console.log(
+    `[updateInventoryATP] ✅ Updated ${totalUpdated} inventory records for voucher ${voucherId}` +
+      (skippedItems.length > 0
+        ? ` (${skippedItems.length} skipped: ${skippedItems.join(", ")})`
+        : ""),
+  );
 
   // Audit trail
   await logAudit({
@@ -131,9 +151,11 @@ export async function updateInventoryATP(
     new_value: {
       action: "UPDATE_INVENTORY_ATP",
       items_updated: totalUpdated,
+      items_skipped: skippedItems.length,
       warehouse_id: warehouseId,
     },
   });
 
   return { items_updated: totalUpdated, warehouse_id: warehouseId };
 }
+

@@ -50,7 +50,7 @@ import type {
 import * as repo from "../repositories/workflowRepository.js";
 import { scheduleTimerTask } from "../utils/workflowTimerService.js";
 import { evaluateCondition } from "../utils/conditionEvaluator.js";
-import { executeSystemAction } from "./systemActionRegistry.js";
+import { executeSystemAction, SystemActionError } from "./systemActionRegistry.js";
 import { createNotification } from "./notificationService.js";
 import { logAudit } from "./auditService.js";
 
@@ -351,27 +351,87 @@ async function processNode(
     case WorkflowNodeType.SYSTEM_ACTION: {
       // Execute handler from registry → auto-complete → advance
       const saConfig = node.config as SystemActionNodeConfig;
-      const actionResult = await executeSystemAction(
-        saConfig.action_type,
-        saConfig.params || {},
-        { instanceId, entityPayload, userId },
-      );
-      await repo.createTask(instanceId, {
-        instance_id: instanceId,
-        node_id: node.id,
-        node_type: node.type,
-        status: WorkflowTaskStatus.COMPLETED,
-        assigned_to: null,
-        assigned_role_id: null,
-        completed_by: "SYSTEM",
-        result: actionResult,
-        started_at: now,
-        completed_at: now,
-        due_at: null,
-        action_time: now,
-        sync_time: now,
-      });
-      await advanceFromNode(instanceId, version, node.id, userId, entityPayload);
+      try {
+        const actionResult = await executeSystemAction(
+          saConfig.action_type,
+          saConfig.params || {},
+          { instanceId, entityPayload, userId },
+        );
+        await repo.createTask(instanceId, {
+          instance_id: instanceId,
+          node_id: node.id,
+          node_type: node.type,
+          status: WorkflowTaskStatus.COMPLETED,
+          assigned_to: null,
+          assigned_role_id: null,
+          completed_by: "SYSTEM",
+          result: actionResult,
+          started_at: now,
+          completed_at: now,
+          due_at: null,
+          action_time: now,
+          sync_time: now,
+        });
+        await advanceFromNode(instanceId, version, node.id, userId, entityPayload);
+      } catch (error) {
+        // SYSTEM_ACTION failed — mark task FAILED, stop DAG, set instance ERROR
+        const errorMsg =
+          error instanceof SystemActionError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : String(error);
+
+        console.error(
+          `[workflowEngine] SYSTEM_ACTION "${saConfig.action_type}" FAILED for instance=${instanceId}:`,
+          error,
+        );
+
+        await repo.createTask(instanceId, {
+          instance_id: instanceId,
+          node_id: node.id,
+          node_type: node.type,
+          status: WorkflowTaskStatus.FAILED,
+          assigned_to: null,
+          assigned_role_id: null,
+          completed_by: "SYSTEM",
+          result: {
+            action_type: saConfig.action_type,
+            success: false,
+            error: errorMsg,
+          },
+          started_at: now,
+          completed_at: now,
+          due_at: null,
+          action_time: now,
+          sync_time: now,
+        });
+
+        // Set instance to ERROR — DAG stops here
+        const instanceRef = repo.getInstanceRef(instanceId);
+        await instanceRef.update({
+          status: WorkflowInstanceStatus.ERROR,
+          current_node_ids: [node.id],
+          updated_at: now,
+        });
+
+        // Audit trail for the failure (ISO 9001)
+        await logAudit({
+          entity_type: "workflow_instances",
+          entity_id: instanceId,
+          warehouse_id: null,
+          action: AuditAction.UPDATE,
+          user_id: userId,
+          old_value: { status: WorkflowInstanceStatus.RUNNING },
+          new_value: {
+            status: WorkflowInstanceStatus.ERROR,
+            failed_action: saConfig.action_type,
+            error: errorMsg,
+          },
+        });
+
+        // DO NOT advance DAG — workflow is halted
+      }
       break;
     }
 

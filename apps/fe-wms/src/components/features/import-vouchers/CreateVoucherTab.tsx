@@ -182,7 +182,9 @@ export default function CreateVoucherTab({
           formData.items.length > 0 &&
           formData.items.every(
             (item) =>
-              item.product_id !== "" && item.expected_quantity > 0,
+              item.product_id !== "" &&
+              item.expected_quantity > 0 &&
+              item.warehouse_location_id !== "",
           )
         );
       default:
@@ -270,7 +272,7 @@ export default function CreateVoucherTab({
         attachment_urls: uploadedUrls,
         items: formData.items.map((item) => ({
           product_id: item.product_id,
-          warehouse_location_id: item.warehouse_location_id || null,
+          warehouse_location_id: item.warehouse_location_id,
           expected_quantity: item.expected_quantity,
           actual_quantity: item.actual_quantity,
           unit_price: item.unit_price,
@@ -597,7 +599,7 @@ export default function CreateVoucherTab({
                           </div>
                           <div>
                             <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                              Vị trí kho
+                              Vị trí kho *
                             </label>
                             <select
                               value={item.warehouse_location_id}
@@ -612,7 +614,9 @@ export default function CreateVoucherTab({
                                   ? "Chọn kho trước"
                                   : locationsLoading
                                     ? "Đang tải..."
-                                    : "— Chọn vị trí —"}
+                                    : locations.length === 0
+                                      ? "Kho chưa có vị trí"
+                                      : "— Chọn vị trí —"}
                               </option>
                               {locations.map((loc) => (
                                 <option key={loc.id} value={loc.id}>

@@ -10,6 +10,13 @@
  * changed) before executing.
  *
  * AUDIT: Every handler writes to audit_logs (ISO 9001).
+ *
+ * ERROR HANDLING (v2):
+ * - Handler THROWS → SystemActionError is re-thrown to engine
+ *   → engine marks task FAILED, stops DAG, logs error.
+ * - Handler returns { skipped: true } → soft skip, DAG continues.
+ * - Handler returns { success: true } → normal success.
+ * - No handler registered → returns { skipped: true }.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -36,6 +43,25 @@ export type SystemActionHandler = (
   params: Record<string, unknown>,
   ctx: SystemActionContext,
 ) => Promise<SystemActionResult>;
+
+/**
+ * Typed error for system action failures.
+ * Thrown by executeSystemAction when a handler crashes.
+ * The workflow engine catches this to decide task status.
+ */
+export class SystemActionError extends Error {
+  actionType: string;
+  cause: unknown;
+
+  constructor(actionType: string, cause: unknown) {
+    const msg =
+      cause instanceof Error ? cause.message : String(cause);
+    super(`[SystemAction:${actionType}] ${msg}`);
+    this.name = "SystemActionError";
+    this.actionType = actionType;
+    this.cause = cause;
+  }
+}
 
 // ─────────────────────────────────────────────
 // REGISTRY
@@ -74,9 +100,11 @@ registerAction("CREATE_NONCONFORMITY", createNonconformity);
  * Look up and execute a registered system action handler.
  * Returns the handler result (merged into WorkflowTask.result).
  *
- * If no handler is registered, returns a warning result
- * instead of throwing — the engine should not crash on
- * unknown action types (forward compatibility).
+ * ERROR CONTRACT:
+ * - No handler found → returns { skipped: true } (safe, forward-compat)
+ * - Handler throws   → re-throws as SystemActionError
+ *   (engine must catch and handle — mark task FAILED)
+ * - Handler returns  → result is returned as-is with success flag
  */
 export async function executeSystemAction(
   actionType: string,
@@ -101,13 +129,10 @@ export async function executeSystemAction(
     return { action_type: actionType, success: true, ...result };
   } catch (error) {
     console.error(
-      `[systemActionRegistry] Handler "${actionType}" failed:`,
+      `[systemActionRegistry] Handler "${actionType}" FAILED:`,
       error,
     );
-    return {
-      action_type: actionType,
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    // Re-throw as typed error so the engine can mark the task as FAILED
+    throw new SystemActionError(actionType, error);
   }
 }
