@@ -85,6 +85,13 @@ export interface ApprovalLevel {
 // ─────────────────────────────────────────────
 
 /**
+ * Who is allowed to perform a data-entry step.
+ * - CREATOR: Only the user who created the voucher
+ * - ROLE: Only users belonging to the specified role (assigned_role_id)
+ */
+export type StepAssignmentMode = 'CREATOR' | 'ROLE';
+
+/**
  * Configurable options for a specific step in the pipeline.
  * Key = step identifier (e.g. "receiving", "picking", "qc", "handover")
  */
@@ -93,8 +100,16 @@ export interface StepOption {
   require_evidence: boolean;
   /** Bắt buộc scan barcode trước khi xác nhận? */
   require_barcode_scan: boolean;
-  /** Role được phép thực hiện bước này (null = any authenticated user) */
-  allowed_role_id: string | null;
+  /**
+   * Who is assigned to perform this step.
+   * CREATOR = the voucher creator; ROLE = specific role via assigned_role_id.
+   */
+  assignment_mode: StepAssignmentMode;
+  /**
+   * FK → roles.id. Required when assignment_mode = "ROLE".
+   * Ignored (should be null) when assignment_mode = "CREATOR".
+   */
+  assigned_role_id: string | null;
   /** Custom label override (null = use default i18n) */
   label: { vi: string; zh: string } | null;
 }
@@ -122,6 +137,12 @@ export interface ProcessConfig {
   warehouse_id: string | null;
   /** Configurable approval chain */
   approval_chain: ApprovalLevel[];
+  /**
+   * When true, the entire approval_chain is SKIPPED.
+   * Entity auto-advances to APPROVED immediately upon creation.
+   * The approval_chain data is PRESERVED (non-destructive toggle).
+   */
+  auto_approve: boolean;
   /** Per-step options (key = step name like "receiving", "picking") */
   step_options: Record<string, StepOption>;
   /** Soft delete (ISO 9001 — no hard deletes) */

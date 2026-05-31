@@ -683,6 +683,37 @@ const zh: Dictionary = {
     },
   },
 
+  exportVoucher: {
+    title: "出库",
+    subtitle: "创建、跟踪和管理出库单",
+    tabs: {
+      create: "新建",
+      inProgress: "处理中",
+      history: "历史",
+    },
+    status: {
+      DRAFT: "草稿",
+      PENDING_APPROVAL: "待审批",
+      APPROVED: "已审批",
+      REJECTED: "已拒绝",
+      PICKING: "拣货中",
+      SHIPPED: "已发货",
+      COMPLETED: "已完成",
+      CANCELLED: "已取消",
+    },
+    empty: "没有正在处理的出库单",
+    historyEmpty: "暂无出库历史",
+    toast: {
+      creating: "正在创建出库单...",
+      createSuccess: "出库单创建成功",
+      createSuccessDesc: "出库单已提交至审批流程。",
+      createError: "创建出库单失败",
+      createErrorDesc: "请重试或联系管理员。",
+      atpError: "可用库存不足",
+      atpErrorDesc: "仓库库存不足，系统无法审批此出库单。",
+    },
+  },
+
   tasks: {
     title: "待处理任务",
     loading: "加载中...",

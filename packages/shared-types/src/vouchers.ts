@@ -53,8 +53,13 @@ export interface ExportVoucher {
     approved_at: Date | null;
     reference_id: string | null; // Polymorphic FK
     reference_type: ExportReferenceType | null;
-    action_time: Date; // ISO
-    sync_time: Date; // ISO
+    recipient_name: string | null; // Người nhận hàng
+    recipient_department: string | null; // Bộ phận nhận
+    notes: string | null;
+    attachment_urls: string[]; // Firebase Storage download URLs
+    action_time: Date; // ISO — client offline time
+    sync_time: Date; // ISO — server receive time
+    atp_deducted: boolean; // Idempotency flag for ATP deduction
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;
@@ -65,7 +70,8 @@ export interface ExportVoucherItem {
     export_voucher_id: string; // FK → export_vouchers
     product_id: string; // FK → products
     warehouse_location_id: string; // FK → warehouse_locations
-    quantity: number;
+    quantity: number; // Requested quantity
+    picked_quantity: number; // Actual picked by warehouse staff
     unit_price: number; // DECIMAL
     notes: string | null;
     is_deleted: boolean;

@@ -127,6 +127,17 @@ service cloud.firestore {
       }
     }
 
+    // ── Export Vouchers: Authenticated read (+ items subcollection) ──
+    match /export_vouchers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      match /items/{itemId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
     // ── In-App Notifications: Read own + mark as read ──
     match /in_app_notifications/{docId} {
       allow read: if isAuthenticated();

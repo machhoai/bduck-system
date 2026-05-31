@@ -21,6 +21,8 @@ import {
     CheckCircle,
     XCircle,
     Package,
+    PackagePlus,
+    PackageMinus,
     Warehouse,
     User,
     Calendar,
@@ -117,21 +119,28 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
     const isLoading = loadingVoucher;
 
+    const isExport = approval.entity_type === "EXPORT_VOUCHER";
+
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
-        const key = voucher.status as keyof typeof t.importVoucher.status;
-        const label = t.importVoucher.status[key] || voucher.status;
+        // Use correct i18n status map based on entity type
+        const statusMap = isExport
+            ? (t as any).exportVoucher?.status || {}
+            : t.importVoucher.status;
+        const label = statusMap[voucher.status as string] || voucher.status;
         const colorMap: Record<string, string> = {
             DRAFT: "bg-gray-100 text-gray-600",
             PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-            APPROVED: "bg-emerald-100 text-emerald-700",
+            APPROVED: isExport ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700",
             RECEIVING: "bg-blue-100 text-blue-700",
+            PICKING: "bg-purple-100 text-purple-700",
+            SHIPPED: "bg-teal-100 text-teal-700",
             COMPLETED: "bg-green-100 text-green-700",
             CANCELLED: "bg-red-100 text-red-600",
             REJECTED: "bg-red-100 text-red-600",
         };
         return { label, color: colorMap[voucher.status] || "bg-gray-100 text-gray-600" };
-    }, [voucher, t]);
+    }, [voucher, t, isExport]);
 
     const totalValue = useMemo(
         () => items.reduce((sum, item) => sum + item.expected_quantity * item.unit_price, 0),
@@ -197,13 +206,22 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
             {/* Drawer */}
             <div className="fixed top-0 right-0 z-50 flex h-[calc(100vh-68px)] md:h-full w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-900">{t.tasks.detail.title}</h2>
-                        <p className="mt-0.5 text-xs text-gray-500">
-                            {voucher?.voucher_number || approval.entity_id?.slice(0, 12) + "..."}
-                        </p>
+                {/* Header — color-coded by entity type */}
+                <div className={`flex items-center justify-between border-b px-6 py-4 ${
+                    isExport ? "border-orange-100 bg-orange-50/30" : "border-gray-100"
+                }`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                            isExport ? "bg-orange-100 text-orange-600" : "bg-emerald-100 text-emerald-600"
+                        }`}>
+                            {isExport ? <PackageMinus className="h-4.5 w-4.5" /> : <PackagePlus className="h-4.5 w-4.5" />}
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">{t.tasks.detail.title}</h2>
+                            <p className="mt-0.5 text-xs text-gray-500">
+                                {voucher?.voucher_number || approval.entity_id?.slice(0, 12) + "..."}
+                            </p>
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -234,11 +252,20 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                                 )}
                             </div>
 
-                            {/* Fields */}
+                            {/* Fields — entity-type-aware */}
                             <div className="px-6 pt-2">
                                 <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                                 <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
-                                <Field icon={Package} label={t.tasks.detail.supplier} value={voucher.supplier_name} />
+                                {isExport ? (
+                                    <>
+                                        <Field icon={User} label="Người nhận" value={(voucher as any).recipient_name} />
+                                        {(voucher as any).recipient_department && (
+                                            <Field icon={Package} label="Bộ phận" value={(voucher as any).recipient_department} />
+                                        )}
+                                    </>
+                                ) : (
+                                    <Field icon={Package} label={t.tasks.detail.supplier} value={voucher.supplier_name} />
+                                )}
                                 <Field icon={User} label={t.tasks.detail.creator} value={creatorName || voucher.creator_id} />
                                 <Field icon={Calendar} label={t.tasks.detail.createdAt} value={formatDate(voucher.created_at)} />
                                 {voucher.notes && <Field icon={FileText} label={t.tasks.detail.notes} value={voucher.notes} />}

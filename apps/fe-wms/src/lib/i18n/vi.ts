@@ -694,6 +694,37 @@ const vi = {
     },
   },
 
+  exportVoucher: {
+    title: "Xuất kho",
+    subtitle: "Tạo, theo dõi và quản lý lệnh xuất kho",
+    tabs: {
+      create: "Tạo mới",
+      inProgress: "Đang xử lý",
+      history: "Lịch sử",
+    },
+    status: {
+      DRAFT: "Nháp",
+      PENDING_APPROVAL: "Chờ duyệt",
+      APPROVED: "Đã duyệt",
+      REJECTED: "Từ chối",
+      PICKING: "Đang soạn hàng",
+      SHIPPED: "Đã bàn giao",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy",
+    },
+    empty: "Không có phiếu xuất nào đang xử lý",
+    historyEmpty: "Chưa có lịch sử xuất kho",
+    toast: {
+      creating: "Đang tạo phiếu xuất kho...",
+      createSuccess: "Đã tạo phiếu xuất kho",
+      createSuccessDesc: "Phiếu đã được gửi vào quy trình duyệt.",
+      createError: "Lỗi khi tạo phiếu xuất kho",
+      createErrorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+      atpError: "Không đủ tồn kho khả dụng",
+      atpErrorDesc: "Hệ thống không thể duyệt phiếu vì kho không đủ hàng.",
+    },
+  },
+
   tasks: {
     title: "Việc cần xử lý",
     loading: "Đang tải...",

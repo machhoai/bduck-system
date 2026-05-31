@@ -8,10 +8,13 @@
  *   to Firestore as a batch update.
  * - It does NOT change voucher status or update ATP.
  *   Those are handled by importVoucherService state machine.
+ * - Assignment validation (CREATOR/ROLE check) is enforced HERE
+ *   in the service layer (not in controller).
  *
  * SECURITY:
  * - Input validated via Zod
  * - User must be authenticated (JWT middleware)
+ * - Step assignment validated via ProcessConfig
  * - Audit trail written for ISO 9001 compliance
  * ═══════════════════════════════════════════════════════════════
  */
@@ -19,7 +22,9 @@
 import { db } from "../config/firebase.js";
 import { z } from "zod";
 import { AuditAction } from "@bduck/shared-types";
+import type { ProcessEntityType } from "@bduck/shared-types";
 import { logAudit } from "./auditService.js";
+import { getConfigForEntity } from "./processConfigService.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMA — Input validation
@@ -39,20 +44,89 @@ export const saveActualsSchema = z.object({
 export type SaveActualsInput = z.infer<typeof saveActualsSchema>;
 
 // ─────────────────────────────────────────────
+// TYPES — User context from controller
+// ─────────────────────────────────────────────
+
+export interface StepUser {
+  id: string;
+  roleIds: string[];
+}
+
+// ─────────────────────────────────────────────
+// STEP ASSIGNMENT VALIDATION
+// ─────────────────────────────────────────────
+
+/**
+ * Validates whether the user is authorized to perform a step
+ * based on ProcessConfig.step_options.assignment_mode.
+ *
+ * SERVICE LAYER: All business logic stays here. Controller
+ * only passes user data (id, roleIds) from req.user.
+ *
+ * @throws 403 if user is not authorized
+ */
+export async function validateStepAssignment(
+  entityType: ProcessEntityType,
+  warehouseId: string | null,
+  stepKey: string,
+  user: StepUser,
+  voucherCreatorId: string,
+): Promise<void> {
+  const config = await getConfigForEntity(entityType, warehouseId);
+  const stepOption = config.step_options?.[stepKey];
+
+  if (!stepOption) {
+    // No step config → allow by default (fallback to CREATOR behavior)
+    return;
+  }
+
+  const { assignment_mode, assigned_role_id } = stepOption;
+
+  if (assignment_mode === "CREATOR") {
+    if (user.id !== voucherCreatorId) {
+      const err = new Error("Unauthorized step assignment") as Error & {
+        statusCode: number;
+        messages: Record<string, string>;
+      };
+      err.statusCode = 403;
+      err.messages = {
+        vi: "Chỉ người tạo phiếu mới được phép thực hiện bước này.",
+        zh: "只有创建者才能执行此步骤。",
+      };
+      throw err;
+    }
+  } else if (assignment_mode === "ROLE") {
+    if (!assigned_role_id || !user.roleIds.includes(assigned_role_id)) {
+      const err = new Error("Unauthorized step assignment") as Error & {
+        statusCode: number;
+        messages: Record<string, string>;
+      };
+      err.statusCode = 403;
+      err.messages = {
+        vi: "Bạn không có quyền thực hiện bước này. Cần role được chỉ định.",
+        zh: "您没有权限执行此步骤。需要指定角色。",
+      };
+      throw err;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
 // SERVICE — saveReceivingActuals
 // ─────────────────────────────────────────────
 
 /**
  * Batch-update actual_quantity on import voucher items.
+ * Validates step assignment before performing any writes.
  *
  * @param voucherId  Parent import voucher ID
  * @param input      Validated input from controller
- * @param userId     Authenticated user from JWT
+ * @param user       Authenticated user context (id + roleIds)
  */
 export async function saveReceivingActuals(
   voucherId: string,
   input: SaveActualsInput,
-  userId: string,
+  user: StepUser,
 ): Promise<{ updated: number }> {
   // Verify voucher exists
   const voucherRef = db.collection("import_vouchers").doc(voucherId);
@@ -68,9 +142,19 @@ export async function saveReceivingActuals(
     throw err;
   }
 
+  const voucher = voucherSnap.data() || {};
+
+  // ── Step assignment validation (Service Layer — LUẬT THÉP) ──
+  await validateStepAssignment(
+    "IMPORT_VOUCHER",
+    typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : null,
+    "receiving",
+    user,
+    typeof voucher.creator_id === "string" ? voucher.creator_id : "",
+  );
+
   const now = new Date();
   const actionTime = input.action_time ? new Date(input.action_time) : now;
-  const voucher = voucherSnap.data() || {};
 
   // Batch update items
   const batch = db.batch();
@@ -110,7 +194,7 @@ export async function saveReceivingActuals(
     warehouse_id:
       typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : null,
     action: AuditAction.UPDATE,
-    user_id: userId,
+    user_id: user.id,
     old_value: null,
     new_value: {
       action: "SAVE_RECEIVING_ACTUALS",
@@ -121,3 +205,4 @@ export async function saveReceivingActuals(
 
   return { updated: updatedCount };
 }
+

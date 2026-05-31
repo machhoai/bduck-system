@@ -11,6 +11,7 @@ import {
     Home,
     Package,
     PackagePlus,
+    PackageMinus,
     Users,
     Warehouse,
     LucideIcon,
@@ -88,6 +89,14 @@ export const menuItems: MenuItem[] = [
         href: "/import-vouchers",
         permission: "vouchers.read",
         badgeKey: "importVouchers",
+    },
+    {
+        id: "exportVouchers",
+        labelKey: "exportVoucher",
+        icon: PackageMinus,
+        href: "/export-vouchers",
+        permission: "vouchers.read",
+        badgeKey: "exportVouchers",
     },
     {
         id: "users",

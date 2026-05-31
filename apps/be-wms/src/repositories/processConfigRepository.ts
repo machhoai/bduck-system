@@ -104,7 +104,7 @@ export async function create(
 /** Update an existing config */
 export async function update(
   id: string,
-  data: Partial<Pick<ProcessConfig, "approval_chain" | "step_options" | "updated_at">>,
+  data: Partial<Pick<ProcessConfig, "approval_chain" | "auto_approve" | "step_options" | "updated_at">>,
 ): Promise<void> {
   await db.collection(COLLECTION).doc(id).update(data);
 }

@@ -68,6 +68,32 @@ export async function createApprovalsForEntity(
   warehouseId: string,
   creatorId: string,
 ): Promise<ApprovalRecord[]> {
+  // ── Check auto_approve flag in ProcessConfig ──
+  const config = await configRepo.findByEntityType(entityType, warehouseId);
+
+  if (config?.auto_approve === true) {
+    console.log(
+      `[approvalService] auto_approve=true for ${entityType}. Skipping approval chain.`,
+    );
+
+    // Audit trail: explicitly record system auto-approve (ISO 9001)
+    await logAudit({
+      entity_type: entityType,
+      entity_id: entityId,
+      warehouse_id: warehouseId,
+      action: AuditAction.APPROVE,
+      user_id: "SYSTEM_AUTO_APPROVE",
+      old_value: { status: "CREATED" },
+      new_value: {
+        status: "AUTO_APPROVED",
+        reason: "auto_approve enabled in ProcessConfig",
+        config_id: config.id,
+      },
+    });
+
+    return []; // Triggers auto-advance in importVoucherService
+  }
+
   const chain = await configRepo.getActiveApprovalChain(
     entityType,
     warehouseId,
@@ -421,7 +447,17 @@ async function advanceEntityOnApproval(
         );
         break;
       }
-      // Future: EXPORT_VOUCHER, TRANSFER_ORDER, etc.
+      case "EXPORT_VOUCHER": {
+        const { onApprovalCompleted: onExportApproved } = await import(
+          "./exportVoucherService.js"
+        );
+        await onExportApproved(entityId, approverId);
+        console.log(
+          `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → APPROVED`,
+        );
+        break;
+      }
+      // Future: TRANSFER_ORDER, etc.
       default:
         console.warn(
           `[approvalService] No callback for entity type: ${entityType}`,
@@ -454,6 +490,16 @@ async function advanceEntityOnRejection(
         await onApprovalRejected(entityId, rejectorId, reason);
         console.log(
           `[approvalService] Advanced IMPORT_VOUCHER/${entityId} → REJECTED`,
+        );
+        break;
+      }
+      case "EXPORT_VOUCHER": {
+        const { onApprovalRejected: onExportRejected } = await import(
+          "./exportVoucherService.js"
+        );
+        await onExportRejected(entityId, rejectorId, reason);
+        console.log(
+          `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → REJECTED`,
         );
         break;
       }

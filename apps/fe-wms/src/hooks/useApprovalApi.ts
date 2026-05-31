@@ -42,7 +42,9 @@ async function approvalApi<T>(
     .catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    const error = new Error(body?.messages?.vi || "Lỗi khi xử lý phê duyệt.") as Error & {
+    const error = new Error(
+      body?.messages?.vi || "Lỗi khi xử lý phê duyệt.",
+    ) as Error & {
       statusCode?: number;
       messages?: { vi: string; zh: string };
     };
@@ -115,17 +117,16 @@ export async function fetchConfigByEntityType(
   return configApi(`/${entityType}${qs}`, "GET");
 }
 
-export async function updateProcessConfig(
-  configId: string,
-  payload: unknown,
-) {
+export async function updateProcessConfig(configId: string, payload: unknown) {
   const result = await configApi(`/${configId}`, "PUT", payload);
   emitDataMutation(["process_configs"]);
   return result;
 }
 
 export async function seedProcessConfig(entityType: string) {
-  return configApi(`/seed/${entityType}`, "POST");
+  const result = await configApi(`/seed/${entityType}`, "POST");
+  emitDataMutation(["process_configs"]);
+  return result;
 }
 
 export async function reseedProcessConfig(entityType: string) {

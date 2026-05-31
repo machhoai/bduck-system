@@ -2,11 +2,12 @@
  * Import Voucher Routes
  *
  * All routes require authentication (requireAuth middleware).
- * GET  /             — List vouchers (RBAC-scoped, filtered)
- * GET  /:id          — Voucher detail (items + attachments)
- * GET  /:id/timeline — Audit + approval timeline
- * POST /             — Create Import Voucher + trigger Fixed Pipeline
- * PUT  /:id/actuals  — Save Receiving Session actual_quantity data
+ * GET  /                       — List vouchers (RBAC-scoped, filtered)
+ * GET  /:id                    — Voucher detail (items + attachments)
+ * GET  /:id/timeline           — Audit + approval timeline
+ * POST /                       — Create Import Voucher + trigger Fixed Pipeline
+ * PUT  /:id/actuals            — Save Receiving Session actual_quantity data
+ * POST /:id/complete-receiving — Finalize receiving → update ATP → COMPLETED
  */
 
 import { Router, type Router as ExpressRouter } from "express";
@@ -16,7 +17,7 @@ import {
   getImportVoucherTimelineHandler,
   createImportVoucherHandler,
 } from "../controllers/importVoucherController.js";
-import { saveActuals } from "../controllers/receivingSessionController.js";
+import { saveActuals, completeReceivingHandler } from "../controllers/receivingSessionController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   requirePermission,
@@ -43,6 +44,12 @@ router.put(
   "/:id/actuals",
   requireAnyScopedPermission("vouchers.write"),
   saveActuals,
+);
+
+router.post(
+  "/:id/complete-receiving",
+  requireAnyScopedPermission("vouchers.write"),
+  completeReceivingHandler,
 );
 
 export default router;

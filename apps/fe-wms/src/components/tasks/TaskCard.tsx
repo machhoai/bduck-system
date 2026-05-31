@@ -15,6 +15,11 @@ import {
     Clock,
     ChevronRight,
     Layers,
+    PackagePlus,
+    PackageMinus,
+    ArrowLeftRight,
+    ShoppingCart,
+    type LucideIcon,
 } from "lucide-react";
 import type { ApprovalRecord } from "@bduck/shared-types";
 import type { Dictionary } from "@/lib/i18n";
@@ -25,28 +30,32 @@ interface TaskCardProps {
     t: Dictionary;
 }
 
-/** Map entity_type to label + color */
+/** Map entity_type to label + color + icon */
 function getEntityMeta(entityType: string, t: Dictionary) {
-    const map: Record<string, { label: string; color: string; bgIcon: string }> = {
+    const map: Record<string, { label: string; color: string; bgIcon: string; icon: LucideIcon }> = {
         IMPORT_VOUCHER: {
             label: t.tasks.entityType?.IMPORT_VOUCHER || "Phiếu nhập",
-            color: "border-amber-200 bg-amber-50 text-amber-700",
-            bgIcon: "bg-amber-100 text-amber-600",
+            color: "border-emerald-200 bg-emerald-50 text-emerald-700",
+            bgIcon: "bg-emerald-100 text-emerald-600",
+            icon: PackagePlus,
         },
         EXPORT_VOUCHER: {
             label: t.tasks.entityType?.EXPORT_VOUCHER || "Phiếu xuất",
-            color: "border-blue-200 bg-blue-50 text-blue-700",
-            bgIcon: "bg-blue-100 text-blue-600",
+            color: "border-orange-200 bg-orange-50 text-orange-700",
+            bgIcon: "bg-orange-100 text-orange-600",
+            icon: PackageMinus,
         },
         TRANSFER_ORDER: {
             label: t.tasks.entityType?.TRANSFER_ORDER || "Lệnh chuyển kho",
             color: "border-purple-200 bg-purple-50 text-purple-700",
             bgIcon: "bg-purple-100 text-purple-600",
+            icon: ArrowLeftRight,
         },
         PURCHASE_ORDER: {
             label: t.tasks.entityType?.PURCHASE_ORDER || "Đơn mua hàng",
-            color: "border-emerald-200 bg-emerald-50 text-emerald-700",
-            bgIcon: "bg-emerald-100 text-emerald-600",
+            color: "border-blue-200 bg-blue-50 text-blue-700",
+            bgIcon: "bg-blue-100 text-blue-600",
+            icon: ShoppingCart,
         },
     };
 
@@ -54,6 +63,7 @@ function getEntityMeta(entityType: string, t: Dictionary) {
         label: entityType,
         color: "border-gray-200 bg-gray-50 text-gray-600",
         bgIcon: "bg-gray-100 text-gray-500",
+        icon: CheckCircle,
     };
 }
 
@@ -85,7 +95,7 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.bgIcon}`}>
-                        <CheckCircle className="h-5 w-5" />
+                        <meta.icon className="h-5 w-5" />
                     </div>
                     <div>
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.color}`}>

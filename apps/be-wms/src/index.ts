@@ -13,6 +13,7 @@ import roleRoutes from "./api/routes/roleRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
 import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
+import exportVoucherRoutes from "./api/routes/exportVoucherRoutes.js";
 import approvalRoutes from "./api/routes/approvalRoutes.js";
 import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 
@@ -49,6 +50,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/import-vouchers", importVoucherRoutes);
+app.use("/api/export-vouchers", exportVoucherRoutes);
 app.use("/api/approvals", approvalRoutes);
 app.use("/api/process-configs", processConfigRoutes);
 

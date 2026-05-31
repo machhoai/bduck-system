@@ -162,8 +162,9 @@ export function useTaskDetailData(approval: ApprovalRecord): TaskDetailState {
                         product_code: productCode,
                         barcode,
                         unit,
-                        expected_quantity: (item.expected_quantity as number) || 0,
-                        actual_quantity: (item.actual_quantity as number) || 0,
+                        // Export items use `quantity`, import items use `expected_quantity`
+                        expected_quantity: (item.expected_quantity as number) || (item.quantity as number) || 0,
+                        actual_quantity: (item.actual_quantity as number) || (item.picked_quantity as number) || 0,
                         unit_price: (item.unit_price as number) || 0,
                         condition: (item.condition as string) || "",
                         notes: (item.notes as string) || null,

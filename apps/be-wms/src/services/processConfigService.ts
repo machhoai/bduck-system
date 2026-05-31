@@ -34,17 +34,28 @@ const approvalLevelSchema = z.object({
 const stepOptionSchema = z.object({
   require_evidence: z.boolean(),
   require_barcode_scan: z.boolean(),
-  allowed_role_id: z.string().nullable(),
+  assignment_mode: z.enum(["CREATOR", "ROLE"]),
+  assigned_role_id: z.string().nullable(),
   label: z
     .object({
       vi: z.string().min(1),
       zh: z.string().min(1),
     })
     .nullable(),
+}).superRefine((data, ctx) => {
+  // When assignment_mode is ROLE, assigned_role_id is required
+  if (data.assignment_mode === "ROLE" && (!data.assigned_role_id || data.assigned_role_id.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["assigned_role_id"],
+      message: "assigned_role_id is required when assignment_mode is ROLE",
+    });
+  }
 });
 
 export const updateConfigSchema = z.object({
   approval_chain: z.array(approvalLevelSchema).optional(),
+  auto_approve: z.boolean().optional(),
   step_options: z.record(z.string(), stepOptionSchema).optional(),
 });
 
@@ -52,6 +63,49 @@ export type UpdateConfigInput = z.infer<typeof updateConfigSchema>;
 
 // ─────────────────────────────────────────────
 // DEFAULT CONFIGS (Hardcoded fallbacks)
+// ─────────────────────────────────────────────
+
+/**
+ * Default step options per entity type.
+ * IMPORT_VOUCHER → "receiving" step
+ * EXPORT_VOUCHER → "picking" step
+ */
+const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
+  Record<ProcessEntityType, Record<string, StepOption>>
+> = {
+  IMPORT_VOUCHER: {
+    receiving: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+  },
+  EXPORT_VOUCHER: {
+    picking: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+  },
+};
+
+/** Fallback for entity types without specific step options */
+const DEFAULT_STEP_OPTIONS: Record<string, StepOption> = {
+  receiving: {
+    require_evidence: false,
+    require_barcode_scan: false,
+    assignment_mode: "CREATOR",
+    assigned_role_id: null,
+    label: null,
+  },
+};
+
+// ─────────────────────────────────────────────
+// SERVICE
 // ─────────────────────────────────────────────
 
 /**
@@ -100,18 +154,10 @@ const DEFAULT_CHAINS: Partial<
   ],
 };
 
-const DEFAULT_STEP_OPTIONS: Record<string, StepOption> = {
-  receiving: {
-    require_evidence: false,
-    require_barcode_scan: false,
-    allowed_role_id: null,
-    label: null,
-  },
-};
-
-// ─────────────────────────────────────────────
-// SERVICE
-// ─────────────────────────────────────────────
+/** Resolve step_options for an entity type */
+function getDefaultStepOptions(entityType: ProcessEntityType): Record<string, StepOption> {
+  return DEFAULT_STEP_OPTIONS_BY_ENTITY[entityType] ?? DEFAULT_STEP_OPTIONS;
+}
 
 /** List all configs (admin view) */
 export async function getAllConfigs(): Promise<ProcessConfig[]> {
@@ -136,7 +182,8 @@ export async function getConfigForEntity(
     entity_type: entityType,
     warehouse_id: null,
     approval_chain: DEFAULT_CHAINS[entityType] ?? [],
-    step_options: DEFAULT_STEP_OPTIONS,
+    auto_approve: false,
+    step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: new Date(),
     updated_at: new Date(),
@@ -170,11 +217,14 @@ export async function updateConfig(
   }
 
   const updateData: Partial<
-    Pick<ProcessConfig, "approval_chain" | "step_options" | "updated_at">
+    Pick<ProcessConfig, "approval_chain" | "auto_approve" | "step_options" | "updated_at">
   > = { updated_at: now };
 
   if (input.approval_chain) {
     updateData.approval_chain = input.approval_chain;
+  }
+  if (typeof input.auto_approve === "boolean") {
+    updateData.auto_approve = input.auto_approve;
   }
   if (input.step_options) {
     updateData.step_options = input.step_options;
@@ -223,7 +273,8 @@ export async function seedConfigIfMissing(
     entity_type: entityType,
     warehouse_id: null,
     approval_chain: resolvedChain,
-    step_options: DEFAULT_STEP_OPTIONS,
+    auto_approve: false,
+    step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: now,
     updated_at: now,
@@ -282,7 +333,8 @@ export async function reseedConfig(
     entity_type: entityType,
     warehouse_id: null,
     approval_chain: resolvedChain,
-    step_options: DEFAULT_STEP_OPTIONS,
+    auto_approve: false,
+    step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: now,
     updated_at: now,

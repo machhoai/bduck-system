@@ -1,48 +1,37 @@
 "use client";
 
-/**
- * CreateVoucherTab — 4-step stepper for creating import vouchers
- *
- * Steps:
- * 1. Upload chứng từ (FileUploadField)
- * 2. Thông tin chung (warehouse, supplier, PO, notes)
- * 3. Danh sách sản phẩm (add/remove items table)
- * 4. Xác nhận & Gửi (review + submit)
- *
- * Clone flow (Q1): Khi cloneData có giá trị → pre-fill steps 2-3.
- * Upload files: Lên temp path trước → move sau khi voucher created.
- *
- * LUẬT THÉP:
- * - gooeyToast.promise cho submit
- * - Disable nút khi đang gửi (chống click đúp)
- * - i18n cho tất cả text
- */
-
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Upload,
-  ClipboardList,
-  Package,
   CheckCircle2,
-  ChevronRight,
   ChevronLeft,
-  Search,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  Package,
   Plus,
+  Search,
   Trash2,
+  Upload,
+  Warehouse,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
+import type { Product } from "@bduck/shared-types";
+import { createImportVoucher } from "../../../hooks/useImportVoucherApi";
+import { useProducts } from "../../../hooks/useProducts";
+import {
+  useWarehouseLocations,
+  useWarehouses,
+} from "../../../hooks/useWarehouses";
+import { uploadFile } from "../../../lib/uploadFile";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
-import { createImportVoucher } from "../../../hooks/useImportVoucherApi";
-import { uploadFile } from "../../../lib/uploadFile";
-import { FileUploadField, type SelectedFile } from "../../shared/FileUploadField";
-import { useWarehouses } from "../../../hooks/useWarehouses";
-import { useProducts } from "../../../hooks/useProducts";
-import { useWarehouseLocations } from "../../../hooks/useWarehouses";
+import {
+  FileUploadField,
+  type SelectedFile,
+} from "../../shared/FileUploadField";
+import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
 
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
+type Locale = "vi" | "zh";
 
 interface CreateVoucherTabProps {
   cloneData?: Record<string, unknown> | null;
@@ -69,45 +58,158 @@ interface VoucherItemData {
   notes: string;
 }
 
-// ─────────────────────────────────────────────
-// STEP CONFIG
-// ─────────────────────────────────────────────
+type StepId = 0 | 1 | 2 | 3;
 
-interface StepConfig {
-  id: number;
-  icon: React.ElementType;
-  labelKey: string;
-  fallback: string;
-}
+const COPY = {
+  vi: {
+    uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
+    supplierPlaceholder: "Nhập tên nhà cung cấp",
+    poPlaceholder: "Tuỳ chọn, dùng để đối chiếu đơn mua",
+    notesPlaceholder:
+      "Ghi chú ca nhập, điều kiện giao hàng, yêu cầu kiểm đếm...",
+    searchProduct: "Tìm theo tên, SKU hoặc barcode",
+    chooseFromCatalog: "Chọn sản phẩm từ danh mục",
+    selectedItems: "Danh sách nhập kho",
+    emptyItems: "Chọn sản phẩm từ danh mục để thêm vào phiếu nhập.",
+    noProducts: "Không tìm thấy sản phẩm phù hợp.",
+    loadingProducts: "Đang tải sản phẩm...",
+    addProduct: "Thêm vào phiếu",
+    added: "Đã thêm",
+    expectedQty: "SL dự kiến",
+    unitPrice: "Đơn giá",
+    location: "Vị trí kho",
+    condition: "Tình trạng",
+    good: "Tốt",
+    damaged: "Hư hỏng",
+    missing: "Thiếu",
+    itemNote: "Ghi chú cho sản phẩm này",
+    summary: "Tóm tắt phiếu nhập",
+    attachments: "Tệp đính kèm",
+    products: "Mặt hàng",
+    totalQty: "Tổng số lượng",
+    totalValue: "Tổng giá trị",
+    noWarehouse: "Chưa chọn kho",
+    noPo: "Không có",
+    noNotes: "Không có ghi chú",
+    selectLocation: "Chọn vị trí",
+    selectWarehouseFirst: "Chọn kho trước",
+    loadingLocations: "Đang tải vị trí...",
+    noLocations: "Kho chưa có vị trí",
+  },
+  zh: {
+    uploadHint: "PDF、DOCX、XLSX、CSV - 每个文件最多 20MB - 最多 5 个文件",
+    supplierPlaceholder: "输入供应商名称",
+    poPlaceholder: "可选，用于采购单对账",
+    notesPlaceholder: "入库班次备注、交货条件、清点要求...",
+    searchProduct: "按名称、SKU 或条码搜索",
+    chooseFromCatalog: "从目录选择产品",
+    selectedItems: "入库清单",
+    emptyItems: "请从目录中选择产品加入入库单。",
+    noProducts: "未找到匹配产品。",
+    loadingProducts: "正在加载产品...",
+    addProduct: "加入单据",
+    added: "已添加",
+    expectedQty: "预计数量",
+    unitPrice: "单价",
+    location: "库位",
+    condition: "状态",
+    good: "良好",
+    damaged: "损坏",
+    missing: "缺少",
+    itemNote: "此产品备注",
+    summary: "入库单摘要",
+    attachments: "附件",
+    products: "商品",
+    totalQty: "总数量",
+    totalValue: "总价值",
+    noWarehouse: "未选择仓库",
+    noPo: "无",
+    noNotes: "无备注",
+    selectLocation: "选择库位",
+    selectWarehouseFirst: "请先选择仓库",
+    loadingLocations: "正在加载库位...",
+    noLocations: "此仓库暂无库位",
+  },
+} as const;
 
-const STEPS: StepConfig[] = [
-  { id: 0, icon: Upload, labelKey: "upload", fallback: "Tải chứng từ" },
-  { id: 1, icon: ClipboardList, labelKey: "info", fallback: "Thông tin" },
-  { id: 2, icon: Package, labelKey: "items", fallback: "Sản phẩm" },
-  { id: 3, icon: CheckCircle2, labelKey: "confirm", fallback: "Xác nhận" },
+const STEPS = [
+  { id: 0 as StepId, icon: Upload, key: "upload", fallback: "Tải chứng từ" },
+  { id: 1 as StepId, icon: Warehouse, key: "info", fallback: "Thông tin" },
+  { id: 2 as StepId, icon: Package, key: "items", fallback: "Sản phẩm" },
+  { id: 3 as StepId, icon: CheckCircle2, key: "confirm", fallback: "Xác nhận" },
 ];
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("vi-VN").format(value);
+}
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+function ProductPickerCard({
+  product,
+  isAdded,
+  onAdd,
+  locale,
+}: {
+  product: Product;
+  isAdded: boolean;
+  onAdd: () => void;
+  locale: Locale;
+}) {
+  const copy = COPY[locale];
+
+  return (
+    <div
+      className={`rounded-[var(--radius-sm)] border p-3 transition-all ${
+        isAdded
+          ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
+          : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
+      }`}
+    >
+      <div className="flex gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+          <Package size={20} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text-primary)]">
+            {product.name}
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+            SKU: {product.code} · {product.unit}
+          </p>
+          {product.barcode && (
+            <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]">
+              {product.barcode}
+            </p>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        disabled={isAdded}
+        onClick={onAdd}
+        className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-xs)] bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
+      >
+        {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+        {isAdded ? copy.added : copy.addProduct}
+      </button>
+    </div>
+  );
+}
 
 export default function CreateVoucherTab({
   cloneData,
   onCreated,
 }: CreateVoucherTabProps) {
-  const { t } = useTranslation();
-  const user = useUserStore((s) => s.user);
+  const { t, lang } = useTranslation();
+  const locale = (lang || "vi") as Locale;
+  const copy = COPY[locale];
+  const user = useUserStore((state) => state.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const { locations: allLocations } = useWarehouseLocations();
   const { products, loading: productsLoading } = useProducts();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<StepId>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState("");
-
-  // ── File upload state ──
   const [files, setFiles] = useState<SelectedFile[]>([]);
-
-  // ── Form data ──
   const [formData, setFormData] = useState<VoucherFormData>({
     warehouse_id: "",
     supplier_name: "",
@@ -116,154 +218,173 @@ export default function CreateVoucherTab({
     items: [],
   });
 
-  // ── Locations depend on selected warehouse (must come after formData) ──
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     formData.warehouse_id || undefined,
   );
 
-  // ── Filtered products for picker ──
+  const selectedWarehouse = warehouses.find(
+    (warehouse) => warehouse.id === formData.warehouse_id,
+  );
+
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products;
-    const q = productSearch.toLowerCase();
+    const query = productSearch.toLowerCase();
     return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q) ||
-        (p.barcode && p.barcode.toLowerCase().includes(q)),
+      (product) =>
+        product.name.toLowerCase().includes(query) ||
+        product.code.toLowerCase().includes(query) ||
+        (product.barcode && product.barcode.toLowerCase().includes(query)),
     );
   }, [products, productSearch]);
 
-  // ── Already-added product IDs (to prevent duplicates) ──
   const addedProductIds = useMemo(
-    () => new Set(formData.items.map((i) => i.product_id)),
+    () => new Set(formData.items.map((item) => item.product_id)),
     [formData.items],
   );
 
-  // ── Step labels from i18n ──
   const stepLabels = useMemo(() => {
-    const steps = (t as any).importVoucher?.steps;
+    const labels = (t as any).importVoucher?.steps;
     return {
-      upload: steps?.upload ?? "Tải chứng từ",
-      info: steps?.info ?? "Thông tin",
-      items: steps?.items ?? "Sản phẩm",
-      confirm: steps?.confirm ?? "Xác nhận",
+      upload: labels?.upload ?? "Tải chứng từ",
+      info: labels?.info ?? "Thông tin",
+      items: labels?.items ?? "Sản phẩm",
+      confirm: labels?.confirm ?? "Xác nhận",
     };
   }, [t]);
 
-  // ── Clone flow (pre-fill from rejected voucher) ──
+  const totalQuantity = useMemo(
+    () =>
+      formData.items.reduce(
+        (total, item) => total + Number(item.expected_quantity || 0),
+        0,
+      ),
+    [formData.items],
+  );
+
+  const totalValue = useMemo(
+    () =>
+      formData.items.reduce(
+        (total, item) =>
+          total +
+          Number(item.expected_quantity || 0) * Number(item.unit_price || 0),
+        0,
+      ),
+    [formData.items],
+  );
+
   useEffect(() => {
-    if (cloneData) {
-      setFormData({
-        warehouse_id: (cloneData.warehouse_id as string) || "",
-        supplier_name: (cloneData.supplier_name as string) || "",
-        purchase_order_id: (cloneData.purchase_order_id as string) || "",
-        notes: (cloneData.notes as string) || "",
-        items: Array.isArray(cloneData.items)
-          ? (cloneData.items as VoucherItemData[]).map((item) => ({
-              ...item,
-              id: crypto.randomUUID(),
-            }))
-          : [],
-      });
-      // Skip to step 1 (info) since we're cloning, no new upload needed
-      setStep(1);
-    }
+    if (!cloneData) return;
+
+    setFormData({
+      warehouse_id: (cloneData.warehouse_id as string) || "",
+      supplier_name: (cloneData.supplier_name as string) || "",
+      purchase_order_id: (cloneData.purchase_order_id as string) || "",
+      notes: (cloneData.notes as string) || "",
+      items: Array.isArray(cloneData.items)
+        ? (cloneData.items as VoucherItemData[]).map((item) => ({
+            ...item,
+            id: crypto.randomUUID(),
+          }))
+        : [],
+    });
+    setStep(1);
   }, [cloneData]);
 
-  // ── Navigation ──
-  const canGoNext = useCallback((): boolean => {
+  const canGoNext = useCallback(() => {
     switch (step) {
       case 0:
-        return files.length > 0 && files.every((f) => !f.error);
+        return files.length > 0 && files.every((file) => !file.error);
       case 1:
-        return formData.warehouse_id !== "" && formData.supplier_name.trim() !== "";
+        return !!formData.warehouse_id && !!formData.supplier_name.trim();
       case 2:
         return (
           formData.items.length > 0 &&
           formData.items.every(
             (item) =>
-              item.product_id !== "" &&
+              item.product_id &&
               item.expected_quantity > 0 &&
-              item.warehouse_location_id !== "",
+              item.warehouse_location_id,
           )
         );
       default:
         return true;
     }
-  }, [step, files, formData]);
+  }, [files, formData, step]);
 
-  const handleNext = () => {
-    if (step < STEPS.length - 1 && canGoNext()) setStep(step + 1);
-  };
-  const handlePrev = () => {
-    if (step > 0) setStep(step - 1);
-  };
-
-  // ── Item management ──
   const addProductToList = useCallback(
     (productId: string) => {
-      const product = products.find((p) => p.id === productId);
+      const product = products.find((item) => item.id === productId);
       if (!product || addedProductIds.has(productId)) return;
 
-      const newItem: VoucherItemData = {
-        id: crypto.randomUUID(),
-        product_id: product.id,
-        product_name: product.name,
-        warehouse_location_id: "",
-        expected_quantity: 1,
-        actual_quantity: 0,
-        unit_price: 0,
-        condition: "GOOD",
-        notes: "",
-      };
-
-      setFormData((d) => ({ ...d, items: [...d.items, newItem] }));
+      setFormData((current) => ({
+        ...current,
+        items: [
+          ...current.items,
+          {
+            id: crypto.randomUUID(),
+            product_id: product.id,
+            product_name: product.name,
+            warehouse_location_id: "",
+            expected_quantity: 1,
+            actual_quantity: 0,
+            unit_price: 0,
+            condition: "GOOD",
+            notes: "",
+          },
+        ],
+      }));
     },
-    [products, addedProductIds],
+    [addedProductIds, products],
   );
 
   const removeItem = (id: string) => {
-    setFormData((d) => ({
-      ...d,
-      items: d.items.filter((item) => item.id !== id),
+    setFormData((current) => ({
+      ...current,
+      items: current.items.filter((item) => item.id !== id),
     }));
   };
 
-  const updateItem = (id: string, field: keyof VoucherItemData, value: unknown) => {
-    setFormData((d) => ({
-      ...d,
-      items: d.items.map((item) =>
+  const updateItem = (
+    id: string,
+    field: keyof VoucherItemData,
+    value: unknown,
+  ) => {
+    setFormData((current) => ({
+      ...current,
+      items: current.items.map((item) =>
         item.id === id ? { ...item, [field]: value } : item,
       ),
     }));
   };
 
-  // ── Submit ──
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     const submitAction = async () => {
-      // 1. Upload files to temp path
       const uploadedUrls: string[] = [];
-      for (const f of files) {
-        if (f.url) {
-          uploadedUrls.push(f.url);
+      for (const selectedFile of files) {
+        if (selectedFile.url) {
+          uploadedUrls.push(selectedFile.url);
           continue;
         }
+
         const url = await uploadFile(
-          f.file,
+          selectedFile.file,
           `temp-uploads/${user?.id || "unknown"}`,
           (percent) => {
-            setFiles((prev) =>
-              prev.map((pf) => (pf.id === f.id ? { ...pf, progress: percent } : pf)),
+            setFiles((current) =>
+              current.map((file) =>
+                file.id === selectedFile.id
+                  ? { ...file, progress: percent }
+                  : file,
+              ),
             );
           },
         );
         uploadedUrls.push(url);
       }
 
-      // 2. Create voucher via API
       await createImportVoucher({
         warehouse_id: formData.warehouse_id,
         supplier_name: formData.supplier_name,
@@ -283,13 +404,17 @@ export default function CreateVoucherTab({
       });
     };
 
-    const retryAction = () => handleSubmit();
-
     try {
       await gooeyToast.promise(submitAction(), {
-        loading: (t as any).importVoucher?.toast?.creating ?? "Đang tạo phiếu nhập kho...",
-        success: (t as any).importVoucher?.toast?.createSuccess ?? "Đã tạo phiếu nhập kho",
-        error: (t as any).importVoucher?.toast?.createError ?? "Lỗi khi tạo phiếu nhập kho",
+        loading:
+          (t as any).importVoucher?.toast?.creating ??
+          "Đang tạo phiếu nhập kho...",
+        success:
+          (t as any).importVoucher?.toast?.createSuccess ??
+          "Đã tạo phiếu nhập kho",
+        error:
+          (t as any).importVoucher?.toast?.createError ??
+          "Lỗi khi tạo phiếu nhập kho",
         description: {
           success:
             (t as any).importVoucher?.toast?.createSuccessDesc ??
@@ -301,45 +426,45 @@ export default function CreateVoucherTab({
         action: {
           error: {
             label: (t as any).common?.retry ?? "Thử lại",
-            onClick: retryAction,
+            onClick: () => void handleSubmit(),
           },
         },
       });
       onCreated();
     } catch {
-      // Toast already shows error
+      // goeyToast.promise already presents the error.
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="space-y-5">
-      {/* ── Stepper Header ── */}
-      <div className="flex items-center gap-1 overflow-x-auto py-1">
-        {STEPS.map((s, i) => {
-          const Icon = s.icon;
-          const isActive = step === s.id;
-          const isCompleted = step > s.id;
+  const goNext = () => {
+    if (step < 3 && canGoNext()) setStep((step + 1) as StepId);
+  };
 
-          return (
-            <div key={s.id} className="flex items-center gap-1">
-              {i > 0 && (
-                <div
-                  className={`h-px w-6 shrink-0 transition-colors lg:w-10 ${
-                    isCompleted
-                      ? "bg-[var(--color-brand-primary)]"
-                      : "bg-[var(--color-border-subtle)]"
-                  }`}
-                />
-              )}
+  const goPrev = () => {
+    if (step > 0) setStep((step - 1) as StepId);
+  };
+
+  return (
+    <div className="space-y-4 pb-24 lg:pb-0">
+      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
+        <div className="grid min-w-[640px] grid-cols-4 gap-2 lg:min-w-0">
+          {STEPS.map((stepConfig) => {
+            const Icon = stepConfig.icon;
+            const isActive = step === stepConfig.id;
+            const isCompleted = step > stepConfig.id;
+            const label =
+              stepLabels[stepConfig.key as keyof typeof stepLabels] ??
+              stepConfig.fallback;
+
+            return (
               <button
+                key={stepConfig.id}
                 type="button"
-                onClick={() => {
-                  if (isCompleted || isActive) setStep(s.id);
-                }}
                 disabled={!isCompleted && !isActive}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                onClick={() => setStep(stepConfig.id)}
+                className={`flex h-12 items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left transition-all ${
                   isActive
                     ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
                     : isCompleted
@@ -347,394 +472,451 @@ export default function CreateVoucherTab({
                       : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
                 }`}
               >
-                <Icon size={14} />
-                <span className="hidden sm:inline">
-                  {stepLabels[s.labelKey as keyof typeof stepLabels] || s.fallback}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <Icon size={15} />
+                </span>
+                <span className="min-w-0 truncate text-sm font-semibold">
+                  {label}
                 </span>
               </button>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── Step Content ── */}
-      <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-6">
-        {/* Step 0: Upload */}
-        {step === 0 && (
+      {step === 0 && (
+        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-6">
           <FileUploadField
             files={files}
             onFilesChange={setFiles}
             disabled={isSubmitting}
             maxFiles={5}
-            label={(t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm"}
-            hint="PDF, DOCX, XLSX, CSV · tối đa 20MB mỗi tệp · tối đa 5 tệp"
+            label={
+              (t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm"
+            }
+            hint={copy.uploadHint}
           />
-        )}
+        </section>
+      )}
 
-        {/* Step 1: Info */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
-                {(t as any).importVoucher?.form?.warehouse ?? "Kho nhận hàng"} *
-              </label>
-              <select
-                value={formData.warehouse_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, warehouse_id: e.target.value })
-                }
-                disabled={warehousesLoading}
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] disabled:opacity-50"
-              >
-                <option value="">
-                  {warehousesLoading
-                    ? "Đang tải danh sách kho..."
-                    : warehouses.length === 0
-                      ? "Không có kho nào"
-                      : "— Chọn kho nhận hàng —"}
-                </option>
-                {warehouses.map((wh) => (
-                  <option key={wh.id} value={wh.id}>
-                    {wh.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {step === 1 && (
+        <div className="space-y-4">
+          <WarehouseSelectionPanel
+            warehouses={warehouses}
+            locations={allLocations}
+            selectedWarehouseId={formData.warehouse_id}
+            loading={warehousesLoading}
+            locale={locale}
+            onSelect={(warehouseId) =>
+              setFormData((current) => ({
+                ...current,
+                warehouse_id: warehouseId,
+                items: current.items.map((item) => ({
+                  ...item,
+                  warehouse_location_id: "",
+                })),
+              }))
+            }
+          />
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
+          <section className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                 {(t as any).importVoucher?.form?.supplier ?? "Nhà cung cấp"} *
-              </label>
+              </span>
               <input
-                type="text"
                 value={formData.supplier_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, supplier_name: e.target.value })
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    supplier_name: event.target.value,
+                  })
                 }
-                placeholder="Tên nhà cung cấp..."
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+                placeholder={copy.supplierPlaceholder}
+                className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
-                {(t as any).importVoucher?.form?.purchaseOrder ?? "Mã đơn hàng (PO)"}
-              </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
+                {(t as any).importVoucher?.form?.purchaseOrder ??
+                  "Mã đơn hàng (PO)"}
+              </span>
               <input
-                type="text"
                 value={formData.purchase_order_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, purchase_order_id: e.target.value })
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    purchase_order_id: event.target.value,
+                  })
                 }
-                placeholder="Tùy chọn"
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+                placeholder={copy.poPlaceholder}
+                className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--color-text-secondary)]">
+            <label className="block lg:col-span-2">
+              <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                 {(t as any).importVoucher?.form?.notes ?? "Ghi chú"}
-              </label>
+              </span>
               <textarea
                 value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
+                onChange={(event) =>
+                  setFormData({ ...formData, notes: event.target.value })
                 }
                 rows={3}
-                placeholder="Ghi chú bổ sung..."
-                className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+                placeholder={copy.notesPlaceholder}
+                className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:text-sm"
               />
-            </div>
-          </div>
-        )}
+            </label>
+          </section>
+        </div>
+      )}
 
-        {/* Step 2: Items */}
-        {step === 2 && (
-          <div className="space-y-4">
-            {/* ── Product search + picker ── */}
-            <div>
-              <p className="mb-2 text-sm font-medium text-[var(--color-text-secondary)]">
-                {(t as any).importVoucher?.form?.selectProduct ?? "Chọn sản phẩm từ danh mục"}
-              </p>
-              <div className="relative">
+      {step === 2 && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  {copy.chooseFromCatalog}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {products.length} {copy.products.toLowerCase()}
+                </p>
+              </div>
+              <div className="relative sm:w-80">
                 <Search
                   size={16}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
                 />
                 <input
-                  type="text"
                   value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Tìm theo tên, mã SKU hoặc barcode..."
-                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] py-2.5 pl-9 pr-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+                  onChange={(event) => setProductSearch(event.target.value)}
+                  placeholder={copy.searchProduct}
+                  className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-base outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
                 />
               </div>
+            </div>
 
-              {/* Product list */}
-              <div className="mt-2 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]">
-                {productsLoading ? (
-                  <div className="flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
-                    Đang tải sản phẩm...
-                  </div>
-                ) : filteredProducts.length === 0 ? (
-                  <div className="flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
-                    {productSearch ? "Không tìm thấy sản phẩm" : "Chưa có sản phẩm trong hệ thống"}
-                  </div>
-                ) : (
-                  filteredProducts.map((p) => {
-                    const isAdded = addedProductIds.has(p.id);
-                    return (
-                      <div
-                        key={p.id}
-                        className={`flex items-center gap-3 border-b border-[var(--color-border-soft)] px-3 py-2 last:border-b-0 ${
-                          isAdded
-                            ? "bg-[var(--color-brand-primary-muted)] opacity-60"
-                            : "hover:bg-[var(--color-surface-elevated)]"
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                            {p.name}
+            {productsLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-36 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]"
+                  />
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-12 text-center text-sm text-[var(--color-text-muted)]">
+                {copy.noProducts}
+              </div>
+            ) : (
+              <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                {filteredProducts.map((product) => (
+                  <ProductPickerCard
+                    key={product.id}
+                    product={product}
+                    isAdded={addedProductIds.has(product.id)}
+                    locale={locale}
+                    onAdd={() => addProductToList(product.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 xl:sticky xl:top-4 xl:self-start">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  {copy.selectedItems}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {formData.items.length} {copy.products.toLowerCase()}
+                </p>
+              </div>
+              <Package
+                size={18}
+                className="text-[var(--color-brand-primary)]"
+              />
+            </div>
+
+            {formData.items.length === 0 ? (
+              <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-10 text-center text-sm text-[var(--color-text-muted)]">
+                {copy.emptyItems}
+              </div>
+            ) : (
+              <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+                {formData.items.map((item, index) => {
+                  const product = products.find(
+                    (productItem) => productItem.id === item.product_id,
+                  );
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white p-3"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[var(--color-brand-primary)]">
+                            #{index + 1}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                            <span>SKU: {p.code}</span>
-                            {p.barcode && <span>· {p.barcode}</span>}
-                            <span>· {p.unit}</span>
-                          </div>
+                          <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                            {item.product_name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                            {product?.code} · {product?.unit}
+                          </p>
                         </div>
                         <button
                           type="button"
-                          disabled={isAdded}
-                          onClick={() => addProductToList(p.id)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-primary)] text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
-                          title={isAdded ? "Đã thêm" : "Thêm vào danh sách"}
+                          onClick={() => removeItem(item.id)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-accent-error)] transition-colors hover:bg-red-50"
+                          aria-label={(t as any).common?.delete ?? "Xóa"}
                         >
-                          <Plus size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
 
-            {/* ── Selected items list ── */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                  {(t as any).importVoucher?.form?.itemList ?? "Sản phẩm đã chọn"}
-                  {formData.items.length > 0 && (
-                    <span className="ml-1.5 text-xs text-[var(--color-text-muted)]">
-                      ({formData.items.length})
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              {formData.items.length === 0 ? (
-                <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-8 text-center text-sm text-[var(--color-text-muted)]">
-                  Chọn sản phẩm từ danh mục ở trên để thêm vào phiếu nhập.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {formData.items.map((item, idx) => {
-                    const product = products.find((p) => p.id === item.product_id);
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3"
-                      >
-                        {/* Item header */}
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-brand-primary-muted)] text-[10px] font-semibold text-[var(--color-brand-primary)]">
-                              {idx + 1}
-                            </span>
-                            <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                              {item.product_name}
-                            </span>
-                            <span className="text-xs text-[var(--color-text-muted)]">
-                              {product?.code} · {product?.unit}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="flex items-center gap-1 rounded-[var(--radius-xs)] px-1.5 py-0.5 text-xs text-[var(--color-accent-error)] transition-colors hover:bg-red-50"
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                            {copy.expectedQty} *
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.expected_quantity || ""}
+                            onChange={(event) =>
+                              updateItem(
+                                item.id,
+                                "expected_quantity",
+                                Number(event.target.value),
+                              )
+                            }
+                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                            {copy.unitPrice}
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={item.unit_price || ""}
+                            onChange={(event) =>
+                              updateItem(
+                                item.id,
+                                "unit_price",
+                                Number(event.target.value),
+                              )
+                            }
+                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                          />
+                        </label>
+                        <label className="block sm:col-span-2">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                            {copy.location} *
+                          </span>
+                          <select
+                            value={item.warehouse_location_id}
+                            onChange={(event) =>
+                              updateItem(
+                                item.id,
+                                "warehouse_location_id",
+                                event.target.value,
+                              )
+                            }
+                            disabled={
+                              locationsLoading || !formData.warehouse_id
+                            }
+                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 lg:h-9 lg:text-sm"
                           >
-                            <Trash2 size={12} />
-                            {(t as any).common?.delete ?? "Xóa"}
-                          </button>
-                        </div>
-
-                        {/* Item fields */}
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                              SL dự kiến *
-                            </label>
-                            <input
-                              type="number"
-                              value={item.expected_quantity || ""}
-                              onChange={(e) =>
-                                updateItem(item.id, "expected_quantity", Number(e.target.value))
-                              }
-                              min={1}
-                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                              Đơn giá
-                            </label>
-                            <input
-                              type="number"
-                              value={item.unit_price || ""}
-                              onChange={(e) =>
-                                updateItem(item.id, "unit_price", Number(e.target.value))
-                              }
-                              min={0}
-                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                              Vị trí kho *
-                            </label>
-                            <select
-                              value={item.warehouse_location_id}
-                              onChange={(e) =>
-                                updateItem(item.id, "warehouse_location_id", e.target.value)
-                              }
-                              disabled={locationsLoading || !formData.warehouse_id}
-                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
-                            >
-                              <option value="">
-                                {!formData.warehouse_id
-                                  ? "Chọn kho trước"
-                                  : locationsLoading
-                                    ? "Đang tải..."
-                                    : locations.length === 0
-                                      ? "Kho chưa có vị trí"
-                                      : "— Chọn vị trí —"}
+                            <option value="">
+                              {!formData.warehouse_id
+                                ? copy.selectWarehouseFirst
+                                : locationsLoading
+                                  ? copy.loadingLocations
+                                  : locations.length === 0
+                                    ? copy.noLocations
+                                    : copy.selectLocation}
+                            </option>
+                            {locations.map((location) => (
+                              <option key={location.id} value={location.id}>
+                                {location.name} ({location.code})
                               </option>
-                              {locations.map((loc) => (
-                                <option key={loc.id} value={loc.id}>
-                                  {loc.name} ({loc.code})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                              Tình trạng
-                            </label>
-                            <select
-                              value={item.condition}
-                              onChange={(e) =>
-                                updateItem(item.id, "condition", e.target.value)
-                              }
-                              className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                            >
-                              <option value="GOOD">Tốt</option>
-                              <option value="DAMAGED">Hư hỏng</option>
-                              <option value="MISSING">Thiếu</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Notes (optional) */}
-                        <input
-                          type="text"
-                          placeholder="Ghi chú cho sản phẩm này..."
-                          value={item.notes}
-                          onChange={(e) => updateItem(item.id, "notes", e.target.value)}
-                          className="mt-2 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
-                        />
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                            {copy.condition}
+                          </span>
+                          <select
+                            value={item.condition}
+                            onChange={(event) =>
+                              updateItem(
+                                item.id,
+                                "condition",
+                                event.target.value,
+                              )
+                            }
+                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                          >
+                            <option value="GOOD">{copy.good}</option>
+                            <option value="DAMAGED">{copy.damaged}</option>
+                            <option value="MISSING">{copy.missing}</option>
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                            {copy.itemNote}
+                          </span>
+                          <input
+                            value={item.notes}
+                            onChange={(event) =>
+                              updateItem(item.id, "notes", event.target.value)
+                            }
+                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                          />
+                        </label>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Confirm */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-              {(t as any).importVoucher?.steps?.confirm ?? "Xác nhận thông tin"}
-            </h3>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
-                <span className="text-[var(--color-text-muted)]">Kho nhận</span>
-                <span className="font-medium">{warehouses.find((w) => w.id === formData.warehouse_id)?.name || formData.warehouse_id || "—"}</span>
-              </div>
-              <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
-                <span className="text-[var(--color-text-muted)]">Nhà cung cấp</span>
-                <span className="font-medium">{formData.supplier_name || "—"}</span>
-              </div>
-              <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
-                <span className="text-[var(--color-text-muted)]">Mã PO</span>
-                <span className="font-medium">
-                  {formData.purchase_order_id || "Không có"}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-[var(--color-border-soft)] py-2">
-                <span className="text-[var(--color-text-muted)]">Tệp đính kèm</span>
-                <span className="font-medium">{files.length} tệp</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-[var(--color-text-muted)]">Sản phẩm</span>
-                <span className="font-medium">{formData.items.length} mặt hàng</span>
-              </div>
-            </div>
-
-            {formData.notes && (
-              <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3 text-xs text-[var(--color-text-muted)]">
-                <span className="font-medium">Ghi chú:</span> {formData.notes}
+                    </div>
+                  );
+                })}
               </div>
             )}
+          </section>
+        </div>
+      )}
+
+      {step === 3 && (
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+            <div className="mb-4 flex items-center gap-2">
+              <ClipboardList
+                size={18}
+                className="text-[var(--color-brand-primary)]"
+              />
+              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                {copy.summary}
+              </h2>
+            </div>
+
+            <div className="divide-y divide-[var(--color-border-soft)] text-sm">
+              <div className="flex justify-between gap-4 py-3">
+                <span className="text-[var(--color-text-muted)]">
+                  {(t as any).importVoucher?.form?.warehouse ?? "Kho nhận"}
+                </span>
+                <span className="text-right font-semibold text-[var(--color-text-primary)]">
+                  {selectedWarehouse?.name ?? copy.noWarehouse}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 py-3">
+                <span className="text-[var(--color-text-muted)]">
+                  {(t as any).importVoucher?.form?.supplier ?? "Nhà cung cấp"}
+                </span>
+                <span className="text-right font-semibold text-[var(--color-text-primary)]">
+                  {formData.supplier_name || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 py-3">
+                <span className="text-[var(--color-text-muted)]">
+                  {(t as any).importVoucher?.form?.purchaseOrder ?? "Mã PO"}
+                </span>
+                <span className="text-right font-semibold text-[var(--color-text-primary)]">
+                  {formData.purchase_order_id || copy.noPo}
+                </span>
+              </div>
+              <div className="py-3">
+                <span className="text-[var(--color-text-muted)]">
+                  {(t as any).importVoucher?.form?.notes ?? "Ghi chú"}
+                </span>
+                <p className="mt-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3 text-[var(--color-text-secondary)]">
+                  {formData.notes || copy.noNotes}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* ── Navigation Footer ── */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handlePrev}
-          disabled={step === 0}
-          className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 py-2 text-xs font-medium text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] disabled:opacity-30"
-        >
-          <ChevronLeft size={14} />
-          {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
-        </button>
+          <aside className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+                <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                  {copy.attachments}
+                </p>
+                <p className="mt-2 text-xl font-bold text-[var(--color-text-primary)]">
+                  {files.length}
+                </p>
+              </div>
+              <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+                <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                  {copy.products}
+                </p>
+                <p className="mt-2 text-xl font-bold text-[var(--color-text-primary)]">
+                  {formData.items.length}
+                </p>
+              </div>
+              <div className="rounded-[var(--radius-sm)] bg-blue-50 p-3">
+                <p className="text-[10px] font-semibold uppercase text-blue-700">
+                  {copy.totalQty}
+                </p>
+                <p className="mt-2 text-xl font-bold text-blue-800">
+                  {formatCurrency(totalQuantity)}
+                </p>
+              </div>
+              <div className="rounded-[var(--radius-sm)] bg-emerald-50 p-3">
+                <p className="text-[10px] font-semibold uppercase text-emerald-700">
+                  {copy.totalValue}
+                </p>
+                <p className="mt-2 text-xl font-bold text-emerald-800">
+                  {formatCurrency(totalValue)}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </section>
+      )}
 
-        {step < STEPS.length - 1 ? (
+      <div className="fixed bottom-[76px] left-0 right-0 z-30 border-t border-[var(--color-border-subtle)] bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:static lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={handleNext}
-            disabled={!canGoNext()}
-            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:opacity-50"
+            onClick={goPrev}
+            disabled={step === 0}
+            className="flex h-12 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] disabled:opacity-30 lg:h-10"
           >
-            {(t as any).importVoucher?.form?.next ?? "Tiếp theo"}
-            <ChevronRight size={14} />
+            <ChevronLeft size={16} />
+            {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 py-2 text-xs font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50"
-          >
-            {isSubmitting
-              ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")
-              : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
-          </button>
-        )}
+
+          {step < 3 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!canGoNext()}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.99] disabled:opacity-50 lg:h-10 lg:flex-none"
+            >
+              {(t as any).importVoucher?.form?.next ?? "Tiếp theo"}
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 text-sm font-semibold text-white transition-all hover:brightness-95 active:scale-[0.99] disabled:opacity-50 lg:h-10 lg:flex-none"
+            >
+              {isSubmitting
+                ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")
+                : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -173,28 +173,19 @@ export default function ReceivingSessionDrawer({
         throw new Error(err?.messages?.vi || "Lỗi lưu số liệu thực nhận.");
       }
 
-      // 2. Complete the workflow task
+      // 2. Complete receiving session (Fixed Pipeline: APPROVED → RECEIVING → COMPLETED)
       const completeRes = await fetch(
-        `${API_BASE_URL}/api/workflows/engine/complete-task`,
+        `${API_BASE_URL}/api/import-vouchers/${voucherId}/complete-receiving`,
         {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            instance_id: task.instance_id,
-            task_id: task.id,
-            result: {
-              receiving_completed: true,
-              items_count: items.length,
-              total_actual: items.reduce((s, i) => s + i.actual_quantity, 0),
-            },
-          }),
         },
       );
 
       if (!completeRes.ok) {
         const err = await completeRes.json().catch(() => null);
-        throw new Error(err?.messages?.vi || "Lỗi hoàn thành task.");
+        throw new Error(err?.messages?.vi || "Lỗi hoàn thành phiên kiểm đếm.");
       }
 
       emitDataMutation([

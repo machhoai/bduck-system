@@ -34,6 +34,7 @@ export function WarehouseMapView({
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [popupWarehouse, setPopupWarehouse] = useState<Warehouse | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [webGlError, setWebGlError] = useState(false);
 
     const filteredWarehouses = useMemo(() => {
         if (!searchQuery.trim()) return warehouses;
@@ -184,7 +185,17 @@ export function WarehouseMapView({
 
             {/* Map */}
             <div className="relative flex-1">
-                {MAPBOX_TOKEN ? (
+                {webGlError ? (
+                    <div className="flex h-full flex-col items-center justify-center bg-[var(--color-surface-card)] p-8 text-center">
+                        <WarehouseIcon size={48} className="mx-auto mb-3 text-[var(--color-text-muted)] opacity-50" />
+                        <h3 className="mb-2 text-lg font-semibold text-[var(--color-text-primary)]">
+                            Không thể tải bản đồ
+                        </h3>
+                        <p className="text-sm text-[var(--color-text-muted)]">
+                            Trình duyệt của bạn không hỗ trợ WebGL hoặc tính năng tăng tốc phần cứng (Hardware Acceleration) đang bị tắt. Vui lòng bật nó trong cài đặt trình duyệt để xem bản đồ.
+                        </p>
+                    </div>
+                ) : MAPBOX_TOKEN ? (
                     <Map
                         ref={mapRef}
                         initialViewState={{
@@ -195,6 +206,12 @@ export function WarehouseMapView({
                         mapStyle="mapbox://styles/mapbox/light-v11"
                         mapboxAccessToken={MAPBOX_TOKEN}
                         attributionControl={false}
+                        onError={(e) => {
+                            console.error("Mapbox error:", e.error);
+                            if (e.error?.message?.toLowerCase().includes("webgl")) {
+                                setWebGlError(true);
+                            }
+                        }}
                     >
                         <NavigationControl position="top-right" />
 
