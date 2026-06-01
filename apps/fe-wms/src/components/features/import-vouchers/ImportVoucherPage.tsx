@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ClipboardList, History, PackagePlus, Plus } from "lucide-react";
 import { useImportVouchers } from "../../../hooks/useImportVouchers";
 import { useTranslation } from "../../../lib/i18n";
+import { useSearchParams } from "next/navigation";
 import { useUserStore } from "../../../stores/useUserStore";
 import CreateVoucherTab from "./CreateVoucherTab";
 import HistoryTab from "./HistoryTab";
@@ -62,11 +63,22 @@ function MetricCard({
 export default function ImportVoucherPage() {
   const { t } = useTranslation();
   const hasPermission = useUserStore((state) => state.hasPermission);
-  const [activeTab, setActiveTab] = useState<TabId>("inProgress");
+  const searchParams = useSearchParams();
+  const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
+  const [activeTab, setActiveTab] = useState<TabId>(
+    prefillWarehouseId ? "create" : "inProgress",
+  );
   const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
     null,
   );
   const { activeVouchers, completedVouchers, loading } = useImportVouchers();
+
+  // Auto-switch to create tab when warehouseId is in URL
+  useEffect(() => {
+    if (prefillWarehouseId) {
+      setActiveTab("create");
+    }
+  }, [prefillWarehouseId]);
 
   const tabLabels: Record<TabId, string> = useMemo(
     () => ({
@@ -193,6 +205,7 @@ export default function ImportVoucherPage() {
           {effectiveTab === "create" && (
             <CreateVoucherTab
               cloneData={cloneData}
+              prefillWarehouseId={prefillWarehouseId}
               onCreated={() => {
                 setCloneData(null);
                 setActiveTab("inProgress");

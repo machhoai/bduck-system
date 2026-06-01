@@ -214,20 +214,20 @@ export default function WarehouseDetailPage() {
               <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2 hidden sm:inline-block">
                 {t.warehouses.quickActions}:
               </span>
-              <button
-                disabled
-                className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm opacity-50 cursor-not-allowed hover:opacity-50"
+              <Link
+                href={`/import-vouchers?warehouseId=${warehouseId}`}
+                className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-95"
               >
                 <ArrowDownToLine size={16} />
                 {t.warehouses.import}
-              </button>
-              <button
-                disabled
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm opacity-50 cursor-not-allowed hover:bg-[var(--color-surface-base)]"
+              </Link>
+              <Link
+                href={`/export-vouchers?warehouseId=${warehouseId}`}
+                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
               >
                 <ArrowUpFromLine size={16} />
                 {t.warehouses.export}
-              </button>
+              </Link>
               <button
                 disabled
                 className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm opacity-50 cursor-not-allowed hover:bg-[var(--color-surface-base)]"

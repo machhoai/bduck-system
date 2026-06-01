@@ -1,51 +1,85 @@
 "use client";
 
-/**
- * ExportVoucherPage — Main page with 3 tabs
- *
- * Tab layout: "Tạo mới" | "Đang xử lý" | "Lịch sử"
- *
- * RBAC:
- * - hasPermission('vouchers.write') → show "Tạo mới" tab
- *
- * LUẬT THÉP:
- * - Skeleton loading while data loads
- * - Realtime via useExportVouchers (onSnapshot)
- * - i18n for all text
- * - Light mode only
- */
-
-import { useState, useMemo } from "react";
-import { PackageMinus } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { ClipboardList, History, PackageMinus, Plus } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useExportVouchers } from "../../../hooks/useExportVouchers";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
-import { useExportVouchers } from "../../../hooks/useExportVouchers";
-import ExportVoucherSkeleton from "./ExportVoucherSkeleton";
 import CreateExportTab from "./CreateExportTab";
-import ExportInProgressTab from "./ExportInProgressTab";
 import ExportHistoryTab from "./ExportHistoryTab";
+import ExportInProgressTab from "./ExportInProgressTab";
+import ExportVoucherSkeleton from "./ExportVoucherSkeleton";
 
 type TabId = "create" | "inProgress" | "history";
 
 interface TabDef {
   id: TabId;
   labelKey: string;
+  icon: React.ElementType;
   permission?: string;
 }
 
 const TAB_DEFINITIONS: TabDef[] = [
-  { id: "create", labelKey: "create", permission: "vouchers.write" },
-  { id: "inProgress", labelKey: "inProgress" },
-  { id: "history", labelKey: "history" },
+  {
+    id: "create",
+    labelKey: "create",
+    icon: Plus,
+    permission: "vouchers.write",
+  },
+  { id: "inProgress", labelKey: "inProgress", icon: ClipboardList },
+  { id: "history", labelKey: "history", icon: History },
 ];
+
+function MetricCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "orange" | "amber" | "emerald";
+}) {
+  const toneClass = {
+    orange: "bg-orange-50 text-orange-700",
+    amber: "bg-amber-50 text-amber-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+  }[tone];
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+        {label}
+      </p>
+      <p
+        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-xl font-bold ${toneClass}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
 
 export default function ExportVoucherPage() {
   const { t } = useTranslation();
-  const hasPermission = useUserStore((s) => s.hasPermission);
-  const [activeTab, setActiveTab] = useState<TabId>("inProgress");
+  const hasPermission = useUserStore((state) => state.hasPermission);
+  const searchParams = useSearchParams();
+  const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
+  const [activeTab, setActiveTab] = useState<TabId>(
+    prefillWarehouseId ? "create" : "inProgress",
+  );
+  const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const { activeVouchers, completedVouchers, loading } = useExportVouchers();
 
-  const tabLabels: Record<string, string> = useMemo(
+  useEffect(() => {
+    if (prefillWarehouseId) {
+      setActiveTab("create");
+    }
+  }, [prefillWarehouseId]);
+
+  const tabLabels: Record<TabId, string> = useMemo(
     () => ({
       create: t.exportVoucher?.tabs?.create ?? "Tạo mới",
       inProgress: t.exportVoucher?.tabs?.inProgress ?? "Đang xử lý",
@@ -68,67 +102,130 @@ export default function ExportVoucherPage() {
     return visibleTabs[0]?.id ?? "inProgress";
   }, [activeTab, visibleTabs]);
 
-  const inProgressCount = activeVouchers.length;
+  const pendingApprovalCount = activeVouchers.filter(
+    (voucher) => voucher.status === "PENDING_APPROVAL",
+  ).length;
 
-  if (loading) return <ExportVoucherSkeleton />;
+  const handleCloneToCreate = (voucherData: Record<string, unknown>) => {
+    setActiveTab("create");
+    setCloneData(voucherData);
+  };
+
+  const handleTabSwitch = (tabId: TabId) => {
+    setActiveTab(tabId);
+    if (tabId !== "create") setCloneData(null);
+  };
+
+  if (loading) {
+    return <ExportVoucherSkeleton />;
+  }
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:gap-5 lg:p-6">
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] bg-orange-100 text-orange-600">
-          <PackageMinus size={18} />
-        </div>
-        <div>
-          <h1 className="text-base font-semibold text-[var(--color-text-primary)] tracking-[-0.3px]">
-            {t.exportVoucher?.title ?? "Xuất kho"}
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            {t.exportVoucher?.subtitle ?? "Tạo, theo dõi và quản lý lệnh xuất kho"}
-          </p>
+    <div className="-mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
+      <div className="sticky top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
+            <PackageMinus size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold tracking-[-0.3px] text-[var(--color-text-primary)]">
+              {t.exportVoucher?.title ?? "Xuất kho"}
+            </h1>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+              {t.exportVoucher?.subtitle ??
+                "Tạo, theo dõi và quản lý lệnh xuất kho"}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* ── Tab Bar ── */}
-      <div className="flex gap-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-1">
-        {visibleTabs.map((tab) => {
-          const isActive = effectiveTab === tab.id;
-          const showBadge = tab.id === "inProgress" && inProgressCount > 0;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-1.5 rounded-[var(--radius-xs)] px-3 py-2 text-xs font-medium transition-all ${
-                isActive
-                  ? "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-sm"
-                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-              }`}
-            >
-              {tabLabels[tab.id] || tab.labelKey}
-              {showBadge && (
-                <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold tabular-nums text-white">
-                  {inProgressCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Tab Content ── */}
-      <div className="min-h-[400px]">
-        {effectiveTab === "create" && (
-          <CreateExportTab
-            onCreated={() => setActiveTab("inProgress")}
+      <div className="space-y-4 px-4 py-4 lg:px-0 lg:py-5">
+        <div className="grid grid-cols-3 gap-2 lg:gap-3">
+          <MetricCard
+            label={t.exportVoucher?.tabs?.inProgress ?? "Đang xử lý"}
+            value={activeVouchers.length}
+            tone="orange"
           />
-        )}
-        {effectiveTab === "inProgress" && (
-          <ExportInProgressTab vouchers={activeVouchers} />
-        )}
-        {effectiveTab === "history" && (
-          <ExportHistoryTab vouchers={completedVouchers} />
-        )}
+          <MetricCard
+            label={t.exportVoucher?.status?.PENDING_APPROVAL ?? "Chờ duyệt"}
+            value={pendingApprovalCount}
+            tone="amber"
+          />
+          <MetricCard
+            label={t.exportVoucher?.tabs?.history ?? "Lịch sử"}
+            value={completedVouchers.length}
+            tone="emerald"
+          />
+        </div>
+
+        <div className="sticky top-[88px] z-20 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white/95 p-1 shadow-sm backdrop-blur lg:static">
+          <div className="grid grid-cols-3 gap-1">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = effectiveTab === tab.id;
+              const badgeCount =
+                tab.id === "inProgress"
+                  ? activeVouchers.length
+                  : tab.id === "history"
+                    ? completedVouchers.length
+                    : 0;
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabSwitch(tab.id)}
+                  className={`relative flex h-11 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition-all active:scale-[0.99] sm:text-sm ${
+                    isActive
+                      ? "bg-orange-600 text-white shadow-sm"
+                      : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-secondary)]"
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="truncate">{tabLabels[tab.id]}</span>
+                  {badgeCount > 0 && (
+                    <span
+                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-orange-50 text-orange-700"
+                      }`}
+                    >
+                      {badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="min-h-[420px]">
+          {effectiveTab === "create" && (
+            <CreateExportTab
+              cloneData={cloneData}
+              prefillWarehouseId={prefillWarehouseId}
+              onCreated={() => {
+                setCloneData(null);
+                setActiveTab("inProgress");
+              }}
+            />
+          )}
+
+          {effectiveTab === "inProgress" && (
+            <ExportInProgressTab
+              vouchers={activeVouchers}
+              onClone={handleCloneToCreate}
+            />
+          )}
+
+          {effectiveTab === "history" && (
+            <ExportHistoryTab
+              vouchers={completedVouchers}
+              onClone={handleCloneToCreate}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

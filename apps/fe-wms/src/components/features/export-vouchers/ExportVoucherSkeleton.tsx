@@ -1,42 +1,62 @@
 "use client";
 
-/**
- * ExportVoucherSkeleton — Loading skeleton for export voucher page
- * LUẬT THÉP: Skeleton mô phỏng cấu trúc UI, không spinner.
- */
+import { Skeleton } from "../../ui/Skeleton";
 
 export default function ExportVoucherSkeleton() {
   return (
-    <div className="flex flex-col gap-4 p-4 lg:gap-5 lg:p-6">
-      {/* Header skeleton */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 animate-pulse rounded-lg bg-gray-200" />
-        <div className="space-y-1.5">
-          <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-40 animate-pulse rounded bg-gray-200" />
+    <div className="-mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
+      <div className="border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+        <div className="flex items-start gap-3">
+          <Skeleton className="h-11 w-11 rounded-[var(--radius-md)]" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-6 w-32" variant="text" />
+            <Skeleton className="h-3.5 w-64 max-w-full" variant="text" />
+          </div>
         </div>
       </div>
 
-      {/* Tab bar skeleton */}
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-8 w-20 animate-pulse rounded-md bg-gray-200" />
-        ))}
-      </div>
-
-      {/* Card skeletons */}
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl border border-gray-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
-              </div>
-              <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+      <div className="space-y-4 px-4 py-4 lg:px-0 lg:py-5">
+        <div className="grid grid-cols-3 gap-2 lg:gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+            >
+              <Skeleton className="h-3 w-20" variant="text" />
+              <Skeleton className="mt-2 h-9 w-12 rounded-lg" />
             </div>
+          ))}
+        </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white/95 p-1 shadow-sm">
+          <div className="grid grid-cols-3 gap-1">
+            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
           </div>
-        ))}
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" variant="text" />
+                  <Skeleton className="h-3.5 w-56" variant="text" />
+                  <Skeleton className="h-3 w-32" variant="text" />
+                </div>
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Skeleton className="h-8 w-24 rounded-[var(--radius-sm)]" />
+                <Skeleton className="h-8 w-24 rounded-[var(--radius-sm)]" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

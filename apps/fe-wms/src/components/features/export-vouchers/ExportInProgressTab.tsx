@@ -1,95 +1,132 @@
 "use client";
 
-/**
- * ExportInProgressTab — Shows export vouchers in active states
- *
- * Renders voucher cards with status badges and action buttons.
- * Gates "Soạn hàng" (picking) button by ProcessConfig assignment.
- * Fetches ProcessConfig ONCE at parent level (prevent N+1).
- */
-
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Eye,
-  Play,
-  Clock,
   CheckCircle,
-  XCircle,
+  Clock,
+  Copy,
+  Eye,
   PackageMinus,
-  Package,
+  PackageOpen,
+  Play,
   Truck,
+  XCircle,
 } from "lucide-react";
+import { gooeyToast } from "goey-toast";
 import type { ExportVoucher, ProcessConfig } from "@bduck/shared-types";
 import { ExportVoucherStatus } from "@bduck/shared-types";
-import { useTranslation } from "../../../lib/i18n";
-import { useUserStore } from "../../../stores/useUserStore";
 import { fetchConfigByEntityType } from "../../../hooks/useApprovalApi";
 import { completeExportVoucher } from "../../../hooks/useExportVoucherApi";
+import { useWarehouses } from "../../../hooks/useWarehouses";
+import { useTranslation } from "../../../lib/i18n";
+import { useUserStore } from "../../../stores/useUserStore";
 import PickingSessionDrawer from "../../tasks/PickingSessionDrawer";
-import { gooeyToast } from "goey-toast";
+import ExportVoucherDetailDrawer from "./ExportVoucherDetailDrawer";
 
-// ─────────────────────────────────────────────
-// STATUS BADGE
-// ─────────────────────────────────────────────
+interface Props {
+  vouchers: ExportVoucher[];
+  onClone: (data: Record<string, unknown>) => void;
+}
 
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    DRAFT: { bg: "bg-gray-100", text: "text-gray-600", label: "Nháp" },
+  const config: Record<
+    string,
+    { label: string; color: string; Icon: React.ElementType }
+  > = {
+    DRAFT: { label: "Nháp", color: "bg-gray-100 text-gray-600", Icon: Clock },
     PENDING_APPROVAL: {
-      bg: "bg-amber-100",
-      text: "text-amber-700",
       label: "Chờ duyệt",
+      color: "bg-amber-50 text-amber-700",
+      Icon: Clock,
     },
-    APPROVED: { bg: "bg-blue-100", text: "text-blue-700", label: "Đã duyệt" },
-    REJECTED: { bg: "bg-red-100", text: "text-red-700", label: "Từ chối" },
+    APPROVED: {
+      label: "Đã duyệt",
+      color: "bg-blue-50 text-blue-700",
+      Icon: CheckCircle,
+    },
+    REJECTED: {
+      label: "Từ chối",
+      color: "bg-red-50 text-red-700",
+      Icon: XCircle,
+    },
     PICKING: {
-      bg: "bg-purple-100",
-      text: "text-purple-700",
-      label: "Đang soạn",
+      label: "Đang soạn hàng",
+      color: "bg-purple-50 text-purple-700",
+      Icon: PackageOpen,
     },
-    SHIPPED: { bg: "bg-teal-100", text: "text-teal-700", label: "Đã bàn giao" },
+    SHIPPED: {
+      label: "Đã bàn giao",
+      color: "bg-teal-50 text-teal-700",
+      Icon: Truck,
+    },
   };
-  const c = config[status] || {
-    bg: "bg-gray-100",
-    text: "text-gray-600",
-    label: status,
-  };
+
+  const cfg = config[status] || config.DRAFT;
+  const Icon = cfg.Icon;
+
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${c.bg} ${c.text}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${cfg.color}`}
     >
-      {c.label}
+      <Icon size={12} />
+      {cfg.label}
     </span>
   );
 }
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
-interface Props {
-  vouchers: ExportVoucher[];
+function formatDate(value: unknown) {
+  if (!value) return "";
+  const date =
+    typeof value === "string"
+      ? new Date(value)
+      : ((value as { toDate?: () => Date })?.toDate?.() ?? (value as Date));
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-export default function ExportInProgressTab({ vouchers }: Props) {
-  const { t } = useTranslation();
-  const [pickingVoucherId, setPickingVoucherId] = useState<string | null>(null);
+function getClonePayload(voucher: ExportVoucher) {
+  return {
+    warehouse_id: voucher.warehouse_id,
+    export_type: voucher.export_type,
+    recipient_name: voucher.recipient_name,
+    recipient_department: voucher.recipient_department,
+    destination_warehouse_id: voucher.recipient_department,
+    reference_id: voucher.reference_id,
+    reference_type: voucher.reference_type,
+    notes: voucher.notes,
+  };
+}
 
-  // Fetch ProcessConfig ONCE (prevent N+1)
-  const user = useUserStore((s) => s.user);
-  const roleIds = useUserStore((s) => s.roleIds);
+export default function ExportInProgressTab({ vouchers, onClone }: Props) {
+  const { t } = useTranslation();
+  const { warehouses } = useWarehouses();
+  const user = useUserStore((state) => state.user);
+  const roleIds = useUserStore((state) => state.roleIds);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickingVoucherId, setPickingVoucherId] = useState<string | null>(null);
   const [processConfig, setProcessConfig] = useState<ProcessConfig | null>(
     null,
+  );
+
+  const warehouseById = useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
+    [warehouses],
   );
 
   useEffect(() => {
     let disposed = false;
     (async () => {
       try {
-        const cfg = await fetchConfigByEntityType("EXPORT_VOUCHER");
-        if (!disposed) setProcessConfig(cfg as ProcessConfig);
-      } catch (err) {
-        console.error("[ExportInProgressTab] Config load error:", err);
+        const config = await fetchConfigByEntityType("EXPORT_VOUCHER");
+        if (!disposed) setProcessConfig(config as ProcessConfig);
+      } catch (error) {
+        console.error("[ExportInProgressTab] Config load error:", error);
       }
     })();
     return () => {
@@ -99,25 +136,17 @@ export default function ExportInProgressTab({ vouchers }: Props) {
 
   const canPerformPicking = useCallback(
     (voucher: ExportVoucher): boolean => {
-      // If no config or no picking step config → allow (default open)
-      if (!processConfig?.step_options?.picking) {
-        console.log("[canPerformPicking] No picking config → allowed");
-        return true;
-      }
+      if (!processConfig?.step_options?.picking) return true;
       const step = processConfig.step_options.picking;
       if (step.assignment_mode === "CREATOR") {
-        const result = user?.id === voucher.creator_id;
-        console.log("[canPerformPicking] CREATOR mode:", { userId: user?.id, creatorId: voucher.creator_id, result });
-        return result;
+        return user?.id === voucher.creator_id;
       }
       if (step.assignment_mode === "ROLE") {
-        const result = !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
-        console.log("[canPerformPicking] ROLE mode:", { assignedRole: step.assigned_role_id, userRoles: roleIds, result });
-        return result;
+        return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
       }
       return true;
     },
-    [processConfig, user, roleIds],
+    [processConfig, roleIds, user?.id],
   );
 
   const handleCompleteExport = useCallback(async (voucherId: string) => {
@@ -132,7 +161,7 @@ export default function ExportInProgressTab({ vouchers }: Props) {
       action: {
         error: {
           label: "Thử lại",
-          onClick: () => handleCompleteExport(voucherId),
+          onClick: () => void handleCompleteExport(voucherId),
         },
       },
     });
@@ -140,86 +169,129 @@ export default function ExportInProgressTab({ vouchers }: Props) {
 
   if (vouchers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-20">
-        <PackageMinus className="h-12 w-12 text-gray-300" />
-        <p className="text-sm text-gray-400">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-20 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-surface-card)]">
+          <PackageMinus size={24} className="text-[var(--color-text-muted)]" />
+        </div>
+        <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
           {t.exportVoucher?.empty ?? "Không có phiếu xuất nào đang xử lý"}
+        </p>
+        <p className="max-w-sm text-xs leading-5 text-[var(--color-text-muted)]">
+          Tạo phiếu mới ở tab tạo mới để bắt đầu quy trình xuất kho.
         </p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="space-y-3">
-        {vouchers.map((voucher) => {
-          const isApproved = voucher.status === ExportVoucherStatus.APPROVED;
-          const isShipped = voucher.status === ExportVoucherStatus.SHIPPED;
-          const canPick = isApproved && canPerformPicking(voucher);
+    <div className="grid gap-3 xl:grid-cols-2">
+      {vouchers.map((voucher) => {
+        const warehouse = warehouseById.get(voucher.warehouse_id);
+        const isDraft = voucher.status === ExportVoucherStatus.DRAFT;
+        const isApproved = voucher.status === ExportVoucherStatus.APPROVED;
+        const isShipped = voucher.status === ExportVoucherStatus.SHIPPED;
+        const canPick = isApproved && canPerformPicking(voucher);
 
-          return (
-            <div
-              key={voucher.id}
-              className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {voucher.voucher_number}
-                    </p>
-                    <StatusBadge status={voucher.status} />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500 truncate">
-                    {voucher.recipient_name || voucher.export_type}
-                    {voucher.recipient_department &&
-                      ` · ${voucher.recipient_department}`}
+        return (
+          <article
+            key={voucher.id}
+            className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm transition-all"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-bold text-[var(--color-text-primary)] tabular-nums">
+                    {voucher.voucher_number}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-gray-400">
-                    {new Date(voucher.created_at as any).toLocaleDateString(
-                      "vi-VN",
-                    )}
-                  </p>
+                  <StatusBadge status={voucher.status} />
                 </div>
-
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {/* Picking button — gated by assignment */}
-                  {canPick && (
-                    <button
-                      type="button"
-                      onClick={() => setPickingVoucherId(voucher.id)}
-                      className="flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-orange-600"
-                    >
-                      <Play className="h-3.5 w-3.5" />
-                      Soạn hàng
-                    </button>
-                  )}
-
-                  {/* Complete export button — for SHIPPED status */}
-                  {isShipped && (
-                    <button
-                      type="button"
-                      onClick={() => handleCompleteExport(voucher.id)}
-                      className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-600"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Hoàn tất
-                    </button>
-                  )}
-                </div>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  {voucher.recipient_name || voucher.export_type}
+                  {voucher.recipient_department
+                    ? ` / ${voucher.recipient_department}`
+                    : ""}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  {warehouse?.name ?? voucher.warehouse_id}
+                  {warehouse?.code ? ` / ${warehouse.code}` : ""}
+                </p>
               </div>
+              <p className="shrink-0 text-right text-[11px] tabular-nums text-[var(--color-text-muted)]">
+                {formatDate(voucher.created_at)}
+              </p>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Picking Session Drawer */}
+            {voucher.notes && (
+              <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                  Ghi chú
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+                  {voucher.notes}
+                </p>
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+              <button
+                type="button"
+                onClick={() => setSelectedId(voucher.id)}
+                className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] sm:h-8 sm:text-xs"
+              >
+                <Eye size={14} />
+                Xem chi tiết
+              </button>
+
+              {isDraft && (
+                <button
+                  type="button"
+                  onClick={() => onClone(getClonePayload(voucher))}
+                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-50 px-3 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100 sm:h-8 sm:text-xs"
+                >
+                  <Copy size={14} />
+                  Sửa phiếu
+                </button>
+              )}
+
+              {canPick && (
+                <button
+                  type="button"
+                  onClick={() => setPickingVoucherId(voucher.id)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-orange-700 sm:h-8 sm:text-xs"
+                >
+                  <Play size={14} />
+                  Soạn hàng
+                </button>
+              )}
+
+              {isShipped && (
+                <button
+                  type="button"
+                  onClick={() => void handleCompleteExport(voucher.id)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:h-8 sm:text-xs"
+                >
+                  <CheckCircle size={14} />
+                  Hoàn tất
+                </button>
+              )}
+            </div>
+          </article>
+        );
+      })}
+
+      {selectedId && (
+        <ExportVoucherDetailDrawer
+          voucherId={selectedId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+
       {pickingVoucherId && (
         <PickingSessionDrawer
           voucherId={pickingVoucherId}
           onClose={() => setPickingVoucherId(null)}
         />
       )}
-    </>
+    </div>
   );
 }

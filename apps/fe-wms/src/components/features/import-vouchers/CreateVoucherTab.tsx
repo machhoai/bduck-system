@@ -36,6 +36,7 @@ type Locale = "vi" | "zh";
 
 interface CreateVoucherTabProps {
   cloneData?: Record<string, unknown> | null;
+  prefillWarehouseId?: string;
   onCreated: () => void;
 }
 
@@ -198,6 +199,7 @@ function ProductPickerCard({
 
 export default function CreateVoucherTab({
   cloneData,
+  prefillWarehouseId,
   onCreated,
 }: CreateVoucherTabProps) {
   const { t, lang } = useTranslation();
@@ -212,12 +214,20 @@ export default function CreateVoucherTab({
   const [productSearch, setProductSearch] = useState("");
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [formData, setFormData] = useState<VoucherFormData>({
-    warehouse_id: "",
+    warehouse_id: prefillWarehouseId || "",
     supplier_name: "",
     purchase_order_id: "",
     notes: "",
     items: [],
   });
+
+  // Auto-prefill warehouse and skip file upload step
+  useEffect(() => {
+    if (prefillWarehouseId) {
+      setFormData((prev) => ({ ...prev, warehouse_id: prefillWarehouseId }));
+      setStep(1);
+    }
+  }, [prefillWarehouseId]);
 
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     formData.warehouse_id || undefined,
