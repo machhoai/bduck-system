@@ -139,14 +139,11 @@ export function WarehouseDetailHero({
                 label={t.warehouses.export}
                 icon={<ArrowUpFromLine size={18} />}
               />
-              <button
-                type="button"
-                disabled
-                className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-60"
-              >
-                <ArrowRightLeft size={18} />
-                {t.warehouses.transfer}
-              </button>
+              <ActionLink
+                href={`/transfers?warehouseId=${warehouseId}`}
+                label={t.warehouses.transfer}
+                icon={<ArrowRightLeft size={18} />}
+              />
             </div>
           </div>
 

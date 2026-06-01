@@ -833,6 +833,44 @@ const zh: Dictionary = {
     goBack: "返回",
     goHome: "回到首页",
   },
+
+  transfer: {
+    title: "调拨",
+    subtitle: "创建、跟踪和管理调拨单",
+    tabs: {
+      create: "新建",
+      inProgress: "处理中",
+      history: "历史",
+    },
+    status: {
+      DRAFT: "草稿",
+      PENDING_APPROVAL: "待审批",
+      APPROVED: "已审批",
+      EXPORT_PENDING: "待创建出库",
+      EXPORT_CREATED: "已创建出库",
+      PICKING: "拣货中",
+      IN_TRANSIT: "运输中",
+      PENDING_RECEIVE: "待接收",
+      RECEIVING: "接收中",
+      RECEIVED: "已接收",
+      COMPLETED: "完成",
+      REJECTED: "已拒绝",
+      CANCELLED: "已取消",
+    },
+    type: {
+      INTRA_WAREHOUSE: "库内",
+      INTER_WAREHOUSE: "跨库",
+    },
+    toast: {
+      creating: "正在创建调拨单...",
+      createSuccess: "调拨单创建成功",
+      createSuccessDesc: "调拨单已提交至审批流程。",
+      createError: "创建调拨单失败",
+      createErrorDesc: "请重试或联系管理员。",
+      intraSuccess: "库内调拨成功",
+      intraSuccessDesc: "货物已立即移动。",
+    },
+  },
 };
 
 export default zh;

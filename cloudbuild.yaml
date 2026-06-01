@@ -1,0 +1,11 @@
+steps:
+  # 1. Build the container image using the specific Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest', '-f', 'apps/be-wms/Dockerfile', '.']
+
+  # 2. Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest']
+
+images:
+  - 'asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest'

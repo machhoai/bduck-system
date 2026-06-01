@@ -19,7 +19,7 @@ import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 
 const app = express();
-const PORT = process.env.BE_WMS_PORT || 4000;
+const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
 
 // ---------------------------------------------------------------------------
 // Middleware

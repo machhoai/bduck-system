@@ -57,6 +57,8 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
+# Cloud Run injects PORT env var (default 8080)
+ENV PORT=8080
 
 # Copy the pruned deploy output
 COPY --from=runner /app/deploy/ ./
@@ -68,6 +70,6 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 expressjs
 USER expressjs
 
-EXPOSE 4000
+EXPOSE 8080
 
 CMD ["node", "dist/index.js"]

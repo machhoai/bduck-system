@@ -844,6 +844,44 @@ const vi = {
     goBack: "Quay lại",
     goHome: "Về trang chủ",
   },
+
+  transfer: {
+    title: "Điều chuyển",
+    subtitle: "Tạo, theo dõi và quản lý phiếu điều chuyển hàng hóa",
+    tabs: {
+      create: "Tạo mới",
+      inProgress: "Đang xử lý",
+      history: "Lịch sử",
+    },
+    status: {
+      DRAFT: "Nháp",
+      PENDING_APPROVAL: "Chờ duyệt",
+      APPROVED: "Đã duyệt",
+      EXPORT_PENDING: "Chờ tạo xuất",
+      EXPORT_CREATED: "Đã tạo xuất",
+      PICKING: "Đang soạn",
+      IN_TRANSIT: "Đang chuyển",
+      PENDING_RECEIVE: "Chờ nhận",
+      RECEIVING: "Đang nhận",
+      RECEIVED: "Đã nhận",
+      COMPLETED: "Hoàn thành",
+      REJECTED: "Từ chối",
+      CANCELLED: "Đã hủy",
+    },
+    type: {
+      INTRA_WAREHOUSE: "Trong kho",
+      INTER_WAREHOUSE: "Liên kho",
+    },
+    toast: {
+      creating: "Đang tạo phiếu điều chuyển...",
+      createSuccess: "Đã tạo phiếu điều chuyển",
+      createSuccessDesc: "Phiếu đã được gửi vào quy trình duyệt.",
+      createError: "Lỗi khi tạo phiếu điều chuyển",
+      createErrorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+      intraSuccess: "Điều chuyển trong kho thành công",
+      intraSuccessDesc: "Hàng hóa đã được di chuyển ngay lập tức.",
+    },
+  },
 };
 
 export type Dictionary = typeof vi;

@@ -6,6 +6,7 @@
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
 import {
+    ArrowRightLeft,
     ClipboardCheck,
     FileClock,
     Home,
@@ -97,6 +98,13 @@ export const menuItems: MenuItem[] = [
         href: "/export-vouchers",
         permission: "vouchers.read",
         badgeKey: "exportVouchers",
+    },
+    {
+        id: "transfers",
+        labelKey: "transfer",
+        icon: ArrowRightLeft,
+        href: "/transfers",
+        permission: "transfers.read",
     },
     {
         id: "users",
