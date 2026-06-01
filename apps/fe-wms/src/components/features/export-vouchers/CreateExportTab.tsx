@@ -4,8 +4,8 @@
  * CreateExportTab — 4-step stepper for creating export vouchers
  *
  * Steps:
- * 0. Upload chứng từ (FileUploadField)
- * 1. Thông tin chung (warehouse, export type, recipient)
+ * 0. Thông tin chung (warehouse, export type, recipient)
+ * 1. Upload chứng từ (FileUploadField) - optional
  * 2. Danh sách sản phẩm (pick products + quantities)
  * 3. Xác nhận & Gửi
  *
@@ -15,7 +15,7 @@
  * - i18n cho tất cả text
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Upload,
   ClipboardList,
@@ -44,6 +44,8 @@ import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse"
 // ─────────────────────────────────────────────
 
 interface Props {
+  cloneData?: Record<string, unknown> | null;
+  prefillWarehouseId?: string;
   onCreated: () => void;
 }
 
@@ -63,8 +65,8 @@ const EXPORT_TYPES = [
 ];
 
 const STEPS = [
-  { id: 0, icon: Upload, label: "Tải chứng từ" },
-  { id: 1, icon: ClipboardList, label: "Thông tin" },
+  { id: 0, icon: ClipboardList, label: "Thông tin" },
+  { id: 1, icon: Upload, label: "Tải chứng từ" },
   { id: 2, icon: Package, label: "Sản phẩm" },
   { id: 3, icon: CheckCircle2, label: "Xác nhận" },
 ];
@@ -73,7 +75,7 @@ const STEPS = [
 // COMPONENT
 // ─────────────────────────────────────────────
 
-export default function CreateExportTab({ onCreated }: Props) {
+export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreated }: Props) {
   const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
@@ -86,11 +88,18 @@ export default function CreateExportTab({ onCreated }: Props) {
   const [files, setFiles] = useState<SelectedFile[]>([]);
 
   // Form state
-  const [warehouseId, setWarehouseId] = useState("");
+  const [warehouseId, setWarehouseId] = useState(prefillWarehouseId || "");
   const [exportType, setExportType] = useState("TRANSFER");
   const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ExportItemData[]>([]);
+
+  // Auto-prefill warehouse from URL
+  useEffect(() => {
+    if (prefillWarehouseId) {
+      setWarehouseId(prefillWarehouseId);
+    }
+  }, [prefillWarehouseId]);
 
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     warehouseId || undefined,
@@ -117,9 +126,7 @@ export default function CreateExportTab({ onCreated }: Props) {
   // Navigation
   const canGoNext = useCallback((): boolean => {
     switch (step) {
-      case 0:
-        return files.length > 0 && files.every((f) => !f.error);
-      case 1: {
+      case 0: {
         const baseValid = warehouseId !== "" && exportType !== "";
         if (exportType === "TRANSFER") {
           return baseValid && destinationWarehouseId !== "" && destinationWarehouseId !== warehouseId;
@@ -129,6 +136,8 @@ export default function CreateExportTab({ onCreated }: Props) {
         }
         return baseValid;
       }
+      case 1:
+        return true; // Upload is optional
       case 2:
         return (
           items.length > 0 &&
@@ -271,20 +280,8 @@ export default function CreateExportTab({ onCreated }: Props) {
 
       {/* Step content */}
       <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-6">
-        {/* Step 0: Upload chứng từ */}
+        {/* Step 0: Info */}
         {step === 0 && (
-          <FileUploadField
-            files={files}
-            onFilesChange={setFiles}
-            disabled={isSubmitting}
-            maxFiles={5}
-            label="Tải chứng từ xuất kho đính kèm"
-            hint="PDF, DOCX, XLSX, CSV · tối đa 20MB mỗi tệp · tối đa 5 tệp"
-          />
-        )}
-
-        {/* Step 1: Info */}
-        {step === 1 && (
           <div className="space-y-4">
             {/* Loại xuất */}
             <div>
@@ -390,6 +387,18 @@ export default function CreateExportTab({ onCreated }: Props) {
               )}
             </div>
           </div>
+        )}
+
+        {/* Step 1: Upload chứng từ */}
+        {step === 1 && (
+          <FileUploadField
+            files={files}
+            onFilesChange={setFiles}
+            disabled={isSubmitting}
+            maxFiles={5}
+            label="Tải chứng từ xuất kho đính kèm (tuỳ chọn)"
+            hint="PDF, DOCX, XLSX, CSV · tối đa 20MB mỗi tệp · tối đa 5 tệp"
+          />
         )}
 
         {/* Step 2: Products — same picker pattern as import */}

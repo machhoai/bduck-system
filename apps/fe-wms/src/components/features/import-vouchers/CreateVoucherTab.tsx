@@ -135,8 +135,8 @@ const COPY = {
 } as const;
 
 const STEPS = [
-  { id: 0 as StepId, icon: Upload, key: "upload", fallback: "Tải chứng từ" },
-  { id: 1 as StepId, icon: Warehouse, key: "info", fallback: "Thông tin" },
+  { id: 0 as StepId, icon: Warehouse, key: "info", fallback: "Thông tin" },
+  { id: 1 as StepId, icon: Upload, key: "upload", fallback: "Tải chứng từ" },
   { id: 2 as StepId, icon: Package, key: "items", fallback: "Sản phẩm" },
   { id: 3 as StepId, icon: CheckCircle2, key: "confirm", fallback: "Xác nhận" },
 ];
@@ -221,11 +221,10 @@ export default function CreateVoucherTab({
     items: [],
   });
 
-  // Auto-prefill warehouse and skip file upload step
+  // Auto-prefill warehouse from URL
   useEffect(() => {
     if (prefillWarehouseId) {
       setFormData((prev) => ({ ...prev, warehouse_id: prefillWarehouseId }));
-      setStep(1);
     }
   }, [prefillWarehouseId]);
 
@@ -306,9 +305,9 @@ export default function CreateVoucherTab({
   const canGoNext = useCallback(() => {
     switch (step) {
       case 0:
-        return files.length > 0 && files.every((file) => !file.error);
-      case 1:
         return !!formData.warehouse_id && !!formData.supplier_name.trim();
+      case 1:
+        return true; // Upload is optional
       case 2:
         return (
           formData.items.length > 0 &&
@@ -498,21 +497,6 @@ export default function CreateVoucherTab({
       </div>
 
       {step === 0 && (
-        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-6">
-          <FileUploadField
-            files={files}
-            onFilesChange={setFiles}
-            disabled={isSubmitting}
-            maxFiles={5}
-            label={
-              (t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm"
-            }
-            hint={copy.uploadHint}
-          />
-        </section>
-      )}
-
-      {step === 1 && (
         <div className="space-y-4">
           <WarehouseSelectionPanel
             warehouses={warehouses}
@@ -553,7 +537,7 @@ export default function CreateVoucherTab({
             <label className="block">
               <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                 {(t as any).importVoucher?.form?.purchaseOrder ??
-                  "Mã đơn hàng (PO)"}
+                  "Mã đơn mua"}
               </span>
               <input
                 value={formData.purchase_order_id}
@@ -584,6 +568,21 @@ export default function CreateVoucherTab({
             </label>
           </section>
         </div>
+      )}
+
+      {step === 1 && (
+        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-6">
+          <FileUploadField
+            files={files}
+            onFilesChange={setFiles}
+            disabled={isSubmitting}
+            maxFiles={5}
+            label={
+              (t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm (tuỳ chọn)"
+            }
+            hint={copy.uploadHint}
+          />
+        </section>
       )}
 
       {step === 2 && (
