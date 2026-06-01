@@ -214,6 +214,12 @@ export async function startPicking(voucherId: string): Promise<void> {
     updated_at: now,
     sync_time: now,
   });
+
+  // Mirror to Transfer Order if linked
+  try {
+    const { syncExportStatus } = await import("./transferOrderService.js");
+    await syncExportStatus(voucherId, ExportVoucherStatus.PICKING);
+  } catch { /* no linked transfer */ }
 }
 
 /**
@@ -243,6 +249,12 @@ export async function completePicking(
     old_value: { status: ExportVoucherStatus.PICKING },
     new_value: { status: ExportVoucherStatus.SHIPPED },
   });
+
+  // Mirror to Transfer Order if linked
+  try {
+    const { syncExportStatus } = await import("./transferOrderService.js");
+    await syncExportStatus(voucherId, ExportVoucherStatus.SHIPPED);
+  } catch { /* no linked transfer */ }
 }
 
 /** SHIPPED → COMPLETED (kế toán xác nhận) */

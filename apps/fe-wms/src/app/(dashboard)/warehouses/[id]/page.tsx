@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  MapPin,
-  Warehouse as WarehouseIcon,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  ArrowRightLeft,
-  Pencil,
-} from "lucide-react";
+import { ArrowLeft, Boxes, MapPinned } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { WarehouseLocation } from "@bduck/shared-types";
 
@@ -20,6 +12,7 @@ import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
 import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
 import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
 import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
+import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
 
 // Dashboard Components
 import StatCardGrid from "@/components/inventory/StatCardGrid";
@@ -31,6 +24,7 @@ import { WarehouseInventoryTable } from "@/components/warehouses/WarehouseInvent
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useInventory } from "@/hooks/useInventory";
 import { useProducts } from "@/hooks/useProducts";
+import { useUsers } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
 
 // Utilities
@@ -56,6 +50,7 @@ export default function WarehouseDetailPage() {
   } = useWarehouseLocations(warehouseId);
   const { inventory, loading: invLoading } = useInventory();
   const { products, loading: prodLoading } = useProducts();
+  const { users, isLoading: usersLoading } = useUsers();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
@@ -82,6 +77,20 @@ export default function WarehouseDetailPage() {
     () => computeProductTypeDistribution(inventory, products, warehouseId),
     [inventory, products, warehouseId],
   );
+
+  const managerName = useMemo(() => {
+    if (!warehouse?.manager_id) {
+      return t.warehouses.noManager;
+    }
+
+    const manager = users.find((user) => user.id === warehouse.manager_id);
+
+    if (manager) {
+      return manager.full_name || manager.username || manager.email;
+    }
+
+    return usersLoading ? t.common.loading : t.warehouses.unknownManager;
+  }, [t.common.loading, t.warehouses.noManager, t.warehouses.unknownManager, users, usersLoading, warehouse]);
 
   const handleAdd = () => {
     setEditingLocation(null);
@@ -148,96 +157,22 @@ export default function WarehouseDetailPage() {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full flex-col gap-6">
-      <div>
+    <div className="flex h-full w-full flex-col gap-5 pb-8 sm:gap-6">
+      <div className="flex flex-col gap-3">
         <Link
           href="/warehouses"
-          className="mb-3 inline-flex items-center gap-2 text-sm font-normal text-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary-hover)]"
+          className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-brand-primary)] shadow-sm transition-colors hover:text-[var(--color-brand-primary-hover)]"
         >
           <ArrowLeft size={16} />
           {t.warehouses.backToList}
         </Link>
 
-        {/* ── Header & Quick Actions ── */}
-        <header className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] text-[var(--color-brand-primary)]">
-                {warehouse.warehouse_image_url ? (
-                  <img
-                    src={warehouse.warehouse_image_url}
-                    alt={warehouse.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <WarehouseIcon size={24} strokeWidth={1.5} />
-                )}
-              </div>
-              <div>
-                <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[34px]">
-                  {warehouse.name}
-                </h1>
-                <p className="mt-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                  <span className="rounded-full bg-[var(--color-surface-card)] px-2 py-0.5 border border-[var(--color-border-subtle)] font-medium text-[var(--color-text-secondary)]">
-                    {warehouse.code}
-                  </span>
-                  <span>{t.warehouses.types[warehouse.type]}</span>
-                  <span>·</span>
-                  <span
-                    className={
-                      warehouse.status === "ACTIVE"
-                        ? "text-[var(--color-text-success)]"
-                        : "text-[var(--color-text-muted)]"
-                    }
-                  >
-                    {t.warehouses.statuses[warehouse.status]}
-                  </span>
-                </p>
-                {warehouse.address && (
-                  <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)]">
-                    <MapPin size={15} />
-                    {warehouse.address}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setIsWarehouseModalOpen(true)}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
-              >
-                <Pencil size={16} />
-                {t.warehouses.editWarehouse}
-              </button>
-              <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2 hidden sm:inline-block">
-                {t.warehouses.quickActions}:
-              </span>
-              <Link
-                href={`/import-vouchers?warehouseId=${warehouseId}`}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-95"
-              >
-                <ArrowDownToLine size={16} />
-                {t.warehouses.import}
-              </Link>
-              <Link
-                href={`/export-vouchers?warehouseId=${warehouseId}`}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
-              >
-                <ArrowUpFromLine size={16} />
-                {t.warehouses.export}
-              </Link>
-              <button
-                disabled
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm opacity-50 cursor-not-allowed hover:bg-[var(--color-surface-base)]"
-              >
-                <ArrowRightLeft size={16} />
-                {t.warehouses.transfer}
-              </button>
-            </div>
-          </div>
-        </header>
+        <WarehouseDetailHero
+          warehouse={warehouse}
+          warehouseId={warehouseId}
+          managerName={managerName}
+          onEdit={() => setIsWarehouseModalOpen(true)}
+        />
       </div>
 
       {/* ── Stat Cards (Dashboard) ── */}
@@ -256,31 +191,43 @@ export default function WarehouseDetailPage() {
       </div>
 
       {/* ── Tabs for Detailed Tables ── */}
-      <div className="mt-2 flex flex-col gap-4">
-        <div className="flex border-b border-[var(--color-border-subtle)]">
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "products"
-                ? "border-b-2 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-            }`}
-          >
-            {t.warehouses.tabProducts}
-          </button>
-          <button
-            onClick={() => setActiveTab("locations")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "locations"
-                ? "border-b-2 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-            }`}
-          >
-            {t.warehouses.tabLocations}
-            <span className="flex h-5 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] px-2 text-[11px] font-bold border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)]">
-              {locations.length}
-            </span>
-          </button>
+      <div className="mt-1 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 shadow-sm">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("products")}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${
+                activeTab === "products"
+                  ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              <Boxes size={18} />
+              {t.warehouses.tabProducts}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("locations")}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${
+                activeTab === "locations"
+                  ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              <MapPinned size={18} />
+              {t.warehouses.tabLocations}
+              <span
+                className={`flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-bold ${
+                  activeTab === "locations"
+                    ? "bg-white/20 text-white"
+                    : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                }`}
+              >
+                {locations.length}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* ── Tab Content ── */}

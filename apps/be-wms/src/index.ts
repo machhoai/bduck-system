@@ -16,6 +16,7 @@ import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
 import exportVoucherRoutes from "./api/routes/exportVoucherRoutes.js";
 import approvalRoutes from "./api/routes/approvalRoutes.js";
 import processConfigRoutes from "./api/routes/processConfigRoutes.js";
+import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 
 const app = express();
 const PORT = process.env.BE_WMS_PORT || 4000;
@@ -53,6 +54,7 @@ app.use("/api/import-vouchers", importVoucherRoutes);
 app.use("/api/export-vouchers", exportVoucherRoutes);
 app.use("/api/approvals", approvalRoutes);
 app.use("/api/process-configs", processConfigRoutes);
+app.use("/api/transfer-orders", transferOrderRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

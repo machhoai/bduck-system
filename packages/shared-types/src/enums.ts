@@ -77,6 +77,12 @@ export enum ItemCondition {
     MISSING = 'MISSING',
 }
 
+/** Transfer type classification */
+export enum TransferType {
+    INTRA_WAREHOUSE = 'INTRA_WAREHOUSE',
+    INTER_WAREHOUSE = 'INTER_WAREHOUSE',
+}
+
 /** Export voucher type */
 export enum ExportType {
     SALE_POS = 'SALE_POS',
@@ -110,9 +116,15 @@ export enum TransferOrderStatus {
     DRAFT = 'DRAFT',
     PENDING_APPROVAL = 'PENDING_APPROVAL',
     APPROVED = 'APPROVED',
+    EXPORT_PENDING = 'EXPORT_PENDING',
+    EXPORT_CREATED = 'EXPORT_CREATED',
+    PICKING = 'PICKING',
     IN_TRANSIT = 'IN_TRANSIT',
+    PENDING_RECEIVE = 'PENDING_RECEIVE',
+    RECEIVING = 'RECEIVING',
     RECEIVED = 'RECEIVED',
     COMPLETED = 'COMPLETED',
+    REJECTED = 'REJECTED',
     CANCELLED = 'CANCELLED',
 }
 
@@ -121,6 +133,7 @@ export enum TransferItemStatus {
     PENDING = 'PENDING',
     IN_TRANSIT = 'IN_TRANSIT',
     RECEIVED = 'RECEIVED',
+    COMPLETED = 'COMPLETED',
     DISCREPANCY = 'DISCREPANCY',
 }
 

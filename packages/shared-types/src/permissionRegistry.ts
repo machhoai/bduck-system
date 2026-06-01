@@ -85,10 +85,16 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 7,
   },
   {
+    id: "transfers",
+    label: { vi: "Điều chuyển", zh: "调拨" },
+    icon: "ArrowLeftRight",
+    order: 8,
+  },
+  {
     id: "workflows",
     label: { vi: "Quy trình", zh: "工作流" },
     icon: "GitBranch",
-    order: 8,
+    order: 9,
   },
   {
     id: "users",
@@ -290,6 +296,35 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Tạo phiếu nhập/xuất mới, cập nhật phiên kiểm đếm.",
       zh: "创建新入库/出库单，更新盘点会话。",
+    },
+  },
+
+  // ── Transfers ──
+  {
+    key: "transfers.read",
+    group: "transfers",
+    label: { vi: "Xem điều chuyển", zh: "查看调拨" },
+    description: {
+      vi: "Xem danh sách và chi tiết phiếu điều chuyển.",
+      zh: "查看调拨单列表和详情。",
+    },
+  },
+  {
+    key: "transfers.write",
+    group: "transfers",
+    label: { vi: "Tạo & sửa điều chuyển", zh: "创建和编辑调拨" },
+    description: {
+      vi: "Tạo phiếu điều chuyển trong kho hoặc liên kho, cập nhật thông tin.",
+      zh: "创建库内或跨库调拨单，更新信息。",
+    },
+  },
+  {
+    key: "transfers.receive",
+    group: "transfers",
+    label: { vi: "Nhận hàng điều chuyển", zh: "接收调拨货物" },
+    description: {
+      vi: "Nhận hàng và kiểm đếm phiếu điều chuyển liên kho tại kho đích.",
+      zh: "在目标仓库接收并盘点跨库调拨货物。",
     },
   },
 

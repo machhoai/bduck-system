@@ -200,7 +200,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
         <>
             {/* Backdrop */}
             <div
-                className="fixed left-0 top-0 h-full z-40 bg-black/40 backdrop-blur-xs transition-opacity"
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
                 onClick={onClose}
             />
 
@@ -258,9 +258,9 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                                 <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
                                 {isExport ? (
                                     <>
-                                        <Field icon={User} label="Người nhận" value={(voucher as any).recipient_name} />
+                                        <Field icon={User} label={t.tasks.detail.recipient} value={(voucher as any).recipient_name} />
                                         {(voucher as any).recipient_department && (
-                                            <Field icon={Package} label="Bộ phận" value={(voucher as any).recipient_department} />
+                                            <Field icon={Package} label={t.tasks.detail.department} value={(voucher as any).recipient_department} />
                                         )}
                                     </>
                                 ) : (

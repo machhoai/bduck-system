@@ -339,7 +339,7 @@ export function WarehouseFormModal({
                         />
                     </Field>
                     <Field label={t.warehouses.image}>
-                        <div className="max-w-[220px]">
+                        <div className="w-[min(220px,100%)]">
                             <ImageUploadField
                                 inputId="warehouseImageUpload"
                                 previewUrl={formData.warehouse_image_url}

@@ -475,7 +475,17 @@ async function advanceEntityOnApproval(
       );
       break;
     }
-    // Future: TRANSFER_ORDER, etc.
+    case "TRANSFER_ORDER": {
+      const { onApprovalCompleted: onTransferApproved } = await import(
+        "./transferOrderService.js"
+      );
+      await onTransferApproved(entityId, approverId);
+      console.log(
+        `[approvalService] Advanced TRANSFER_ORDER/${entityId} → APPROVED`,
+      );
+      break;
+    }
+    // Future: PURCHASE_ORDER, etc.
     default:
       console.warn(
         `[approvalService] No callback for entity type: ${entityType}`,
@@ -512,6 +522,16 @@ async function advanceEntityOnRejection(
         await onExportRejected(entityId, rejectorId, reason);
         console.log(
           `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → REJECTED`,
+        );
+        break;
+      }
+      case "TRANSFER_ORDER": {
+        const { onApprovalRejected: onTransferRejected } = await import(
+          "./transferOrderService.js"
+        );
+        await onTransferRejected(entityId, rejectorId, reason);
+        console.log(
+          `[approvalService] Advanced TRANSFER_ORDER/${entityId} → REJECTED`,
         );
         break;
       }

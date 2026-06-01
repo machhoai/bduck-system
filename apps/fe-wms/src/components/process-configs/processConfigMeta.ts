@@ -2,6 +2,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Gift,
+  MoveHorizontal,
   Package,
   PackageCheck,
   PackagePlus,
@@ -32,6 +33,7 @@ export const ENTITY_ORDER: ProcessEntityType[] = [
   "IMPORT_VOUCHER",
   "EXPORT_VOUCHER",
   "TRANSFER_ORDER",
+  "TRANSFER_INTRA",
   "PURCHASE_ORDER",
   "ADJUSTMENT_VOUCHER",
   "GIFT_SESSION",
@@ -84,6 +86,14 @@ export const ENTITY_META: Record<ProcessEntityType, EntityMeta> = {
     description: {
       vi: "Cấu hình duyệt cho nghiệp vụ phát quà và quà lưu niệm.",
       zh: "礼品和纪念品发放业务的审批设置。",
+    },
+  },
+  TRANSFER_INTRA: {
+    icon: MoveHorizontal,
+    label: { vi: "Điều chuyển trong kho", zh: "库内调拨" },
+    description: {
+      vi: "Cấu hình điều chuyển hàng hóa giữa các vị trí trong cùng kho.",
+      zh: "同仓库内库位间的货品调拨配置。",
     },
   },
 };

@@ -23,11 +23,15 @@
 /**
  * All entity types that go through approval pipelines.
  * Each has its own hardcoded state machine in its service.
+ *
+ * TRANSFER_ORDER  = Inter-warehouse transfers (full pipeline)
+ * TRANSFER_INTRA  = Intra-warehouse transfers (simplified, auto-approve by default)
  */
 export type ProcessEntityType =
   | 'IMPORT_VOUCHER'
   | 'EXPORT_VOUCHER'
   | 'TRANSFER_ORDER'
+  | 'TRANSFER_INTRA'
   | 'PURCHASE_ORDER'
   | 'ADJUSTMENT_VOUCHER'
   | 'GIFT_SESSION';
@@ -37,6 +41,7 @@ export const ENTITY_COLLECTIONS: Record<ProcessEntityType, string> = {
   IMPORT_VOUCHER: 'import_vouchers',
   EXPORT_VOUCHER: 'export_vouchers',
   TRANSFER_ORDER: 'transfer_orders',
+  TRANSFER_INTRA: 'transfer_orders', // Same collection, different config
   PURCHASE_ORDER: 'purchase_orders',
   ADJUSTMENT_VOUCHER: 'adjustment_vouchers',
   GIFT_SESSION: 'gift_sessions',

@@ -106,7 +106,7 @@ export function WarehouseAuditCard({ warehouseId }: WarehouseAuditCardProps) {
                 <div className="absolute -left-[17px] h-[34px] w-[34px] animate-pulse rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]" />
                 <div className="space-y-2">
                   <div className="h-4 w-36 animate-pulse rounded bg-[var(--color-surface-card)]" />
-                  <div className="h-3 w-full max-w-[260px] animate-pulse rounded bg-[var(--color-surface-card)]" />
+                  <div className="h-3 w-[min(260px,100%)] animate-pulse rounded bg-[var(--color-surface-card)]" />
                 </div>
               </div>
             ))}
