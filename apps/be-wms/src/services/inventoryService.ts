@@ -246,11 +246,13 @@ export const deductAtp = async (
     .collection("inventory")
     .where("warehouse_location_id", "==", warehouseLocationId)
     .where("product_id", "==", productId)
-    .limit(1);
+    .limit(5);
 
   const snapshot = await txn.get(collectionRef);
+  // Filter out soft-deleted records client-side
+  const activeDocs = snapshot.docs.filter((d) => d.data().is_deleted !== true);
 
-  if (snapshot.empty) {
+  if (activeDocs.length === 0) {
     throw {
       statusCode: 400,
       messages: {
@@ -260,7 +262,7 @@ export const deductAtp = async (
     };
   }
 
-  const existing = snapshot.docs[0].data() as Inventory;
+  const existing = activeDocs[0].data() as Inventory;
   const newAtp = existing.atp_quantity - quantity;
 
   if (newAtp < 0) {

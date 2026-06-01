@@ -95,7 +95,7 @@ export async function findById(
 export async function updateStatus(
   id: string,
   data: {
-    status: "APPROVED" | "REJECTED";
+    status: "APPROVED" | "REJECTED" | "PENDING";
     approver_id: string;
     approved_at: Date;
     rejected_reason?: string | null;

@@ -30,6 +30,7 @@ import {
   type SelectedFile,
 } from "../../shared/FileUploadField";
 import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
+import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 
 type Locale = "vi" | "zh";
 
@@ -221,6 +222,8 @@ export default function CreateVoucherTab({
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     formData.warehouse_id || undefined,
   );
+  const { getAllLocationsForProduct, getAtp, loading: inventoryLoading } =
+    useInventoryByWarehouse(formData.warehouse_id || undefined);
 
   const selectedWarehouse = warehouses.find(
     (warehouse) => warehouse.id === formData.warehouse_id,
@@ -732,24 +735,38 @@ export default function CreateVoucherTab({
                               )
                             }
                             disabled={
-                              locationsLoading || !formData.warehouse_id
+                              locationsLoading || inventoryLoading || !formData.warehouse_id
                             }
                             className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 lg:h-9 lg:text-sm"
                           >
                             <option value="">
                               {!formData.warehouse_id
                                 ? copy.selectWarehouseFirst
-                                : locationsLoading
+                                : locationsLoading || inventoryLoading
                                   ? copy.loadingLocations
                                   : locations.length === 0
                                     ? copy.noLocations
                                     : copy.selectLocation}
                             </option>
-                            {locations.map((location) => (
-                              <option key={location.id} value={location.id}>
-                                {location.name} ({location.code})
-                              </option>
-                            ))}
+                            {(() => {
+                              const invLocations = getAllLocationsForProduct(item.product_id);
+                              const invLocationIds = new Set(invLocations.map((il) => il.locationId));
+                              // Sort: locations with existing stock first
+                              const sorted = [...locations].sort((a, b) => {
+                                const aHas = invLocationIds.has(a.id) ? 0 : 1;
+                                const bHas = invLocationIds.has(b.id) ? 0 : 1;
+                                return aHas - bHas;
+                              });
+                              return sorted.map((location) => {
+                                const qty = getAtp(item.product_id, location.id);
+                                const hasStock = invLocationIds.has(location.id);
+                                return (
+                                  <option key={location.id} value={location.id}>
+                                    {location.name} ({location.code}){hasStock ? ` · Hiện có: ${qty}` : ""}
+                                  </option>
+                                );
+                              });
+                            })()}
                           </select>
                         </label>
                         <label className="block">

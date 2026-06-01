@@ -115,10 +115,15 @@ export async function deductInventoryATP(
         .where("warehouse_id", "==", warehouseId)
         .where("warehouse_location_id", "==", di.locationId)
         .where("product_id", "==", di.productId)
-        .limit(1),
+        .limit(5),
     );
 
-    const snapshots = await Promise.all(queries.map((q) => txn.get(q)));
+    const rawSnapshots = await Promise.all(queries.map((q) => txn.get(q)));
+    // Filter out soft-deleted records client-side (avoids composite index requirement)
+    const snapshots = rawSnapshots.map((snap) => {
+      const activeDocs = snap.docs.filter((d) => d.data().is_deleted !== true);
+      return { ...snap, empty: activeDocs.length === 0, docs: activeDocs };
+    });
 
     // Validate ALL items BEFORE writing anything
     const updates: Array<{

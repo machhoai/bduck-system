@@ -48,6 +48,18 @@ export const fetchAuditLogs = async (
     ? extractAllowedWarehouseIds(userPermissions)
     : undefined;
 
+  if (allowedWarehouseIds && allowedWarehouseIds.length === 0) {
+    return [];
+  }
+
+  if (
+    input.warehouse_id &&
+    allowedWarehouseIds &&
+    !allowedWarehouseIds.includes(input.warehouse_id)
+  ) {
+    return [];
+  }
+
   const params: AuditLogSearchParams = {
     entity_type: input.entity_type,
     entity_id: input.entity_id,
@@ -59,7 +71,10 @@ export const fetchAuditLogs = async (
     limit: input.limit,
     sort_by: input.sort_by,
     sort_dir: input.sort_dir,
-    allowed_warehouse_ids: allowedWarehouseIds,
+    allowed_warehouse_ids:
+      input.warehouse_id && allowedWarehouseIds
+        ? [input.warehouse_id]
+        : allowedWarehouseIds,
   };
 
   return auditLogRepository.findAuditLogs(params);

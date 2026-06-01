@@ -298,24 +298,46 @@ async function validateAtpSufficiency(voucherId: string): Promise<void> {
     const locationId = item.warehouse_location_id as string;
 
     // Query inventory for this product at this location
-    const invSnap = await db
+    // CRITICAL: Filter is_deleted client-side to avoid composite index requirement
+    const invSnapRaw = await db
       .collection("inventory")
       .where("warehouse_id", "==", warehouseId)
       .where("warehouse_location_id", "==", locationId)
       .where("product_id", "==", productId)
-      .limit(1)
+      .limit(5)
       .get();
+    const activeInvDocs = invSnapRaw.docs.filter((d) => d.data().is_deleted !== true);
 
-    const currentAtp = invSnap.empty
+    const currentAtp = activeInvDocs.length === 0
       ? 0
-      : (invSnap.docs[0].data().atp_quantity as number) || 0;
+      : (activeInvDocs[0].data().atp_quantity as number) || 0;
 
     if (currentAtp < requestedQty) {
+      // Resolve product name + location name for human-readable error
+      let productLabel = productId;
+      let locationLabel = locationId;
+      try {
+        const [productSnap, locationSnap] = await Promise.all([
+          db.collection("products").doc(productId).get(),
+          db.collection("warehouse_locations").doc(locationId).get(),
+        ]);
+        if (productSnap.exists) {
+          const pData = productSnap.data()!;
+          productLabel = `${pData.name || ""} (${pData.code || productId})`;
+        }
+        if (locationSnap.exists) {
+          const lData = locationSnap.data()!;
+          locationLabel = `${lData.name || ""} (${lData.code || locationId})`;
+        }
+      } catch {
+        // Fallback to IDs if name resolution fails
+      }
+
       throw Object.assign(new Error("Insufficient ATP"), {
         statusCode: 400,
         messages: {
-          vi: `Không đủ tồn kho khả dụng để xuất hàng. Sản phẩm: ${productId}, ATP hiện tại: ${currentAtp}, Yêu cầu: ${requestedQty}.`,
-          zh: `可用库存不足。产品：${productId}，当前ATP：${currentAtp}，请求：${requestedQty}。`,
+          vi: `Không đủ tồn kho khả dụng. Sản phẩm: ${productLabel}, Vị trí: ${locationLabel}, ATP hiện tại: ${currentAtp}, Yêu cầu: ${requestedQty}.`,
+          zh: `可用库存不足。产品：${productLabel}，库位：${locationLabel}，当前ATP：${currentAtp}，请求：${requestedQty}。`,
         },
       });
     }

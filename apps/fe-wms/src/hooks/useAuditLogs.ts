@@ -18,8 +18,24 @@ import { useUserStore } from "@/stores/useUserStore";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
-async function fetchAuditLogsFromApi(signal?: AbortSignal) {
-  const response = await fetch(`${API_BASE_URL}/api/audit-logs?limit=500`, {
+interface UseAuditLogsOptions {
+  warehouseId?: string;
+  limit?: number;
+}
+
+async function fetchAuditLogsFromApi(
+  params: UseAuditLogsOptions,
+  signal?: AbortSignal,
+) {
+  const searchParams = new URLSearchParams({
+    limit: String(params.limit || 500),
+  });
+
+  if (params.warehouseId) {
+    searchParams.set("warehouse_id", params.warehouseId);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/audit-logs?${searchParams}`, {
     method: "GET",
     credentials: "include",
     signal,
@@ -56,7 +72,8 @@ function extractAllowedWarehouseIds(
   return ids;
 }
 
-export function useAuditLogs() {
+export function useAuditLogs(options: UseAuditLogsOptions = {}) {
+  const { warehouseId, limit: logLimit = 500 } = options;
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +84,15 @@ export function useAuditLogs() {
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
 
+    setIsLoading(true);
+    setError(null);
+
     const loadApiFallback = async () => {
       try {
-        const data = await fetchAuditLogsFromApi(abortController.signal);
+        const data = await fetchAuditLogsFromApi(
+          { warehouseId, limit: logLimit },
+          abortController.signal,
+        );
         if (isDisposed) return;
         setLogs(data);
         setError(null);
@@ -103,29 +126,48 @@ export function useAuditLogs() {
       // RBAC: scope the Firestore query by allowed warehouse IDs
       const allowedIds = extractAllowedWarehouseIds(permissions);
 
-      // If user has no warehouse-scoped audit access at all, use API (it handles RBAC too)
-      if (allowedIds !== undefined && allowedIds.length === 0) {
+      if (
+        warehouseId &&
+        allowedIds !== undefined &&
+        !allowedIds.includes(warehouseId)
+      ) {
         setLogs([]);
         setIsLoading(false);
+        setError(null);
+        return;
+      }
+
+      // If user has no warehouse-scoped audit access at all, use API (it handles RBAC too)
+      if (!warehouseId && allowedIds !== undefined && allowedIds.length === 0) {
+        setLogs([]);
+        setIsLoading(false);
+        setError(null);
         return;
       }
 
       // Build Firestore query with optional warehouse scoping
       // Note: Firestore `in` supports max 30 values
       let auditQuery;
-      if (allowedIds !== undefined && allowedIds.length > 0) {
+      if (warehouseId) {
+        auditQuery = query(
+          collection(db, "audit_logs"),
+          where("warehouse_id", "==", warehouseId),
+          orderBy("sync_time", "desc"),
+          limit(logLimit),
+        );
+      } else if (allowedIds !== undefined && allowedIds.length > 0) {
         const scopedIds = allowedIds.slice(0, 30);
         auditQuery = query(
           collection(db, "audit_logs"),
           where("warehouse_id", "in", scopedIds),
           orderBy("sync_time", "desc"),
-          limit(500),
+          limit(logLimit),
         );
       } else {
         auditQuery = query(
           collection(db, "audit_logs"),
           orderBy("sync_time", "desc"),
-          limit(500),
+          limit(logLimit),
         );
       }
 
@@ -152,7 +194,7 @@ export function useAuditLogs() {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [permissions]);
+  }, [permissions, warehouseId, logLimit]);
 
   return { logs, isLoading, error };
 }

@@ -278,11 +278,29 @@ export async function approveLevel(
 
   // ── Entity status callback: advance voucher when fully approved ──
   if (allApproved) {
-    await advanceEntityOnApproval(
-      record.entity_type,
-      record.entity_id,
-      approverId,
-    );
+    try {
+      await advanceEntityOnApproval(
+        record.entity_type,
+        record.entity_id,
+        approverId,
+      );
+    } catch (callbackError) {
+      // ── ROLLBACK: revert approval record to PENDING ──
+      // Entity callback failed (e.g. ATP insufficient), so we must not
+      // leave the approval in APPROVED while the voucher stays PENDING_APPROVAL.
+      console.error(
+        `[approvalService] Entity callback failed for ${record.entity_type}/${record.entity_id}. Rolling back approval record.`,
+        callbackError,
+      );
+      await approvalRepo.updateStatus(approvalId, {
+        status: "PENDING",
+        approver_id: "",
+        approved_at: now,
+        action_time: now,
+        sync_time: now,
+      });
+      throw callbackError;
+    }
   }
 
   // Update record in memory for return
@@ -435,39 +453,33 @@ async function advanceEntityOnApproval(
   entityId: string,
   approverId: string,
 ): Promise<void> {
-  try {
-    switch (entityType) {
-      case "IMPORT_VOUCHER": {
-        const { onApprovalCompleted } = await import(
-          "./importVoucherService.js"
-        );
-        await onApprovalCompleted(entityId, approverId);
-        console.log(
-          `[approvalService] Advanced IMPORT_VOUCHER/${entityId} → APPROVED`,
-        );
-        break;
-      }
-      case "EXPORT_VOUCHER": {
-        const { onApprovalCompleted: onExportApproved } = await import(
-          "./exportVoucherService.js"
-        );
-        await onExportApproved(entityId, approverId);
-        console.log(
-          `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → APPROVED`,
-        );
-        break;
-      }
-      // Future: TRANSFER_ORDER, etc.
-      default:
-        console.warn(
-          `[approvalService] No callback for entity type: ${entityType}`,
-        );
+  // NOTE: Do NOT catch errors here — caller (approveLevel) handles rollback.
+  switch (entityType) {
+    case "IMPORT_VOUCHER": {
+      const { onApprovalCompleted } = await import(
+        "./importVoucherService.js"
+      );
+      await onApprovalCompleted(entityId, approverId);
+      console.log(
+        `[approvalService] Advanced IMPORT_VOUCHER/${entityId} → APPROVED`,
+      );
+      break;
     }
-  } catch (error) {
-    console.error(
-      `[approvalService] Failed to advance entity ${entityType}/${entityId}:`,
-      error,
-    );
+    case "EXPORT_VOUCHER": {
+      const { onApprovalCompleted: onExportApproved } = await import(
+        "./exportVoucherService.js"
+      );
+      await onExportApproved(entityId, approverId);
+      console.log(
+        `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → APPROVED`,
+      );
+      break;
+    }
+    // Future: TRANSFER_ORDER, etc.
+    default:
+      console.warn(
+        `[approvalService] No callback for entity type: ${entityType}`,
+      );
   }
 }
 

@@ -51,6 +51,10 @@ export interface AuditLogSearchParams {
 
 class AuditLogRepository {
   async findAuditLogs(params: AuditLogSearchParams): Promise<AuditLog[]> {
+    if (params.allowed_warehouse_ids && params.allowed_warehouse_ids.length === 0) {
+      return [];
+    }
+
     // If RBAC-scoped to specific warehouses, we need to do warehouse_id IN [...] queries
     if (
       params.allowed_warehouse_ids &&

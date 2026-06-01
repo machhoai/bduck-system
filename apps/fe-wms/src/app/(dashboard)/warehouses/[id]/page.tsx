@@ -252,7 +252,7 @@ export default function WarehouseDetailPage() {
       {/* ── Charts & Audit Row (Dashboard) ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
         <StockDistributionChart data={typeDistribution} loading={false} />
-        <WarehouseAuditCard />
+        <WarehouseAuditCard warehouseId={warehouseId} />
       </div>
 
       {/* ── Tabs for Detailed Tables ── */}

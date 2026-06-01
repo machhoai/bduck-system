@@ -26,6 +26,7 @@ import {
   Search,
   Plus,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { useTranslation } from "../../../lib/i18n";
@@ -36,6 +37,7 @@ import { useProducts } from "../../../hooks/useProducts";
 import { uploadFile } from "../../../lib/uploadFile";
 import { FileUploadField, type SelectedFile } from "../../shared/FileUploadField";
 import { useWarehouseLocations } from "../../../hooks/useWarehouses";
+import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -56,10 +58,8 @@ interface ExportItemData {
 }
 
 const EXPORT_TYPES = [
-  { value: "INTERNAL", vi: "Nội bộ", zh: "内部" },
-  { value: "GIFT_MANUAL", vi: "Quà tặng", zh: "礼品" },
-  { value: "ADJUSTMENT", vi: "Điều chỉnh", zh: "调整" },
   { value: "TRANSFER", vi: "Điều chuyển", zh: "调拨" },
+  { value: "ADJUSTMENT", vi: "Điều chỉnh", zh: "调整" },
 ];
 
 const STEPS = [
@@ -87,15 +87,16 @@ export default function CreateExportTab({ onCreated }: Props) {
 
   // Form state
   const [warehouseId, setWarehouseId] = useState("");
-  const [exportType, setExportType] = useState("INTERNAL");
-  const [recipientName, setRecipientName] = useState("");
-  const [recipientDept, setRecipientDept] = useState("");
+  const [exportType, setExportType] = useState("TRANSFER");
+  const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ExportItemData[]>([]);
 
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     warehouseId || undefined,
   );
+  const { getLocationsForProduct, getAtp, loading: inventoryLoading } =
+    useInventoryByWarehouse(warehouseId || undefined);
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products;
@@ -118,8 +119,16 @@ export default function CreateExportTab({ onCreated }: Props) {
     switch (step) {
       case 0:
         return files.length > 0 && files.every((f) => !f.error);
-      case 1:
-        return warehouseId !== "" && exportType !== "";
+      case 1: {
+        const baseValid = warehouseId !== "" && exportType !== "";
+        if (exportType === "TRANSFER") {
+          return baseValid && destinationWarehouseId !== "" && destinationWarehouseId !== warehouseId;
+        }
+        if (exportType === "ADJUSTMENT") {
+          return baseValid && notes.trim().length > 0;
+        }
+        return baseValid;
+      }
       case 2:
         return (
           items.length > 0 &&
@@ -130,7 +139,7 @@ export default function CreateExportTab({ onCreated }: Props) {
       default:
         return true;
     }
-  }, [step, files, warehouseId, exportType, items]);
+  }, [step, files, warehouseId, exportType, destinationWarehouseId, notes, items]);
 
   const addProduct = useCallback(
     (productId: string) => {
@@ -191,8 +200,10 @@ export default function CreateExportTab({ onCreated }: Props) {
       await createExportVoucher({
         warehouse_id: warehouseId,
         export_type: exportType,
-        recipient_name: recipientName || undefined,
-        recipient_department: recipientDept || undefined,
+        recipient_name: exportType === "TRANSFER"
+          ? warehouses.find((w) => w.id === destinationWarehouseId)?.name || undefined
+          : undefined,
+        recipient_department: exportType === "TRANSFER" ? destinationWarehouseId : undefined,
         notes: notes || undefined,
         attachment_urls: uploadedUrls,
         items: items.map((item) => ({
@@ -275,57 +286,108 @@ export default function CreateExportTab({ onCreated }: Props) {
         {/* Step 1: Info */}
         {step === 1 && (
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-600">Kho xuất *</label>
-              <select
-                value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
-                disabled={warehousesLoading}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
-              >
-                <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho xuất —"}</option>
-                {warehouses.map((wh) => (
-                  <option key={wh.id} value={wh.id}>{wh.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Loại xuất */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-600">Loại xuất *</label>
-              <select
-                value={exportType}
-                onChange={(e) => setExportType(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-              >
+              <div className="flex gap-2">
                 {EXPORT_TYPES.map((et) => (
-                  <option key={et.value} value={et.value}>{et.vi}</option>
+                  <button
+                    key={et.value}
+                    type="button"
+                    onClick={() => { setExportType(et.value); setDestinationWarehouseId(""); }}
+                    className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                      exportType === et.value
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {et.vi}
+                  </button>
                 ))}
-              </select>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-600">Người nhận</label>
-                <input
-                  type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="Tên người nhận hàng..."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-600">Bộ phận</label>
-                <input
-                  type="text" value={recipientDept} onChange={(e) => setRecipientDept(e.target.value)}
-                  placeholder="Phòng ban / bộ phận..."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-                />
               </div>
             </div>
+
+            {/* TRANSFER: Kho nguồn + Kho đích */}
+            {exportType === "TRANSFER" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-600">Kho nguồn (xuất) *</label>
+                  <select
+                    value={warehouseId}
+                    onChange={(e) => setWarehouseId(e.target.value)}
+                    disabled={warehousesLoading}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                  >
+                    <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho nguồn —"}</option>
+                    {warehouses.map((wh) => (
+                      <option key={wh.id} value={wh.id} disabled={wh.id === destinationWarehouseId}>
+                        {wh.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-600">Kho đích (nhận) *</label>
+                  <select
+                    value={destinationWarehouseId}
+                    onChange={(e) => setDestinationWarehouseId(e.target.value)}
+                    disabled={warehousesLoading}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                  >
+                    <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho đích —"}</option>
+                    {warehouses.filter((wh) => wh.id !== warehouseId).map((wh) => (
+                      <option key={wh.id} value={wh.id}>
+                        {wh.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {warehouseId && destinationWarehouseId && warehouseId === destinationWarehouseId && (
+                  <div className="col-span-full flex items-center gap-1.5 text-xs text-red-500">
+                    <AlertTriangle size={14} />
+                    <span>Kho nguồn và kho đích không được trùng nhau</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ADJUSTMENT: Kho xuất */}
+            {exportType === "ADJUSTMENT" && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-600">Kho thực hiện *</label>
+                <select
+                  value={warehouseId}
+                  onChange={(e) => setWarehouseId(e.target.value)}
+                  disabled={warehousesLoading}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                >
+                  <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho —"}</option>
+                  {warehouses.map((wh) => (
+                    <option key={wh.id} value={wh.id}>{wh.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Ghi chú / Lý do */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-600">Ghi chú</label>
+              <label className="mb-1 block text-sm font-medium text-gray-600">
+                {exportType === "ADJUSTMENT" ? "Lý do điều chỉnh *" : "Ghi chú"}
+              </label>
               <textarea
-                value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-                placeholder="Ghi chú bổ sung..."
-                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder={exportType === "ADJUSTMENT" ? "Nhập lý do điều chỉnh..." : "Ghi chú bổ sung..."}
+                className={`w-full resize-none rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 ${
+                  exportType === "ADJUSTMENT" && notes.trim().length === 0
+                    ? "border-red-300"
+                    : "border-gray-200"
+                }`}
               />
+              {exportType === "ADJUSTMENT" && notes.trim().length === 0 && (
+                <p className="mt-1 text-xs text-red-500">Bắt buộc nhập lý do khi loại xuất là Điều chỉnh</p>
+              )}
             </div>
           </div>
         )}
@@ -411,17 +473,54 @@ export default function CreateExportTab({ onCreated }: Props) {
                           </div>
                           <div>
                             <label className="mb-0.5 block text-[11px] text-gray-400">Vị trí kho *</label>
-                            <select value={item.warehouse_location_id} onChange={(e) => updateItem(item.id, "warehouse_location_id", e.target.value)}
-                              disabled={locationsLoading || !warehouseId}
-                              className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400 disabled:opacity-50"
-                            >
-                              <option value="">{!warehouseId ? "Chọn kho trước" : locationsLoading ? "Đang tải..." : "— Vị trí —"}</option>
-                              {locations.map((loc) => (
-                                <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
-                              ))}
-                            </select>
+                            {(() => {
+                              const productLocations = getLocationsForProduct(item.product_id);
+                              const hasLocations = productLocations.length > 0;
+                              const isLoading = locationsLoading || inventoryLoading;
+                              return (
+                                <select
+                                  value={item.warehouse_location_id}
+                                  onChange={(e) => updateItem(item.id, "warehouse_location_id", e.target.value)}
+                                  disabled={isLoading || !warehouseId || !hasLocations}
+                                  className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400 disabled:opacity-50 ${
+                                    !hasLocations && !isLoading && warehouseId ? "border-amber-300" : "border-gray-200"
+                                  }`}
+                                >
+                                  <option value="">
+                                    {!warehouseId
+                                      ? "Chọn kho trước"
+                                      : isLoading
+                                        ? "Đang tải..."
+                                        : !hasLocations
+                                          ? "⚠ Không có vị trí nào chứa sản phẩm này"
+                                          : "— Chọn vị trí —"}
+                                  </option>
+                                  {productLocations.map((pl) => {
+                                    const loc = locations.find((l) => l.id === pl.locationId);
+                                    return (
+                                      <option key={pl.locationId} value={pl.locationId}>
+                                        {loc ? `${loc.name} (${loc.code})` : pl.locationId} · Khả dụng: {pl.atpQty}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
+                              );
+                            })()}
                           </div>
                         </div>
+                        {/* ATP warning */}
+                        {item.warehouse_location_id && item.quantity > 0 && (() => {
+                          const atp = getAtp(item.product_id, item.warehouse_location_id);
+                          if (item.quantity > atp) {
+                            return (
+                              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
+                                <AlertTriangle size={12} className="shrink-0" />
+                                <span>SL xuất ({item.quantity}) vượt quá khả dụng ({atp}). Phiếu sẽ bị từ chối khi duyệt.</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     );
                   })}
@@ -437,17 +536,19 @@ export default function CreateExportTab({ onCreated }: Props) {
             <h3 className="text-sm font-semibold text-gray-900">Xác nhận thông tin xuất kho</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Kho xuất</span>
-                <span className="font-medium">{warehouses.find((w) => w.id === warehouseId)?.name || "—"}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-100 py-2">
                 <span className="text-gray-500">Loại xuất</span>
                 <span className="font-medium">{EXPORT_TYPES.find((e) => e.value === exportType)?.vi || exportType}</span>
               </div>
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Người nhận</span>
-                <span className="font-medium">{recipientName || "—"}</span>
+                <span className="text-gray-500">{exportType === "TRANSFER" ? "Kho nguồn" : "Kho thực hiện"}</span>
+                <span className="font-medium">{warehouses.find((w) => w.id === warehouseId)?.name || "—"}</span>
               </div>
+              {exportType === "TRANSFER" && (
+                <div className="flex justify-between border-b border-gray-100 py-2">
+                  <span className="text-gray-500">Kho đích</span>
+                  <span className="font-medium">{warehouses.find((w) => w.id === destinationWarehouseId)?.name || "—"}</span>
+                </div>
+              )}
               <div className="flex justify-between border-b border-gray-100 py-2">
                 <span className="text-gray-500">Tệp đính kèm</span>
                 <span className="font-medium">{files.length} tệp</span>
@@ -459,7 +560,7 @@ export default function CreateExportTab({ onCreated }: Props) {
             </div>
             {notes && (
               <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
-                <span className="font-medium">Ghi chú:</span> {notes}
+                <span className="font-medium">{exportType === "ADJUSTMENT" ? "Lý do:" : "Ghi chú:"}</span> {notes}
               </div>
             )}
           </div>
