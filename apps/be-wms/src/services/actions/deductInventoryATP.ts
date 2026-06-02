@@ -12,6 +12,10 @@
  * Phase 1: Read all inventory records + validate ATP sufficiency
  * Phase 2: Write all deductions + mark voucher atp_deducted=true
  *
+ * TRANSFER SUPPORT:
+ * If the export voucher is linked to a transfer order (reference_type = 'TRANSFER_ORDER'),
+ * the deducted quantity is moved to in_transit_quantity instead of simply removed.
+ *
  * IDEMPOTENCY: Checks voucher.atp_deducted flag before executing.
  * ═══════════════════════════════════════════════════════════════
  */
@@ -38,6 +42,8 @@ export async function deductInventoryATP(
   voucherId: string,
   userId: string,
 ): Promise<{ items_deducted: number }> {
+  console.log(`[deductInventoryATP] ▶ Starting for voucher ${voucherId}`);
+
   // Read voucher
   const voucherRef = db.collection("export_vouchers").doc(voucherId);
   const voucherSnap = await voucherRef.get();
@@ -56,11 +62,15 @@ export async function deductInventoryATP(
 
   // Idempotency check
   if (voucher.atp_deducted === true) {
-    console.log(`[deductInventoryATP] Skipping — already deducted for ${voucherId}`);
+    console.log(`[deductInventoryATP] ⏭ Skipping — already deducted for ${voucherId}`);
     return { items_deducted: 0 };
   }
 
   const warehouseId = voucher.warehouse_id as string;
+
+  // Check if this export is linked to a transfer order
+  const isTransferExport = voucher.reference_type === "TRANSFER_ORDER";
+  console.log(`[deductInventoryATP] warehouseId=${warehouseId}, isTransferExport=${isTransferExport}`);
 
   // Read voucher items
   const itemsSnap = await voucherRef
@@ -78,12 +88,24 @@ export async function deductInventoryATP(
     });
   }
 
-  // Validate items
+  // Validate items and log picked quantities
   const deductItems: DeductItem[] = [];
+  console.log(`[deductInventoryATP] Found ${itemsSnap.docs.length} items in voucher`);
+
   for (const doc of itemsSnap.docs) {
     const item = doc.data();
     const pickedQty = (item.picked_quantity as number) || 0;
-    if (pickedQty <= 0) continue;
+    const requestedQty = (item.quantity as number) || 0;
+
+    console.log(
+      `[deductInventoryATP]   Item ${doc.id}: product=${item.product_id}, ` +
+      `requested=${requestedQty}, picked=${pickedQty}`,
+    );
+
+    if (pickedQty <= 0) {
+      console.warn(`[deductInventoryATP]   ⚠ Skipping item ${doc.id} — picked_quantity=0`);
+      continue;
+    }
 
     deductItems.push({
       productId: item.product_id as string,
@@ -93,6 +115,7 @@ export async function deductInventoryATP(
   }
 
   if (deductItems.length === 0) {
+    console.error(`[deductInventoryATP] ❌ All items have picked_quantity=0! Cannot deduct.`);
     throw Object.assign(new Error("No picked items"), {
       statusCode: 400,
       messages: {
@@ -101,6 +124,8 @@ export async function deductInventoryATP(
       },
     });
   }
+
+  console.log(`[deductInventoryATP] ${deductItems.length} items ready for deduction`);
 
   // ══════════════════════════════════════════════════════════════
   // 2-PHASE TRANSACTION — HARD BLOCK on negative ATP
@@ -130,6 +155,7 @@ export async function deductInventoryATP(
       ref: FirebaseFirestore.DocumentReference;
       existing: Inventory;
       newAtp: number;
+      deductQty: number;
     }> = [];
 
     for (let i = 0; i < deductItems.length; i++) {
@@ -137,6 +163,10 @@ export async function deductInventoryATP(
       const invSnap = snapshots[i];
 
       if (invSnap.empty) {
+        console.error(
+          `[deductInventoryATP] ❌ No inventory record for product=${di.productId}, ` +
+          `location=${di.locationId}, warehouse=${warehouseId}`,
+        );
         throw Object.assign(new Error("Inventory not found"), {
           statusCode: 400,
           messages: {
@@ -146,8 +176,16 @@ export async function deductInventoryATP(
         });
       }
 
-      const existing = invSnap.docs[0].data() as Inventory;
+      // Use Firestore document reference directly from the query result
+      const invDoc = invSnap.docs[0];
+      const existing = invDoc.data() as Inventory;
       const newAtp = existing.atp_quantity - di.pickedQty;
+
+      console.log(
+        `[deductInventoryATP]   Inventory ${invDoc.id}: ` +
+        `currentATP=${existing.atp_quantity}, deduct=${di.pickedQty}, newATP=${newAtp}, ` +
+        `in_transit=${existing.in_transit_quantity}`,
+      );
 
       // ── HARD BLOCK: Negative ATP prevention ──
       if (newAtp < 0) {
@@ -161,9 +199,10 @@ export async function deductInventoryATP(
       }
 
       updates.push({
-        ref: db.collection("inventory").doc(existing.id),
+        ref: invDoc.ref, // Use doc.ref directly — guaranteed correct reference
         existing,
         newAtp,
+        deductQty: di.pickedQty,
       });
     }
 
@@ -171,19 +210,37 @@ export async function deductInventoryATP(
     const now = new Date();
 
     for (let i = 0; i < updates.length; i++) {
-      const { ref, existing, newAtp } = updates[i];
+      const { ref, existing, newAtp, deductQty } = updates[i];
+
+      // For transfer exports: move deducted amount to in_transit
+      // For regular exports: simply remove from ATP (goods leave warehouse)
+      const newInTransit = isTransferExport
+        ? existing.in_transit_quantity + deductQty
+        : existing.in_transit_quantity;
+
       const newTotal =
         newAtp +
         existing.on_hold_quantity +
-        existing.in_transit_quantity +
+        newInTransit +
         existing.quarantine_quantity;
 
-      txn.update(ref, {
+      const updatePayload: Record<string, unknown> = {
         atp_quantity: newAtp,
         total_quantity: newTotal,
         last_updated_at: now,
-      });
+      };
 
+      // Only write in_transit_quantity if this is a transfer
+      if (isTransferExport) {
+        updatePayload.in_transit_quantity = newInTransit;
+      }
+
+      console.log(
+        `[deductInventoryATP]   WRITE ${ref.id}: ` +
+        `atp=${newAtp}, in_transit=${newInTransit}, total=${newTotal}`,
+      );
+
+      txn.update(ref, updatePayload);
       totalDeducted++;
     }
 
@@ -192,6 +249,8 @@ export async function deductInventoryATP(
       atp_deducted: true,
       updated_at: now,
     });
+
+    console.log(`[deductInventoryATP] ✅ Transaction committed: ${totalDeducted} items deducted`);
   });
 
   // Audit trail (outside transaction for reliability)
@@ -205,12 +264,14 @@ export async function deductInventoryATP(
     new_value: {
       action: "DEDUCT_INVENTORY_ATP",
       items_deducted: totalDeducted,
+      is_transfer_export: isTransferExport,
       warehouse_id: warehouseId,
     },
   });
 
   console.log(
-    `[deductInventoryATP] ✅ Deducted ${totalDeducted} items for voucher ${voucherId}`,
+    `[deductInventoryATP] ✅ Completed: ${totalDeducted} items deducted for voucher ${voucherId}` +
+    (isTransferExport ? " (transfer → in_transit incremented)" : ""),
   );
 
   return { items_deducted: totalDeducted };

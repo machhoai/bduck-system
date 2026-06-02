@@ -30,6 +30,43 @@ interface UseApprovalTasksReturn {
   taskCount: number;
 }
 
+function toTime(value: unknown): number {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+
+  if (typeof value === "object" && value !== null) {
+    const timestamp = value as {
+      toDate?: () => Date;
+      toMillis?: () => number;
+      seconds?: number;
+      _seconds?: number;
+    };
+
+    if (typeof timestamp.toDate === "function") {
+      try {
+        const date = timestamp.toDate();
+        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+      } catch {
+        // Firestore Timestamp methods rely on their original receiver.
+      }
+    }
+
+    if (typeof timestamp.toMillis === "function") {
+      try {
+        return timestamp.toMillis();
+      } catch {
+        return 0;
+      }
+    }
+
+    if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
+    if (typeof timestamp._seconds === "number") return timestamp._seconds * 1000;
+  }
+
+  const time = new Date(value as string | number).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 export function useApprovalTasks(): UseApprovalTasksReturn {
   const [allRecords, setAllRecords] = useState<ApprovalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,13 +104,7 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
 
         // Sort by created_at DESC (newest first)
         records.sort((a, b) => {
-          const aTime = a.created_at instanceof Date
-            ? a.created_at.getTime()
-            : new Date(a.created_at as unknown as string).getTime();
-          const bTime = b.created_at instanceof Date
-            ? b.created_at.getTime()
-            : new Date(b.created_at as unknown as string).getTime();
-          return bTime - aTime;
+          return toTime(b.created_at) - toTime(a.created_at);
         });
 
         setAllRecords(records);

@@ -121,6 +121,42 @@ export const ENTITY_STEPS: Partial<
       },
     },
   ],
+  TRANSFER_ORDER: [
+    {
+      key: "create_export",
+      label: { vi: "Tạo lệnh xuất kho", zh: "创建出库单" },
+      description: {
+        vi: "Sau khi duyệt, hệ thống tự tạo phiếu xuất hay chờ thao tác thủ công.",
+        zh: "审批通过后，系统自动创建出库单还是等待手动操作。",
+      },
+    },
+    {
+      key: "picking",
+      label: { vi: "Soạn hàng xuất kho", zh: "出库拣货" },
+      description: {
+        vi: "Người phụ trách soạn và xác nhận hàng xuất.",
+        zh: "负责人拣货并确认出库商品。",
+      },
+    },
+    {
+      key: "receiving",
+      label: { vi: "Kiểm đếm nhận hàng", zh: "收货盘点" },
+      description: {
+        vi: "Người phụ trách xác nhận số lượng thực nhận tại kho đích.",
+        zh: "负责人在目标仓库确认实际收货数量。",
+      },
+    },
+  ],
+  TRANSFER_INTRA: [
+    {
+      key: "location_move",
+      label: { vi: "Di chuyển vị trí", zh: "库位移动" },
+      description: {
+        vi: "Thao tác di chuyển hàng hóa giữa các vị trí trong kho.",
+        zh: "在仓库内库位间移动货品的操作。",
+      },
+    },
+  ],
 };
 
 export const DEFAULT_STEP_OPTION: StepOption = {

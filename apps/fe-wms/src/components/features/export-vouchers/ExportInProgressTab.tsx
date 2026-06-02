@@ -28,48 +28,28 @@ interface Props {
   onClone: (data: Record<string, unknown>) => void;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<
-    string,
-    { label: string; color: string; Icon: React.ElementType }
-  > = {
-    DRAFT: { label: "Nháp", color: "bg-gray-100 text-gray-600", Icon: Clock },
-    PENDING_APPROVAL: {
-      label: "Chờ duyệt",
-      color: "bg-amber-50 text-amber-700",
-      Icon: Clock,
-    },
-    APPROVED: {
-      label: "Đã duyệt",
-      color: "bg-blue-50 text-blue-700",
-      Icon: CheckCircle,
-    },
-    REJECTED: {
-      label: "Từ chối",
-      color: "bg-red-50 text-red-700",
-      Icon: XCircle,
-    },
-    PICKING: {
-      label: "Đang soạn hàng",
-      color: "bg-purple-50 text-purple-700",
-      Icon: PackageOpen,
-    },
-    SHIPPED: {
-      label: "Đã bàn giao",
-      color: "bg-teal-50 text-teal-700",
-      Icon: Truck,
-    },
-  };
+const STATUS_CONFIG: Record<
+  string,
+  { color: string; Icon: React.ElementType }
+> = {
+  DRAFT: { color: "bg-gray-100 text-gray-600", Icon: Clock },
+  PENDING_APPROVAL: { color: "bg-amber-50 text-amber-700", Icon: Clock },
+  APPROVED: { color: "bg-blue-50 text-blue-700", Icon: CheckCircle },
+  REJECTED: { color: "bg-red-50 text-red-700", Icon: XCircle },
+  PICKING: { color: "bg-purple-50 text-purple-700", Icon: PackageOpen },
+  SHIPPED: { color: "bg-teal-50 text-teal-700", Icon: Truck },
+};
 
-  const cfg = config[status] || config.DRAFT;
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT;
   const Icon = cfg.Icon;
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${cfg.color}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xxs font-semibold ${cfg.color}`}
     >
       <Icon size={12} />
-      {cfg.label}
+      {label}
     </span>
   );
 }
@@ -105,6 +85,7 @@ function getClonePayload(voucher: ExportVoucher) {
 
 export default function ExportInProgressTab({ vouchers, onClone }: Props) {
   const { t } = useTranslation();
+  const exportText = t.exportVoucher as any;
   const { warehouses } = useWarehouses();
   const user = useUserStore((state) => state.user);
   const roleIds = useUserStore((state) => state.roleIds);
@@ -149,23 +130,26 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
     [processConfig, roleIds, user?.id],
   );
 
-  const handleCompleteExport = useCallback(async (voucherId: string) => {
-    await gooeyToast.promise(completeExportVoucher(voucherId), {
-      loading: "Đang hoàn tất xuất kho...",
-      success: "Phiếu xuất kho đã hoàn tất",
-      error: "Lỗi hoàn tất xuất kho",
-      description: {
-        success: "Phiếu đã chuyển sang trạng thái COMPLETED.",
-        error: "Vui lòng thử lại.",
-      },
-      action: {
-        error: {
-          label: "Thử lại",
-          onClick: () => void handleCompleteExport(voucherId),
+  const handleCompleteExport = useCallback(
+    async (voucherId: string) => {
+      await gooeyToast.promise(completeExportVoucher(voucherId), {
+        loading: exportText.toast.completing,
+        success: exportText.toast.completeSuccess,
+        error: exportText.toast.completeError,
+        description: {
+          success: exportText.toast.completeSuccessDesc,
+          error: t.common.retry,
         },
-      },
-    });
-  }, []);
+        action: {
+          error: {
+            label: t.common.retry,
+            onClick: () => void handleCompleteExport(voucherId),
+          },
+        },
+      });
+    },
+    [exportText.toast, t.common.retry],
+  );
 
   if (vouchers.length === 0) {
     return (
@@ -174,10 +158,10 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
           <PackageMinus size={24} className="text-[var(--color-text-muted)]" />
         </div>
         <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
-          {t.exportVoucher?.empty ?? "Không có phiếu xuất nào đang xử lý"}
+          {t.exportVoucher.empty}
         </p>
-        <p className="max-w-sm text-xs leading-5 text-[var(--color-text-muted)]">
-          Tạo phiếu mới ở tab tạo mới để bắt đầu quy trình xuất kho.
+        <p className="w-full text-xs leading-5 text-[var(--color-text-muted)]">
+          {exportText.emptyHint}
         </p>
       </div>
     );
@@ -191,6 +175,8 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
         const isApproved = voucher.status === ExportVoucherStatus.APPROVED;
         const isShipped = voucher.status === ExportVoucherStatus.SHIPPED;
         const canPick = isApproved && canPerformPicking(voucher);
+        const statusLabel =
+          exportText.status?.[voucher.status] ?? voucher.status;
 
         return (
           <article
@@ -203,7 +189,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                   <p className="text-base font-bold text-[var(--color-text-primary)] tabular-nums">
                     {voucher.voucher_number}
                   </p>
-                  <StatusBadge status={voucher.status} />
+                  <StatusBadge status={voucher.status} label={statusLabel} />
                 </div>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                   {voucher.recipient_name || voucher.export_type}
@@ -216,7 +202,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                   {warehouse?.code ? ` / ${warehouse.code}` : ""}
                 </p>
               </div>
-              <p className="shrink-0 text-right text-[11px] tabular-nums text-[var(--color-text-muted)]">
+              <p className="shrink-0 text-right text-xxs tabular-nums text-[var(--color-text-muted)]">
                 {formatDate(voucher.created_at)}
               </p>
             </div>
@@ -224,7 +210,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
             {voucher.notes && (
               <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
                 <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
-                  Ghi chú
+                  {exportText.form.notes}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
                   {voucher.notes}
@@ -236,20 +222,20 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
               <button
                 type="button"
                 onClick={() => setSelectedId(voucher.id)}
-                className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] sm:h-8 sm:text-xs"
+                className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] sm:h-8 sm:text-xs"
               >
                 <Eye size={14} />
-                Xem chi tiết
+                {exportText.actions.viewDetail}
               </button>
 
               {isDraft && (
                 <button
                   type="button"
                   onClick={() => onClone(getClonePayload(voucher))}
-                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-50 px-3 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100 sm:h-8 sm:text-xs"
+                  className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-50 px-3 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100 sm:h-8 sm:text-xs"
                 >
                   <Copy size={14} />
-                  Sửa phiếu
+                  {exportText.actions.editVoucher}
                 </button>
               )}
 
@@ -257,10 +243,10 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                 <button
                   type="button"
                   onClick={() => setPickingVoucherId(voucher.id)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-orange-700 sm:h-8 sm:text-xs"
+                  className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-orange-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-orange-700 sm:h-8 sm:text-xs"
                 >
                   <Play size={14} />
-                  Soạn hàng
+                  {exportText.actions.pick}
                 </button>
               )}
 
@@ -268,10 +254,10 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                 <button
                   type="button"
                   onClick={() => void handleCompleteExport(voucher.id)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:h-8 sm:text-xs"
+                  className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:h-8 sm:text-xs"
                 >
                   <CheckCircle size={14} />
-                  Hoàn tất
+                  {exportText.actions.complete}
                 </button>
               )}
             </div>

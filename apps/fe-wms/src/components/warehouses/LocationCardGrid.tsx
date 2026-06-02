@@ -31,17 +31,17 @@ export function LocationCardGrid({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
             {t.warehouses.locationList}
           </h2>
-          <p className="text-[17px] text-[var(--color-text-muted)]">
+          <p className="text-sm text-[var(--color-text-muted)]">
             {t.warehouses.locationListHint}
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-5 text-[15px] font-medium text-white shadow-sm transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.warehouses.addLocation}
@@ -53,7 +53,7 @@ export function LocationCardGrid({
       ) : locations.length === 0 ? (
         <div className="flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
           <MapPin size={42} className="mb-3 text-[var(--color-text-muted)]" />
-          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t.warehouses.emptyLocations}
           </h3>
         </div>
@@ -167,7 +167,7 @@ export function LocationCardGrid({
                               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                 {item.totalQuantity.toLocaleString()}
                               </p>
-                              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
+                              <p className="text-xxs uppercase text-[var(--color-text-muted)]">
                                 {item.product.unit}
                               </p>
                             </div>
@@ -197,7 +197,7 @@ function StatusBadge({ status }: { status: LocationStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${classes}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xxs font-bold uppercase tracking-wider ${classes}`}
     >
       {t.warehouses.statuses[status]}
     </span>

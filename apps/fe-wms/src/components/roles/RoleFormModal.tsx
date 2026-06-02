@@ -129,9 +129,9 @@ export function RoleFormModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-            <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+            <div className="flex max-h-[92vh] w-[90%] max-w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
-                    <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+                    <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
                         {role ? t.rbac.editRole : t.rbac.addRole}
                     </h2>
                     <button
@@ -156,7 +156,7 @@ export function RoleFormModal({
                             required
                             value={name}
                             onChange={(event) => setName(event.target.value)}
-                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </label>
 
@@ -169,7 +169,7 @@ export function RoleFormModal({
                                 type="color"
                                 value={color}
                                 onChange={(event) => setColor(event.target.value)}
-                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-2"
+                                className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-2"
                             />
                         </label>
 
@@ -180,7 +180,7 @@ export function RoleFormModal({
                             <select
                                 value={parentId}
                                 onChange={(event) => setParentId(event.target.value)}
-                                className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                             >
                                 <option value="">{t.rbac.rootRole}</option>
                                 {roles
@@ -244,7 +244,7 @@ export function RoleFormModal({
                                                 {groupLabel}
                                             </span>
                                             {activeCount > 0 && (
-                                                <span className="rounded-full bg-[var(--color-brand-primary)] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                                                <span className="rounded-full bg-[var(--color-brand-primary)] px-2.5 py-0.5 text-xxs font-semibold text-white">
                                                     {activeCount}/{groupPerms.length}
                                                 </span>
                                             )}
@@ -302,7 +302,7 @@ export function RoleFormModal({
                         type="button"
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="h-10 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
+                        className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
                     >
                         {t.common.cancel}
                     </button>
@@ -310,7 +310,7 @@ export function RoleFormModal({
                         type="submit"
                         form="roleForm"
                         disabled={isSubmitting}
-                        className="h-10 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
+                        className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
                     >
                         {t.common.save}
                     </button>

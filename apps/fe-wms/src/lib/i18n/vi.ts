@@ -21,6 +21,7 @@ const vi = {
     tasks: "Việc cần xử lý",
     workflows: "Quy trình",
     processConfigs: "Cấu hình quy trình",
+    expenses: "Chi phí",
     more: "Thêm",
   },
 
@@ -882,7 +883,160 @@ const vi = {
       intraSuccessDesc: "Hàng hóa đã được di chuyển ngay lập tức.",
     },
   },
+
+  expenses: {
+    title: "Quản lý chi phí",
+    subtitle: "Theo dõi và quản lý chi phí vận hành theo kỳ kế toán",
+    status: {
+      OPEN: "Đang mở",
+      CLOSED: "Đã chốt",
+    },
+    columns: {
+      category: "Tên chi phí",
+      budget: "Ngân sách",
+      actual: "Thực chi",
+      variance: "Chênh lệch %",
+    },
+    costCenter: {
+      OPERATIONS: "Vận hành",
+      HR: "Nhân sự",
+      MARKETING: "Marketing & Hàng bán",
+      OTHERS: "Khác",
+    },
+    category: {
+      RENT: "Thuê mặt bằng",
+      ELECTRICITY: "Điện",
+      WATER: "Nước",
+      TRASH_COLLECTION: "Thu gom rác",
+      DRINKING_WATER: "Nước uống",
+      SOCIAL_INSURANCE: "Bảo hiểm xã hội",
+      SALARY_FULLTIME: "Lương toàn thời gian",
+      SALARY_PARTTIME: "Lương bán thời gian",
+      MARKETING: "Marketing",
+      GIFT_EXPENSE: "Chi phí quà tặng",
+      COGS: "Giá vốn hàng bán (COGS)",
+      CONSUMABLE_SUPPLIES: "Vật tư tiêu hao",
+      OTHERS: "Khác",
+    },
+    dashboard: {
+      grossRevenue: "Tổng Doanh thu",
+      totalExpenses: "Tổng Chi phí",
+      netProfit: "Lợi nhuận Ròng",
+      profitMargin: "Tỷ suất LN",
+      revenueVsExpenses: "Doanh thu vs Chi phí",
+      expenseBreakdown: "Phân bổ Chi phí",
+      overBudgetStores: "Cửa hàng vượt ngân sách",
+      noOverBudget: "Không có cửa hàng nào vượt ngân sách",
+    },
+    actions: {
+      closePeriod: "Chốt kỳ",
+      closePeriodConfirm: "Bạn có chắc muốn chốt kỳ? Sau khi chốt sẽ không thể chỉnh sửa.",
+      saving: "Đang lưu...",
+      saved: "Đã lưu",
+      saveFailed: "Lưu thất bại",
+      closing: "Đang chốt kỳ...",
+      closed: "Đã chốt kỳ kế toán",
+      closeFailed: "Chốt kỳ thất bại",
+    },
+    selectors: {
+      allWarehouses: "Tất cả cửa hàng (Tổng hợp)",
+    },
+    hint: {
+      suggested: "Gợi ý",
+      apply: "Áp dụng",
+      selectWarehouse: "Chế độ tổng hợp chỉ để xem. Chọn cửa hàng cụ thể để nhập liệu chi phí.",
+    },
+    total: "TỔNG CỘNG",
+  },
 };
+
+Object.assign(vi.importVoucher, {
+  form: {
+    ...vi.importVoucher.form,
+    productSearch: "Tìm theo tên, SKU hoặc barcode sản phẩm...",
+    noItems: "Chọn sản phẩm để thêm vào phiếu nhập.",
+  },
+  empty: {
+    ...vi.importVoucher.empty,
+    noMatches: "Không tìm thấy phiếu phù hợp.",
+  },
+  filter: {
+    ...vi.importVoucher.filter,
+    results: "kết quả",
+  },
+  actions: {
+    viewDetail: "Xem chi tiết",
+    editVoucher: "Sửa phiếu",
+    continue: "Tiếp tục",
+    clone: "Tạo lại",
+  },
+});
+
+Object.assign(vi.exportVoucher, {
+  emptyHint: "Tạo phiếu mới ở tab Tạo mới để bắt đầu.",
+  historySearchPlaceholder: "Tìm theo mã phiếu, người nhận, loại xuất...",
+  toast: {
+    ...vi.exportVoucher.toast,
+    completing: "Đang hoàn tất xuất kho...",
+    completeSuccess: "Đã hoàn thành phiếu xuất",
+    completeError: "Lỗi khi hoàn thành phiếu xuất",
+    completeSuccessDesc: "Phiếu đã được chuyển sang trạng thái hoàn thành.",
+  },
+  form: {
+    exportType: "Loại xuất kho",
+    warehouse: "Kho xuất",
+    destinationWarehouse: "Kho đích",
+    recipient: "Người nhận",
+    department: "Bộ phận",
+    notes: "Ghi chú",
+    productSearch: "Tìm theo tên, SKU hoặc barcode sản phẩm...",
+    noItems: "Chọn sản phẩm để thêm vào phiếu xuất.",
+    quantity: "Số lượng xuất",
+    unitPrice: "Đơn giá",
+    location: "Vị trí",
+    submit: "Gửi duyệt",
+  },
+  actions: {
+    viewDetail: "Xem chi tiết",
+    editVoucher: "Sửa phiếu",
+    pick: "Soạn hàng",
+    complete: "Hoàn thành",
+    clone: "Tạo lại",
+  },
+  filter: {
+    status: "Trạng thái",
+    warehouse: "Kho xuất",
+    all: "Tất cả",
+    clearFilters: "Xóa bộ lọc",
+    results: "kết quả",
+    noMatches: "Không tìm thấy phiếu phù hợp.",
+  },
+});
+
+Object.assign(vi.transfer, {
+  toast: {
+    ...vi.transfer.toast,
+    intraCreating: "Đang thực hiện điều chuyển trong kho...",
+  },
+  metrics: {
+    inProgress: "Đang xử lý",
+    pendingApproval: "Chờ duyệt",
+    completed: "Hoàn thành",
+  },
+  empty: {
+    inProgress: "Không có phiếu điều chuyển đang xử lý",
+    inProgressHint: "Tạo phiếu mới ở tab Tạo mới để bắt đầu.",
+  },
+  filter: {
+    all: "Tất cả",
+    intra: "Trong kho",
+    inter: "Liên kho",
+  },
+  actions: {
+    viewDetail: "Chi tiết",
+    delete: "Xóa",
+  },
+});
 
 export type Dictionary = typeof vi;
 export default vi;

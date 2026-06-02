@@ -84,7 +84,7 @@ export default function CategoryTreeNode({
       >
         <div
           className="
-            group mx-2 flex min-h-12 items-center gap-2 rounded-lg border border-transparent
+            group mx-2 flex min-h-8 items-center gap-2 rounded-lg border border-transparent
             px-2.5 py-2 transition-all duration-150
             hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-card)]
           "

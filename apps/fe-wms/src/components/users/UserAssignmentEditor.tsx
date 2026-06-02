@@ -56,7 +56,7 @@ export function UserAssignmentEditor({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           {t.users.roleAssignments}
         </h3>
         <button
@@ -141,7 +141,7 @@ export function UserAssignmentEditor({
 }
 
 const inputClassName =
-  "h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
+  "h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
 
 function Field({
   label,

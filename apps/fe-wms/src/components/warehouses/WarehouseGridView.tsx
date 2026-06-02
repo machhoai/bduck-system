@@ -43,7 +43,7 @@ export function WarehouseGridView({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
             {t.warehouses.warehouseList}
           </h2>
           <p className="text-sm text-gray-500">
@@ -53,7 +53,7 @@ export function WarehouseGridView({
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.warehouses.addNew}
@@ -68,10 +68,10 @@ export function WarehouseGridView({
             size={42}
             className="mb-3 text-[var(--color-text-muted)]"
           />
-          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t.warehouses.empty}
           </h3>
-          <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             {t.warehouses.emptyHint}
           </p>
         </div>
@@ -111,7 +111,7 @@ function WarehouseCard({
       <div>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
+            <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
               {warehouse.name}
             </p>
             <p className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">

@@ -48,7 +48,7 @@ export function ImageUploadField({
       </div>
       <label
         htmlFor={inputId}
-        className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-normal text-[var(--color-text-secondary)] transition-all active:scale-95 ${
+        className={`inline-flex h-8 w-full items-center justify-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-normal text-[var(--color-text-secondary)] transition-all active:scale-95 ${
           disabled
             ? "cursor-not-allowed opacity-50"
             : "cursor-pointer hover:bg-[var(--color-surface-card)]"

@@ -35,7 +35,11 @@
         "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
         "docker:dev:rebuild": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d --build",
         "--- GIT HOOKS ---": "",
-        "prepare": "husky"
+        "prepare": "husky",
+        "--- GCP CLOUD RUN ---": "",
+        "gcp:build:be-wms": "gcloud builds submit --config cloudbuild.yaml --project jw-system-f2104",
+        "gcp:deploy:be-wms": "gcloud run deploy be-wms --image asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest --region asia-southeast1 --project jw-system-f2104 --allow-unauthenticated",
+        "deploy:be-wms": "pnpm run gcp:build:be-wms && pnpm run gcp:deploy:be-wms"
     },
     "devDependencies": {
         "@types/node": "^22.10.0",

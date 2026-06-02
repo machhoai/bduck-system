@@ -127,7 +127,7 @@ export default function CategoryFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="w-[90%] rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {editCategory ? t.categories.edit : t.categories.addNew}
           </h2>
@@ -140,7 +140,7 @@ export default function CategoryFormModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5">
           {/* Name */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">

@@ -65,10 +65,10 @@ export function ProductCard({
 
       <div className="space-y-3 p-3">
         <div className="min-h-[3.25rem]">
-          <h3 className="line-clamp-2 text-[17px] font-semibold leading-[1.24] tracking-[-0.374px] text-[var(--color-text-primary)]">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-[1.24] tracking-normal text-[var(--color-text-primary)]">
             {product.name}
           </h3>
-          <p className="mt-1 line-clamp-1 text-[14px] leading-[1.43] tracking-[-0.224px] text-[var(--color-text-muted)]">
+          <p className="mt-1 line-clamp-1 text-sm leading-[1.43] tracking-normal text-[var(--color-text-muted)]">
             {category
               ? `${category.name} (${category.code})`
               : t.products.noCategory}

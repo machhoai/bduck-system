@@ -167,7 +167,7 @@ export function ProductExcelImportTab({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             Tạo sản phẩm bằng tệp Excel
           </h3>
           <p className="text-sm text-[var(--color-text-muted)]">
@@ -177,7 +177,7 @@ export function ProductExcelImportTab({
         <button
           type="button"
           onClick={() => void handleDownloadTemplate()}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[var(--color-brand-primary)] px-4 text-sm font-normal text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full border border-[var(--color-brand-primary)] px-4 text-sm font-normal text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
         >
           <Download size={16} />
           Tải tệp mẫu
@@ -187,13 +187,13 @@ export function ProductExcelImportTab({
       <div
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
-        className="flex min-h-44 flex-col items-center justify-center rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-4 py-8 text-center transition-colors hover:border-[var(--color-brand-primary)]"
+        className="flex min-h-44 flex-col items-center justify-center rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-4 py-4 text-center transition-colors hover:border-[var(--color-brand-primary)]"
       >
         <FileSpreadsheet
           size={36}
           className="mb-3 text-[var(--color-brand-primary)]"
         />
-        <p className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
           {fileName || "Kéo tệp Excel vào đây"}
         </p>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -203,7 +203,7 @@ export function ProductExcelImportTab({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={isParsing || disabled}
-          className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
+          className="mt-4 inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
         >
           {isParsing ? (
             <Loader2 size={16} className="animate-spin" />
@@ -230,7 +230,7 @@ export function ProductExcelImportTab({
               type="button"
               onClick={handleCreateClick}
               disabled={disabled || isSubmitting || summary.validRows === 0}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[15px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
+              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 size={18} className="animate-spin" />

@@ -100,7 +100,7 @@ export function WarehouseAuditCard({ warehouseId }: WarehouseAuditCardProps) {
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="relative ml-3 space-y-6 border-l border-[var(--color-border-subtle)] pb-2">
+          <div className="relative ml-3 space-y-4 border-l border-[var(--color-border-subtle)] pb-2">
             {Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="relative pl-6">
                 <div className="absolute -left-[17px] h-[34px] w-[34px] animate-pulse rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]" />
@@ -116,11 +116,11 @@ export function WarehouseAuditCard({ warehouseId }: WarehouseAuditCardProps) {
             {t.common.error}: {error}
           </div>
         ) : scopedLogs.length === 0 ? (
-          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-3 py-6 text-center text-sm text-[var(--color-text-muted)]">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
             {t.common.noData}
           </div>
         ) : (
-          <div className="relative ml-3 space-y-6 border-l border-[var(--color-border-subtle)] pb-2">
+          <div className="relative ml-3 space-y-4 border-l border-[var(--color-border-subtle)] pb-2">
             {scopedLogs.map((log) => {
               const presentation = getAuditLogPresentation(
                 log,

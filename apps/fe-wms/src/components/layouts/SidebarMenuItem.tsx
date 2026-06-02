@@ -36,7 +36,7 @@ export default function SidebarMenuItem({
       href={item.href}
       title={isCollapsed ? `${label}${showBadge ? ` (${badgeCount})` : ""}` : undefined}
       className={`
-        group relative flex min-h-11 items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5
+        group relative flex min-h-8 items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5
         cursor-pointer transition-all duration-200 active:scale-95
         ${isCollapsed ? "justify-center" : ""}
         ${
@@ -55,7 +55,7 @@ export default function SidebarMenuItem({
       <span className="relative shrink-0">
         <Icon size={19} strokeWidth={1.8} />
         {isCollapsed && showBadge && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white shadow-sm">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white shadow-sm">
             {badgeCount > 99 ? "99+" : badgeCount}
           </span>
         )}
@@ -64,12 +64,12 @@ export default function SidebarMenuItem({
       {/* Label + badge (expanded mode) */}
       {!isCollapsed && (
         <>
-          <span className="min-w-0 flex-1 truncate text-[14px] font-normal tracking-[-0.224px]">
+          <span className="min-w-0 flex-1 truncate text-sm font-normal tracking-normal">
             {label}
           </span>
           {showBadge && (
             <span
-              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-sm ${
+              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold shadow-sm ${
                 isActive
                   ? "bg-red-500 text-white"
                   : "bg-red-500/90 text-white"
@@ -94,7 +94,7 @@ export default function SidebarMenuItem({
         >
           {label}
           {showBadge && (
-            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white">
               {badgeCount}
             </span>
           )}

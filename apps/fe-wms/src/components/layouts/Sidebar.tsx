@@ -28,7 +28,7 @@ export default function Sidebar() {
       `}
     >
       <div
-        className={`flex h-11 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
+        className={`flex h-8 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
       >
         <div
           className="
@@ -41,10 +41,10 @@ export default function Sidebar() {
 
         {!isCollapsed && (
           <div className="min-w-0">
-            <p className="truncate text-xs font-normal tracking-[-0.12px] text-[var(--color-text-on-dark)]">
+            <p className="truncate text-xs font-normal tracking-normal text-[var(--color-text-on-dark)]">
               {t.sidebar.systemName}
             </p>
-            <p className="truncate text-[10px] font-normal uppercase tracking-normal text-white/60">
+            <p className="truncate text-xxs font-normal uppercase tracking-normal text-white/60">
               {t.sidebar.moduleName}
             </p>
           </div>
@@ -53,7 +53,7 @@ export default function Sidebar() {
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
         {!isCollapsed && (
-          <p className="mb-1.5 px-2.5 text-[10px] font-normal uppercase tracking-normal text-white/50">
+          <p className="mb-1.5 px-2.5 text-xxs font-normal uppercase tracking-normal text-white/50">
             {t.sidebar.navigation}
           </p>
         )}

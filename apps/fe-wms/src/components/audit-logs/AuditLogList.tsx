@@ -62,12 +62,12 @@ export function AuditLogList({
 }: AuditLogListProps) {
     if (logs.length === 0) {
         return (
-            <div className="flex min-h-80 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-white p-8 text-center">
+            <div className="flex min-h-80 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-white p-4 text-center">
                 <FileClock size={44} className="mb-3 text-[var(--color-text-muted)]" />
-                <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {labels.empty}
                 </h3>
-                <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                     {labels.emptyHint}
                 </p>
             </div>
@@ -88,7 +88,7 @@ export function AuditLogList({
                         ? "bg-[var(--color-brand-primary-muted)]"
                         : "hover:bg-[var(--color-surface-card)]"
                 }`;
-                const actionClassName = `inline-flex h-8 max-w-full items-center rounded-full border px-3 text-xs font-semibold ${
+                const actionClassName = `inline-flex h-8 min-w-0 items-center rounded-full border px-3 text-xs font-semibold ${
                     actionTone[log.action] ||
                     "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)]"
                 }`;
@@ -103,12 +103,12 @@ export function AuditLogList({
                         <span className="min-w-0">
                             <span className="flex flex-wrap items-center gap-2">
                                 <span className={actionClassName}>{presentation.action}</span>
-                                <span className="inline-flex h-8 max-w-full items-center gap-1 rounded-full border border-[var(--color-border-soft)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
+                                <span className="inline-flex h-8 min-w-0 items-center gap-1 rounded-full border border-[var(--color-border-soft)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
                                     <MapPinned size={13} />
                                     <span className="truncate">{presentation.page}</span>
                                 </span>
                             </span>
-                            <span className="mt-2 block text-[17px] font-semibold leading-snug text-[var(--color-text-primary)]">
+                            <span className="mt-2 block text-sm font-semibold leading-snug text-[var(--color-text-primary)]">
                                 {presentation.summary}
                             </span>
                             <span className="mt-2 grid gap-2 text-sm text-[var(--color-text-muted)] sm:grid-cols-2">

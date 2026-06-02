@@ -92,7 +92,7 @@ export function UserAccessWorkspace() {
 
     if (!activePanel) {
         return (
-            <section className="space-y-6">
+            <section className="space-y-4">
                 <WorkspaceHero
                     title={t.identity.title}
                     subtitle={t.identity.subtitle}
@@ -103,10 +103,10 @@ export function UserAccessWorkspace() {
                         size={42}
                         className="mb-3 text-[var(--color-text-muted)]"
                     />
-                    <h2 className="text-[19px] font-semibold text-[var(--color-text-primary)]">
+                    <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
                         {t.identity.noAccessTitle}
                     </h2>
-                    <p className="mt-2 text-[15px] leading-6 text-[var(--color-text-muted)]">
+                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
                         {t.identity.noAccessHint}
                     </p>
                 </div>
@@ -115,7 +115,7 @@ export function UserAccessWorkspace() {
     }
 
     return (
-        <section className="space-y-6">
+        <section className="space-y-4">
             <WorkspaceHero
                 title={t.identity.title}
                 subtitle={t.identity.subtitle}
@@ -134,20 +134,7 @@ export function UserAccessWorkspace() {
                 ))}
             </div>
 
-            {visibleTabs.length > 1 && (
-                <div className="flex rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-1">
-                    {visibleTabs.map((tab) => (
-                        <TabButton
-                            key={tab.id}
-                            tab={tab}
-                            active={activeTab === tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                        />
-                    ))}
-                </div>
-            )}
-
-            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4 shadow-sm md:p-6">
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4 shadow-sm md:p-4">
                 {activePanel.id === "users" ? (
                     <UserManagementPanel isEmbedded />
                 ) : (
@@ -186,7 +173,7 @@ export function UserAccessWorkspace() {
                     }`}
             >
                 <div className="flex items-start justify-between gap-4">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+                    <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
                         <Icon size={21} />
                     </span>
                     <span
@@ -198,7 +185,7 @@ export function UserAccessWorkspace() {
                         {canWrite ? t.identity.writeAccess : t.identity.readOnly}
                     </span>
                 </div>
-                <h2 className="mt-4 text-[20px] font-semibold leading-7 text-[var(--color-text-primary)]">
+                <h2 className="mt-4 text-base font-semibold leading-7 text-[var(--color-text-primary)]">
                     {tab.group.label[lang]}
                 </h2>
                 <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--color-text-muted)]">
@@ -224,7 +211,7 @@ export function UserAccessWorkspace() {
             <button
                 type="button"
                 onClick={onClick}
-                className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-3 text-sm font-semibold transition-all active:scale-[0.98] ${active
+                className={`flex min-h-8 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-3 text-sm font-semibold transition-all active:scale-[0.98] ${active
                     ? "bg-[var(--color-surface-nav)] text-white"
                     : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
                     }`}
@@ -246,13 +233,13 @@ function WorkspaceHero({
     badge: string;
 }) {
     return (
-        <header className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white px-2 py-2 md:px-6 md:py-2">
+        <header className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white px-2 py-2 md:px-4 md:py-2">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div className="">
-                    <h1 className="font-[var(--font-display)] text-[32px] font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] md:text-[42px]">
+                    <h1 className="font-[var(--font-display)] text-lg font-bold leading-tight tracking-normal text-[var(--color-text-primary)] md:text-lg">
                         {title}
                     </h1>
-                    <p className="mt-3 text-[16px] leading-7 text-[var(--color-text-secondary)] md:text-[17px]">
+                    <p className="mt-3 text-base leading-7 text-[var(--color-text-secondary)] md:text-sm">
                         {subtitle}
                     </p>
                 </div>
@@ -266,11 +253,11 @@ function WorkspaceHero({
 
 function UserAccessSkeleton() {
     return (
-        <section className="space-y-6">
-            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-6">
+        <section className="space-y-4">
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
                 <Skeleton variant="text" className="h-5 w-32" />
-                <Skeleton variant="text" className="mt-5 h-10 w-72" />
-                <Skeleton variant="text" className="mt-4 h-4 w-full max-w-2xl" />
+                <Skeleton variant="text" className="mt-5 h-8 w-72" />
+                <Skeleton variant="text" className="mt-4 h-4 w-full" />
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
                 <Skeleton className="h-32 rounded-[var(--radius-lg)]" />

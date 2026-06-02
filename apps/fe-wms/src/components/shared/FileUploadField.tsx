@@ -217,7 +217,7 @@ export function FileUploadField({
           onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed px-4 py-8 text-sm transition-all active:scale-[0.98] ${
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed px-4 py-4 text-sm transition-all active:scale-[0.98] ${
             isDragging
               ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
               : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
@@ -233,7 +233,7 @@ export function FileUploadField({
               ? "Nhấn để chọn hoặc kéo thả tệp vào đây"
               : `Thêm tệp (${files.length}/${maxFiles})`}
           </span>
-          <span className="text-[11px] opacity-60">
+          <span className="text-xxs opacity-60">
             PDF, DOCX, XLSX, CSV · tối đa 20MB
           </span>
         </div>

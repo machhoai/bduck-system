@@ -56,11 +56,11 @@ function StatTile({
 
   return (
     <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm sm:p-4">
-      <p className="line-clamp-2 min-h-7 text-[10px] font-semibold leading-3 text-gray-500 sm:min-h-0 sm:text-xs sm:font-medium sm:leading-normal">
+      <p className="line-clamp-2 min-h-7 text-xxs font-semibold leading-3 text-gray-500 sm:min-h-0 sm:text-xs sm:font-medium sm:leading-normal">
         {label}
       </p>
       <p
-        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-base font-bold sm:mt-3 sm:px-2.5 sm:text-xl ${toneClass}`}
+        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-base font-bold sm:mt-3 sm:px-2.5 sm:text-lg ${toneClass}`}
       >
         {value}
       </p>
@@ -109,7 +109,7 @@ function EntitySelector({
               key={key}
               type="button"
               onClick={() => onSelect(key)}
-              className={`min-w-[164px] snap-start rounded-lg border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] lg:min-w-0 lg:w-full ${
+              className={`min-w-40 snap-start rounded-lg border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] lg:min-w-0 lg:w-full ${
                 active
                   ? "border-blue-300 ring-2 ring-blue-100"
                   : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
@@ -117,7 +117,7 @@ function EntitySelector({
             >
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                  className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${
                     config
                       ? "bg-blue-50 text-blue-600"
                       : "bg-gray-100 text-gray-500"
@@ -141,7 +141,7 @@ function EntitySelector({
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:mt-3 lg:gap-2">
                     <span
-                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                      className={`rounded-full px-2 py-1 text-xxs font-semibold ${
                         config
                           ? "bg-emerald-50 text-emerald-700"
                           : "bg-amber-50 text-amber-700"
@@ -150,12 +150,12 @@ function EntitySelector({
                       {config ? copy.configured : copy.missing}
                     </span>
                     {config && (
-                      <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xxs font-semibold text-gray-600">
                         {summary.activeLevels} {copy.activeLevels}
                       </span>
                     )}
                     {config?.warehouse_id && (
-                      <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                      <span className="rounded-full bg-blue-50 px-2 py-1 text-xxs font-semibold text-blue-700">
                         {copy.warehouseScope}
                       </span>
                     )}
@@ -205,10 +205,10 @@ function PipelinePreview({
         {items.map((item, index) => (
           <div
             key={`${item}-${index}`}
-            className="flex min-w-[128px] items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm sm:min-w-0"
+            className="flex min-w-32 items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm sm:min-w-0"
           >
             <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] ${
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xxs ${
                 index === 1 && autoApprove
                   ? "bg-amber-100 text-amber-700"
                   : "bg-blue-100 text-blue-700"
@@ -240,10 +240,10 @@ function MissingConfigPanel({
   const Icon = meta.icon;
 
   return (
-    <div className="mx-4 mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-5 lg:mx-0 lg:mt-0 lg:p-6">
+    <div className="mx-4 mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-5 lg:mx-0 lg:mt-0 lg:p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600 shadow-sm">
+          <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600 shadow-sm">
             <Icon className="h-5 w-5" />
           </div>
           <div>
@@ -262,7 +262,7 @@ function MissingConfigPanel({
           type="button"
           disabled={creating}
           onClick={() => onSeed(entityType)}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
+          className="inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:h-8"
         >
           {creating ? (
             <Clock3 className="h-4 w-4 animate-spin" />
@@ -364,12 +364,12 @@ function ConfigDetailPanel({
       <div className="border-b border-gray-100 bg-white p-4 max-lg:mx-4 max-lg:mt-4 max-lg:rounded-lg max-lg:border max-lg:shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <Icon className="h-6 w-6" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold text-gray-950">
+                <h1 className="text-lg font-bold text-gray-950">
                   {meta.label[locale]}
                 </h1>
                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -393,7 +393,7 @@ function ConfigDetailPanel({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="hidden h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
+            className="hidden h-8 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
           >
             {saving ? (
               <Clock3 className="h-4 w-4 animate-spin" />
@@ -416,7 +416,7 @@ function ConfigDetailPanel({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${
                   autoApprove
                     ? "bg-amber-50 text-amber-600"
                     : "bg-gray-100 text-gray-500"
@@ -436,7 +436,7 @@ function ConfigDetailPanel({
             <button
               type="button"
               onClick={() => setAutoApprove((value) => !value)}
-              className={`flex h-12 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-10 ${
+              className={`flex h-8 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-8 ${
                 autoApprove
                   ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -481,7 +481,7 @@ function ConfigDetailPanel({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? (
             <Clock3 className="h-4 w-4 animate-spin" />
@@ -689,7 +689,7 @@ export function ProcessConfigWorkspace() {
   return (
     <div className="-mx-4 -mt-2 min-h-[calc(100dvh-80px)] space-y-3 bg-gray-50 pb-28 sm:mx-auto sm:mt-0 sm:bg-transparent sm:pb-0">
       <div className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-4 pb-3 pt-4 backdrop-blur sm:static sm:border-b-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0">
-        <h1 className="text-2xl font-bold text-gray-950">{copy.title}</h1>
+        <h1 className="text-lg font-bold text-gray-950">{copy.title}</h1>
         <p className="mt-1 text-sm leading-6 text-gray-500">{copy.subtitle}</p>
       </div>
 

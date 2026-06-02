@@ -34,7 +34,7 @@ export function WarehouseDetailHero({
   return (
     <header className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-sm">
       <div className="grid min-h-[260px] grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
-        <div className="flex flex-col gap-5 p-4 sm:p-6">
+        <div className="flex flex-col gap-5 p-4 sm:p-4">
           <div className="flex flex-col gap-5 md:flex-row md:items-start">
             <div className="h-36 w-full shrink-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] md:h-44 md:w-56">
               {warehouse.warehouse_image_url ? (
@@ -71,7 +71,7 @@ export function WarehouseDetailHero({
                 </div>
 
                 <div>
-                  <h1 className="break-words font-[var(--font-display)] text-[30px] font-semibold leading-[1.05] text-[var(--color-text-primary)] sm:text-[38px]">
+                  <h1 className="break-words font-[var(--font-display)] text-lg font-bold leading-tight text-[var(--color-text-primary)] sm:text-lg">
                     {warehouse.name}
                   </h1>
                   {warehouse.address && (
@@ -121,7 +121,7 @@ export function WarehouseDetailHero({
                 type="button"
                 onClick={onEdit}
                 aria-label={t.warehouses.editWarehouse}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-sm transition-colors hover:bg-[var(--color-surface-card)]"
+                className="inline-flex h-8 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-sm transition-colors hover:bg-[var(--color-surface-card)]"
               >
                 <Pencil size={17} />
               </button>
@@ -209,7 +209,7 @@ function ActionLink({
   return (
     <Link
       href={href}
-      className={`flex h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] ${
+      className={`flex h-8 items-center justify-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] ${
         tone === "primary"
           ? "bg-[var(--color-brand-primary)] text-white hover:bg-[var(--color-brand-primary-hover)]"
           : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-card)]"

@@ -51,7 +51,7 @@ export default function CategoryFlatList({
               <span className="text-sm font-semibold text-gray-900 truncate">
                 {cat.name}
               </span>
-              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xxs font-medium text-blue-600">
                 {
                   t.categories.types[
                     cat.type as keyof typeof t.categories.types

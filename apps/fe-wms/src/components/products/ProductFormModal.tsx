@@ -264,9 +264,9 @@ export function ProductFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-[95%] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
-          <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+      <div className="flex max-h-[90vh] w-[95%] max-w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
             {isEdit ? "Chỉnh sửa Sản phẩm" : "Thêm Sản phẩm mới"}
           </h2>
           <button
@@ -278,7 +278,7 @@ export function ProductFormModal({
         </div>
 
         {/* Tabs */}
-        <div className="mt-2 flex border-b border-[var(--color-border-soft)] px-6">
+        <div className="mt-2 flex border-b border-[var(--color-border-soft)] px-4">
           <button
             onClick={() => setActiveTab("info")}
             className={`border-b-2 px-4 py-2 text-sm font-normal transition-colors ${activeTab === "info" ? "border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]" : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"}`}
@@ -301,13 +301,13 @@ export function ProductFormModal({
           )}
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
           <form id="productForm" onSubmit={handleSubmit} className="h-full">
             {/* TAB INFO */}
             <div
-              className={`space-y-6 ${activeTab === "info" ? "block" : "hidden"}`}
+              className={`space-y-4 ${activeTab === "info" ? "block" : "hidden"}`}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Category */}
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
@@ -626,7 +626,7 @@ export function ProductFormModal({
               </div>
 
               {loadingAllProducts ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-[var(--color-text-muted)]">
+                <div className="flex flex-col items-center justify-center py-4 text-center text-[var(--color-text-muted)]">
                   <Loader2 className="animate-spin mb-2" size={24} />
                   Đang tải danh sách sản phẩm...
                 </div>
@@ -739,7 +739,7 @@ export function ProductFormModal({
           </form>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-6 py-4">
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-4 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -753,7 +753,7 @@ export function ProductFormModal({
               type="submit"
               form="productForm"
               disabled={isSubmitting}
-              className="flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-6 py-2 font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 py-2 font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

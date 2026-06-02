@@ -85,10 +85,10 @@ export default function ExportVoucherDetailDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
-      <aside className="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <aside className="flex h-full w-[500px] flex-col bg-white shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-[var(--color-border-subtle)] px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
+            <div className="flex h-8 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
               <PackageMinus size={20} />
             </div>
             <div className="min-w-0">
@@ -194,7 +194,7 @@ export default function ExportVoucherDetailDrawer({
                     })}
                   </div>
                 ) : (
-                  <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-8 text-center text-sm text-[var(--color-text-muted)]">
+                  <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-4 text-center text-sm text-[var(--color-text-muted)]">
                     Chưa có hàng hóa.
                   </p>
                 )}

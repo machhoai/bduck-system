@@ -213,7 +213,7 @@ export default function VoucherDetailDrawer({
 
             <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">
                             {t.importVoucher.detail.title}
@@ -234,14 +234,14 @@ export default function VoucherDetailDrawer({
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto">
                     {/* Status */}
-                    <div className="px-6 pt-5">
+                    <div className="px-4 pt-5">
                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
                             {statusLabel}
                         </span>
                     </div>
 
                     {/* Fields */}
-                    <div className="px-6 pt-2">
+                    <div className="px-4 pt-2">
                         <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                         <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
                         <Field icon={Package} label={t.tasks.detail.supplier} value={voucher.supplier_name} />
@@ -251,7 +251,7 @@ export default function VoucherDetailDrawer({
                     </div>
 
                     {/* Items */}
-                    <div className="mt-4 px-6">
+                    <div className="mt-4 px-4">
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                             {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                         </h3>
@@ -287,7 +287,7 @@ export default function VoucherDetailDrawer({
                                                         </span>
                                                     )}
                                                     {item.unit && (
-                                                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                                                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xxs font-medium text-gray-600">
                                                             {item.unit}
                                                         </span>
                                                     )}

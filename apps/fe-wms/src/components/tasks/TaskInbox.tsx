@@ -43,7 +43,7 @@ function TaskSkeleton() {
     return (
         <div className="animate-pulse rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">
-                <div className="h-11 w-11 rounded-lg bg-gray-200" />
+                <div className="h-8 w-11 rounded-lg bg-gray-200" />
                 <div className="min-w-0 flex-1 space-y-2">
                     <div className="h-3 w-20 rounded bg-gray-200" />
                     <div className="h-4 w-40 rounded bg-gray-200" />
@@ -52,9 +52,9 @@ function TaskSkeleton() {
                 <div className="h-8 w-8 rounded-lg bg-gray-100" />
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="h-10 rounded-lg bg-gray-100" />
-                <div className="h-10 rounded-lg bg-gray-100" />
-                <div className="h-10 rounded-lg bg-gray-100" />
+                <div className="h-8 rounded-lg bg-gray-100" />
+                <div className="h-8 rounded-lg bg-gray-100" />
+                <div className="h-8 rounded-lg bg-gray-100" />
             </div>
         </div>
     );
@@ -79,7 +79,7 @@ function StatTile({
         <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase text-gray-400">{label}</p>
             <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-2xl font-bold text-gray-950">{value}</span>
+                <span className="text-lg font-bold text-gray-950">{value}</span>
                 <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ring-1 ${toneClass}`}>
                     <Layers className="h-4 w-4" />
                 </span>
@@ -107,7 +107,7 @@ function EntityFilterButton({
         <button
             type="button"
             onClick={onClick}
-            className={`flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors active:scale-[0.98] ${
+            className={`flex h-8 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors active:scale-[0.98] ${
                 active
                     ? "border-blue-200 bg-blue-50 text-blue-700"
                     : "border-gray-100 bg-white text-gray-600 hover:border-gray-200 hover:bg-gray-50"
@@ -116,7 +116,7 @@ function EntityFilterButton({
             <Icon className="h-4 w-4" />
             <span>{label}</span>
             <span
-                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                className={`rounded-full px-2 py-0.5 text-xxs ${
                     active ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
                 }`}
             >
@@ -128,7 +128,7 @@ function EntityFilterButton({
 
 function EmptyState({ title, hint }: { title: string; hint: string }) {
     return (
-        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
+        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-14 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-50">
                 <Inbox className="h-7 w-7 text-gray-300" />
             </div>
@@ -193,14 +193,14 @@ export default function TaskInbox() {
             <div className="rounded-lg border border-gray-100 bg-white px-4 py-5 shadow-sm sm:px-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
                             <ClipboardCheck className="h-6 w-6" />
                         </div>
                         <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase text-blue-600">
                                 {t.tasks.workspaceLabel}
                             </p>
-                            <h1 className="mt-1 text-2xl font-bold text-gray-950">{t.tasks.title}</h1>
+                            <h1 className="mt-1 text-lg font-bold text-gray-950">{t.tasks.title}</h1>
                             <p className="mt-1 text-sm text-gray-500">
                                 {loading
                                     ? t.tasks.loading

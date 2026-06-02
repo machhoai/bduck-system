@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, History, PackageMinus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useExportVouchers } from "../../../hooks/useExportVouchers";
@@ -15,7 +15,7 @@ type TabId = "create" | "inProgress" | "history";
 
 interface TabDef {
   id: TabId;
-  labelKey: string;
+  labelKey: TabId;
   icon: React.ElementType;
   permission?: string;
 }
@@ -48,11 +48,11 @@ function MetricCard({
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+      <p className="text-xxs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
         {label}
       </p>
       <p
-        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-xl font-bold ${toneClass}`}
+        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-lg font-bold ${toneClass}`}
       >
         {value}
       </p>
@@ -78,15 +78,6 @@ export default function ExportVoucherPage() {
       setActiveTab("create");
     }
   }, [prefillWarehouseId]);
-
-  const tabLabels: Record<TabId, string> = useMemo(
-    () => ({
-      create: t.exportVoucher?.tabs?.create ?? "Tạo mới",
-      inProgress: t.exportVoucher?.tabs?.inProgress ?? "Đang xử lý",
-      history: t.exportVoucher?.tabs?.history ?? "Lịch sử",
-    }),
-    [t],
-  );
 
   const visibleTabs = useMemo(
     () =>
@@ -124,16 +115,15 @@ export default function ExportVoucherPage() {
     <div className="-mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
       <div className="sticky top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
+          <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
             <PackageMinus size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold tracking-[-0.3px] text-[var(--color-text-primary)]">
-              {t.exportVoucher?.title ?? "Xuất kho"}
+            <h1 className="text-lg font-bold tracking-normal text-[var(--color-text-primary)]">
+              {t.exportVoucher.title}
             </h1>
             <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
-              {t.exportVoucher?.subtitle ??
-                "Tạo, theo dõi và quản lý lệnh xuất kho"}
+              {t.exportVoucher.subtitle}
             </p>
           </div>
         </div>
@@ -142,17 +132,17 @@ export default function ExportVoucherPage() {
       <div className="space-y-4 px-4 py-4 lg:px-0 lg:py-5">
         <div className="grid grid-cols-3 gap-2 lg:gap-3">
           <MetricCard
-            label={t.exportVoucher?.tabs?.inProgress ?? "Đang xử lý"}
+            label={t.exportVoucher.tabs.inProgress}
             value={activeVouchers.length}
             tone="orange"
           />
           <MetricCard
-            label={t.exportVoucher?.status?.PENDING_APPROVAL ?? "Chờ duyệt"}
+            label={t.exportVoucher.status.PENDING_APPROVAL}
             value={pendingApprovalCount}
             tone="amber"
           />
           <MetricCard
-            label={t.exportVoucher?.tabs?.history ?? "Lịch sử"}
+            label={t.exportVoucher.tabs.history}
             value={completedVouchers.length}
             tone="emerald"
           />
@@ -175,17 +165,19 @@ export default function ExportVoucherPage() {
                   key={tab.id}
                   type="button"
                   onClick={() => handleTabSwitch(tab.id)}
-                  className={`relative flex h-11 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition-all active:scale-[0.99] sm:text-sm ${
+                  className={`relative flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition-all active:scale-[0.99] sm:text-sm ${
                     isActive
                       ? "bg-orange-600 text-white shadow-sm"
                       : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-secondary)]"
                   }`}
                 >
                   <Icon size={16} />
-                  <span className="truncate">{tabLabels[tab.id]}</span>
+                  <span className="truncate">
+                    {t.exportVoucher.tabs[tab.labelKey]}
+                  </span>
                   {badgeCount > 0 && (
                     <span
-                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold ${
                         isActive
                           ? "bg-white/20 text-white"
                           : "bg-orange-50 text-orange-700"

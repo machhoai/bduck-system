@@ -42,13 +42,13 @@ export default function MobileDrawer() {
 
             <div
                 className={`
-          fixed left-0 top-0 z-100 flex h-[calc(100vh-68px)] !bg-yellow-500 w-[300px] max-w-[88vw] flex-col lg:hidden
+          fixed left-0 top-0 z-100 flex h-[calc(100vh-68px)] w-72 flex-col !bg-yellow-500 lg:hidden
           border-r border-white/10 bg-[var(--color-surface-nav)] text-white
           transition-transform duration-300 ease-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
             >
-                <div className="flex h-11 shrink-0 items-center justify-between px-4">
+                <div className="flex h-8 shrink-0 items-center justify-between px-4">
                     <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white text-[var(--color-surface-nav)]">
                             <Warehouse size={19} strokeWidth={2} />
@@ -57,7 +57,7 @@ export default function MobileDrawer() {
                             <p className="truncate text-xs font-normal text-white">
                                 {t.sidebar.systemName}
                             </p>
-                            <p className="truncate text-[10px] font-normal uppercase text-white/60">
+                            <p className="truncate text-xxs font-normal uppercase text-white/60">
                                 {t.sidebar.moduleName}
                             </p>
                         </div>
@@ -78,7 +78,7 @@ export default function MobileDrawer() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
-                    <p className="mb-2 px-3 text-[10px] font-normal uppercase text-white/50">
+                    <p className="mb-2 px-3 text-xxs font-normal uppercase text-white/50">
                         {t.sidebar.navigation}
                     </p>
                     <nav className="space-y-1" onClick={closeDrawer}>

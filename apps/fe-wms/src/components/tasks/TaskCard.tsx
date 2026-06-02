@@ -68,14 +68,43 @@ function getEntityMeta(entityType: string, t: Dictionary) {
 function toDate(value: unknown): Date | null {
     if (!value) return null;
     if (value instanceof Date) return value;
-    if (typeof value === "object" && value !== null && "toDate" in value) {
-        const toDateFn = (value as { toDate?: () => Date }).toDate;
-        if (typeof toDateFn === "function") return toDateFn();
+
+    if (typeof value === "object" && value !== null) {
+        const timestamp = value as {
+            toDate?: () => Date;
+            toMillis?: () => number;
+            seconds?: number;
+            _seconds?: number;
+        };
+
+        if (typeof timestamp.toDate === "function") {
+            try {
+                const date = timestamp.toDate();
+                return Number.isNaN(date.getTime()) ? null : date;
+            } catch {
+                // Firestore Timestamp methods must be called with their original receiver.
+            }
+        }
+
+        if (typeof timestamp.toMillis === "function") {
+            try {
+                const date = new Date(timestamp.toMillis());
+                return Number.isNaN(date.getTime()) ? null : date;
+            } catch {
+                return null;
+            }
+        }
+
+        if (typeof timestamp.seconds === "number") {
+            return new Date(timestamp.seconds * 1000);
+        }
+
+        if (typeof timestamp._seconds === "number") {
+            return new Date(timestamp._seconds * 1000);
+        }
     }
-    if (typeof value === "object" && value !== null && "seconds" in value) {
-        return new Date((value as { seconds: number }).seconds * 1000);
-    }
-    const date = new Date(value as string);
+
+    const date = new Date(value as string | number);
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -110,11 +139,11 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${meta.iconWrap}`}>
+                    <div className={`flex h-8 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${meta.iconWrap}`}>
                         <Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${meta.badge}`}>
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xxs font-bold ${meta.badge}`}>
                             {meta.label}
                         </span>
                         <p className="mt-2 truncate text-base font-bold text-gray-950">
@@ -130,7 +159,7 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
 
             <div className="mt-4 grid grid-cols-3 gap-2">
                 <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase text-gray-400">
+                    <p className="text-xxs font-semibold uppercase text-gray-400">
                         {t.tasks.card.level}
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-sm font-bold text-gray-900">
@@ -139,7 +168,7 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
                     </p>
                 </div>
                 <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase text-gray-400">
+                    <p className="text-xxs font-semibold uppercase text-gray-400">
                         {t.tasks.card.status}
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-sm font-bold text-amber-700">
@@ -148,7 +177,7 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
                     </p>
                 </div>
                 <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase text-gray-400">
+                    <p className="text-xxs font-semibold uppercase text-gray-400">
                         {t.tasks.card.created}
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-sm font-bold text-gray-900">

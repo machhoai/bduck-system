@@ -67,12 +67,12 @@ export default function WarehouseDetailPopup({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="mx-4 w-full rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl sm:mx-0 sm:w-[560px]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-6 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
           <div>
-            <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
               {d.warehouseBreakdown}
             </h3>
-            <p className="mt-0.5 text-[13px] text-[var(--color-text-muted)]">
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
               {metricLabel}
             </p>
           </div>
@@ -86,9 +86,9 @@ export default function WarehouseDetailPopup({
         </div>
 
         {/* Content */}
-        <div className="max-h-[400px] overflow-y-auto px-6 py-4">
+        <div className="max-h-[400px] overflow-y-auto px-4 py-4">
           {sorted.length === 0 ? (
-            <p className="py-8 text-center text-[15px] text-[var(--color-text-muted)]">
+            <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
               {t.common.noData}
             </p>
           ) : (
@@ -104,7 +104,7 @@ export default function WarehouseDetailPopup({
                     className="flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-card)]"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[15px] font-medium text-[var(--color-text-primary)]">
+                      <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                         {item.warehouseName}
                       </p>
                       {/* Mini progress bar */}
@@ -116,10 +116,10 @@ export default function WarehouseDetailPopup({
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                         {value.toLocaleString()}
                       </p>
-                      <p className="text-[12px] text-[var(--color-text-muted)]">
+                      <p className="text-xs text-[var(--color-text-muted)]">
                         {percentage}%
                       </p>
                     </div>
@@ -131,11 +131,11 @@ export default function WarehouseDetailPopup({
         </div>
 
         {/* Footer — Total */}
-        <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] px-6 py-3">
-          <span className="text-[14px] font-medium text-[var(--color-text-muted)]">
+        <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <span className="text-sm font-medium text-[var(--color-text-muted)]">
             {d.totalQuantity}
           </span>
-          <span className="text-[17px] font-bold text-[var(--color-text-primary)]">
+          <span className="text-sm font-bold text-[var(--color-text-primary)]">
             {total.toLocaleString()}
           </span>
         </div>

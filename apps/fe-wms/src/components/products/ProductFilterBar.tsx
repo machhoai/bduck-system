@@ -44,11 +44,11 @@ export function ProductFilterBar({
             value={filters.search}
             onChange={(event) => updateFilter("search", event.target.value)}
             placeholder={t.products.searchPlaceholder}
-            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-11 pr-4 text-[17px] text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)]"
+            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-11 pr-4 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)]"
           />
         </div>
 
-        <div className="flex items-center gap-2 text-[14px] font-normal text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-2 text-sm font-normal text-[var(--color-text-muted)]">
           <Filter size={15} />
           {resultCount}/{totalCount} {t.products.items}
         </div>
@@ -123,7 +123,7 @@ export function ProductFilterBar({
       <button
         type="button"
         onClick={() => onChange(defaultProductFilters)}
-        className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] px-4 text-[14px] font-normal text-[var(--color-text-secondary)] transition-all hover:bg-white active:scale-95"
+        className="inline-flex h-8 items-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)] px-4 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-white active:scale-95"
       >
         <X size={14} />
         {t.products.clearFilters}
@@ -151,7 +151,7 @@ function SelectFilter({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
+        className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)]"
       >
         {children}
       </select>

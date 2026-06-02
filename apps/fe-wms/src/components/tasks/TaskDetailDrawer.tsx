@@ -91,7 +91,7 @@ function Field({ icon: Icon, label, value }: { icon: React.ElementType; label: s
 
 function DetailSkeleton() {
     return (
-        <div className="animate-pulse space-y-4 p-6">
+        <div className="animate-pulse space-y-4 p-4">
             <div className="h-5 w-2/3 rounded bg-gray-200" />
             <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -207,7 +207,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
             {/* Drawer */}
             <div className="fixed top-0 right-0 z-50 flex h-[calc(100vh-68px)] md:h-full w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header — color-coded by entity type */}
-                <div className={`flex items-center justify-between border-b px-6 py-4 ${
+                <div className={`flex items-center justify-between border-b px-4 py-4 ${
                     isExport ? "border-orange-100 bg-orange-50/30" : "border-gray-100"
                 }`}>
                     <div className="flex items-center gap-3">
@@ -238,13 +238,13 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                         <DetailSkeleton />
                     ) : !voucher ? (
                         <div className="flex flex-col items-center justify-center p-12 text-center">
-                            <FileText className="h-12 w-12 text-gray-300" />
+                            <FileText className="h-8 w-12 text-gray-300" />
                             <p className="mt-3 text-sm font-medium text-gray-500">{t.tasks.detail.notFound}</p>
                         </div>
                     ) : (
                         <>
                             {/* Status badge */}
-                            <div className="px-6 pt-5">
+                            <div className="px-4 pt-5">
                                 {statusInfo && (
                                     <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.color}`}>
                                         {statusInfo.label}
@@ -253,7 +253,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                             </div>
 
                             {/* Fields — entity-type-aware */}
-                            <div className="px-6 pt-2">
+                            <div className="px-4 pt-2">
                                 <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                                 <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
                                 {isExport ? (
@@ -272,7 +272,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                             </div>
 
                             {/* Items */}
-                            <div className="mt-4 px-6">
+                            <div className="mt-4 px-4">
                                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                                     {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                                 </h3>
@@ -308,7 +308,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                                                                 </span>
                                                             )}
                                                             {item.unit && (
-                                                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                                                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xxs font-medium text-gray-600">
                                                                     {item.unit}
                                                                 </span>
                                                             )}
@@ -346,7 +346,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
                 {/* Footer: Approval actions (always show — all tasks are approvals) */}
                 {!isLoading && voucher && (
-                    <div className="border-t border-gray-100 bg-white px-6 py-4">
+                    <div className="border-t border-gray-100 bg-white px-4 py-4">
                         <textarea
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}

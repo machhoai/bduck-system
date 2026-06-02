@@ -50,7 +50,7 @@ export function AuditLogFiltersPanel({
   return (
     <section className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[17px] font-semibold text-[var(--color-text-primary)]">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-primary)]">
           <Filter size={18} />
           {labels.search}
         </div>
@@ -73,7 +73,7 @@ export function AuditLogFiltersPanel({
           value={filters.search}
           onChange={(event) => update("search", event.target.value)}
           placeholder={labels.search}
-          className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+          className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
         />
       </div>
 
@@ -215,7 +215,7 @@ function InputField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+        className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
       />
     </label>
   );
@@ -240,7 +240,7 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+        className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
       >
         {children}
       </select>

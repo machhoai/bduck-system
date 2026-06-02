@@ -54,7 +54,7 @@ function StatCard({
     return (
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
         <div className="mb-3 flex items-center gap-3">
-          <Skeleton className="h-10 w-10" variant="rect" />
+          <Skeleton className="h-8 w-10" variant="rect" />
           <Skeleton className="h-4 w-24" variant="text" />
         </div>
         <Skeleton className="h-8 w-20" variant="text" />
@@ -75,16 +75,16 @@ function StatCard({
     >
       <div className="mb-3 flex items-center gap-3">
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)]"
+          className="flex h-8 w-10 items-center justify-center rounded-[var(--radius-sm)]"
           style={{ backgroundColor: bgColor, color }}
         >
           {icon}
         </div>
-        <span className="text-[13px] font-medium text-[var(--color-text-muted)]">
+        <span className="text-xs font-medium text-[var(--color-text-muted)]">
           {label}
         </span>
       </div>
-      <p className="text-[28px] font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
+      <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
         {value.toLocaleString()}
       </p>
     </button>

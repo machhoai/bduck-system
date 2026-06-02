@@ -33,7 +33,7 @@ export function WarehouseMapCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold text-[var(--color-text-primary)]">
+          <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
             {warehouse.name}
           </p>
           <p className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
@@ -42,7 +42,7 @@ export function WarehouseMapCard({
         </div>
 
         <span
-          className={`inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+          className={`inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-xxs font-semibold ${
             isActive
               ? "border border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]"
               : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
@@ -62,7 +62,7 @@ export function WarehouseMapCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {!hasCoordinate && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-card)] px-2 py-0.5 text-[10px] text-[var(--color-text-muted)]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-card)] px-2 py-0.5 text-xxs text-[var(--color-text-muted)]">
               <Navigation size={10} />
               {t.warehouses.noCoordinate}
             </span>

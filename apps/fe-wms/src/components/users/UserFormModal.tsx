@@ -109,9 +109,9 @@ export function UserFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-[94%] max-w-5xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+      <div className="flex max-h-[92vh] w-[94%] max-w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
         <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
-          <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
             {isEdit ? t.users.editUser : t.users.addUser}
           </h2>
           <button
@@ -216,7 +216,7 @@ export function UserFormModal({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="h-10 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
+            className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
           >
             {t.common.cancel}
           </button>
@@ -224,7 +224,7 @@ export function UserFormModal({
             type="submit"
             form="userForm"
             disabled={isSubmitting}
-            className="h-10 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
+            className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
           >
             {t.common.save}
           </button>
@@ -235,7 +235,7 @@ export function UserFormModal({
 }
 
 const inputClassName =
-  "h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
+  "h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
 
 function toAssignmentDraft(assignment: UserWarehouseRole): AssignmentDraft {
   return {

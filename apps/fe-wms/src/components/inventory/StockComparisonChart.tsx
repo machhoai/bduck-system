@@ -41,12 +41,12 @@ export default function StockComparisonChart({
 
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <h3 className="mb-4 text-[15px] font-semibold text-[var(--color-text-primary)]">
+      <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
         {d.stockComparison}
       </h3>
 
       {data.length === 0 ? (
-        <p className="py-12 text-center text-[14px] text-[var(--color-text-muted)]">
+        <p className="py-12 text-center text-sm text-[var(--color-text-muted)]">
           {t.common.noData}
         </p>
       ) : (

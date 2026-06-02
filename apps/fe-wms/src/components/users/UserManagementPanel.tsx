@@ -108,19 +108,19 @@ export function UserManagementPanel({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1
             className={`font-[var(--font-display)] font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] ${
-              isEmbedded ? "text-[24px]" : "text-[34px] lg:text-[40px]"
+              isEmbedded ? "text-base" : "text-lg lg:text-lg"
             }`}
           >
             {t.users.title}
           </h1>
           <p
             className={`mt-2 leading-7 text-[var(--color-text-secondary)] ${
-              isEmbedded ? "text-[15px]" : "text-[17px]"
+              isEmbedded ? "text-sm" : "text-sm"
             }`}
           >
             {t.users.description}
@@ -130,7 +130,7 @@ export function UserManagementPanel({
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] text-white transition-all active:scale-95"
+            className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95"
           >
             <Plus size={18} />
             {t.users.addUser}
@@ -142,7 +142,7 @@ export function UserManagementPanel({
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder={t.users.search}
-        className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+        className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
       />
 
       {error && (
@@ -204,11 +204,11 @@ function UserRow({
   return (
     <div className="grid gap-3 border-b border-[var(--color-border-soft)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_220px_110px_90px] lg:items-center">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+        <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
           <UserRound size={19} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <span className="block truncate text-sm font-semibold text-[var(--color-text-primary)]">
             {user.full_name}
           </span>
           <span className="block truncate text-sm text-[var(--color-text-muted)]">
@@ -275,10 +275,10 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-white px-4 py-12 text-center">
       <UserRound size={42} className="mb-3 text-[var(--color-text-muted)]" />
-      <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+      <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
         {title}
       </h3>
-      <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">{hint}</p>
+      <p className="mt-1 text-sm text-[var(--color-text-muted)]">{hint}</p>
     </div>
   );
 }
@@ -288,7 +288,7 @@ function UserSkeleton() {
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="flex items-center gap-3 py-3">
-          <Skeleton variant="circle" className="h-11 w-11" />
+          <Skeleton variant="circle" className="h-8 w-11" />
           <div className="flex-1 space-y-2">
             <Skeleton variant="text" className="h-4 w-48" />
             <Skeleton variant="text" className="h-3 w-72" />

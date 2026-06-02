@@ -1,42 +1,40 @@
 "use client";
 
-/**
- * CreateTransferTab — 4-step stepper for creating transfer orders
- *
- * Steps:
- * 0. Thông tin (Transfer type, Source/Dest warehouse, Notes)
- * 1. Upload chứng từ (FileUploadField - optional)
- * 2. Sản phẩm (Product picker + locations + quantities)
- * 3. Xác nhận & Gửi
- *
- * LUẬT THÉP: gooeyToast.promise, disable khi gửi, i18n, confirmation dialog.
- */
-
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Upload,
-  ClipboardList,
-  Package,
-  CheckCircle2,
-  ChevronRight,
-  ChevronLeft,
-  Search,
-  Plus,
-  Trash2,
   AlertTriangle,
   ArrowRightLeft,
   ArrowUpRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Package,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { useUserStore } from "../../../stores/useUserStore";
-import { createTransferOrder } from "../../../hooks/useTransferOrderApi";
-import { useWarehouses, useWarehouseLocations } from "../../../hooks/useWarehouses";
-import { useProducts } from "../../../hooks/useProducts";
-import { uploadFile } from "../../../lib/uploadFile";
-import { FileUploadField, type SelectedFile } from "../../shared/FileUploadField";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { useProducts } from "../../../hooks/useProducts";
+import { createTransferOrder } from "../../../hooks/useTransferOrderApi";
+import {
+  useWarehouseLocations,
+  useWarehouses,
+} from "../../../hooks/useWarehouses";
+import { useTranslation } from "../../../lib/i18n";
+import { uploadFile } from "../../../lib/uploadFile";
+import { useUserStore } from "../../../stores/useUserStore";
+import {
+  FileUploadField,
+  type SelectedFile,
+} from "../../shared/FileUploadField";
 
-// ─── TYPES ───
+type Locale = "vi" | "zh";
+type StepId = 0 | 1 | 2 | 3;
+type TransferTypeValue = "INTRA_WAREHOUSE" | "INTER_WAREHOUSE";
+
 interface Props {
   prefillWarehouseId?: string;
   onCreated: () => void;
@@ -51,46 +49,176 @@ interface TransferItemData {
   quantity: number;
 }
 
-type TransferTypeValue = "INTRA_WAREHOUSE" | "INTER_WAREHOUSE";
+const COPY = {
+  vi: {
+    info: "Thông tin",
+    upload: "Chứng từ",
+    products: "Sản phẩm",
+    confirm: "Xác nhận",
+    intra: "Trong kho",
+    inter: "Liên kho",
+    intraDesc:
+      "Di chuyển hàng giữa các vị trí trong cùng 1 kho",
+    interDesc: "Chuyển hàng từ kho này sang kho khác",
+    transferType: "Loại điều chuyển",
+    executionWarehouse: "Kho thực hiện",
+    sourceWarehouse: "Kho nguồn",
+    destinationWarehouse: "Kho đích",
+    chooseWarehouse: "Chọn kho",
+    chooseSource: "Chọn kho nguồn",
+    chooseDestination: "Chọn kho đích",
+    loading: "Đang tải...",
+    sameWarehouse: "Kho nguồn và kho đích không được trùng nhau",
+    notes: "Ghi chú",
+    notesPlaceholder: "Ghi chú bổ sung...",
+    uploadLabel: "Tải chứng từ điều chuyển đính kèm (tuỳ chọn)",
+    uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
+    searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
+    noProducts: "Không tìm thấy",
+    selectedProducts: "Sản phẩm điều chuyển",
+    emptyProducts: "Chọn sản phẩm để thêm vào phiếu điều chuyển.",
+    delete: "Xóa",
+    quantity: "Số lượng",
+    sourceLocation: "Vị trí nguồn",
+    destinationLocation: "Vị trí đích",
+    selectWarehouseFirst: "Chọn kho trước",
+    noLocation: "Không có vị trí",
+    selectLocation: "Chọn vị trí",
+    selectDestinationLocation: "Chọn vị trí đích",
+    sameLocation:
+      "Vị trí nguồn và đích không được trùng",
+    atpWarning:
+      "SL chuyển ({quantity}) vượt quá khả dụng ({atp}).",
+    confirmTitle: "Xác nhận thông tin điều chuyển",
+    attachments: "Tệp đính kèm",
+    itemCount: "mặt hàng",
+    fileCount: "tệp",
+    noteTitle: "Lưu ý",
+    intraNotice:
+      "Điều chuyển trong kho sẽ được thực hiện ngay sau khi xác nhận. Hàng hóa sẽ được di chuyển mà không cần phê duyệt.",
+    confirmIntraTitle: "Xác nhận điều chuyển?",
+    confirmInterTitle: "Xác nhận tạo phiếu?",
+    confirmIntraDesc:
+      "Hàng hóa sẽ được di chuyển ngay lập tức. Hành động này không thể hoàn tác.",
+    confirmInterDesc:
+      "Phiếu sẽ được gửi vào quy trình duyệt. Bạn có muốn tiếp tục?",
+    cancel: "Hủy",
+    back: "Quay lại",
+    next: "Tiếp theo",
+    processing: "Đang xử lý...",
+    submitIntra: "Xác nhận điều chuyển",
+    submitInter: "Gửi duyệt",
+    retry: "Thử lại",
+    intraLoading: "Đang điều chuyển trong kho...",
+    interLoading: "Đang tạo phiếu điều chuyển...",
+    intraSuccess: "Điều chuyển trong kho thành công",
+    interSuccess: "Đã tạo phiếu điều chuyển",
+    createError: "Lỗi khi tạo phiếu điều chuyển",
+    intraSuccessDesc: "Hàng hóa đã được di chuyển ngay lập tức.",
+    interSuccessDesc: "Phiếu đã được gửi vào quy trình duyệt.",
+    errorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+  },
+  zh: {
+    info: "信息",
+    upload: "凭证",
+    products: "产品",
+    confirm: "确认",
+    intra: "库内",
+    inter: "跨库",
+    intraDesc: "在同一仓库内的库位间移动货品",
+    interDesc: "将货品从一个仓库调拨到另一个仓库",
+    transferType: "调拨类型",
+    executionWarehouse: "执行仓库",
+    sourceWarehouse: "源仓库",
+    destinationWarehouse: "目标仓库",
+    chooseWarehouse: "选择仓库",
+    chooseSource: "选择源仓库",
+    chooseDestination: "选择目标仓库",
+    loading: "正在加载...",
+    sameWarehouse: "源仓库和目标仓库不能相同",
+    notes: "备注",
+    notesPlaceholder: "补充备注...",
+    uploadLabel: "上传调拨凭证（可选）",
+    uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
+    searchProduct: "按名称、SKU 或条码搜索产品...",
+    noProducts: "未找到",
+    selectedProducts: "调拨产品",
+    emptyProducts: "选择产品以添加到调拨单。",
+    delete: "删除",
+    quantity: "数量",
+    sourceLocation: "源库位",
+    destinationLocation: "目标库位",
+    selectWarehouseFirst: "请先选择仓库",
+    noLocation: "没有库位",
+    selectLocation: "选择库位",
+    selectDestinationLocation: "选择目标库位",
+    sameLocation: "源库位和目标库位不能相同",
+    atpWarning: "调拨数量 ({quantity}) 超过可用数量 ({atp})。",
+    confirmTitle: "确认调拨信息",
+    attachments: "附件",
+    itemCount: "项",
+    fileCount: "个文件",
+    noteTitle: "注意",
+    intraNotice:
+      "库内调拨将在确认后立即执行，无需审批。",
+    confirmIntraTitle: "确认调拨？",
+    confirmInterTitle: "确认创建调拨单？",
+    confirmIntraDesc: "货品将立即移动，此操作不可撤销。",
+    confirmInterDesc: "调拨单将进入审批流程。是否继续？",
+    cancel: "取消",
+    back: "返回",
+    next: "下一步",
+    processing: "正在处理...",
+    submitIntra: "确认调拨",
+    submitInter: "提交审批",
+    retry: "重试",
+    intraLoading: "正在执行库内调拨...",
+    interLoading: "正在创建调拨单...",
+    intraSuccess: "库内调拨成功",
+    interSuccess: "已创建调拨单",
+    createError: "创建调拨单失败",
+    intraSuccessDesc: "货品已立即移动。",
+    interSuccessDesc: "调拨单已提交审批流程。",
+    errorDesc: "请重试或联系管理员。",
+  },
+} as const;
 
 const TRANSFER_TYPES = [
   {
     value: "INTRA_WAREHOUSE" as TransferTypeValue,
-    vi: "Trong kho",
-    zh: "库内调拨",
+    labelKey: "intra",
+    descKey: "intraDesc",
     icon: ArrowRightLeft,
-    desc: "Di chuyển hàng giữa các vị trí trong cùng 1 kho",
   },
   {
     value: "INTER_WAREHOUSE" as TransferTypeValue,
-    vi: "Liên kho",
-    zh: "跨库调拨",
+    labelKey: "inter",
+    descKey: "interDesc",
     icon: ArrowUpRight,
-    desc: "Chuyển hàng từ kho này sang kho khác",
   },
-];
+] as const;
 
 const STEPS = [
-  { id: 0, icon: ClipboardList, label: "Thông tin" },
-  { id: 1, icon: Upload, label: "Chứng từ" },
-  { id: 2, icon: Package, label: "Sản phẩm" },
-  { id: 3, icon: CheckCircle2, label: "Xác nhận" },
-];
+  { id: 0 as StepId, icon: ClipboardList, labelKey: "info" },
+  { id: 1 as StepId, icon: Upload, labelKey: "upload" },
+  { id: 2 as StepId, icon: Package, labelKey: "products" },
+  { id: 3 as StepId, icon: CheckCircle2, labelKey: "confirm" },
+] as const;
 
-// ─── COMPONENT ───
-export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Props) {
+export default function CreateTransferTab({
+  prefillWarehouseId,
+  onCreated,
+}: Props) {
+  const { lang } = useTranslation();
+  const copy = COPY[(lang || "vi") as Locale];
   const user = useUserStore((s) => s.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const { products, loading: productsLoading } = useProducts();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<StepId>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [productSearch, setProductSearch] = useState("");
-
-  // File upload state
   const [files, setFiles] = useState<SelectedFile[]>([]);
-
-  // Form state
   const [transferType, setTransferType] =
     useState<TransferTypeValue>("INTRA_WAREHOUSE");
   const [sourceWarehouseId, setSourceWarehouseId] = useState(
@@ -102,36 +230,29 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
 
   const isIntra = transferType === "INTRA_WAREHOUSE";
 
-  // Auto-set dest warehouse = source for INTRA
   useEffect(() => {
     if (isIntra && sourceWarehouseId) {
       setDestWarehouseId(sourceWarehouseId);
     }
   }, [isIntra, sourceWarehouseId]);
 
-  // Auto-prefill from URL
   useEffect(() => {
     if (prefillWarehouseId) setSourceWarehouseId(prefillWarehouseId);
   }, [prefillWarehouseId]);
 
-  // Reset items when warehouse changes
   useEffect(() => {
     setItems([]);
   }, [sourceWarehouseId]);
 
-  // Hooks for locations & inventory (source warehouse)
   const { locations: srcLocations, loading: srcLocLoading } =
     useWarehouseLocations(sourceWarehouseId || undefined);
   const { getLocationsForProduct, getAtp, loading: invLoading } =
     useInventoryByWarehouse(sourceWarehouseId || undefined);
-
-  // Hooks for dest locations (only for INTRA — same warehouse, different locations)
   const { locations: dstLocations, loading: dstLocLoading } =
     useWarehouseLocations(
       isIntra ? sourceWarehouseId || undefined : destWarehouseId || undefined,
     );
 
-  // Product search filter
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products;
     const q = productSearch.toLowerCase();
@@ -143,35 +264,29 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
     );
   }, [products, productSearch]);
 
-  const addedProductIds = useMemo(
-    () => new Set(items.map((i) => `${i.product_id}-${i.source_location_id}`)),
-    [items],
-  );
-
-  // ─── Navigation validation ───
   const canGoNext = useCallback((): boolean => {
     switch (step) {
-      case 0: {
+      case 0:
         if (!sourceWarehouseId) return false;
         if (isIntra) return true;
-        // INTER: dest must be different
         return destWarehouseId !== "" && destWarehouseId !== sourceWarehouseId;
-      }
       case 1:
-        return true; // Upload is optional
+        return true;
       case 2:
         return (
           items.length > 0 &&
           items.length <= 150 &&
           items.every((item) => {
-            if (!item.product_id || item.quantity <= 0 || !item.source_location_id)
+            if (!item.product_id || item.quantity <= 0 || !item.source_location_id) {
               return false;
+            }
             if (isIntra && !item.destination_location_id) return false;
             if (
               isIntra &&
               item.source_location_id === item.destination_location_id
-            )
+            ) {
               return false;
+            }
             return true;
           })
         );
@@ -180,7 +295,6 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
     }
   }, [step, sourceWarehouseId, destWarehouseId, isIntra, items]);
 
-  // ─── Item management ───
   const addProduct = useCallback(
     (productId: string) => {
       const product = products.find((p) => p.id === productId);
@@ -214,23 +328,20 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // ─── Swap (only for INTER) ───
   const handleSwap = () => {
     if (isIntra) return;
     const temp = sourceWarehouseId;
     setSourceWarehouseId(destWarehouseId);
     setDestWarehouseId(temp);
-    setItems([]); // Reset items when swapping
+    setItems([]);
   };
 
-  // ─── Submit ───
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setShowConfirm(false);
     setIsSubmitting(true);
 
     const submitAction = async () => {
-      // 1. Upload files
       const uploadedUrls: string[] = [];
       for (const f of files) {
         if (f.url) {
@@ -251,7 +362,6 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
         uploadedUrls.push(url);
       }
 
-      // 2. Create transfer order
       await createTransferOrder({
         transfer_type: transferType,
         source_warehouse_id: sourceWarehouseId,
@@ -274,45 +384,39 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
 
     try {
       await gooeyToast.promise(submitAction(), {
-        loading: isIntra
-          ? "Đang điều chuyển trong kho..."
-          : "Đang tạo phiếu điều chuyển...",
-        success: isIntra
-          ? "Điều chuyển trong kho thành công"
-          : "Đã tạo phiếu điều chuyển",
-        error: "Lỗi khi tạo phiếu điều chuyển",
+        loading: isIntra ? copy.intraLoading : copy.interLoading,
+        success: isIntra ? copy.intraSuccess : copy.interSuccess,
+        error: copy.createError,
         description: {
-          success: isIntra
-            ? "Hàng hóa đã được di chuyển ngay lập tức."
-            : "Phiếu đã được gửi vào quy trình duyệt.",
-          error: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+          success: isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc,
+          error: copy.errorDesc,
         },
         action: {
-          error: { label: "Thử lại", onClick: () => handleSubmit() },
+          error: { label: copy.retry, onClick: () => void handleSubmit() },
         },
       });
       onCreated();
     } catch {
-      // Toast handles error
+      // Toast handles error.
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ─── RENDER ───
   return (
     <div className="space-y-5">
-      {/* Stepper */}
       <div className="flex items-center gap-1 overflow-x-auto py-1">
-        {STEPS.map((s, i) => {
+        {STEPS.map((s, index) => {
           const Icon = s.icon;
           const isActive = step === s.id;
           const isCompleted = step > s.id;
           return (
             <div key={s.id} className="flex items-center gap-1">
-              {i > 0 && (
+              {index > 0 && (
                 <div
-                  className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-500" : "bg-gray-200"}`}
+                  className={`h-px w-6 shrink-0 lg:w-10 ${
+                    isCompleted ? "bg-orange-500" : "bg-gray-200"
+                  }`}
                 />
               )}
               <button
@@ -330,22 +434,19 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                 }`}
               >
                 <Icon size={14} />
-                <span className="hidden sm:inline">{s.label}</span>
+                <span className="hidden sm:inline">{copy[s.labelKey]}</span>
               </button>
             </div>
           );
         })}
       </div>
 
-      {/* Step content */}
-      <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-6">
-        {/* ──────── Step 0: Thông tin ──────── */}
+      <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-4">
         {step === 0 && (
           <div className="space-y-4">
-            {/* Transfer type selector */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                Loại điều chuyển *
+                {copy.transferType} *
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {TRANSFER_TYPES.map((tt) => {
@@ -382,10 +483,10 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                               : "text-gray-700"
                           }`}
                         >
-                          {tt.vi}
+                          {copy[tt.labelKey]}
                         </p>
                         <p className="mt-0.5 text-xs text-gray-400">
-                          {tt.desc}
+                          {copy[tt.descKey]}
                         </p>
                       </div>
                     </button>
@@ -394,12 +495,10 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
               </div>
             </div>
 
-            {/* Warehouse selectors */}
             {isIntra ? (
-              /* INTRA: single warehouse */
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-600">
-                  Kho thực hiện *
+                  {copy.executionWarehouse} *
                 </label>
                 <select
                   value={sourceWarehouseId}
@@ -408,7 +507,7 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
                 >
                   <option value="">
-                    {warehousesLoading ? "Đang tải..." : "— Chọn kho —"}
+                    {warehousesLoading ? copy.loading : copy.chooseWarehouse}
                   </option>
                   {warehouses.map((wh) => (
                     <option key={wh.id} value={wh.id}>
@@ -418,12 +517,11 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                 </select>
               </div>
             ) : (
-              /* INTER: source + dest with swap button */
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-[1fr,auto,1fr]">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-600">
-                      Kho nguồn *
+                      {copy.sourceWarehouse} *
                     </label>
                     <select
                       value={sourceWarehouseId}
@@ -435,38 +533,28 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                       className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
                     >
                       <option value="">
-                        {warehousesLoading
-                          ? "Đang tải..."
-                          : "— Chọn kho nguồn —"}
+                        {warehousesLoading ? copy.loading : copy.chooseSource}
                       </option>
-                      {warehouses.map((wh) => (
-                        <option
-                          key={wh.id}
-                          value={wh.id}
-                          disabled={wh.id === destWarehouseId}
-                        >
-                          {wh.name}
-                        </option>
-                      ))}
+                      {warehouses
+                        .filter((wh) => wh.id !== destWarehouseId)
+                        .map((wh) => (
+                          <option key={wh.id} value={wh.id}>
+                            {wh.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
-
-                  {/* Swap button */}
-                  <div className="flex items-end justify-center pb-1">
-                    <button
-                      type="button"
-                      onClick={handleSwap}
-                      disabled={!sourceWarehouseId || !destWarehouseId}
-                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-gray-300 text-gray-400 transition-all hover:border-orange-400 hover:text-orange-500 disabled:opacity-30"
-                      title="Đổi kho nguồn ↔ kho đích"
-                    >
-                      <ArrowRightLeft size={16} />
-                    </button>
-                  </div>
-
+                  <button
+                    type="button"
+                    onClick={handleSwap}
+                    disabled={!sourceWarehouseId || !destWarehouseId}
+                    className="self-end rounded-lg border border-gray-200 p-2.5 text-gray-500 transition-all hover:bg-gray-50 disabled:opacity-30"
+                  >
+                    <ArrowRightLeft size={18} />
+                  </button>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-600">
-                      Kho đích *
+                      {copy.destinationWarehouse} *
                     </label>
                     <select
                       value={destWarehouseId}
@@ -476,8 +564,8 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                     >
                       <option value="">
                         {warehousesLoading
-                          ? "Đang tải..."
-                          : "— Chọn kho đích —"}
+                          ? copy.loading
+                          : copy.chooseDestination}
                       </option>
                       {warehouses
                         .filter((wh) => wh.id !== sourceWarehouseId)
@@ -489,52 +577,45 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                     </select>
                   </div>
                 </div>
-
                 {sourceWarehouseId &&
                   destWarehouseId &&
                   sourceWarehouseId === destWarehouseId && (
                     <div className="flex items-center gap-1.5 text-xs text-red-500">
                       <AlertTriangle size={14} />
-                      <span>
-                        Kho nguồn và kho đích không được trùng nhau
-                      </span>
+                      <span>{copy.sameWarehouse}</span>
                     </div>
                   )}
               </div>
             )}
 
-            {/* Notes */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-600">
-                Ghi chú
+                {copy.notes}
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Ghi chú bổ sung..."
+                placeholder={copy.notesPlaceholder}
                 className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
               />
             </div>
           </div>
         )}
 
-        {/* ──────── Step 1: Upload chứng từ ──────── */}
         {step === 1 && (
           <FileUploadField
             files={files}
             onFilesChange={setFiles}
             disabled={isSubmitting}
             maxFiles={5}
-            label="Tải chứng từ điều chuyển đính kèm (tuỳ chọn)"
-            hint="PDF, DOCX, XLSX, CSV · tối đa 20MB mỗi tệp · tối đa 5 tệp"
+            label={copy.uploadLabel}
+            hint={copy.uploadHint}
           />
         )}
 
-        {/* ──────── Step 2: Products ──────── */}
         {step === 2 && (
           <div className="space-y-4">
-            {/* Search */}
             <div className="relative">
               <Search
                 size={16}
@@ -544,39 +625,38 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Tìm sản phẩm theo tên, SKU hoặc barcode..."
+                placeholder={copy.searchProduct}
                 className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
               />
             </div>
 
-            {/* Product picker */}
             <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
               {productsLoading ? (
-                <div className="flex items-center justify-center py-6 text-xs text-gray-400">
-                  Đang tải...
+                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
+                  {copy.loading}
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center py-6 text-xs text-gray-400">
-                  Không tìm thấy
+                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
+                  {copy.noProducts}
                 </div>
               ) : (
-                filteredProducts.map((p) => (
+                filteredProducts.map((product) => (
                   <div
-                    key={p.id}
+                    key={product.id}
                     className="flex items-center gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-white"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-gray-900">
-                        {p.name}
+                        {product.name}
                       </p>
                       <div className="flex gap-2 text-xs text-gray-500">
-                        <span>SKU: {p.code}</span>
-                        <span>· {p.unit}</span>
+                        <span>SKU: {product.code}</span>
+                        <span>/ {product.unit}</span>
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => addProduct(p.id)}
+                      onClick={() => addProduct(product.id)}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-all hover:bg-orange-600"
                     >
                       <Plus size={14} />
@@ -586,20 +666,9 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
               )}
             </div>
 
-            {/* Max items warning */}
-            {items.length >= 150 && (
-              <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
-                <AlertTriangle size={12} className="shrink-0" />
-                <span>
-                  Giới hạn 150 mặt hàng mỗi phiếu điều chuyển.
-                </span>
-              </div>
-            )}
-
-            {/* Selected items */}
             <div>
               <p className="mb-2 text-sm font-medium text-gray-600">
-                Sản phẩm điều chuyển{" "}
+                {copy.selectedProducts}{" "}
                 {items.length > 0 && (
                   <span className="text-xs text-gray-400">
                     ({items.length})
@@ -607,12 +676,12 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                 )}
               </p>
               {items.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-gray-400">
-                  Chọn sản phẩm để thêm vào phiếu điều chuyển.
+                <p className="rounded-lg border border-dashed border-gray-200 py-4 text-center text-sm text-gray-400">
+                  {copy.emptyProducts}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {items.map((item, idx) => {
+                  {items.map((item, index) => {
                     const product = products.find(
                       (p) => p.id === item.product_id,
                     );
@@ -627,17 +696,16 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                         key={item.id}
                         className="rounded-lg border border-gray-100 bg-gray-50 p-3"
                       >
-                        {/* Item header */}
                         <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[10px] font-semibold text-orange-600">
-                              {idx + 1}
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-xxs font-semibold text-orange-600">
+                              {index + 1}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="truncate text-sm font-medium text-gray-900">
                               {item.product_name}
                             </span>
                             <span className="text-xs text-gray-400">
-                              {product?.code} · {product?.unit}
+                              {product?.code} / {product?.unit}
                             </span>
                           </div>
                           <button
@@ -645,19 +713,20 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                             onClick={() => removeItem(item.id)}
                             className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
                           >
-                            <Trash2 size={12} /> Xóa
+                            <Trash2 size={12} />
+                            {copy.delete}
                           </button>
                         </div>
 
-                        {/* Item fields */}
                         <div
-                          className={`grid gap-3 ${isIntra ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+                          className={`grid gap-3 ${
+                            isIntra ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                          }`}
                         >
-                          {/* Quantity */}
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-gray-400">
-                              Số lượng *
-                            </label>
+                          <label>
+                            <span className="mb-0.5 block text-xxs text-gray-400">
+                              {copy.quantity} *
+                            </span>
                             <input
                               type="number"
                               value={item.quantity || ""}
@@ -671,13 +740,12 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                               min={1}
                               className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400"
                             />
-                          </div>
+                          </label>
 
-                          {/* Source location */}
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-gray-400">
-                              Vị trí nguồn *
-                            </label>
+                          <label>
+                            <span className="mb-0.5 block text-xxs text-gray-400">
+                              {copy.sourceLocation} *
+                            </span>
                             <select
                               value={item.source_location_id}
                               onChange={(e) =>
@@ -702,12 +770,12 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                             >
                               <option value="">
                                 {!sourceWarehouseId
-                                  ? "Chọn kho trước"
+                                  ? copy.selectWarehouseFirst
                                   : isLocLoading
-                                    ? "Đang tải..."
+                                    ? copy.loading
                                     : !hasLocations
-                                      ? "⚠ Không có vị trí"
-                                      : "— Chọn vị trí —"}
+                                      ? copy.noLocation
+                                      : copy.selectLocation}
                               </option>
                               {productLocations.map((pl) => {
                                 const loc = srcLocations.find(
@@ -721,19 +789,18 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                                     {loc
                                       ? `${loc.name} (${loc.code})`
                                       : pl.locationId}{" "}
-                                    · ATP: {pl.atpQty}
+                                    / ATP: {pl.atpQty}
                                   </option>
                                 );
                               })}
                             </select>
-                          </div>
+                          </label>
 
-                          {/* Dest location (INTRA only) */}
                           {isIntra && (
-                            <div>
-                              <label className="mb-0.5 block text-[11px] text-gray-400">
-                                Vị trí đích *
-                              </label>
+                            <label>
+                              <span className="mb-0.5 block text-xxs text-gray-400">
+                                {copy.destinationLocation} *
+                              </span>
                               <select
                                 value={item.destination_location_id}
                                 onChange={(e) =>
@@ -743,19 +810,22 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                                     e.target.value,
                                   )
                                 }
-                                disabled={
-                                  dstLocLoading || !sourceWarehouseId
-                                }
+                                disabled={dstLocLoading || !sourceWarehouseId}
                                 className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400 disabled:opacity-50"
                               >
-                                <option value="">— Chọn vị trí đích —</option>
+                                <option value="">
+                                  {copy.selectDestinationLocation}
+                                </option>
                                 {dstLocations
                                   .filter(
                                     (l) => l.id !== item.source_location_id,
                                   )
-                                  .map((l) => (
-                                    <option key={l.id} value={l.id}>
-                                      {l.name} ({l.code})
+                                  .map((location) => (
+                                    <option
+                                      key={location.id}
+                                      value={location.id}
+                                    >
+                                      {location.name} ({location.code})
                                     </option>
                                   ))}
                               </select>
@@ -763,15 +833,14 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                                 item.destination_location_id &&
                                 item.source_location_id ===
                                   item.destination_location_id && (
-                                  <p className="mt-0.5 text-[10px] text-red-500">
-                                    Vị trí nguồn và đích không được trùng
+                                  <p className="mt-0.5 text-xxs text-red-500">
+                                    {copy.sameLocation}
                                   </p>
                                 )}
-                            </div>
+                            </label>
                           )}
                         </div>
 
-                        {/* ATP warning */}
                         {item.source_location_id &&
                           item.quantity > 0 &&
                           (() => {
@@ -779,21 +848,23 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                               item.product_id,
                               item.source_location_id,
                             );
-                            if (item.quantity > atp) {
-                              return (
-                                <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
-                                  <AlertTriangle
-                                    size={12}
-                                    className="shrink-0"
-                                  />
-                                  <span>
-                                    SL chuyển ({item.quantity}) vượt quá khả
-                                    dụng ({atp}).
-                                  </span>
-                                </div>
-                              );
-                            }
-                            return null;
+                            if (item.quantity <= atp) return null;
+                            return (
+                              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xxs text-amber-700">
+                                <AlertTriangle
+                                  size={12}
+                                  className="shrink-0"
+                                />
+                                <span>
+                                  {copy.atpWarning
+                                    .replace(
+                                      "{quantity}",
+                                      String(item.quantity),
+                                    )
+                                    .replace("{atp}", String(atp))}
+                                </span>
+                              </div>
+                            );
                           })()}
                       </div>
                     );
@@ -804,57 +875,59 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
           </div>
         )}
 
-        {/* ──────── Step 3: Confirm ──────── */}
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-900">
-              Xác nhận thông tin điều chuyển
+              {copy.confirmTitle}
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Loại điều chuyển</span>
+                <span className="text-gray-500">{copy.transferType}</span>
                 <span className="font-medium">
-                  {isIntra ? "Trong kho" : "Liên kho"}
+                  {isIntra ? copy.intra : copy.inter}
                 </span>
               </div>
               <div className="flex justify-between border-b border-gray-100 py-2">
                 <span className="text-gray-500">
-                  {isIntra ? "Kho thực hiện" : "Kho nguồn"}
+                  {isIntra ? copy.executionWarehouse : copy.sourceWarehouse}
                 </span>
                 <span className="font-medium">
                   {warehouses.find((w) => w.id === sourceWarehouseId)?.name ||
-                    "—"}
+                    "-"}
                 </span>
               </div>
               {!isIntra && (
                 <div className="flex justify-between border-b border-gray-100 py-2">
-                  <span className="text-gray-500">Kho đích</span>
+                  <span className="text-gray-500">
+                    {copy.destinationWarehouse}
+                  </span>
                   <span className="font-medium">
                     {warehouses.find((w) => w.id === destWarehouseId)?.name ||
-                      "—"}
+                      "-"}
                   </span>
                 </div>
               )}
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Tệp đính kèm</span>
-                <span className="font-medium">{files.length} tệp</span>
+                <span className="text-gray-500">{copy.attachments}</span>
+                <span className="font-medium">
+                  {files.length} {copy.fileCount}
+                </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-500">Sản phẩm</span>
+                <span className="text-gray-500">{copy.products}</span>
                 <span className="font-medium">
-                  {items.length} mặt hàng
+                  {items.length} {copy.itemCount}
                 </span>
               </div>
             </div>
 
-            {/* Items summary table */}
             {items.length > 0 && (
               <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-100">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-gray-50">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">
-                        Sản phẩm
+                        {copy.products}
                       </th>
                       <th className="px-3 py-2 text-right font-medium text-gray-500">
                         SL
@@ -863,10 +936,7 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                   </thead>
                   <tbody>
                     {items.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-t border-gray-50"
-                      >
+                      <tr key={item.id} className="border-t border-gray-50">
                         <td className="px-3 py-1.5 text-gray-700">
                           {item.product_name}
                         </td>
@@ -882,34 +952,28 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
 
             {notes && (
               <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
-                <span className="font-medium">Ghi chú:</span> {notes}
+                <span className="font-medium">{copy.notes}:</span> {notes}
               </div>
             )}
 
             {isIntra && (
               <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
-                <span className="font-semibold">Lưu ý:</span> Điều chuyển
-                trong kho sẽ được thực hiện ngay lập tức sau khi xác nhận.
-                Hàng hóa sẽ được di chuyển mà không cần phê duyệt.
+                <span className="font-semibold">{copy.noteTitle}:</span>{" "}
+                {copy.intraNotice}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Confirmation dialog overlay */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-[500px] rounded-2xl bg-white p-4 shadow-2xl">
             <h3 className="text-base font-bold text-gray-900">
-              {isIntra
-                ? "Xác nhận điều chuyển?"
-                : "Xác nhận tạo phiếu?"}
+              {isIntra ? copy.confirmIntraTitle : copy.confirmInterTitle}
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              {isIntra
-                ? "Hàng hóa sẽ được di chuyển ngay lập tức. Hành động này không thể hoàn tác."
-                : "Phiếu sẽ được gửi vào quy trình duyệt. Bạn có muốn tiếp tục?"}
+              {isIntra ? copy.confirmIntraDesc : copy.confirmInterDesc}
             </p>
             <div className="mt-5 flex gap-3">
               <button
@@ -917,7 +981,7 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-all hover:bg-gray-50"
               >
-                Hủy
+                {copy.cancel}
               </button>
               <button
                 type="button"
@@ -929,32 +993,33 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
                     : "bg-orange-500 hover:bg-orange-600"
                 }`}
               >
-                {isSubmitting ? "Đang xử lý..." : "Xác nhận"}
+                {isSubmitting ? copy.processing : copy.confirm}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Navigation buttons */}
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={() => step > 0 && setStep(step - 1)}
+          onClick={() => step > 0 && setStep((step - 1) as StepId)}
           disabled={step === 0}
           className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-30"
         >
-          <ChevronLeft size={14} /> Quay lại
+          <ChevronLeft size={14} />
+          {copy.back}
         </button>
 
         {step < STEPS.length - 1 ? (
           <button
             type="button"
-            onClick={() => canGoNext() && setStep(step + 1)}
+            onClick={() => canGoNext() && setStep((step + 1) as StepId)}
             disabled={!canGoNext()}
             className="flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-orange-600 disabled:opacity-50"
           >
-            Tiếp theo <ChevronRight size={14} />
+            {copy.next}
+            <ChevronRight size={14} />
           </button>
         ) : (
           <button
@@ -968,10 +1033,10 @@ export default function CreateTransferTab({ prefillWarehouseId, onCreated }: Pro
             }`}
           >
             {isSubmitting
-              ? "Đang xử lý..."
+              ? copy.processing
               : isIntra
-                ? "Xác nhận điều chuyển"
-                : "Gửi duyệt"}
+                ? copy.submitIntra
+                : copy.submitInter}
           </button>
         )}
       </div>

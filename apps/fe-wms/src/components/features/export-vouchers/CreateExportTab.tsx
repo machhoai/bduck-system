@@ -1,47 +1,36 @@
 "use client";
 
-/**
- * CreateExportTab — 4-step stepper for creating export vouchers
- *
- * Steps:
- * 0. Thông tin chung (warehouse, export type, recipient)
- * 1. Upload chứng từ (FileUploadField) - optional
- * 2. Danh sách sản phẩm (pick products + quantities)
- * 3. Xác nhận & Gửi
- *
- * LUẬT THÉP:
- * - gooeyToast.promise cho submit
- * - Disable nút khi đang gửi (chống click đúp)
- * - i18n cho tất cả text
- */
-
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Upload,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Package,
-  CheckCircle2,
-  ChevronRight,
-  ChevronLeft,
-  Search,
   Plus,
+  Search,
   Trash2,
-  AlertTriangle,
+  Upload,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { useTranslation } from "../../../lib/i18n";
-import { useUserStore } from "../../../stores/useUserStore";
-import { createExportVoucher } from "../../../hooks/useExportVoucherApi";
-import { useWarehouses } from "../../../hooks/useWarehouses";
-import { useProducts } from "../../../hooks/useProducts";
-import { uploadFile } from "../../../lib/uploadFile";
-import { FileUploadField, type SelectedFile } from "../../shared/FileUploadField";
-import { useWarehouseLocations } from "../../../hooks/useWarehouses";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { createExportVoucher } from "../../../hooks/useExportVoucherApi";
+import { useProducts } from "../../../hooks/useProducts";
+import {
+  useWarehouseLocations,
+  useWarehouses,
+} from "../../../hooks/useWarehouses";
+import { useTranslation } from "../../../lib/i18n";
+import { uploadFile } from "../../../lib/uploadFile";
+import { useUserStore } from "../../../stores/useUserStore";
+import {
+  FileUploadField,
+  type SelectedFile,
+} from "../../shared/FileUploadField";
 
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
+type Locale = "vi" | "zh";
+type StepId = 0 | 1 | 2 | 3;
 
 interface Props {
   cloneData?: Record<string, unknown> | null;
@@ -59,47 +48,152 @@ interface ExportItemData {
   notes: string;
 }
 
+const COPY = {
+  vi: {
+    info: "Thông tin",
+    upload: "Tải chứng từ",
+    products: "Sản phẩm",
+    confirm: "Xác nhận",
+    transfer: "Điều chuyển",
+    adjustment: "Điều chỉnh",
+    exportType: "Loại xuất",
+    sourceWarehouse: "Kho nguồn (xuất)",
+    destinationWarehouse: "Kho đích (nhận)",
+    executionWarehouse: "Kho thực hiện",
+    chooseSource: "Chọn kho nguồn",
+    chooseDestination: "Chọn kho đích",
+    chooseWarehouse: "Chọn kho",
+    loading: "Đang tải...",
+    sameWarehouse: "Kho nguồn và kho đích không được trùng nhau",
+    adjustmentReason: "Lý do điều chỉnh",
+    notes: "Ghi chú",
+    reasonPlaceholder: "Nhập lý do điều chỉnh...",
+    notesPlaceholder: "Ghi chú bổ sung...",
+    reasonRequired:
+      "Bắt buộc nhập lý do khi loại xuất là điều chỉnh",
+    uploadLabel: "Tải chứng từ xuất kho đính kèm (tuỳ chọn)",
+    uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
+    searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
+    noProducts: "Không tìm thấy",
+    selectedProducts: "Sản phẩm xuất kho",
+    emptyProducts: "Chọn sản phẩm để thêm vào phiếu xuất.",
+    delete: "Xóa",
+    quantity: "SL xuất",
+    unitPrice: "Đơn giá",
+    location: "Vị trí kho",
+    selectWarehouseFirst: "Chọn kho trước",
+    noLocationForProduct:
+      "Không có vị trí nào chứa sản phẩm này",
+    selectLocation: "Chọn vị trí",
+    available: "Khả dụng",
+    atpWarning:
+      "SL xuất ({quantity}) vượt quá khả dụng ({atp}). Phiếu sẽ bị từ chối khi duyệt.",
+    confirmTitle: "Xác nhận thông tin xuất kho",
+    attachments: "Tệp đính kèm",
+    itemCount: "mặt hàng",
+    fileCount: "tệp",
+    back: "Quay lại",
+    next: "Tiếp theo",
+    submitting: "Đang tạo...",
+    submit: "Gửi duyệt",
+  },
+  zh: {
+    info: "信息",
+    upload: "上传凭证",
+    products: "产品",
+    confirm: "确认",
+    transfer: "调拨",
+    adjustment: "调整",
+    exportType: "出库类型",
+    sourceWarehouse: "源仓库（出库）",
+    destinationWarehouse: "目标仓库（收货）",
+    executionWarehouse: "执行仓库",
+    chooseSource: "选择源仓库",
+    chooseDestination: "选择目标仓库",
+    chooseWarehouse: "选择仓库",
+    loading: "正在加载...",
+    sameWarehouse: "源仓库和目标仓库不能相同",
+    adjustmentReason: "调整原因",
+    notes: "备注",
+    reasonPlaceholder: "请输入调整原因...",
+    notesPlaceholder: "补充备注...",
+    reasonRequired: "调整出库必须填写原因",
+    uploadLabel: "上传出库凭证（可选）",
+    uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
+    searchProduct: "按名称、SKU 或条码搜索产品...",
+    noProducts: "未找到",
+    selectedProducts: "出库产品",
+    emptyProducts: "选择产品以添加到出库单。",
+    delete: "删除",
+    quantity: "出库数量",
+    unitPrice: "单价",
+    location: "库位",
+    selectWarehouseFirst: "请先选择仓库",
+    noLocationForProduct: "没有包含此产品的库位",
+    selectLocation: "选择库位",
+    available: "可用",
+    atpWarning:
+      "出库数量 ({quantity}) 超过可用数量 ({atp})，审批时将被拒绝。",
+    confirmTitle: "确认出库信息",
+    attachments: "附件",
+    itemCount: "项",
+    fileCount: "个文件",
+    back: "返回",
+    next: "下一步",
+    submitting: "正在创建...",
+    submit: "提交审批",
+  },
+} as const;
+
 const EXPORT_TYPES = [
-  { value: "TRANSFER", vi: "Điều chuyển", zh: "调拨" },
-  { value: "ADJUSTMENT", vi: "Điều chỉnh", zh: "调整" },
-];
+  { value: "TRANSFER", labelKey: "transfer" },
+  { value: "ADJUSTMENT", labelKey: "adjustment" },
+] as const;
 
 const STEPS = [
-  { id: 0, icon: ClipboardList, label: "Thông tin" },
-  { id: 1, icon: Upload, label: "Tải chứng từ" },
-  { id: 2, icon: Package, label: "Sản phẩm" },
-  { id: 3, icon: CheckCircle2, label: "Xác nhận" },
-];
+  { id: 0 as StepId, icon: ClipboardList, labelKey: "info" },
+  { id: 1 as StepId, icon: Upload, labelKey: "upload" },
+  { id: 2 as StepId, icon: Package, labelKey: "products" },
+  { id: 3 as StepId, icon: CheckCircle2, labelKey: "confirm" },
+] as const;
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
-export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreated }: Props) {
-  const { t } = useTranslation();
+export default function CreateExportTab({
+  cloneData,
+  prefillWarehouseId,
+  onCreated,
+}: Props) {
+  const { t, lang } = useTranslation();
+  const copy = COPY[(lang || "vi") as Locale];
+  const exportText = t.exportVoucher as any;
   const user = useUserStore((s) => s.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const { products, loading: productsLoading } = useProducts();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<StepId>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState("");
-
-  // ── File upload state (copied from import) ──
   const [files, setFiles] = useState<SelectedFile[]>([]);
-
-  // Form state
   const [warehouseId, setWarehouseId] = useState(prefillWarehouseId || "");
   const [exportType, setExportType] = useState("TRANSFER");
   const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ExportItemData[]>([]);
 
-  // Auto-prefill warehouse from URL
   useEffect(() => {
     if (prefillWarehouseId) {
       setWarehouseId(prefillWarehouseId);
     }
   }, [prefillWarehouseId]);
+
+  useEffect(() => {
+    if (!cloneData) return;
+    setWarehouseId((cloneData.warehouse_id as string) || "");
+    setExportType((cloneData.export_type as string) || "TRANSFER");
+    setDestinationWarehouseId(
+      (cloneData.destination_warehouse_id as string) || "",
+    );
+    setNotes((cloneData.notes as string) || "");
+    setStep(0);
+  }, [cloneData]);
 
   const { locations, loading: locationsLoading } = useWarehouseLocations(
     warehouseId || undefined,
@@ -123,13 +217,16 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
     [items],
   );
 
-  // Navigation
   const canGoNext = useCallback((): boolean => {
     switch (step) {
       case 0: {
         const baseValid = warehouseId !== "" && exportType !== "";
         if (exportType === "TRANSFER") {
-          return baseValid && destinationWarehouseId !== "" && destinationWarehouseId !== warehouseId;
+          return (
+            baseValid &&
+            destinationWarehouseId !== "" &&
+            destinationWarehouseId !== warehouseId
+          );
         }
         if (exportType === "ADJUSTMENT") {
           return baseValid && notes.trim().length > 0;
@@ -137,18 +234,21 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
         return baseValid;
       }
       case 1:
-        return true; // Upload is optional
+        return true;
       case 2:
         return (
           items.length > 0 &&
           items.every(
-            (item) => item.product_id !== "" && item.quantity > 0 && item.warehouse_location_id !== "",
+            (item) =>
+              item.product_id !== "" &&
+              item.quantity > 0 &&
+              item.warehouse_location_id !== "",
           )
         );
       default:
         return true;
     }
-  }, [step, files, warehouseId, exportType, destinationWarehouseId, notes, items]);
+  }, [step, warehouseId, exportType, destinationWarehouseId, notes, items]);
 
   const addProduct = useCallback(
     (productId: string) => {
@@ -170,7 +270,11 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
     [products, addedProductIds],
   );
 
-  const updateItem = (id: string, field: keyof ExportItemData, value: unknown) => {
+  const updateItem = (
+    id: string,
+    field: keyof ExportItemData,
+    value: unknown,
+  ) => {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
     );
@@ -180,13 +284,11 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Submit
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     const submitAction = async () => {
-      // 1. Upload files to temp path
       const uploadedUrls: string[] = [];
       for (const f of files) {
         if (f.url) {
@@ -198,21 +300,25 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
           `temp-uploads/${user?.id || "unknown"}`,
           (percent) => {
             setFiles((prev) =>
-              prev.map((pf) => (pf.id === f.id ? { ...pf, progress: percent } : pf)),
+              prev.map((pf) =>
+                pf.id === f.id ? { ...pf, progress: percent } : pf,
+              ),
             );
           },
         );
         uploadedUrls.push(url);
       }
 
-      // 2. Create voucher via API
       await createExportVoucher({
         warehouse_id: warehouseId,
         export_type: exportType,
-        recipient_name: exportType === "TRANSFER"
-          ? warehouses.find((w) => w.id === destinationWarehouseId)?.name || undefined
-          : undefined,
-        recipient_department: exportType === "TRANSFER" ? destinationWarehouseId : undefined,
+        recipient_name:
+          exportType === "TRANSFER"
+            ? warehouses.find((w) => w.id === destinationWarehouseId)?.name ||
+              undefined
+            : undefined,
+        recipient_department:
+          exportType === "TRANSFER" ? destinationWarehouseId : undefined,
         notes: notes || undefined,
         attachment_urls: uploadedUrls,
         items: items.map((item) => ({
@@ -228,20 +334,20 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
 
     try {
       await gooeyToast.promise(submitAction(), {
-        loading: "Đang tạo phiếu xuất kho...",
-        success: "Đã tạo phiếu xuất kho",
-        error: "Lỗi khi tạo phiếu xuất kho",
+        loading: exportText.toast.creating,
+        success: exportText.toast.createSuccess,
+        error: exportText.toast.createError,
         description: {
-          success: "Phiếu đã được gửi vào quy trình duyệt.",
-          error: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
+          success: exportText.toast.createSuccessDesc,
+          error: exportText.toast.createErrorDesc,
         },
         action: {
-          error: { label: "Thử lại", onClick: () => handleSubmit() },
+          error: { label: t.common.retry, onClick: () => void handleSubmit() },
         },
       });
       onCreated();
     } catch {
-      // Toast handles error
+      // Toast handles error.
     } finally {
       setIsSubmitting(false);
     }
@@ -249,133 +355,169 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
 
   return (
     <div className="space-y-5">
-      {/* Stepper */}
       <div className="flex items-center gap-1 overflow-x-auto py-1">
-        {STEPS.map((s, i) => {
+        {STEPS.map((s, index) => {
           const Icon = s.icon;
           const isActive = step === s.id;
           const isCompleted = step > s.id;
           return (
             <div key={s.id} className="flex items-center gap-1">
-              {i > 0 && (
-                <div className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-500" : "bg-gray-200"}`} />
+              {index > 0 && (
+                <div
+                  className={`h-px w-6 shrink-0 lg:w-10 ${
+                    isCompleted ? "bg-orange-500" : "bg-gray-200"
+                  }`}
+                />
               )}
               <button
                 type="button"
-                onClick={() => { if (isCompleted || isActive) setStep(s.id); }}
+                onClick={() => {
+                  if (isCompleted || isActive) setStep(s.id);
+                }}
                 disabled={!isCompleted && !isActive}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                  isActive ? "bg-orange-500 text-white shadow-sm"
-                    : isCompleted ? "bg-orange-100 text-orange-600"
+                  isActive
+                    ? "bg-orange-500 text-white shadow-sm"
+                    : isCompleted
+                      ? "bg-orange-100 text-orange-600"
                       : "bg-gray-100 text-gray-400"
                 }`}
               >
                 <Icon size={14} />
-                <span className="hidden sm:inline">{s.label}</span>
+                <span className="hidden sm:inline">{copy[s.labelKey]}</span>
               </button>
             </div>
           );
         })}
       </div>
 
-      {/* Step content */}
-      <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-6">
-        {/* Step 0: Info */}
+      <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-4">
         {step === 0 && (
           <div className="space-y-4">
-            {/* Loại xuất */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-600">Loại xuất *</label>
+              <label className="mb-1 block text-sm font-medium text-gray-600">
+                {copy.exportType} *
+              </label>
               <div className="flex gap-2">
                 {EXPORT_TYPES.map((et) => (
                   <button
                     key={et.value}
                     type="button"
-                    onClick={() => { setExportType(et.value); setDestinationWarehouseId(""); }}
+                    onClick={() => {
+                      setExportType(et.value);
+                      setDestinationWarehouseId("");
+                    }}
                     className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
                       exportType === et.value
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                     }`}
                   >
-                    {et.vi}
+                    {copy[et.labelKey]}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* TRANSFER: Kho nguồn + Kho đích */}
             {exportType === "TRANSFER" && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-600">Kho nguồn (xuất) *</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-600">
+                    {copy.sourceWarehouse} *
+                  </label>
                   <select
                     value={warehouseId}
                     onChange={(e) => setWarehouseId(e.target.value)}
                     disabled={warehousesLoading}
                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
                   >
-                    <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho nguồn —"}</option>
+                    <option value="">
+                      {warehousesLoading ? copy.loading : copy.chooseSource}
+                    </option>
                     {warehouses.map((wh) => (
-                      <option key={wh.id} value={wh.id} disabled={wh.id === destinationWarehouseId}>
+                      <option
+                        key={wh.id}
+                        value={wh.id}
+                        disabled={wh.id === destinationWarehouseId}
+                      >
                         {wh.name}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-600">Kho đích (nhận) *</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-600">
+                    {copy.destinationWarehouse} *
+                  </label>
                   <select
                     value={destinationWarehouseId}
                     onChange={(e) => setDestinationWarehouseId(e.target.value)}
                     disabled={warehousesLoading}
                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
                   >
-                    <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho đích —"}</option>
-                    {warehouses.filter((wh) => wh.id !== warehouseId).map((wh) => (
-                      <option key={wh.id} value={wh.id}>
-                        {wh.name}
-                      </option>
-                    ))}
+                    <option value="">
+                      {warehousesLoading
+                        ? copy.loading
+                        : copy.chooseDestination}
+                    </option>
+                    {warehouses
+                      .filter((wh) => wh.id !== warehouseId)
+                      .map((wh) => (
+                        <option key={wh.id} value={wh.id}>
+                          {wh.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
-                {warehouseId && destinationWarehouseId && warehouseId === destinationWarehouseId && (
-                  <div className="col-span-full flex items-center gap-1.5 text-xs text-red-500">
-                    <AlertTriangle size={14} />
-                    <span>Kho nguồn và kho đích không được trùng nhau</span>
-                  </div>
-                )}
+                {warehouseId &&
+                  destinationWarehouseId &&
+                  warehouseId === destinationWarehouseId && (
+                    <div className="col-span-full flex items-center gap-1.5 text-xs text-red-500">
+                      <AlertTriangle size={14} />
+                      <span>{copy.sameWarehouse}</span>
+                    </div>
+                  )}
               </div>
             )}
 
-            {/* ADJUSTMENT: Kho xuất */}
             {exportType === "ADJUSTMENT" && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-600">Kho thực hiện *</label>
+                <label className="mb-1 block text-sm font-medium text-gray-600">
+                  {copy.executionWarehouse} *
+                </label>
                 <select
                   value={warehouseId}
                   onChange={(e) => setWarehouseId(e.target.value)}
                   disabled={warehousesLoading}
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
                 >
-                  <option value="">{warehousesLoading ? "Đang tải..." : "— Chọn kho —"}</option>
+                  <option value="">
+                    {warehousesLoading ? copy.loading : copy.chooseWarehouse}
+                  </option>
                   {warehouses.map((wh) => (
-                    <option key={wh.id} value={wh.id}>{wh.name}</option>
+                    <option key={wh.id} value={wh.id}>
+                      {wh.name}
+                    </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Ghi chú / Lý do */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-600">
-                {exportType === "ADJUSTMENT" ? "Lý do điều chỉnh *" : "Ghi chú"}
+                {exportType === "ADJUSTMENT"
+                  ? `${copy.adjustmentReason} *`
+                  : copy.notes}
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder={exportType === "ADJUSTMENT" ? "Nhập lý do điều chỉnh..." : "Ghi chú bổ sung..."}
+                placeholder={
+                  exportType === "ADJUSTMENT"
+                    ? copy.reasonPlaceholder
+                    : copy.notesPlaceholder
+                }
                 className={`w-full resize-none rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 ${
                   exportType === "ADJUSTMENT" && notes.trim().length === 0
                     ? "border-red-300"
@@ -383,55 +525,73 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
                 }`}
               />
               {exportType === "ADJUSTMENT" && notes.trim().length === 0 && (
-                <p className="mt-1 text-xs text-red-500">Bắt buộc nhập lý do khi loại xuất là Điều chỉnh</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {copy.reasonRequired}
+                </p>
               )}
             </div>
           </div>
         )}
 
-        {/* Step 1: Upload chứng từ */}
         {step === 1 && (
           <FileUploadField
             files={files}
             onFilesChange={setFiles}
             disabled={isSubmitting}
             maxFiles={5}
-            label="Tải chứng từ xuất kho đính kèm (tuỳ chọn)"
-            hint="PDF, DOCX, XLSX, CSV · tối đa 20MB mỗi tệp · tối đa 5 tệp"
+            label={copy.uploadLabel}
+            hint={copy.uploadHint}
           />
         )}
 
-        {/* Step 2: Products — same picker pattern as import */}
         {step === 2 && (
           <div className="space-y-4">
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
               <input
-                type="text" value={productSearch} onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Tìm sản phẩm theo tên, SKU hoặc barcode..."
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder={copy.searchProduct}
                 className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
               />
             </div>
 
-            {/* Product list */}
             <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
               {productsLoading ? (
-                <div className="flex items-center justify-center py-6 text-xs text-gray-400">Đang tải...</div>
+                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
+                  {copy.loading}
+                </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center py-6 text-xs text-gray-400">Không tìm thấy</div>
+                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
+                  {copy.noProducts}
+                </div>
               ) : (
                 filteredProducts.map((p) => {
                   const isAdded = addedProductIds.has(p.id);
                   return (
-                    <div key={p.id} className={`flex items-center gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 ${isAdded ? "bg-orange-50 opacity-60" : "hover:bg-white"}`}>
+                    <div
+                      key={p.id}
+                      className={`flex items-center gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 ${
+                        isAdded ? "bg-orange-50 opacity-60" : "hover:bg-white"
+                      }`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-900">{p.name}</p>
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {p.name}
+                        </p>
                         <div className="flex gap-2 text-xs text-gray-500">
                           <span>SKU: {p.code}</span>
-                          <span>· {p.unit}</span>
+                          <span>/ {p.unit}</span>
                         </div>
                       </div>
-                      <button type="button" disabled={isAdded} onClick={() => addProduct(p.id)}
+                      <button
+                        type="button"
+                        disabled={isAdded}
+                        onClick={() => addProduct(p.id)}
                         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-30"
                       >
                         <Plus size={14} />
@@ -442,94 +602,173 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
               )}
             </div>
 
-            {/* Selected items */}
             <div>
               <p className="mb-2 text-sm font-medium text-gray-600">
-                Sản phẩm xuất kho {items.length > 0 && <span className="text-xs text-gray-400">({items.length})</span>}
+                {copy.selectedProducts}{" "}
+                {items.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    ({items.length})
+                  </span>
+                )}
               </p>
               {items.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-gray-400">
-                  Chọn sản phẩm để thêm vào phiếu xuất.
+                <p className="rounded-lg border border-dashed border-gray-200 py-4 text-center text-sm text-gray-400">
+                  {copy.emptyProducts}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {items.map((item, idx) => {
-                    const product = products.find((p) => p.id === item.product_id);
+                  {items.map((item, index) => {
+                    const product = products.find(
+                      (p) => p.id === item.product_id,
+                    );
                     return (
-                      <div key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                      >
                         <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[10px] font-semibold text-orange-600">{idx + 1}</span>
-                            <span className="text-sm font-medium text-gray-900">{item.product_name}</span>
-                            <span className="text-xs text-gray-400">{product?.code} · {product?.unit}</span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-xxs font-semibold text-orange-600">
+                              {index + 1}
+                            </span>
+                            <span className="truncate text-sm font-medium text-gray-900">
+                              {item.product_name}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {product?.code} / {product?.unit}
+                            </span>
                           </div>
-                          <button type="button" onClick={() => removeItem(item.id)} className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50">
-                            <Trash2 size={12} /> Xóa
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                          >
+                            <Trash2 size={12} />
+                            {copy.delete}
                           </button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-3">
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-gray-400">SL xuất *</label>
-                            <input type="number" value={item.quantity || ""} onChange={(e) => updateItem(item.id, "quantity", Number(e.target.value))} min={1}
+                          <label>
+                            <span className="mb-0.5 block text-xxs text-gray-400">
+                              {copy.quantity} *
+                            </span>
+                            <input
+                              type="number"
+                              value={item.quantity || ""}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "quantity",
+                                  Number(e.target.value),
+                                )
+                              }
+                              min={1}
                               className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400"
                             />
-                          </div>
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-gray-400">Đơn giá</label>
-                            <input type="number" value={item.unit_price || ""} onChange={(e) => updateItem(item.id, "unit_price", Number(e.target.value))} min={0}
+                          </label>
+                          <label>
+                            <span className="mb-0.5 block text-xxs text-gray-400">
+                              {copy.unitPrice}
+                            </span>
+                            <input
+                              type="number"
+                              value={item.unit_price || ""}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "unit_price",
+                                  Number(e.target.value),
+                                )
+                              }
+                              min={0}
                               className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400"
                             />
-                          </div>
-                          <div>
-                            <label className="mb-0.5 block text-[11px] text-gray-400">Vị trí kho *</label>
+                          </label>
+                          <label>
+                            <span className="mb-0.5 block text-xxs text-gray-400">
+                              {copy.location} *
+                            </span>
                             {(() => {
-                              const productLocations = getLocationsForProduct(item.product_id);
+                              const productLocations = getLocationsForProduct(
+                                item.product_id,
+                              );
                               const hasLocations = productLocations.length > 0;
-                              const isLoading = locationsLoading || inventoryLoading;
+                              const isLoading =
+                                locationsLoading || inventoryLoading;
                               return (
                                 <select
                                   value={item.warehouse_location_id}
-                                  onChange={(e) => updateItem(item.id, "warehouse_location_id", e.target.value)}
-                                  disabled={isLoading || !warehouseId || !hasLocations}
+                                  onChange={(e) =>
+                                    updateItem(
+                                      item.id,
+                                      "warehouse_location_id",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={
+                                    isLoading || !warehouseId || !hasLocations
+                                  }
                                   className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400 disabled:opacity-50 ${
-                                    !hasLocations && !isLoading && warehouseId ? "border-amber-300" : "border-gray-200"
+                                    !hasLocations && !isLoading && warehouseId
+                                      ? "border-amber-300"
+                                      : "border-gray-200"
                                   }`}
                                 >
                                   <option value="">
                                     {!warehouseId
-                                      ? "Chọn kho trước"
+                                      ? copy.selectWarehouseFirst
                                       : isLoading
-                                        ? "Đang tải..."
+                                        ? copy.loading
                                         : !hasLocations
-                                          ? "⚠ Không có vị trí nào chứa sản phẩm này"
-                                          : "— Chọn vị trí —"}
+                                          ? copy.noLocationForProduct
+                                          : copy.selectLocation}
                                   </option>
                                   {productLocations.map((pl) => {
-                                    const loc = locations.find((l) => l.id === pl.locationId);
+                                    const loc = locations.find(
+                                      (l) => l.id === pl.locationId,
+                                    );
                                     return (
-                                      <option key={pl.locationId} value={pl.locationId}>
-                                        {loc ? `${loc.name} (${loc.code})` : pl.locationId} · Khả dụng: {pl.atpQty}
+                                      <option
+                                        key={pl.locationId}
+                                        value={pl.locationId}
+                                      >
+                                        {loc
+                                          ? `${loc.name} (${loc.code})`
+                                          : pl.locationId}{" "}
+                                        / {copy.available}: {pl.atpQty}
                                       </option>
                                     );
                                   })}
                                 </select>
                               );
                             })()}
-                          </div>
+                          </label>
                         </div>
-                        {/* ATP warning */}
-                        {item.warehouse_location_id && item.quantity > 0 && (() => {
-                          const atp = getAtp(item.product_id, item.warehouse_location_id);
-                          if (item.quantity > atp) {
+                        {item.warehouse_location_id &&
+                          item.quantity > 0 &&
+                          (() => {
+                            const atp = getAtp(
+                              item.product_id,
+                              item.warehouse_location_id,
+                            );
+                            if (item.quantity <= atp) return null;
                             return (
-                              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
-                                <AlertTriangle size={12} className="shrink-0" />
-                                <span>SL xuất ({item.quantity}) vượt quá khả dụng ({atp}). Phiếu sẽ bị từ chối khi duyệt.</span>
+                              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xxs text-amber-700">
+                                <AlertTriangle
+                                  size={12}
+                                  className="shrink-0"
+                                />
+                                <span>
+                                  {copy.atpWarning
+                                    .replace(
+                                      "{quantity}",
+                                      String(item.quantity),
+                                    )
+                                    .replace("{atp}", String(atp))}
+                                </span>
                               </div>
                             );
-                          }
-                          return null;
-                        })()}
+                          })()}
                       </div>
                     );
                   })}
@@ -539,62 +778,99 @@ export default function CreateExportTab({ cloneData, prefillWarehouseId, onCreat
           </div>
         )}
 
-        {/* Step 3: Confirm */}
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Xác nhận thông tin xuất kho</h3>
+            <h3 className="text-sm font-semibold text-gray-900">
+              {copy.confirmTitle}
+            </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Loại xuất</span>
-                <span className="font-medium">{EXPORT_TYPES.find((e) => e.value === exportType)?.vi || exportType}</span>
+                <span className="text-gray-500">{copy.exportType}</span>
+                <span className="font-medium">
+                  {copy[
+                    (EXPORT_TYPES.find((e) => e.value === exportType)
+                      ?.labelKey ?? "transfer") as "transfer" | "adjustment"
+                  ]}
+                </span>
               </div>
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">{exportType === "TRANSFER" ? "Kho nguồn" : "Kho thực hiện"}</span>
-                <span className="font-medium">{warehouses.find((w) => w.id === warehouseId)?.name || "—"}</span>
+                <span className="text-gray-500">
+                  {exportType === "TRANSFER"
+                    ? copy.sourceWarehouse
+                    : copy.executionWarehouse}
+                </span>
+                <span className="font-medium">
+                  {warehouses.find((w) => w.id === warehouseId)?.name || "-"}
+                </span>
               </div>
               {exportType === "TRANSFER" && (
                 <div className="flex justify-between border-b border-gray-100 py-2">
-                  <span className="text-gray-500">Kho đích</span>
-                  <span className="font-medium">{warehouses.find((w) => w.id === destinationWarehouseId)?.name || "—"}</span>
+                  <span className="text-gray-500">
+                    {copy.destinationWarehouse}
+                  </span>
+                  <span className="font-medium">
+                    {warehouses.find((w) => w.id === destinationWarehouseId)
+                      ?.name || "-"}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between border-b border-gray-100 py-2">
-                <span className="text-gray-500">Tệp đính kèm</span>
-                <span className="font-medium">{files.length} tệp</span>
+                <span className="text-gray-500">{copy.attachments}</span>
+                <span className="font-medium">
+                  {files.length} {copy.fileCount}
+                </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-500">Sản phẩm</span>
-                <span className="font-medium">{items.length} mặt hàng</span>
+                <span className="text-gray-500">{copy.products}</span>
+                <span className="font-medium">
+                  {items.length} {copy.itemCount}
+                </span>
               </div>
             </div>
             {notes && (
               <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
-                <span className="font-medium">{exportType === "ADJUSTMENT" ? "Lý do:" : "Ghi chú:"}</span> {notes}
+                <span className="font-medium">
+                  {exportType === "ADJUSTMENT"
+                    ? copy.adjustmentReason
+                    : copy.notes}
+                  :
+                </span>{" "}
+                {notes}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Navigation */}
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0}
+        <button
+          type="button"
+          onClick={() => step > 0 && setStep((step - 1) as StepId)}
+          disabled={step === 0}
           className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-30"
         >
-          <ChevronLeft size={14} /> Quay lại
+          <ChevronLeft size={14} />
+          {copy.back}
         </button>
 
         {step < STEPS.length - 1 ? (
-          <button type="button" onClick={() => canGoNext() && setStep(step + 1)} disabled={!canGoNext()}
+          <button
+            type="button"
+            onClick={() => canGoNext() && setStep((step + 1) as StepId)}
+            disabled={!canGoNext()}
             className="flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-orange-600 disabled:opacity-50"
           >
-            Tiếp theo <ChevronRight size={14} />
+            {copy.next}
+            <ChevronRight size={14} />
           </button>
         ) : (
-          <button type="button" onClick={handleSubmit} disabled={isSubmitting}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
             className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-600 disabled:opacity-50"
           >
-            {isSubmitting ? "Đang tạo..." : "Gửi duyệt"}
+            {isSubmitting ? copy.submitting : copy.submit}
           </button>
         )}
       </div>

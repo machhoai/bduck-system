@@ -71,7 +71,7 @@ export function PdfViewer({
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-black/80 backdrop-blur-sm">
       {/* ── Toolbar ── */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-gray-900 px-3 text-white">
+      <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/10 bg-gray-900 px-3 text-white">
         {/* Left: close + filename */}
         <div className="flex items-center gap-2">
           <button
@@ -82,7 +82,7 @@ export function PdfViewer({
           >
             <X size={18} />
           </button>
-          <span className="max-w-[200px] truncate text-xs font-normal text-white/70 sm:max-w-none sm:text-sm">
+          <span className="min-w-0 truncate text-xs font-normal text-white/70 sm:text-sm">
             {fileName}
           </span>
         </div>
@@ -114,7 +114,7 @@ export function PdfViewer({
         {/* Skeleton while iframe loads */}
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-900">
-            <div className="h-[70vh] w-[50vw] max-w-[600px] animate-pulse rounded-lg bg-gray-800" />
+            <div className="h-96 w-1/2 animate-pulse rounded-lg bg-gray-800" />
             <div className="h-3 w-32 animate-pulse rounded bg-gray-700" />
           </div>
         )}

@@ -27,7 +27,7 @@ export function ProductImportStats({
         >
           <p className="text-xs text-[var(--color-text-muted)]">{item.label}</p>
           <p
-            className={`mt-1 text-[24px] font-semibold ${
+            className={`mt-1 text-base font-semibold ${
               item.tone === "error"
                 ? "text-[var(--color-accent-error)]"
                 : item.tone === "warning"
@@ -93,13 +93,13 @@ export function ConfirmSkipInvalidRowsModal({
 }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-xl">
+      <div className="w-[500px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-xl">
         <div className="flex items-start gap-3 border-b border-[var(--color-border-soft)] px-5 py-4">
           <div className="rounded-full bg-red-100 p-2 text-red-600">
             <AlertTriangle size={20} />
           </div>
           <div className="flex-1">
-            <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
               Bỏ qua dòng lỗi?
             </h3>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">

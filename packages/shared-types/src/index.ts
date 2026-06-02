@@ -12,4 +12,5 @@ export * from './quality-control.js';
 export * from './system.js';
 export * from './workflow.js';
 export * from './permissionRegistry.js';
-export * from './process.js';
+export * from './process.js';
+export * from './expenses.js';

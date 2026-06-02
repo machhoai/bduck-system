@@ -11,7 +11,7 @@ import { Skeleton } from "../../ui/Skeleton";
 
 export default function ImportVoucherSkeleton() {
   return (
-    <div className="space-y-5 p-4 lg:p-6">
+    <div className="space-y-5 p-4 lg:p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1.5">

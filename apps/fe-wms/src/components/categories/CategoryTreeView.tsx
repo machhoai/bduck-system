@@ -242,7 +242,7 @@ export default function CategoryTreeView({
             type="button"
             onClick={openAddRootModal}
             className="
-              inline-flex min-h-10 items-center gap-2 rounded-lg
+              inline-flex min-h-8 items-center gap-2 rounded-lg
               bg-[var(--color-brand-primary)] px-3 text-sm font-semibold text-[#0A0A0F]
               transition-all duration-150 hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98]
             "

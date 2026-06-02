@@ -32,7 +32,7 @@ function SwitchRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-12 items-center justify-between gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition sm:h-10 sm:text-xs ${
+      className={`flex h-8 items-center justify-between gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition sm:h-8 sm:text-xs ${
         active
           ? "border-emerald-200 bg-emerald-50 text-emerald-800"
           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -104,7 +104,7 @@ export function StepOptionsEditor({
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="block">
-                      <span className="text-[11px] font-semibold uppercase text-gray-400">
+                      <span className="text-xxs font-semibold uppercase text-gray-400">
                         {copy.assignee}
                       </span>
                       <select
@@ -120,7 +120,7 @@ export function StepOptionsEditor({
                                 : option.assigned_role_id,
                           });
                         }}
-                        className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-10 sm:text-sm"
+                        className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:text-sm"
                       >
                         <option value="CREATOR">{copy.creator}</option>
                         <option value="ROLE">{copy.selectedRole}</option>
@@ -129,7 +129,7 @@ export function StepOptionsEditor({
 
                     {option.assignment_mode === "ROLE" && (
                       <label className="block">
-                        <span className="text-[11px] font-semibold uppercase text-gray-400">
+                        <span className="text-xxs font-semibold uppercase text-gray-400">
                           {copy.role}
                         </span>
                         <select
@@ -140,7 +140,7 @@ export function StepOptionsEditor({
                               assigned_role_id: event.target.value || null,
                             })
                           }
-                          className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-10 sm:text-sm"
+                          className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:text-sm"
                         >
                           <option value="">{copy.selectRole}</option>
                           {roles.map((role) => (

@@ -10,14 +10,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function InventoryDashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header skeleton */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Skeleton className="mb-2 h-4 w-24" variant="text" />
           <Skeleton className="h-8 w-56" variant="text" />
         </div>
-        <Skeleton className="h-10 w-40" variant="rect" />
+        <Skeleton className="h-8 w-40" variant="rect" />
       </div>
 
       {/* Stat cards skeleton */}
@@ -28,7 +28,7 @@ export default function InventoryDashboardSkeleton() {
             className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5"
           >
             <div className="mb-3 flex items-center gap-3">
-              <Skeleton className="h-10 w-10" variant="rect" />
+              <Skeleton className="h-8 w-10" variant="rect" />
               <Skeleton className="h-4 w-16" variant="text" />
             </div>
             <Skeleton className="h-8 w-20" variant="text" />
@@ -53,7 +53,7 @@ export default function InventoryDashboardSkeleton() {
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
           <Skeleton className="mb-4 h-5 w-48" variant="text" />
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="mb-2 h-10 w-full" variant="rect" />
+            <Skeleton key={i} className="mb-2 h-8 w-full" variant="rect" />
           ))}
         </div>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">

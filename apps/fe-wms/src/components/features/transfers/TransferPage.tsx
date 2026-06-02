@@ -1,14 +1,5 @@
 "use client";
 
-/**
- * TransferPage — Main transfer orders page with tabs
- *
- * Tabs: Tạo mới | Đang xử lý | Lịch sử
- * URL params: ?warehouseId=xxx (prefill from warehouse detail)
- *
- * LUẬT THÉP: Skeleton loading, realtime via onSnapshot, RBAC.
- */
-
 import { useMemo, useState, useEffect } from "react";
 import {
   ArrowRightLeft,
@@ -18,8 +9,10 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTransferOrders } from "../../../hooks/useTransferOrders";
+import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
 import CreateTransferTab from "./CreateTransferTab";
+import TransferDetailDrawer from "./TransferDetailDrawer";
 import TransferListTab from "./TransferListTab";
 import TransferSkeleton from "./TransferSkeleton";
 
@@ -27,15 +20,15 @@ type TabId = "create" | "inProgress" | "history";
 
 interface TabDef {
   id: TabId;
-  label: string;
+  labelKey: TabId;
   icon: React.ElementType;
   permission?: string;
 }
 
 const TAB_DEFINITIONS: TabDef[] = [
-  { id: "create", label: "Tạo mới", icon: Plus, permission: "transfers.write" },
-  { id: "inProgress", label: "Đang xử lý", icon: ClipboardList },
-  { id: "history", label: "Lịch sử", icon: History },
+  { id: "create", labelKey: "create", icon: Plus, permission: "transfers.write" },
+  { id: "inProgress", labelKey: "inProgress", icon: ClipboardList },
+  { id: "history", labelKey: "history", icon: History },
 ];
 
 function MetricCard({
@@ -55,11 +48,11 @@ function MetricCard({
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+      <p className="text-xxs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
         {label}
       </p>
       <p
-        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-xl font-bold ${toneClass}`}
+        className={`mt-2 inline-flex rounded-lg px-2 py-1 text-lg font-bold ${toneClass}`}
       >
         {value}
       </p>
@@ -68,12 +61,14 @@ function MetricCard({
 }
 
 export default function TransferPage() {
+  const { t } = useTranslation();
   const hasPermission = useUserStore((state) => state.hasPermission);
   const searchParams = useSearchParams();
   const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
   const [activeTab, setActiveTab] = useState<TabId>(
     prefillWarehouseId ? "create" : "inProgress",
   );
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const { activeOrders, completedOrders, loading } = useTransferOrders();
 
   useEffect(() => {
@@ -99,6 +94,9 @@ export default function TransferPage() {
   const pendingApprovalCount = activeOrders.filter(
     (o) => o.status === "PENDING_APPROVAL",
   ).length;
+  const transferText = t.transfer as typeof t.transfer & {
+    metrics?: Record<string, string>;
+  };
 
   const handleTabSwitch = (tabId: TabId) => {
     setActiveTab(tabId);
@@ -113,15 +111,15 @@ export default function TransferPage() {
       {/* Header */}
       <div className="border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm">
+          <div className="flex h-8 w-11 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm">
             <ArrowRightLeft size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-primary)] lg:text-xl">
-              Điều chuyển
+            <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-primary)] lg:text-lg">
+              {t.transfer.title}
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] lg:text-sm">
-              Tạo, theo dõi và quản lý phiếu điều chuyển hàng hóa
+              {t.transfer.subtitle}
             </p>
           </div>
         </div>
@@ -132,17 +130,17 @@ export default function TransferPage() {
         {/* Metrics */}
         <div className="grid grid-cols-3 gap-2 lg:gap-3">
           <MetricCard
-            label="Đang xử lý"
+            label={transferText.metrics?.inProgress ?? t.transfer.tabs.inProgress}
             value={activeOrders.length}
             tone="orange"
           />
           <MetricCard
-            label="Chờ duyệt"
+            label={transferText.metrics?.pendingApproval ?? t.transfer.status.PENDING_APPROVAL}
             value={pendingApprovalCount}
             tone="amber"
           />
           <MetricCard
-            label="Hoàn thành"
+            label={transferText.metrics?.completed ?? t.transfer.status.COMPLETED}
             value={completedOrders.length}
             tone="emerald"
           />
@@ -171,7 +169,7 @@ export default function TransferPage() {
                   }`}
                 >
                   <Icon size={14} />
-                  {tab.label}
+                  {t.transfer.tabs[tab.labelKey]}
                 </button>
               );
             })}
@@ -186,10 +184,24 @@ export default function TransferPage() {
           />
         )}
         {effectiveTab === "inProgress" && (
-          <TransferListTab orders={activeOrders} />
+          <TransferListTab
+            orders={activeOrders}
+            onViewDetail={(id) => setSelectedOrderId(id)}
+          />
         )}
         {effectiveTab === "history" && (
-          <TransferListTab orders={completedOrders} />
+          <TransferListTab
+            orders={completedOrders}
+            onViewDetail={(id) => setSelectedOrderId(id)}
+          />
+        )}
+
+        {/* Detail Drawer */}
+        {selectedOrderId && (
+          <TransferDetailDrawer
+            orderId={selectedOrderId}
+            onClose={() => setSelectedOrderId(null)}
+          />
         )}
       </div>
     </div>

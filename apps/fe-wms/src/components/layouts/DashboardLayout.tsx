@@ -35,7 +35,7 @@ export default function DashboardLayout({
                     }`}
             >
                 {/* ── Compact top bar ── */}
-                <div className="flex h-12 items-center justify-end gap-2 border-b border-gray-100 bg-white/80 px-4 backdrop-blur-sm">
+                <div className="flex h-8 items-center justify-end gap-2 border-b border-gray-100 bg-white/80 px-4 backdrop-blur-sm">
                     <NotificationBell />
                     {user && (
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
@@ -44,7 +44,7 @@ export default function DashboardLayout({
                     )}
                 </div>
 
-                <div className="mx-auto flex w-full flex-1 flex-col overflow-y-auto p-4 relative">
+                <div className="relative flex w-full flex-1 flex-col overflow-y-auto p-4">
                     {children}
                 </div>
             </main>

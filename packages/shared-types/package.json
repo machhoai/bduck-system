@@ -29,5 +29,8 @@
     "@bduck/tsconfig": "workspace:*",
     "eslint": "^8.57.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }

@@ -312,8 +312,8 @@ export default function ReceivingSessionDrawer({
                   <div className="h-4 w-16 rounded bg-gray-200" />
                 </div>
                 <div className="mt-3 flex gap-3">
-                  <div className="h-10 flex-1 rounded-lg bg-gray-200" />
-                  <div className="h-10 flex-1 rounded-lg bg-gray-200" />
+                  <div className="h-8 flex-1 rounded-lg bg-gray-200" />
+                  <div className="h-8 flex-1 rounded-lg bg-gray-200" />
                 </div>
               </div>
             ))}

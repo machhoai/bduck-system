@@ -65,12 +65,12 @@ export default function BottomNav() {
                             <span className="relative">
                                 <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
                                 {badgeCount > 0 && (
-                                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white shadow-sm">
+                                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white shadow-sm">
                                         {badgeCount > 99 ? "99+" : badgeCount}
                                     </span>
                                 )}
                             </span>
-                            <span className="text-[10px] font-medium">{label}</span>
+                            <span className="text-xxs font-medium">{label}</span>
                         </Link>
                     );
                 })}
@@ -86,7 +86,7 @@ export default function BottomNav() {
           "
                 >
                     <MoreHorizontal size={22} strokeWidth={1.5} />
-                    <span className="text-[10px] font-medium">{t.nav.more}</span>
+                    <span className="text-xxs font-medium">{t.nav.more}</span>
                 </button>
             </div>
         </nav>

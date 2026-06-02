@@ -53,6 +53,7 @@ function formatDate(value: unknown) {
 
 export default function ExportHistoryTab({ vouchers, onClone }: Props) {
   const { t } = useTranslation();
+  const exportText = t.exportVoucher as any;
   const [showFilters, setShowFilters] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<HistoryFilters>({
@@ -91,7 +92,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
           <PackageMinus size={24} className="text-[var(--color-text-muted)]" />
         </div>
         <p className="text-sm font-medium text-[var(--color-text-muted)]">
-          {t.exportVoucher?.historyEmpty ?? "Chưa có lịch sử xuất kho"}
+          {exportText.historyEmpty}
         </p>
       </div>
     );
@@ -111,7 +112,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
             onChange={(event) =>
               setFilters({ ...filters, search: event.target.value })
             }
-            placeholder="Tìm theo mã phiếu, người nhận, loại xuất..."
+            placeholder={exportText.historySearchPlaceholder}
             className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] py-2 pl-8 pr-3 text-xs outline-none transition-colors focus:border-[var(--color-border-focus)]"
           />
         </div>
@@ -128,8 +129,8 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
       {showFilters && (
         <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block">
-            <span className="mb-1 block text-[10px] font-medium uppercase text-[var(--color-text-muted)]">
-              Trạng thái
+            <span className="mb-1 block text-xxs font-medium uppercase text-[var(--color-text-muted)]">
+              {exportText.filter.status}
             </span>
             <select
               value={filters.status}
@@ -138,15 +139,19 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
               }
               className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
             >
-              <option value="">Tất cả</option>
-              <option value="COMPLETED">Hoàn thành</option>
-              <option value="CANCELLED">Đã hủy</option>
+              <option value="">{exportText.filter.all}</option>
+              <option value="COMPLETED">
+                {t.exportVoucher.status.COMPLETED}
+              </option>
+              <option value="CANCELLED">
+                {t.exportVoucher.status.CANCELLED}
+              </option>
             </select>
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-[10px] font-medium uppercase text-[var(--color-text-muted)]">
-              Kho xuất
+            <span className="mb-1 block text-xxs font-medium uppercase text-[var(--color-text-muted)]">
+              {exportText.filter.warehouse}
             </span>
             <input
               type="text"
@@ -154,7 +159,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
               onChange={(event) =>
                 setFilters({ ...filters, warehouse_id: event.target.value })
               }
-              placeholder="ID kho..."
+              placeholder="ID"
               className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
             />
           </label>
@@ -167,19 +172,19 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
               }
               className="text-xs text-orange-700 hover:underline"
             >
-              Xóa bộ lọc
+              {exportText.filter.clearFilters}
             </button>
           </div>
         </div>
       )}
 
       <p className="text-xs text-[var(--color-text-muted)]">
-        {filtered.length} kết quả
+        {filtered.length} {exportText.filter.results}
       </p>
 
       {filtered.length === 0 ? (
         <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">
-          Không tìm thấy phiếu nào phù hợp.
+          {exportText.filter.noMatches}
         </p>
       ) : (
         <div className="space-y-2">
@@ -188,7 +193,8 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
             const statusColor = isCompleted
               ? "bg-emerald-50 text-[var(--color-accent-success)]"
               : "bg-gray-100 text-[var(--color-text-muted)]";
-            const statusLabel = isCompleted ? "Hoàn thành" : "Đã hủy";
+            const statusLabel =
+              exportText.status?.[voucher.status] ?? voucher.status;
 
             return (
               <div
@@ -207,7 +213,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                       {voucher.voucher_number}
                     </p>
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${statusColor}`}
+                      className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${statusColor}`}
                     >
                       {statusLabel}
                     </span>
@@ -218,7 +224,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                   </p>
                 </div>
 
-                <p className="hidden shrink-0 text-[10px] tabular-nums text-[var(--color-text-muted)] sm:block">
+                <p className="hidden shrink-0 text-xxs tabular-nums text-[var(--color-text-muted)] sm:block">
                   {formatDate(voucher.created_at)}
                 </p>
 
@@ -227,7 +233,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                     type="button"
                     onClick={() => setSelectedId(voucher.id)}
                     className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                    title="Xem chi tiết"
+                    title={exportText.actions.viewDetail}
                   >
                     <Eye size={14} />
                   </button>
@@ -235,7 +241,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                     type="button"
                     onClick={() => onClone(getClonePayload(voucher))}
                     className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-orange-50 hover:text-orange-700"
-                    title="Tạo lại phiếu"
+                    title={exportText.actions.clone}
                   >
                     <Copy size={14} />
                   </button>

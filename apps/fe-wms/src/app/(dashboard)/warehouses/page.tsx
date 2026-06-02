@@ -152,13 +152,13 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className={`mx-auto flex w-full flex-col gap-6 ${viewMode === "map" && activeTab === "warehouses" ? "h-full" : ""}`}>
+    <div className={`flex w-full flex-col gap-4 ${viewMode === "map" && activeTab === "warehouses" ? "h-full" : ""}`}>
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
+          <h1 className="font-[var(--font-display)] text-lg font-semibold leading-[1.1] tracking-normal text-[var(--color-text-primary)] lg:text-lg">
             {t.warehouses.title}
           </h1>
-          <p className="text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
+          <p className="text-sm leading-[1.47] text-[var(--color-text-secondary)]">
             {t.warehouses.description}
           </p>
         </div>
@@ -279,7 +279,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-full px-4 text-[14px] font-normal tracking-[-0.224px] transition-all active:scale-95 ${active
+      className={`inline-flex h-8 min-w-28 items-center justify-center gap-2 rounded-full px-4 text-sm font-normal tracking-normal transition-all active:scale-95 ${active
         ? "bg-[var(--color-brand-primary)] text-white"
         : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
         }`}

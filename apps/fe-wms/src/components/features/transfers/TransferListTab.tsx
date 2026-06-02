@@ -1,14 +1,5 @@
 "use client";
 
-/**
- * TransferListTab — Realtime list of active transfer orders
- *
- * Shows transfer orders with status badges, filters (type/status),
- * and quick-action buttons context-aware by status.
- *
- * LUẬT THÉP: onSnapshot realtime, skeleton loading, no reload button.
- */
-
 import { useMemo, useState } from "react";
 import {
   ArrowDownRight,
@@ -22,149 +13,60 @@ import {
   XCircle,
 } from "lucide-react";
 import type { TransferOrder } from "@bduck/shared-types";
-import { TransferOrderStatus, TransferType } from "@bduck/shared-types";
+import { TransferType } from "@bduck/shared-types";
 import { useWarehouses } from "../../../hooks/useWarehouses";
+import { useTranslation } from "../../../lib/i18n";
 
-// ─── i18n text ───
-const TEXT = {
-  vi: {
-    empty: "Không có phiếu điều chuyển đang xử lý",
-    emptyHint: 'Tạo phiếu mới ở tab "Tạo mới" để bắt đầu.',
-    filterAll: "Tất cả",
-    filterIntra: "Trong kho",
-    filterInter: "Liên kho",
-    view: "Xem",
-    items: "sản phẩm",
-    source: "Từ",
-    dest: "Đến",
-  },
-  zh: {
-    empty: "没有正在处理的调拨单",
-    emptyHint: "在「新建」标签页创建新调拨单。",
-    filterAll: "全部",
-    filterIntra: "库内",
-    filterInter: "跨库",
-    view: "查看",
-    items: "产品",
-    source: "从",
-    dest: "到",
-  },
-};
-
-// ─── Status config ───
 const STATUS_CONFIG: Record<
   string,
-  { label: string; labelZh: string; color: string; Icon: React.ElementType }
+  { color: string; Icon: React.ElementType }
 > = {
-  DRAFT: {
-    label: "Nháp",
-    labelZh: "草稿",
-    color: "bg-gray-100 text-gray-600",
-    Icon: Clock,
-  },
-  PENDING_APPROVAL: {
-    label: "Chờ duyệt",
-    labelZh: "待审批",
-    color: "bg-amber-50 text-amber-700",
-    Icon: Clock,
-  },
-  APPROVED: {
-    label: "Đã duyệt",
-    labelZh: "已审批",
-    color: "bg-blue-50 text-blue-700",
-    Icon: CheckCircle,
-  },
-  EXPORT_PENDING: {
-    label: "Chờ tạo xuất",
-    labelZh: "待创建出库",
-    color: "bg-orange-50 text-orange-700",
-    Icon: Clock,
-  },
-  EXPORT_CREATED: {
-    label: "Đã tạo xuất",
-    labelZh: "已创建出库",
-    color: "bg-indigo-50 text-indigo-700",
-    Icon: PackageOpen,
-  },
-  PICKING: {
-    label: "Đang soạn",
-    labelZh: "拣货中",
-    color: "bg-purple-50 text-purple-700",
-    Icon: PackageOpen,
-  },
-  IN_TRANSIT: {
-    label: "Đang chuyển",
-    labelZh: "运输中",
-    color: "bg-sky-50 text-sky-700",
-    Icon: Truck,
-  },
-  PENDING_RECEIVE: {
-    label: "Chờ nhận",
-    labelZh: "待接收",
-    color: "bg-teal-50 text-teal-700",
-    Icon: ArrowDownRight,
-  },
-  RECEIVING: {
-    label: "Đang nhận",
-    labelZh: "接收中",
-    color: "bg-cyan-50 text-cyan-700",
-    Icon: ArrowDownRight,
-  },
-  RECEIVED: {
-    label: "Đã nhận",
-    labelZh: "已接收",
-    color: "bg-emerald-50 text-emerald-700",
-    Icon: CheckCircle,
-  },
-  COMPLETED: {
-    label: "Hoàn thành",
-    labelZh: "完成",
-    color: "bg-emerald-50 text-emerald-700",
-    Icon: CheckCircle,
-  },
-  REJECTED: {
-    label: "Từ chối",
-    labelZh: "已拒绝",
-    color: "bg-red-50 text-red-700",
-    Icon: XCircle,
-  },
-  CANCELLED: {
-    label: "Đã hủy",
-    labelZh: "已取消",
-    color: "bg-gray-100 text-gray-500",
-    Icon: XCircle,
-  },
+  DRAFT: { color: "bg-gray-100 text-gray-600", Icon: Clock },
+  PENDING_APPROVAL: { color: "bg-amber-50 text-amber-700", Icon: Clock },
+  APPROVED: { color: "bg-blue-50 text-blue-700", Icon: CheckCircle },
+  EXPORT_PENDING: { color: "bg-orange-50 text-orange-700", Icon: Clock },
+  EXPORT_CREATED: { color: "bg-indigo-50 text-indigo-700", Icon: PackageOpen },
+  PICKING: { color: "bg-purple-50 text-purple-700", Icon: PackageOpen },
+  IN_TRANSIT: { color: "bg-sky-50 text-sky-700", Icon: Truck },
+  PENDING_RECEIVE: { color: "bg-teal-50 text-teal-700", Icon: ArrowDownRight },
+  RECEIVING: { color: "bg-cyan-50 text-cyan-700", Icon: ArrowDownRight },
+  RECEIVED: { color: "bg-emerald-50 text-emerald-700", Icon: CheckCircle },
+  COMPLETED: { color: "bg-emerald-50 text-emerald-700", Icon: CheckCircle },
+  REJECTED: { color: "bg-red-50 text-red-700", Icon: XCircle },
+  CANCELLED: { color: "bg-gray-100 text-gray-500", Icon: XCircle },
 };
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, label }: { status: string; label: string }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT;
   const Icon = cfg.Icon;
+
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${cfg.color}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xxs font-semibold ${cfg.color}`}
     >
       <Icon size={12} />
-      {cfg.label}
+      {label}
     </span>
   );
 }
 
-function TransferTypeBadge({ type }: { type: string }) {
+function TransferTypeBadge({
+  type,
+  labels,
+}: {
+  type: string;
+  labels: { intra: string; inter: string };
+}) {
   const isIntra = type === TransferType.INTRA_WAREHOUSE;
+
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-        isIntra
-          ? "bg-violet-50 text-violet-600"
-          : "bg-sky-50 text-sky-600"
+      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xxs font-semibold ${
+        isIntra ? "bg-violet-50 text-violet-600" : "bg-sky-50 text-sky-600"
       }`}
     >
-      {isIntra ? (
-        <ArrowRightLeft size={10} />
-      ) : (
-        <ArrowUpRight size={10} />
-      )}
-      {isIntra ? "Trong kho" : "Liên kho"}
+      {isIntra ? <ArrowRightLeft size={10} /> : <ArrowUpRight size={10} />}
+      {isIntra ? labels.intra : labels.inter}
     </span>
   );
 }
@@ -185,7 +87,6 @@ function formatDate(value: unknown) {
   });
 }
 
-// ─── Props ───
 interface Props {
   orders: TransferOrder[];
   onViewDetail?: (orderId: string) => void;
@@ -194,8 +95,10 @@ interface Props {
 type TypeFilter = "ALL" | "INTRA" | "INTER";
 
 export default function TransferListTab({ orders, onViewDetail }: Props) {
+  const { t } = useTranslation();
   const { warehouses } = useWarehouses();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
+  const transferText = t.transfer as any;
 
   const warehouseMap = useMemo(
     () => new Map(warehouses.map((w) => [w.id, w])),
@@ -204,24 +107,34 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
 
   const filtered = useMemo(() => {
     if (typeFilter === "ALL") return orders;
-    if (typeFilter === "INTRA")
+    if (typeFilter === "INTRA") {
       return orders.filter(
         (o) => o.transfer_type === TransferType.INTRA_WAREHOUSE,
       );
+    }
     return orders.filter(
       (o) => o.transfer_type === TransferType.INTER_WAREHOUSE,
     );
   }, [orders, typeFilter]);
 
   const filterButtons: { value: TypeFilter; label: string }[] = [
-    { value: "ALL", label: `Tất cả (${orders.length})` },
+    {
+      value: "ALL",
+      label: `${transferText.filter?.all ?? ""} (${orders.length})`,
+    },
     {
       value: "INTRA",
-      label: `Trong kho (${orders.filter((o) => o.transfer_type === TransferType.INTRA_WAREHOUSE).length})`,
+      label: `${transferText.filter?.intra ?? t.transfer.type.INTRA_WAREHOUSE} (${
+        orders.filter((o) => o.transfer_type === TransferType.INTRA_WAREHOUSE)
+          .length
+      })`,
     },
     {
       value: "INTER",
-      label: `Liên kho (${orders.filter((o) => o.transfer_type === TransferType.INTER_WAREHOUSE).length})`,
+      label: `${transferText.filter?.inter ?? t.transfer.type.INTER_WAREHOUSE} (${
+        orders.filter((o) => o.transfer_type === TransferType.INTER_WAREHOUSE)
+          .length
+      })`,
     },
   ];
 
@@ -232,16 +145,17 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
           <ArrowRightLeft size={24} className="text-gray-400" />
         </div>
         <p className="text-sm font-medium text-gray-600">
-          {TEXT.vi.empty}
+          {transferText.empty?.inProgress ?? ""}
         </p>
-        <p className="mt-1 text-xs text-gray-400">{TEXT.vi.emptyHint}</p>
+        <p className="mt-1 text-xs text-gray-400">
+          {transferText.empty?.inProgressHint ?? ""}
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {/* Type filter pills */}
       <div className="flex gap-1.5 overflow-x-auto">
         {filterButtons.map((fb) => (
           <button
@@ -259,13 +173,15 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
         ))}
       </div>
 
-      {/* Order cards */}
       <div className="grid gap-3 xl:grid-cols-2">
         {filtered.map((order) => {
           const srcWarehouse = warehouseMap.get(order.source_warehouse_id);
           const dstWarehouse = warehouseMap.get(order.destination_warehouse_id);
-          const isIntra =
-            order.transfer_type === TransferType.INTRA_WAREHOUSE;
+          const isIntra = order.transfer_type === TransferType.INTRA_WAREHOUSE;
+          const statusLabel =
+            t.transfer.status[
+              order.status as keyof typeof t.transfer.status
+            ] ?? order.status;
 
           return (
             <div
@@ -274,18 +190,22 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  {/* Order number + type badge */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-gray-900">
                       {order.order_number}
                     </span>
-                    <TransferTypeBadge type={order.transfer_type} />
+                    <TransferTypeBadge
+                      type={order.transfer_type}
+                      labels={{
+                        intra: t.transfer.type.INTRA_WAREHOUSE,
+                        inter: t.transfer.type.INTER_WAREHOUSE,
+                      }}
+                    />
                   </div>
 
-                  {/* Warehouse flow */}
                   <div className="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
-                    <span className="max-w-[120px] truncate font-medium text-gray-700">
-                      {srcWarehouse?.name || "—"}
+                    <span className="w-32 truncate font-medium text-gray-700">
+                      {srcWarehouse?.name || "-"}
                     </span>
                     {!isIntra && (
                       <>
@@ -293,23 +213,21 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
                           size={12}
                           className="shrink-0 text-gray-300"
                         />
-                        <span className="max-w-[120px] truncate font-medium text-gray-700">
-                          {dstWarehouse?.name || "—"}
+                        <span className="w-32 truncate font-medium text-gray-700">
+                          {dstWarehouse?.name || "-"}
                         </span>
                       </>
                     )}
                   </div>
 
-                  {/* Created date */}
-                  <p className="mt-1 text-[11px] text-gray-400">
+                  <p className="mt-1 text-xxs text-gray-400">
                     {formatDate(order.created_at)}
                   </p>
                 </div>
 
-                <StatusBadge status={order.status} />
+                <StatusBadge status={order.status} label={statusLabel} />
               </div>
 
-              {/* Actions */}
               <div className="mt-3 flex gap-2">
                 {onViewDetail && (
                   <button
@@ -318,9 +236,21 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
                     className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50"
                   >
                     <Eye size={13} />
-                    Chi tiết
+                    {transferText.actions?.viewDetail ?? "Chi tiết"}
                   </button>
                 )}
+                {onViewDetail &&
+                  (order.status === "PENDING_RECEIVE" ||
+                    order.status === "RECEIVING") && (
+                    <button
+                      type="button"
+                      onClick={() => onViewDetail(order.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-teal-700"
+                    >
+                      <ArrowDownRight size={13} />
+                      {transferText.actions?.receive ?? "Nhận hàng"}
+                    </button>
+                  )}
               </div>
             </div>
           );

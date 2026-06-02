@@ -33,10 +33,10 @@ export function AuditLogStats({ total, visible, logs, labels }: AuditLogStatsPro
             key={item.label}
             className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+            <div className="flex h-8 w-10 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
               <Icon size={19} />
             </div>
-            <p className="text-[28px] font-semibold leading-[1.14] text-[var(--color-text-primary)]">
+            <p className="text-lg font-semibold leading-[1.14] text-[var(--color-text-primary)]">
               {item.value}
             </p>
             <p className="text-sm text-[var(--color-text-muted)]">{item.label}</p>

@@ -149,15 +149,13 @@ function ProductPickerCard({
   product,
   isAdded,
   onAdd,
-  locale,
+  copy,
 }: {
   product: Product;
   isAdded: boolean;
   onAdd: () => void;
-  locale: Locale;
+  copy: Record<string, string>;
 }) {
-  const copy = COPY[locale];
-
   return (
     <div
       className={`rounded-[var(--radius-sm)] border p-3 transition-all ${
@@ -167,7 +165,7 @@ function ProductPickerCard({
       }`}
     >
       <div className="flex gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
           <Package size={20} />
         </div>
         <div className="min-w-0 flex-1">
@@ -175,10 +173,10 @@ function ProductPickerCard({
             {product.name}
           </p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            SKU: {product.code} · {product.unit}
+            SKU: {product.code} / {product.unit}
           </p>
           {product.barcode && (
-            <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-0.5 truncate text-xxs text-[var(--color-text-muted)]">
               {product.barcode}
             </p>
           )}
@@ -188,7 +186,7 @@ function ProductPickerCard({
         type="button"
         disabled={isAdded}
         onClick={onAdd}
-        className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-xs)] bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
+        className="mt-3 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--radius-xs)] bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
       >
         {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
         {isAdded ? copy.added : copy.addProduct}
@@ -204,7 +202,7 @@ export default function CreateVoucherTab({
 }: CreateVoucherTabProps) {
   const { t, lang } = useTranslation();
   const locale = (lang || "vi") as Locale;
-  const copy = COPY[locale];
+  const copy = (t.importVoucher as any).form as Record<string, string>;
   const user = useUserStore((state) => state.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const { locations: allLocations } = useWarehouseLocations();
@@ -257,12 +255,12 @@ export default function CreateVoucherTab({
   const stepLabels = useMemo(() => {
     const labels = (t as any).importVoucher?.steps;
     return {
-      upload: labels?.upload ?? "Tải chứng từ",
-      info: labels?.info ?? "Thông tin",
-      items: labels?.items ?? "Sản phẩm",
-      confirm: labels?.confirm ?? "Xác nhận",
+      upload: labels?.upload ?? copy.upload,
+      info: labels?.info ?? copy.info,
+      items: labels?.items ?? copy.products,
+      confirm: labels?.confirm ?? copy.confirm,
     };
-  }, [t]);
+  }, [copy, t]);
 
   const totalQuantity = useMemo(
     () =>
@@ -476,7 +474,7 @@ export default function CreateVoucherTab({
                 type="button"
                 disabled={!isCompleted && !isActive}
                 onClick={() => setStep(stepConfig.id)}
-                className={`flex h-12 items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left transition-all ${
+                className={`flex h-8 items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left transition-all ${
                   isActive
                     ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
                     : isCompleted
@@ -530,7 +528,7 @@ export default function CreateVoucherTab({
                   })
                 }
                 placeholder={copy.supplierPlaceholder}
-                className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
+                className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm"
               />
             </label>
 
@@ -548,7 +546,7 @@ export default function CreateVoucherTab({
                   })
                 }
                 placeholder={copy.poPlaceholder}
-                className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
+                className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm"
               />
             </label>
 
@@ -571,7 +569,7 @@ export default function CreateVoucherTab({
       )}
 
       {step === 1 && (
-        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-6">
+        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
           <FileUploadField
             files={files}
             onFilesChange={setFiles}
@@ -606,7 +604,7 @@ export default function CreateVoucherTab({
                   value={productSearch}
                   onChange={(event) => setProductSearch(event.target.value)}
                   placeholder={copy.searchProduct}
-                  className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-base outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-10 lg:text-sm"
+                  className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-base outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm"
                 />
               </div>
             </div>
@@ -625,13 +623,13 @@ export default function CreateVoucherTab({
                 {copy.noProducts}
               </div>
             ) : (
-              <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+              <div className="grid max-h-96 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                 {filteredProducts.map((product) => (
                   <ProductPickerCard
                     key={product.id}
                     product={product}
                     isAdded={addedProductIds.has(product.id)}
-                    locale={locale}
+                    copy={copy}
                     onAdd={() => addProductToList(product.id)}
                   />
                 ))}
@@ -660,7 +658,7 @@ export default function CreateVoucherTab({
                 {copy.emptyItems}
               </div>
             ) : (
-              <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+              <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
                 {formData.items.map((item, index) => {
                   const product = products.find(
                     (productItem) => productItem.id === item.product_id,
@@ -680,14 +678,14 @@ export default function CreateVoucherTab({
                             {item.product_name}
                           </p>
                           <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                            {product?.code} · {product?.unit}
+                            {product?.code} / {product?.unit}
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-accent-error)] transition-colors hover:bg-red-50"
-                          aria-label={(t as any).common?.delete ?? "Xóa"}
+                          aria-label={(t as any).common?.delete ?? "Delete"}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -695,7 +693,7 @@ export default function CreateVoucherTab({
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                          <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                             {copy.expectedQty} *
                           </span>
                           <input
@@ -709,11 +707,11 @@ export default function CreateVoucherTab({
                                 Number(event.target.value),
                               )
                             }
-                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
                           />
                         </label>
                         <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                          <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                             {copy.unitPrice}
                           </span>
                           <input
@@ -727,11 +725,11 @@ export default function CreateVoucherTab({
                                 Number(event.target.value),
                               )
                             }
-                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
                           />
                         </label>
                         <label className="block sm:col-span-2">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                          <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                             {copy.location} *
                           </span>
                           <select
@@ -746,7 +744,7 @@ export default function CreateVoucherTab({
                             disabled={
                               locationsLoading || inventoryLoading || !formData.warehouse_id
                             }
-                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 lg:h-9 lg:text-sm"
+                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 lg:h-9 lg:text-sm"
                           >
                             <option value="">
                               {!formData.warehouse_id
@@ -771,7 +769,7 @@ export default function CreateVoucherTab({
                                 const hasStock = invLocationIds.has(location.id);
                                 return (
                                   <option key={location.id} value={location.id}>
-                                    {location.name} ({location.code}){hasStock ? ` · Hiện có: ${qty}` : ""}
+                                    {location.name} ({location.code}){hasStock ? ` / ATP: ${qty}` : ""}
                                   </option>
                                 );
                               });
@@ -779,7 +777,7 @@ export default function CreateVoucherTab({
                           </select>
                         </label>
                         <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                          <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                             {copy.condition}
                           </span>
                           <select
@@ -791,7 +789,7 @@ export default function CreateVoucherTab({
                                 event.target.value,
                               )
                             }
-                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
                           >
                             <option value="GOOD">{copy.good}</option>
                             <option value="DAMAGED">{copy.damaged}</option>
@@ -799,7 +797,7 @@ export default function CreateVoucherTab({
                           </select>
                         </label>
                         <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase text-[var(--color-text-muted)]">
+                          <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                             {copy.itemNote}
                           </span>
                           <input
@@ -807,7 +805,7 @@ export default function CreateVoucherTab({
                             onChange={(event) =>
                               updateItem(item.id, "notes", event.target.value)
                             }
-                            className="h-11 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
+                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
                           />
                         </label>
                       </div>
@@ -847,7 +845,7 @@ export default function CreateVoucherTab({
                   {(t as any).importVoucher?.form?.supplier ?? "Nhà cung cấp"}
                 </span>
                 <span className="text-right font-semibold text-[var(--color-text-primary)]">
-                  {formData.supplier_name || "—"}
+                  {formData.supplier_name || "-"}
                 </span>
               </div>
               <div className="flex justify-between gap-4 py-3">
@@ -872,34 +870,34 @@ export default function CreateVoucherTab({
           <aside className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
-                <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                   {copy.attachments}
                 </p>
-                <p className="mt-2 text-xl font-bold text-[var(--color-text-primary)]">
+                <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">
                   {files.length}
                 </p>
               </div>
               <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
-                <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                   {copy.products}
                 </p>
-                <p className="mt-2 text-xl font-bold text-[var(--color-text-primary)]">
+                <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">
                   {formData.items.length}
                 </p>
               </div>
               <div className="rounded-[var(--radius-sm)] bg-blue-50 p-3">
-                <p className="text-[10px] font-semibold uppercase text-blue-700">
+                <p className="text-xxs font-semibold uppercase text-blue-700">
                   {copy.totalQty}
                 </p>
-                <p className="mt-2 text-xl font-bold text-blue-800">
+                <p className="mt-2 text-lg font-bold text-blue-800">
                   {formatCurrency(totalQuantity)}
                 </p>
               </div>
               <div className="rounded-[var(--radius-sm)] bg-emerald-50 p-3">
-                <p className="text-[10px] font-semibold uppercase text-emerald-700">
+                <p className="text-xxs font-semibold uppercase text-emerald-700">
                   {copy.totalValue}
                 </p>
-                <p className="mt-2 text-xl font-bold text-emerald-800">
+                <p className="mt-2 text-lg font-bold text-emerald-800">
                   {formatCurrency(totalValue)}
                 </p>
               </div>
@@ -914,7 +912,7 @@ export default function CreateVoucherTab({
             type="button"
             onClick={goPrev}
             disabled={step === 0}
-            className="flex h-12 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] disabled:opacity-30 lg:h-10"
+            className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] disabled:opacity-30 lg:h-8"
           >
             <ChevronLeft size={16} />
             {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
@@ -925,7 +923,7 @@ export default function CreateVoucherTab({
               type="button"
               onClick={goNext}
               disabled={!canGoNext()}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.99] disabled:opacity-50 lg:h-10 lg:flex-none"
+              className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.99] disabled:opacity-50 lg:h-8 lg:flex-none"
             >
               {(t as any).importVoucher?.form?.next ?? "Tiếp theo"}
               <ChevronRight size={16} />
@@ -935,7 +933,7 @@ export default function CreateVoucherTab({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 text-sm font-semibold text-white transition-all hover:brightness-95 active:scale-[0.99] disabled:opacity-50 lg:h-10 lg:flex-none"
+              className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 text-sm font-semibold text-white transition-all hover:brightness-95 active:scale-[0.99] disabled:opacity-50 lg:h-8 lg:flex-none"
             >
               {isSubmitting
                 ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")

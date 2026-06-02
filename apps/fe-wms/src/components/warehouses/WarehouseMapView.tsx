@@ -131,7 +131,7 @@ export function WarehouseMapView({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t.warehouses.searchWarehouse}
-                    className="h-10 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-10 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                    className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-10 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                 />
             </div>
 
@@ -168,7 +168,7 @@ export function WarehouseMapView({
             <button
                 type="button"
                 onClick={onAdd}
-                className="inline-flex h-10 w-full mt-2 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+                className="inline-flex h-8 w-full mt-2 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
             >
                 <Plus size={18} />
                 {t.warehouses.addNew}
@@ -186,7 +186,7 @@ export function WarehouseMapView({
             {/* Map */}
             <div className="relative flex-1">
                 {webGlError ? (
-                    <div className="flex h-full flex-col items-center justify-center bg-[var(--color-surface-card)] p-8 text-center">
+                    <div className="flex h-full flex-col items-center justify-center bg-[var(--color-surface-card)] p-4 text-center">
                         <WarehouseIcon size={48} className="mx-auto mb-3 text-[var(--color-text-muted)] opacity-50" />
                         <h3 className="mb-2 text-lg font-semibold text-[var(--color-text-primary)]">
                             Không thể tải bản đồ
@@ -245,7 +245,7 @@ export function WarehouseMapView({
                                 offset={40}
                                 closeOnClick={false}
                                 onClose={() => setPopupWarehouse(null)}
-                                className="[&_.mapboxgl-popup-content]:rounded-[22px] [&_.mapboxgl-popup-content]:border [&_.mapboxgl-popup-content]:border-[var(--color-border-subtle)] [&_.mapboxgl-popup-content]:p-0 [&_.mapboxgl-popup-content]:shadow-xl [&_.mapboxgl-popup-content]:overflow-hidden !w-[300px]"
+                                className="[&_.mapboxgl-popup-content]:overflow-hidden [&_.mapboxgl-popup-content]:rounded-[22px] [&_.mapboxgl-popup-content]:border [&_.mapboxgl-popup-content]:border-[var(--color-border-subtle)] [&_.mapboxgl-popup-content]:p-0 [&_.mapboxgl-popup-content]:shadow-xl !w-80"
                             >
                                 <div className="flex flex-col">
                                     {popupWarehouse.warehouse_image_url ? (
@@ -259,7 +259,7 @@ export function WarehouseMapView({
                                         </div>
                                     ) : (
                                         <div className="flex h-32 w-full items-center justify-center bg-[var(--color-surface-subtle)]">
-                                            <WarehouseIcon className="h-10 w-10 text-[var(--color-text-disabled)]" />
+                                            <WarehouseIcon className="h-8 w-10 text-[var(--color-text-disabled)]" />
                                         </div>
                                     )}
                                     <div className="p-4">
@@ -288,7 +288,7 @@ export function WarehouseMapView({
                         )}
                     </Map>
                 ) : (
-                    <div className="flex h-full items-center justify-center bg-[var(--color-surface-card)] p-8 text-center">
+                    <div className="flex h-full items-center justify-center bg-[var(--color-surface-card)] p-4 text-center">
                         <div>
                             <WarehouseIcon
                                 size={48}

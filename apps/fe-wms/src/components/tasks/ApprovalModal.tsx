@@ -72,15 +72,15 @@ export default function ApprovalModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-[calc(100%-2rem)] rounded-2xl bg-white p-6 shadow-xl sm:w-[28rem]">
+      <div className="w-[calc(100%-2rem)] rounded-2xl bg-white p-4 shadow-xl sm:w-[28rem]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isApprove ? (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-emerald-100">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
               </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100">
+              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-red-100">
                 <XCircle className="h-5 w-5 text-red-600" />
               </div>
             )}

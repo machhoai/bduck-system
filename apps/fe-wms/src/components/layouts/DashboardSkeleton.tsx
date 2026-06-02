@@ -40,7 +40,7 @@ export default function DashboardSkeleton() {
       </aside>
 
       {/* Main content skeleton */}
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-4 lg:p-4">
         {/* Title skeleton */}
         <div className="mb-6">
           <Skeleton variant="text" className="w-52 h-7 mb-2" />
@@ -48,7 +48,7 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* Content card skeleton */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-6">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[1, 2, 3].map((i) => (
               <div

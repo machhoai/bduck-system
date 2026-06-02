@@ -62,7 +62,7 @@ export function WarehouseManagerSelect({
   return (
     <div className="space-y-2">
       {selectedUser ? (
-        <div className="flex min-h-12 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 py-2">
+        <div className="flex min-h-8 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 py-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-text-secondary)]">
             <UserRound size={17} />
           </div>
@@ -105,7 +105,7 @@ export function WarehouseManagerSelect({
             setIsOpen(true);
           }}
           placeholder={loading ? t.common.loading : t.warehouses.searchManager}
-          className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-10 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-10 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {isOpen && !loading && (

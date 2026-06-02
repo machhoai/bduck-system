@@ -112,10 +112,10 @@ export default function DashboardPage() {
             className="text-[var(--color-text-muted)]"
           />
         </div>
-        <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
           {d.noAccess}
         </h2>
-        <p className="text-[15px] text-[var(--color-text-muted)]">
+        <p className="text-sm text-[var(--color-text-muted)]">
           {d.noAccessDescription}
         </p>
       </div>
@@ -123,7 +123,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── Header ── */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -131,10 +131,10 @@ export default function DashboardPage() {
             {t.dashboard.welcome}
             {displayName ? `, ${displayName}` : ""}
           </p>
-          <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[34px]">
+          <h1 className="font-[var(--font-display)] text-lg font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] lg:text-lg">
             {d.title}
           </h1>
-          <p className="mt-0.5 text-[14px] text-[var(--color-text-muted)]">
+          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
             {d.subtitle}
           </p>
         </div>

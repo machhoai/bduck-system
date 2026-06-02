@@ -48,7 +48,7 @@ export default function WarehouseSelector({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-2.5 text-[15px] font-medium text-[var(--color-text-primary)] transition-all hover:border-[var(--color-brand-primary)] hover:shadow-sm active:scale-[0.98]"
+                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-all hover:border-[var(--color-brand-primary)] hover:shadow-sm active:scale-[0.98]"
             >
                 <WarehouseIcon size={18} strokeWidth={1.7} className="text-[var(--color-brand-primary)]" />
                 <span className="truncate">{label}</span>
@@ -68,7 +68,7 @@ export default function WarehouseSelector({
                             onSelect(undefined);
                             setIsOpen(false);
                         }}
-                        className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[15px] transition-colors hover:bg-[var(--color-surface-card)] ${!selectedId
+                        className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-card)] ${!selectedId
                             ? "font-medium text-[var(--color-brand-primary)]"
                             : "text-[var(--color-text-primary)]"
                             }`}
@@ -89,7 +89,7 @@ export default function WarehouseSelector({
                                 onSelect(warehouse.id);
                                 setIsOpen(false);
                             }}
-                            className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[15px] transition-colors hover:bg-[var(--color-surface-card)] ${selectedId === warehouse.id
+                            className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-card)] ${selectedId === warehouse.id
                                 ? "font-medium text-[var(--color-brand-primary)]"
                                 : "text-[var(--color-text-primary)]"
                                 }`}
@@ -104,7 +104,7 @@ export default function WarehouseSelector({
                                 }}
                             />
                             <span className="truncate">{warehouse.name}</span>
-                            <span className="ml-auto text-[13px] text-[var(--color-text-muted)]">
+                            <span className="ml-auto text-xs text-[var(--color-text-muted)]">
                                 {warehouse.code}
                             </span>
                         </button>

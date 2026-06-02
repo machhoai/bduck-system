@@ -82,7 +82,7 @@ export default function NotificationBell() {
         {unreadCount > 0 && (
           <span
             className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center 
-              justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white
+              justify-center rounded-full bg-red-500 px-1 text-xxs font-bold text-white
               animate-in fade-in zoom-in duration-200"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -163,7 +163,7 @@ export default function NotificationBell() {
                     >
                       {resolveTemplate(notif.template_key)}
                     </p>
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+                    <div className="mt-1 flex items-center gap-2 text-xxs text-gray-400">
                       <Clock className="h-3 w-3" />
                       <span>{formatTime(notif.created_at)}</span>
                       {notif.source_entity_id && (
@@ -179,7 +179,7 @@ export default function NotificationBell() {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="border-t border-gray-100 px-4 py-2.5">
-              <p className="text-center text-[11px] text-gray-400">
+              <p className="text-center text-xxs text-gray-400">
                 {notifications.length} thông báo
                 {unreadCount > 0 && ` · ${unreadCount} chưa đọc`}
               </p>

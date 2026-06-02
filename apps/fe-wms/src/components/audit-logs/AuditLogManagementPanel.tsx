@@ -44,10 +44,10 @@ export function AuditLogManagementPanel() {
     return (
         <div className="flex flex-col gap-4">
             <header>
-                <h1 className="font-[var(--font-display)] text-[34px] font-semibold leading-[1.1] tracking-[-0.28px] text-[var(--color-text-primary)] lg:text-[40px]">
+                <h1 className="font-[var(--font-display)] text-lg font-semibold leading-[1.1] tracking-normal text-[var(--color-text-primary)] lg:text-lg">
                     {t.auditLog.title}
                 </h1>
-                <p className="text-[17px] leading-[1.47] text-[var(--color-text-secondary)]">
+                <p className="text-sm leading-[1.47] text-[var(--color-text-secondary)]">
                     {t.auditLog.description}
                 </p>
             </header>

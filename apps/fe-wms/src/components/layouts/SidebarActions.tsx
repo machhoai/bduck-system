@@ -49,7 +49,7 @@ export default function SidebarActions({
           onClick={logout}
           disabled={isLoading}
           className={`
-          flex h-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] flex-1
+          flex h-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] flex-1
           text-white/65 transition-all duration-200 active:scale-95
           hover:bg-white/10 hover:text-white
           disabled:cursor-not-allowed disabled:opacity-40

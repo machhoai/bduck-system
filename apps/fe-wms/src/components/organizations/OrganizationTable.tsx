@@ -42,17 +42,17 @@ export function OrganizationTable({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
             {t.organizations.list}
           </h2>
-          <p className="text-[17px] text-[var(--color-text-muted)]">
+          <p className="text-sm text-[var(--color-text-muted)]">
             {t.organizations.listHint}
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.organizations.addNew}
@@ -64,10 +64,10 @@ export function OrganizationTable({
       ) : organizations.length === 0 ? (
         <div className="flex min-h-72 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
           <Building2 size={42} className="mb-3 text-[var(--color-text-muted)]" />
-          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t.organizations.empty}
           </h3>
-          <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             {t.organizations.emptyHint}
           </p>
         </div>
@@ -95,7 +95,7 @@ export function OrganizationTable({
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
+                    <h3 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                       {organization.name}
                     </h3>
                     <p className="mt-1 truncate text-xs font-normal uppercase text-[var(--color-text-muted)]">

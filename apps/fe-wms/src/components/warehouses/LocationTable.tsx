@@ -27,17 +27,17 @@ export function LocationTable({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.231px] text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
             {t.warehouses.locationList}
           </h2>
-          <p className="text-[17px] text-[var(--color-text-muted)]">
+          <p className="text-sm text-[var(--color-text-muted)]">
             {t.warehouses.locationListHint}
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-[17px] font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
         >
           <Plus size={18} />
           {t.warehouses.addLocation}
@@ -49,7 +49,7 @@ export function LocationTable({
       ) : locations.length === 0 ? (
         <div className="flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-12 text-center">
           <MapPinned size={42} className="mb-3 text-[var(--color-text-muted)]" />
-          <h3 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t.warehouses.emptyLocations}
           </h3>
         </div>
@@ -68,7 +68,7 @@ export function LocationTable({
                 className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[1.4fr_0.8fr_0.9fr_1fr] md:items-center md:gap-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[17px] font-semibold text-[var(--color-text-primary)]">
+                  <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                     {location.name}
                   </p>
                   <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">

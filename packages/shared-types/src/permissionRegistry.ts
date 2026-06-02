@@ -109,6 +109,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 10,
   },
   {
+    id: "expenses",
+    label: { vi: "Quản lý chi phí", zh: "费用管理" },
+    icon: "Receipt",
+    order: 9,
+  },
+  {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
@@ -396,6 +402,71 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Xem lịch sử thao tác, dữ liệu cũ/mới và truy vết người dùng.",
       zh: "查看操作历史、新旧数据及用户追踪。",
+    },
+  },
+
+  // ── Expenses ──
+  {
+    key: "expenses.read",
+    group: "expenses",
+    label: { vi: "Xem chi phí", zh: "查看费用" },
+    description: {
+      vi: "Xem chi phí kho hiện tại",
+      zh: "查看当前仓库费用",
+    },
+  },
+  {
+    key: "expenses.consolidated.view",
+    group: "expenses",
+    label: { vi: "Xem tổng hợp chi phí", zh: "查看综合费用" },
+    description: {
+      vi: "Xem tổng hợp TẤT CẢ các kho - Dành cho BOD",
+      zh: "查看所有仓库的综合费用 - 供BOD使用",
+    },
+  },
+  {
+    key: "expenses.operations.write",
+    group: "expenses",
+    label: { vi: "Nhập liệu vận hành", zh: "录入运营费用" },
+    description: {
+      vi: "Nhập liệu nhóm Vận hành",
+      zh: "运营团队的数据录入",
+    },
+  },
+  {
+    key: "expenses.hr.write",
+    group: "expenses",
+    label: { vi: "Nhập liệu nhân sự", zh: "录入人事费用" },
+    description: {
+      vi: "Nhập liệu nhóm Nhân sự",
+      zh: "人事团队的数据录入",
+    },
+  },
+  {
+    key: "expenses.marketing.write",
+    group: "expenses",
+    label: { vi: "Nhập liệu marketing", zh: "录入营销费用" },
+    description: {
+      vi: "Nhập liệu nhóm Marketing & Hàng bán",
+      zh: "营销及销售团队的数据录入",
+    },
+  },
+  {
+    key: "expenses.others.write",
+    group: "expenses",
+    label: { vi: "Nhập liệu khác", zh: "录入其他费用" },
+    description: {
+      vi: "Nhập liệu nhóm Khác",
+      zh: "其他团队的数据录入",
+    },
+  },
+  {
+    key: "expenses.close_period",
+    group: "expenses",
+    label: { vi: "Chốt kỳ kế toán", zh: "结账" },
+    description: {
+      vi: "Quyền chốt kỳ kế toán",
+      zh: "结账权限",
     },
   },
 ];

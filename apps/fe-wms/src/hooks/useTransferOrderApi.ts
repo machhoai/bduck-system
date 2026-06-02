@@ -2,7 +2,8 @@
  * Transfer Order API — REST helpers for transfer order operations
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 async function apiFetch<T = unknown>(
   path: string,

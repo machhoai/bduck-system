@@ -303,6 +303,42 @@ export enum FileType {
 }
 
 // ============================================================
+// EXPENSE MANAGEMENT
+// ============================================================
+
+export enum ExpenseStatus {
+    OPEN = 'OPEN',
+    CLOSED = 'CLOSED',
+}
+
+export enum ExpenseCostCenter {
+    OPERATIONS = 'OPERATIONS',
+    HR = 'HR',
+    MARKETING = 'MARKETING',
+    OTHERS = 'OTHERS',
+}
+
+export enum ExpenseCategory {
+    // OPERATIONS
+    RENT = 'RENT',
+    ELECTRICITY = 'ELECTRICITY',
+    WATER = 'WATER',
+    TRASH_COLLECTION = 'TRASH_COLLECTION',
+    DRINKING_WATER = 'DRINKING_WATER',
+    // HR
+    SOCIAL_INSURANCE = 'SOCIAL_INSURANCE',
+    SALARY_FULLTIME = 'SALARY_FULLTIME',
+    SALARY_PARTTIME = 'SALARY_PARTTIME',
+    // MARKETING
+    MARKETING = 'MARKETING',
+    GIFT_EXPENSE = 'GIFT_EXPENSE', // Semi-auto from WMS
+    COGS = 'COGS', // Cost of Goods Sold - Semi-auto from WMS
+    // OTHERS
+    CONSUMABLE_SUPPLIES = 'CONSUMABLE_SUPPLIES',
+    OTHERS = 'OTHERS',
+}
+
+// ============================================================
 // DYNAMIC WORKFLOW ENGINE — @deprecated
 // ============================================================
 // These enums are DEPRECATED. They belong to the old DAG-based

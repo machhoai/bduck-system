@@ -7,10 +7,10 @@ export default function ExportVoucherSkeleton() {
     <div className="-mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
       <div className="border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
         <div className="flex items-start gap-3">
-          <Skeleton className="h-11 w-11 rounded-[var(--radius-md)]" />
+          <Skeleton className="h-8 w-11 rounded-[var(--radius-md)]" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-6 w-32" variant="text" />
-            <Skeleton className="h-3.5 w-64 max-w-full" variant="text" />
+            <Skeleton className="h-3.5 w-64 min-w-0" variant="text" />
           </div>
         </div>
       </div>
@@ -30,9 +30,9 @@ export default function ExportVoucherSkeleton() {
 
         <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white/95 p-1 shadow-sm">
           <div className="grid grid-cols-3 gap-1">
-            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
-            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
-            <Skeleton className="h-11 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-8 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-8 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-8 rounded-[var(--radius-sm)]" />
           </div>
         </div>
 

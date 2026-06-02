@@ -67,12 +67,12 @@ export function ProductTable({
         <table className="w-full text-left min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-              <th className="px-6 py-4">Sản phẩm</th>
-              <th className="px-6 py-4">Mã SKU / Barcode</th>
-              <th className="px-6 py-4">Phân loại</th>
-              <th className="px-6 py-4 text-center">ĐVT</th>
-              <th className="px-6 py-4 text-center">Serial Tracking</th>
-              <th className="px-6 py-4 text-right">Thao tác</th>
+              <th className="px-4 py-4">Sản phẩm</th>
+              <th className="px-4 py-4">Mã SKU / Barcode</th>
+              <th className="px-4 py-4">Phân loại</th>
+              <th className="px-4 py-4 text-center">ĐVT</th>
+              <th className="px-4 py-4 text-center">Serial Tracking</th>
+              <th className="px-4 py-4 text-right">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -80,22 +80,22 @@ export function ProductTable({
               // Loading Skeleton State
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={`skeleton-${idx}`}>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-10 w-48" />
+                  <td className="px-4 py-4">
+                    <Skeleton className="h-8 w-48" />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <Skeleton className="h-6 w-24" />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <Skeleton className="h-6 w-32" />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <Skeleton className="h-6 w-12 mx-auto" />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <Skeleton className="h-6 w-16 mx-auto rounded-full" />
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-4 text-right">
                     <Skeleton className="h-8 w-16 ml-auto" />
                   </td>
                 </tr>
@@ -105,7 +105,7 @@ export function ProductTable({
               <tr>
                 <td
                   colSpan={6}
-                  className="px-6 py-16 text-center text-gray-500"
+                  className="px-4 py-16 text-center text-gray-500"
                 >
                   <div className="flex flex-col items-center justify-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -114,7 +114,7 @@ export function ProductTable({
                     <p className="text-lg font-medium text-gray-900 mb-1">
                       Không tìm thấy sản phẩm nào
                     </p>
-                    <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                    <p className="w-full text-sm text-gray-500">
                       {searchTerm
                         ? "Thử tìm kiếm với từ khóa khác."
                         : "Chưa có dữ liệu sản phẩm trên hệ thống. Hãy thêm mới."}
@@ -129,9 +129,9 @@ export function ProductTable({
                   key={product.id}
                   className="hover:bg-blue-50/30 transition-colors group"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-8 rounded-md bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
                         {product.product_image_url &&
                         product.product_image_url.length > 0 ? (
                           <img
@@ -153,7 +153,7 @@ export function ProductTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <p className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded inline-block text-sm">
                       {product.code}
                     </p>
@@ -164,7 +164,7 @@ export function ProductTable({
                       </p>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <p className="text-sm text-gray-700">
                       {product.product_type}
                     </p>
@@ -174,12 +174,12 @@ export function ProductTable({
                       </p>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-4 text-center">
                     <span className="inline-flex items-center justify-center px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
                       {product.unit}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-4 text-center">
                     {product.is_serialized ? (
                       <span className="inline-flex px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                         Có
@@ -190,7 +190,7 @@ export function ProductTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onEdit(product)}
@@ -225,7 +225,7 @@ export function ProductTable({
 
       {/* Pagination Footer */}
       {!loading && filteredProducts.length > 0 && (
-        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
           <span>Hiển thị {filteredProducts.length} sản phẩm</span>
           {/* Implement real pagination controls here later if needed */}
         </div>

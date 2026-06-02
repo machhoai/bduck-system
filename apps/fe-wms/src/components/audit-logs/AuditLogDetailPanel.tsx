@@ -52,12 +52,12 @@ interface AuditLogDetailPanelProps {
 export function AuditLogDetailPanel({ log, resolver, labels }: AuditLogDetailPanelProps) {
     return (
         <aside className="sticky top-4 space-y-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
-            <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
                 {labels.detail}
             </h2>
 
             {!log ? (
-                <p className="text-[17px] text-[var(--color-text-muted)]">
+                <p className="text-sm text-[var(--color-text-muted)]">
                     {labels.selectHint}
                 </p>
             ) : (
@@ -74,7 +74,7 @@ export function AuditLogDetailPanel({ log, resolver, labels }: AuditLogDetailPan
                                 <p className="text-xs uppercase text-[var(--color-text-muted)]">
                                     {labels.summary}
                                 </p>
-                                <p className="mt-1 text-[17px] font-semibold leading-snug text-[var(--color-text-primary)]">
+                                <p className="mt-1 text-sm font-semibold leading-snug text-[var(--color-text-primary)]">
                                     {presentation.summary}
                                 </p>
                             </div>

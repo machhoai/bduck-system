@@ -62,6 +62,7 @@ trigger: always_on
 * **Cấu trúc Thư mục UI/Logic:** Component nằm trong `components/`, thuật toán tách ra `utils/`, custom hooks nằm trong `hooks/`. KHÔNG viết logic dài dòng thẳng vào file UI (`.tsx`).
 * **i18n (Đa ngôn ngữ):** Hỗ trợ Tiếng Việt (vi) và Tiếng Trung Quốc (zh). Tất cả hard-text phải được bọc qua i18n.
 * **Chống Click Đúp (Idempotency):** Khi `goey-toast` đang chờ API, BẮT BUỘC disable nút submit.
+* **
 
 ## 4. Backend Rules (`apps/be-wms`)
 * **Xác thực và Kiểm quyền (Authentication & Authorization) - LUẬT THÉP:** BẤT KỲ logic nghiệp vụ nào thực thi tại BE cũng phải đi qua Middleware xác thực. Bắt buộc giải mã JWT (JSON Web Token), trích xuất thông tin người dùng và đối chiếu với bảng Phân quyền (`RBAC`) trước khi cho phép đi tiếp vào Controller/Service.

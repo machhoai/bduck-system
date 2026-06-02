@@ -102,7 +102,7 @@ export async function uploadFile(
   // Sanitize original name: remove extension, replace special chars with underscore
   const baseName = file.name
     .replace(/\.[^.]+$/, "")           // remove extension
-    .replace(/[^a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF\u4E00-\u9FFF_\-\s]/g, "") // keep letters, numbers, Vietnamese, Chinese
+    .replace(/[^a-zA-Z0-9À-ɏḀ-ỿ一-鿿_\-\s]/g, "") // keep letters, numbers, Vietnamese, Chinese
     .replace(/\s+/g, "_")              // spaces → underscores
     .slice(0, 80);                     // limit length
   const timestamp = Date.now();

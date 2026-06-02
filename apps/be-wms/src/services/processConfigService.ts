@@ -91,6 +91,38 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       label: null,
     },
   },
+  TRANSFER_ORDER: {
+    create_export: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+    picking: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+    receiving: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+  },
+  TRANSFER_INTRA: {
+    location_move: {
+      require_evidence: false,
+      require_barcode_scan: false,
+      assignment_mode: "CREATOR",
+      assigned_role_id: null,
+      label: null,
+    },
+  },
 };
 
 /** Fallback for entity types without specific step options */
@@ -147,6 +179,26 @@ const DEFAULT_CHAINS: Partial<
       level: 1,
       role_id: "DIRECTOR",
       label: { vi: "Ban giám đốc duyệt", zh: "总监审批" },
+      required: false,
+      enabled: false,
+      min_approvers: 1,
+    },
+  ],
+  TRANSFER_ORDER: [
+    {
+      level: 0,
+      role_id: "WAREHOUSE_MANAGER",
+      label: { vi: "Quản lý kho duyệt", zh: "仓库经理审批" },
+      required: true,
+      enabled: true,
+      min_approvers: 1,
+    },
+  ],
+  TRANSFER_INTRA: [
+    {
+      level: 0,
+      role_id: "WAREHOUSE_MANAGER",
+      label: { vi: "Quản lý kho duyệt", zh: "仓库经理审批" },
       required: false,
       enabled: false,
       min_approvers: 1,

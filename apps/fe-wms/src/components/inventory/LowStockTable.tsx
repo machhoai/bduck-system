@@ -33,7 +33,7 @@ export default function LowStockTable({
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
         <Skeleton className="mb-4 h-5 w-48" variant="text" />
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="mb-2 h-12 w-full" variant="rect" />
+          <Skeleton key={i} className="mb-2 h-8 w-full" variant="rect" />
         ))}
       </div>
     );
@@ -47,23 +47,23 @@ export default function LowStockTable({
           strokeWidth={1.7}
           className="text-[var(--color-accent-warning)]"
         />
-        <h3 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           {d.lowStockAlerts}
         </h3>
         {lowStockItems.length > 0 && (
-          <span className="ml-auto rounded-full bg-[var(--color-accent-error)] px-2 py-0.5 text-[11px] font-medium text-white">
+          <span className="ml-auto rounded-full bg-[var(--color-accent-error)] px-2 py-0.5 text-xxs font-medium text-white">
             {lowStockItems.length}
           </span>
         )}
       </div>
 
       {lowStockItems.length === 0 ? (
-        <p className="py-6 text-center text-[14px] text-[var(--color-text-muted)]">
+        <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
           {d.lowStockEmpty}
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[14px]">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--color-border-soft)]">
                 <th className="pb-2 pr-4 text-left font-medium text-[var(--color-text-muted)]">
@@ -111,7 +111,7 @@ export default function LowStockTable({
                     </td>
                     <td className="py-2.5 text-center">
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xxs font-medium ${
                           isCritical
                             ? "bg-[#b423181a] text-[var(--color-accent-error)]"
                             : "bg-[#9360001a] text-[var(--color-accent-warning)]"

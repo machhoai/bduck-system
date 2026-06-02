@@ -98,7 +98,7 @@ const normalizeText = (value: unknown) =>
   String(value ?? "")
     .trim()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D");
 

@@ -14,14 +14,14 @@ export default function CategoriesPage() {
   }, [router]);
 
   return (
-    <div className="mx-auto flex min-h-80 max-w-4xl flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-10 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+    <div className="flex min-h-80 w-full flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-4 text-center">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
         <FolderTree size={24} />
       </div>
-      <h1 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+      <h1 className="text-lg font-bold text-[var(--color-text-primary)]">
         {t.products.redirectingCategories}
       </h1>
-      <p className="mt-1 text-[17px] text-[var(--color-text-muted)]">
+      <p className="mt-1 text-sm text-[var(--color-text-muted)]">
         {t.products.categoryHint}
       </p>
     </div>

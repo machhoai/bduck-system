@@ -7,6 +7,7 @@
  */
 import {
     ArrowRightLeft,
+    CircleDollarSign,
     ClipboardCheck,
     FileClock,
     Home,
@@ -105,6 +106,13 @@ export const menuItems: MenuItem[] = [
         icon: ArrowRightLeft,
         href: "/transfers",
         permission: "transfers.read",
+    },
+    {
+        id: "expenses",
+        labelKey: "expenses",
+        icon: CircleDollarSign,
+        href: "/expenses",
+        permission: "expenses.read",
     },
     {
         id: "users",

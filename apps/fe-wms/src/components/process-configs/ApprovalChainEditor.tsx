@@ -107,7 +107,7 @@ export function ApprovalChainEditor({
           type="button"
           onClick={addLevel}
           disabled={disabled}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:text-xs"
+          className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:text-xs"
         >
           <Plus className="h-4 w-4" />
           {copy.addLevel}
@@ -125,16 +125,16 @@ export function ApprovalChainEditor({
             >
               <div className="grid gap-3 lg:grid-cols-[56px_minmax(170px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_116px_88px_40px] lg:items-end">
                 <div className="flex items-center justify-between lg:block">
-                  <p className="text-[11px] font-semibold uppercase text-gray-400">
+                  <p className="text-xxs font-semibold uppercase text-gray-400">
                     Level
                   </p>
-                  <div className="mt-0 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-400 text-sm font-bold text-white lg:mt-1">
+                  <div className="mt-0 flex h-8 w-10 items-center justify-center rounded-lg bg-gray-400 text-sm font-bold text-white lg:mt-1">
                     {index + 1}
                   </div>
                 </div>
 
                 <label className="block">
-                  <span className="text-[11px] font-semibold uppercase text-gray-400">
+                  <span className="text-xxs font-semibold uppercase text-gray-400">
                     {copy.role}
                   </span>
                   <select
@@ -146,7 +146,7 @@ export function ApprovalChainEditor({
                         role_id: event.target.value,
                       })
                     }
-                    className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-10 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
                   >
                     <option value="">{copy.selectRole}</option>
                     {roles.map((role) => (
@@ -158,7 +158,7 @@ export function ApprovalChainEditor({
                 </label>
 
                 <label className="block">
-                  <span className="text-[11px] font-semibold uppercase text-gray-400">
+                  <span className="text-xxs font-semibold uppercase text-gray-400">
                     {copy.labelVi}
                   </span>
                   <input
@@ -170,12 +170,12 @@ export function ApprovalChainEditor({
                         label: { ...level.label, vi: event.target.value },
                       })
                     }
-                    className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-10 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[11px] font-semibold uppercase text-gray-400">
+                  <span className="text-xxs font-semibold uppercase text-gray-400">
                     {copy.labelZh}
                   </span>
                   <input
@@ -187,12 +187,12 @@ export function ApprovalChainEditor({
                         label: { ...level.label, zh: event.target.value },
                       })
                     }
-                    className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-10 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[11px] font-semibold uppercase text-gray-400">
+                  <span className="text-xxs font-semibold uppercase text-gray-400">
                     {copy.approvers}
                   </span>
                   <input
@@ -209,12 +209,12 @@ export function ApprovalChainEditor({
                         ),
                       })
                     }
-                    className="mt-1 h-12 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-10 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
                   />
                 </label>
 
                 <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 lg:block lg:bg-transparent lg:px-0 lg:py-0">
-                  <p className="text-[11px] font-semibold uppercase text-gray-400">
+                  <p className="text-xxs font-semibold uppercase text-gray-400">
                     {level.required ? copy.required : copy.optional}
                   </p>
                   <div className="mt-2 flex items-center gap-2">
@@ -239,7 +239,7 @@ export function ApprovalChainEditor({
                   type="button"
                   disabled={disabled || level.required}
                   onClick={() => removeLevel(index)}
-                  className="flex h-12 w-full items-center justify-center rounded-lg bg-white text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 lg:h-10 lg:w-10 lg:bg-transparent"
+                  className="flex h-8 w-full items-center justify-center rounded-lg bg-white text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 lg:h-8 lg:w-10 lg:bg-transparent"
                   aria-label={copy.removeLevel}
                 >
                   <Trash2 className="h-4 w-4" />

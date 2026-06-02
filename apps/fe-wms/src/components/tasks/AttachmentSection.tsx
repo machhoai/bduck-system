@@ -108,7 +108,7 @@ export default function AttachmentSection({ urls, t }: AttachmentSectionProps) {
 
     if (urls.length === 0) {
         return (
-            <div className="mt-4 px-6">
+            <div className="mt-4 px-4">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                     {t.tasks.attachments.title}
                 </h3>
@@ -120,7 +120,7 @@ export default function AttachmentSection({ urls, t }: AttachmentSectionProps) {
     }
 
     return (
-        <div className="mt-4 px-6">
+        <div className="mt-4 px-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 {t.tasks.attachments.title} ({urls.length} {t.tasks.attachments.fileCount})
             </h3>
@@ -140,7 +140,7 @@ export default function AttachmentSection({ urls, t }: AttachmentSectionProps) {
                             <div className="relative flex-shrink-0">
                                 <FileText className="h-8 w-8 text-gray-400" />
                                 <span
-                                    className={`absolute -bottom-1 -right-1 rounded px-1 text-[9px] font-bold uppercase ${getExtColor(ext)}`}
+                                    className={`absolute -bottom-1 -right-1 rounded px-1 text-micro font-bold uppercase ${getExtColor(ext)}`}
                                 >
                                     {ext || "?"}
                                 </span>

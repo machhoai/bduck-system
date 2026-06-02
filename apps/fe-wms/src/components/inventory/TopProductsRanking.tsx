@@ -44,7 +44,7 @@ export default function TopProductsRanking({
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           {d.topProducts}
         </h3>
 
@@ -53,7 +53,7 @@ export default function TopProductsRanking({
           <button
             type="button"
             onClick={() => setTab("most")}
-            className={`px-3 py-1 text-[12px] font-medium transition-colors ${
+            className={`px-3 py-1 text-xs font-medium transition-colors ${
               tab === "most"
                 ? "bg-[var(--color-brand-primary)] text-white"
                 : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
@@ -64,7 +64,7 @@ export default function TopProductsRanking({
           <button
             type="button"
             onClick={() => setTab("least")}
-            className={`px-3 py-1 text-[12px] font-medium transition-colors ${
+            className={`px-3 py-1 text-xs font-medium transition-colors ${
               tab === "least"
                 ? "bg-[var(--color-brand-primary)] text-white"
                 : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
@@ -76,7 +76,7 @@ export default function TopProductsRanking({
       </div>
 
       {data.length === 0 ? (
-        <p className="py-6 text-center text-[14px] text-[var(--color-text-muted)]">
+        <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
           {t.common.noData}
         </p>
       ) : (
@@ -89,15 +89,15 @@ export default function TopProductsRanking({
 
             return (
               <div key={product.productId} className="flex items-center gap-3">
-                <span className="w-5 text-right text-[12px] font-medium text-[var(--color-text-muted)]">
+                <span className="w-5 text-right text-xs font-medium text-[var(--color-text-muted)]">
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="mb-1 flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
+                    <span className="truncate text-xs font-medium text-[var(--color-text-primary)]">
                       {product.productName}
                     </span>
-                    <span className="shrink-0 text-[13px] font-semibold text-[var(--color-text-secondary)]">
+                    <span className="shrink-0 text-xs font-semibold text-[var(--color-text-secondary)]">
                       {product.totalQuantity.toLocaleString()}
                     </span>
                   </div>

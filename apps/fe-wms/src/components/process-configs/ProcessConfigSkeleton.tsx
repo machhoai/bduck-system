@@ -26,7 +26,7 @@ export function ProcessConfigSkeleton() {
             </div>
           ))}
         </div>
-        <div className="h-[520px] animate-pulse rounded-lg border border-gray-100 bg-white p-5">
+        <div className="h-96 animate-pulse rounded-lg border border-gray-100 bg-white p-5">
           <div className="h-5 w-44 rounded bg-gray-200" />
           <div className="mt-6 h-20 rounded bg-gray-100" />
           <div className="mt-4 h-48 rounded bg-gray-100" />

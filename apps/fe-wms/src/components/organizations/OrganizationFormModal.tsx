@@ -134,7 +134,7 @@ export function OrganizationFormModal({
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
             <div className="flex max-h-[92vh] w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
-                    <h2 className="text-[21px] font-semibold text-[var(--color-text-primary)]">
+                    <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
                         {isEdit ? t.organizations.edit : t.organizations.addNew}
                     </h2>
                     <button
@@ -164,7 +164,7 @@ export function OrganizationFormModal({
                                     <ImageIcon size={36} className="text-[var(--color-text-muted)]" />
                                 )}
                             </div>
-                            <label className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95">
+                            <label className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95">
                                 <Upload size={16} />
                                 {t.organizations.uploadImage}
                                 <input
@@ -183,7 +183,7 @@ export function OrganizationFormModal({
                                     onChange={(event) =>
                                         setFormData({ ...formData, code: event.target.value })
                                     }
-                                    className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                    className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                                 />
                             </Field>
                             <Field label={t.organizations.name} required>
@@ -193,7 +193,7 @@ export function OrganizationFormModal({
                                     onChange={(event) =>
                                         setFormData({ ...formData, name: event.target.value })
                                     }
-                                    className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                    className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                                 />
                             </Field>
                         </div>
@@ -204,7 +204,7 @@ export function OrganizationFormModal({
                             onChange={(event) =>
                                 setFormData({ ...formData, tax_code: event.target.value })
                             }
-                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                     <Field label={t.organizations.address}>
@@ -213,7 +213,7 @@ export function OrganizationFormModal({
                             onChange={(event) =>
                                 setFormData({ ...formData, address: event.target.value })
                             }
-                            className="h-11 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
                         />
                     </Field>
                 </form>
@@ -223,7 +223,7 @@ export function OrganizationFormModal({
                         type="button"
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="h-10 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50"
+                        className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-normal text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50"
                     >
                         {t.common.cancel}
                     </button>
@@ -231,7 +231,7 @@ export function OrganizationFormModal({
                         type="submit"
                         form="organizationForm"
                         disabled={isSubmitting}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
+                        className="inline-flex h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50"
                     >
                         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                         {t.common.save}

@@ -273,7 +273,7 @@ export default function PickingSessionDrawer({
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-20">
-            <Package className="h-12 w-12 text-gray-300" />
+            <Package className="h-8 w-12 text-gray-300" />
             <p className="text-sm text-gray-400">Phiếu không có sản phẩm nào.</p>
           </div>
         ) : (
@@ -302,14 +302,14 @@ export default function PickingSessionDrawer({
                     {isOverPicked && (
                       <div className="flex items-center gap-1 text-amber-600">
                         <AlertTriangle size={14} />
-                        <span className="text-[10px] font-medium">Vượt SL</span>
+                        <span className="text-xxs font-medium">Vượt SL</span>
                       </div>
                     )}
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-0.5 block text-[11px] font-medium text-gray-400">
+                      <label className="mb-0.5 block text-xxs font-medium text-gray-400">
                         SL đã soạn
                       </label>
                       <input
@@ -328,7 +328,7 @@ export default function PickingSessionDrawer({
                       />
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-[11px] font-medium text-gray-400">
+                      <label className="mb-0.5 block text-xxs font-medium text-gray-400">
                         Ghi chú
                       </label>
                       <input

@@ -1,37 +1,19 @@
 "use client";
 
-/**
- * HistoryTab — Lịch sử lệnh nhập kho (COMPLETED / CANCELLED)
- *
- * Features:
- * - Collapsible filter bar (creator, status, approver, date range, warehouse, voucher_number)
- * - Table/list of completed vouchers
- * - Click row → VoucherDetailDrawer (TODO: sẽ build riêng)
- *
- * LUẬT THÉP:
- * - Realtime data (onSnapshot driven)
- * - i18n for all text
- * - Skeleton loading is handled by parent
- */
-
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  Search,
-  Filter,
+  CheckCircle,
   ChevronDown,
   ChevronUp,
-  CheckCircle,
-  XCircle,
-  Eye,
   Copy,
+  Eye,
+  Filter,
+  Search,
+  XCircle,
 } from "lucide-react";
 import type { ImportVoucher } from "@bduck/shared-types";
 import { useTranslation } from "../../../lib/i18n";
 import VoucherDetailDrawer from "./VoucherDetailDrawer";
-
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
 
 interface HistoryTabProps {
   vouchers: ImportVoucher[];
@@ -44,12 +26,19 @@ interface HistoryFilters {
   warehouse_id: string;
 }
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+function formatDate(value: unknown) {
+  if (!value) return "";
+  const date =
+    typeof value === "string"
+      ? new Date(value)
+      : ((value as { toDate?: () => Date })?.toDate?.() ?? (value as Date));
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("vi-VN");
+}
 
 export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
   const { t } = useTranslation();
+  const importText = t.importVoucher as any;
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<HistoryFilters>({
     search: "",
@@ -58,7 +47,6 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // ── Client-side filtering ──
   const filtered = useMemo(() => {
     return vouchers.filter((v) => {
       if (
@@ -69,13 +57,13 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
         return false;
       }
       if (filters.status && v.status !== filters.status) return false;
-      if (filters.warehouse_id && v.warehouse_id !== filters.warehouse_id)
+      if (filters.warehouse_id && v.warehouse_id !== filters.warehouse_id) {
         return false;
+      }
       return true;
     });
   }, [vouchers, filters]);
 
-  // ── Empty state ──
   if (vouchers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20">
@@ -83,7 +71,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
           <Search size={24} className="text-[var(--color-text-muted)]" />
         </div>
         <p className="text-sm font-medium text-[var(--color-text-muted)]">
-          {(t as any).importVoucher?.empty?.history ?? "Chưa có lịch sử nhập kho"}
+          {importText.empty.history}
         </p>
       </div>
     );
@@ -91,7 +79,6 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
 
   return (
     <div className="space-y-3">
-      {/* ── Search + Filter toggle ── */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search
@@ -104,10 +91,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
             onChange={(e) =>
               setFilters({ ...filters, search: e.target.value })
             }
-            placeholder={
-              (t as any).importVoucher?.filter?.searchPlaceholder ??
-              "Tìm theo mã phiếu, NCC..."
-            }
+            placeholder={importText.filter.searchPlaceholder}
             className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] py-2 pl-8 pr-3 text-xs outline-none transition-colors focus:border-[var(--color-border-focus)]"
           />
         </div>
@@ -121,12 +105,11 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
         </button>
       </div>
 
-      {/* ── Expandable Filters ── */}
       {showFilters && (
         <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label className="mb-1 block text-[10px] font-medium uppercase text-[var(--color-text-muted)]">
-              Trạng thái
+            <label className="mb-1 block text-xxs font-medium uppercase text-[var(--color-text-muted)]">
+              {importText.filter.status}
             </label>
             <select
               value={filters.status}
@@ -135,16 +118,20 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
               }
               className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
             >
-              <option value="">Tất cả</option>
-              <option value="COMPLETED">Hoàn thành</option>
-              <option value="REJECTED">Từ chối</option>
-              <option value="CANCELLED">Đã hủy</option>
+              <option value="">{importText.filter.all}</option>
+              <option value="COMPLETED">
+                {t.importVoucher.status.COMPLETED}
+              </option>
+              <option value="REJECTED">{t.importVoucher.status.REJECTED}</option>
+              <option value="CANCELLED">
+                {t.importVoucher.status.CANCELLED}
+              </option>
             </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-[10px] font-medium uppercase text-[var(--color-text-muted)]">
-              Kho nhận
+            <label className="mb-1 block text-xxs font-medium uppercase text-[var(--color-text-muted)]">
+              {importText.filter.warehouse}
             </label>
             <input
               type="text"
@@ -152,7 +139,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
               onChange={(e) =>
                 setFilters({ ...filters, warehouse_id: e.target.value })
               }
-              placeholder="ID kho..."
+              placeholder="ID"
               className="w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--color-border-focus)]"
             />
           </div>
@@ -165,28 +152,25 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
               }
               className="text-xs text-[var(--color-brand-primary)] hover:underline"
             >
-              Xóa bộ lọc
+              {importText.filter.clearFilters}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Results count ── */}
       <p className="text-xs text-[var(--color-text-muted)]">
-        {filtered.length} kết quả
+        {filtered.length} {importText.filter.results}
       </p>
 
-      {/* ── Voucher list ── */}
       {filtered.length === 0 ? (
         <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">
-          Không tìm thấy phiếu nào phù hợp.
+          {importText.empty.noMatches}
         </p>
       ) : (
         <div className="space-y-2">
           {filtered.map((voucher) => {
             const isCompleted = voucher.status === "COMPLETED";
             const isRejected = voucher.status === "REJECTED";
-
             const statusIcon = isCompleted ? (
               <CheckCircle size={16} />
             ) : (
@@ -197,60 +181,46 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
               : isRejected
                 ? "bg-amber-50 text-amber-600"
                 : "bg-red-50 text-[var(--color-accent-error)]";
-            const statusLabel = isCompleted
-              ? "Hoàn thành"
-              : isRejected
-                ? "Từ chối"
-                : "Đã hủy";
+            const statusLabel =
+              importText.status?.[voucher.status] ?? voucher.status;
 
             return (
               <div
                 key={voucher.id}
                 className="group flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 transition-colors hover:bg-[var(--color-surface-card)]"
               >
-                {/* Status icon */}
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${statusColor}`}
                 >
                   {statusIcon}
                 </div>
 
-                {/* Info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-[var(--color-text-primary)] tabular-nums">
                       {voucher.voucher_number}
                     </p>
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${statusColor}`}
+                      className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${statusColor}`}
                     >
                       {statusLabel}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    {voucher.supplier_name} · {voucher.warehouse_id}
+                    {voucher.supplier_name} / {voucher.warehouse_id}
                   </p>
                 </div>
 
-                {/* Date */}
-                <p className="hidden shrink-0 text-[10px] tabular-nums text-[var(--color-text-muted)] sm:block">
-                  {voucher.created_at
-                    ? new Date(
-                        typeof voucher.created_at === "string"
-                          ? voucher.created_at
-                          : (voucher.created_at as any)?.toDate?.() ??
-                              voucher.created_at,
-                      ).toLocaleDateString("vi-VN")
-                    : ""}
+                <p className="hidden shrink-0 text-xxs tabular-nums text-[var(--color-text-muted)] sm:block">
+                  {formatDate(voucher.created_at)}
                 </p>
 
-                {/* Actions */}
                 <div className="flex shrink-0 gap-1">
                   <button
                     type="button"
                     onClick={() => setSelectedId(voucher.id)}
                     className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                    title="Xem chi tiết"
+                    title={importText.actions.viewDetail}
                   >
                     <Eye size={14} />
                   </button>
@@ -265,7 +235,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
                       })
                     }
                     className="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
-                    title="Tạo lại lệnh"
+                    title={importText.actions.clone}
                   >
                     <Copy size={14} />
                   </button>
@@ -276,17 +246,17 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
         </div>
       )}
 
-      {/* Detail Drawer */}
-      {selectedId && (() => {
-        const selected = vouchers.find((v) => v.id === selectedId);
-        if (!selected) return null;
-        return (
-          <VoucherDetailDrawer
-            voucher={selected}
-            onClose={() => setSelectedId(null)}
-          />
-        );
-      })()}
+      {selectedId &&
+        (() => {
+          const selected = vouchers.find((v) => v.id === selectedId);
+          if (!selected) return null;
+          return (
+            <VoucherDetailDrawer
+              voucher={selected}
+              onClose={() => setSelectedId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

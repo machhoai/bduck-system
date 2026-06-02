@@ -24,47 +24,27 @@ interface InProgressTabProps {
   onClone: (data: Record<string, unknown>) => void;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<
-    string,
-    { label: string; color: string; Icon: React.ElementType }
-  > = {
-    DRAFT: {
-      label: "Nháp",
-      color: "bg-gray-100 text-gray-600",
-      Icon: Clock,
-    },
-    PENDING_APPROVAL: {
-      label: "Chờ duyệt",
-      color: "bg-amber-50 text-amber-700",
-      Icon: Clock,
-    },
-    APPROVED: {
-      label: "Đã duyệt",
-      color: "bg-blue-50 text-blue-700",
-      Icon: CheckCircle,
-    },
-    REJECTED: {
-      label: "Từ chối",
-      color: "bg-red-50 text-red-700",
-      Icon: XCircle,
-    },
-    RECEIVING: {
-      label: "Đang nhận hàng",
-      color: "bg-indigo-50 text-indigo-700",
-      Icon: PackageOpen,
-    },
-  };
+const STATUS_CONFIG: Record<
+  string,
+  { color: string; Icon: React.ElementType }
+> = {
+  DRAFT: { color: "bg-gray-100 text-gray-600", Icon: Clock },
+  PENDING_APPROVAL: { color: "bg-amber-50 text-amber-700", Icon: Clock },
+  APPROVED: { color: "bg-blue-50 text-blue-700", Icon: CheckCircle },
+  REJECTED: { color: "bg-red-50 text-red-700", Icon: XCircle },
+  RECEIVING: { color: "bg-indigo-50 text-indigo-700", Icon: PackageOpen },
+};
 
-  const cfg = config[status] || config.DRAFT;
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT;
   const Icon = cfg.Icon;
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${cfg.color}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xxs font-semibold ${cfg.color}`}
     >
       <Icon size={12} />
-      {cfg.label}
+      {label}
     </span>
   );
 }
@@ -90,6 +70,7 @@ export default function InProgressTab({
   onClone,
 }: InProgressTabProps) {
   const { t } = useTranslation();
+  const importText = t.importVoucher as any;
   const { warehouses } = useWarehouses();
   const user = useUserStore((state) => state.user);
   const roleIds = useUserStore((state) => state.roleIds);
@@ -140,12 +121,10 @@ export default function InProgressTab({
           <PackageOpen size={24} className="text-[var(--color-text-muted)]" />
         </div>
         <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
-          {t.importVoucher?.empty?.inProgress ??
-            "Không có lệnh nhập kho đang xử lý"}
+          {importText.empty.inProgress}
         </p>
-        <p className="max-w-sm text-xs leading-5 text-[var(--color-text-muted)]">
-          {t.importVoucher?.empty?.inProgressHint ??
-            'Tạo lệnh mới ở tab "Tạo mới" để bắt đầu.'}
+        <p className="w-full text-xs leading-5 text-[var(--color-text-muted)]">
+          {importText.empty.inProgressHint}
         </p>
       </div>
     );
@@ -158,6 +137,8 @@ export default function InProgressTab({
         const isDraft = voucher.status === ImportVoucherStatus.DRAFT;
         const isApproved = voucher.status === ImportVoucherStatus.APPROVED;
         const canContinue = isApproved && canPerformReceiving(voucher);
+        const statusLabel =
+          importText.status?.[voucher.status] ?? voucher.status;
 
         return (
           <article
@@ -170,17 +151,17 @@ export default function InProgressTab({
                   <p className="text-base font-bold text-[var(--color-text-primary)] tabular-nums">
                     {voucher.voucher_number}
                   </p>
-                  <StatusBadge status={voucher.status} />
+                  <StatusBadge status={voucher.status} label={statusLabel} />
                 </div>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                   {voucher.supplier_name}
                 </p>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   {warehouse?.name ?? voucher.warehouse_id}
-                  {warehouse?.code ? ` · ${warehouse.code}` : ""}
+                  {warehouse?.code ? ` / ${warehouse.code}` : ""}
                 </p>
               </div>
-              <p className="shrink-0 text-right text-[11px] tabular-nums text-[var(--color-text-muted)]">
+              <p className="shrink-0 text-right text-xxs tabular-nums text-[var(--color-text-muted)]">
                 {formatDate(voucher.created_at)}
               </p>
             </div>
@@ -188,7 +169,7 @@ export default function InProgressTab({
             {voucher.notes && (
               <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
                 <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
-                  {t.importVoucher?.form?.notes ?? "Ghi chú"}
+                  {importText.form.notes}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
                   {voucher.notes}
@@ -200,10 +181,10 @@ export default function InProgressTab({
               <button
                 type="button"
                 onClick={() => setSelectedId(voucher.id)}
-                className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] sm:h-8 sm:text-xs"
+                className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] sm:h-8 sm:text-xs"
               >
                 <Eye size={14} />
-                Xem chi tiết
+                {importText.actions.viewDetail}
               </button>
 
               {isDraft && (
@@ -217,10 +198,10 @@ export default function InProgressTab({
                       notes: voucher.notes,
                     })
                   }
-                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 sm:h-8 sm:text-xs"
+                  className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 sm:h-8 sm:text-xs"
                 >
                   <Copy size={14} />
-                  Sửa lệnh
+                  {importText.actions.editVoucher}
                 </button>
               )}
 
@@ -228,10 +209,10 @@ export default function InProgressTab({
                 <button
                   type="button"
                   onClick={() => setReceivingVoucherId(voucher.id)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:h-8 sm:text-xs"
+                  className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:h-8 sm:text-xs"
                 >
                   <Play size={14} />
-                  Tiếp tục
+                  {importText.actions.continue}
                 </button>
               )}
             </div>
