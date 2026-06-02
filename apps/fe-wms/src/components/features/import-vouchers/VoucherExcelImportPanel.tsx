@@ -252,7 +252,10 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
                   <td className="px-3 py-2 text-right">{row.parsedQuantity ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
                     {row.parsedUnitPrice != null
-                      ? new Intl.NumberFormat("vi-VN").format(row.parsedUnitPrice)
+                      ? new Intl.NumberFormat("vi-VN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(row.parsedUnitPrice)
                       : "—"}
                   </td>
                   <td className="px-3 py-2">

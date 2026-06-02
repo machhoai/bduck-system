@@ -83,17 +83,24 @@ function colIndexToLetter(index: number): string {
   return result;
 }
 
-/** Lấy text từ cell value (ExcelJS trả về nhiều kiểu) */
+/** Lấy text từ cell value (ExcelJS trả về nhiều kiểu).
+ * Với cell kiểu number: trả về raw number string (không locale) để parse chính xác.
+ * Với cell kiểu text có format VN (2.142,66): giữ nguyên string để parseLocaleNumber xử lý. */
 function getCellText(cell: ExcelJS.Cell): string {
   const v = cell.value;
   if (v === null || v === undefined) return "";
+  // Số thực từ ExcelJS (chưa bị format locale) → dùng trực tiếp
+  if (typeof v === "number") return String(v);
   if (typeof v === "object" && "richText" in v) {
     return (v as ExcelJS.CellRichTextValue).richText
       .map((rt) => rt.text)
       .join("");
   }
   if (typeof v === "object" && "result" in v) {
-    return String((v as ExcelJS.CellFormulaValue).result ?? "");
+    const r = (v as ExcelJS.CellFormulaValue).result;
+    // Nếu kết quả công thức là số, trả về raw
+    if (typeof r === "number") return String(r);
+    return String(r ?? "");
   }
   if (v instanceof Date) return v.toLocaleDateString("vi-VN");
   return String(v);
@@ -107,6 +114,39 @@ const normalizeStr = (s: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D");
+
+/**
+ * Parse số từ string hỗ trợ cả 2 định dạng locale phổ biến:
+ *
+ * • Tiếng Việt / EU: "2.142,66"  → dấu chấm = nghìn, dấu phẩy = thập phân → 2142.66
+ * • Standard / US:  "2,142.66"  → dấu phẩy = nghìn, dấu chấm = thập phân → 2142.66
+ * • Số nguyên:       "2142"     → 2142
+ * • Đã là số JS:     "2142.66"  → 2142.66 (không có dấu phẩy)
+ *
+ * Heuristic: nếu dấu phẩy (,) xuất hiện SAU dấu chấm cuối cùng → VN format.
+ */
+function parseLocaleNumber(raw: string): number {
+  const s = raw.trim().replace(/\s/g, "");
+  if (s === "") return NaN;
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastComma > lastDot) {
+    // VN/EU format: 2.142,66 → remove dots, replace comma with dot
+    const normalized = s.replace(/\./g, "").replace(",", ".");
+    return parseFloat(normalized);
+  }
+
+  if (lastDot > lastComma) {
+    // US format: 2,142.66 → remove commas
+    const normalized = s.replace(/,/g, "");
+    return parseFloat(normalized);
+  }
+
+  // Không có dấu phẩy hoặc chỉ có 1 loại
+  return parseFloat(s.replace(/,/g, ""));
+}
 
 // ─────────────────────────────────────────────
 // STEP 1: ĐỌC PREVIEW
@@ -236,11 +276,11 @@ export async function parseVoucherRows(
     // Parse quantity
     let parsedQuantity: number | null = null;
     if (rawQuantity.trim()) {
-      const n = Number(rawQuantity.replace(/[.,\s]/g, "").trim());
+      const n = parseLocaleNumber(rawQuantity);
       if (isNaN(n) || n <= 0) {
         errors.push(`Số lượng "${rawQuantity}" không hợp lệ (phải > 0).`);
       } else {
-        parsedQuantity = n;
+        parsedQuantity = Math.round(n); // Số lượng phải là số nguyên
       }
     } else {
       errors.push("Thiếu Số lượng.");
@@ -249,9 +289,10 @@ export async function parseVoucherRows(
     // Parse unit price
     let parsedUnitPrice: number | null = null;
     if (rawUnitPrice.trim()) {
-      const n = Number(rawUnitPrice.replace(/[.,\s]/g, "").trim());
+      const n = parseLocaleNumber(rawUnitPrice);
       if (!isNaN(n) && n >= 0) {
-        parsedUnitPrice = n;
+        // Làm tròn 2 số thập phân (2.142,66 → 2142.66)
+        parsedUnitPrice = Math.round(n * 100) / 100;
       } else {
         warnings.push(`Đơn giá "${rawUnitPrice}" không hợp lệ, bỏ qua.`);
       }
