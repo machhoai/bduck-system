@@ -202,7 +202,7 @@ export default function CreateVoucherTab({
 }: CreateVoucherTabProps) {
   const { t, lang } = useTranslation();
   const locale = (lang || "vi") as Locale;
-  const copy = (t.importVoucher as any).form as Record<string, string>;
+  const copy = COPY[locale];
   const user = useUserStore((state) => state.user);
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const { locations: allLocations } = useWarehouseLocations();

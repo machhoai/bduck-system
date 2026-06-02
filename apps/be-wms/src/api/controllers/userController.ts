@@ -17,6 +17,8 @@ import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 const userIdParamSchema = z.object({ id: z.string().min(1) });
 const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
 
+import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
+
 const handleUserError = (res: Response, error: unknown) => {
   console.error("[userController] error:", error);
 
@@ -27,6 +29,11 @@ const handleUserError = (res: Response, error: unknown) => {
       400,
       error.flatten(),
     );
+  }
+
+  const firebaseMapped = mapFirebaseError(error);
+  if (firebaseMapped) {
+    return sendError(res, firebaseMapped.messages, firebaseMapped.statusCode);
   }
 
   const apiError = error as {

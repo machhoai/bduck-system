@@ -4,6 +4,7 @@ import {
   createSessionLogin,
   logoutSession,
 } from "../../services/authService.js";
+import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
 
 const sessionLoginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
@@ -49,7 +50,15 @@ export const sessionLogin = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("[authController] sessionLogin error:", error);
+    const firebaseMapped = mapFirebaseError(error);
+    if (firebaseMapped) {
+      return res.status(firebaseMapped.statusCode).json({
+        success: false,
+        data: null,
+        messages: firebaseMapped.messages,
+      });
+    }
+
     return res.status(401).json({
       success: false,
       data: null,
