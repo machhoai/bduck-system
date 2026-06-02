@@ -14,9 +14,9 @@
 import { FileText, FileSpreadsheet, X, Upload, FileUp } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import {
-  validateFile,
-  getFileTypeLabel,
-  formatFileSize,
+    validateFile,
+    getFileTypeLabel,
+    formatFileSize,
 } from "../../lib/uploadFile";
 
 // ─────────────────────────────────────────────
@@ -24,26 +24,26 @@ import {
 // ─────────────────────────────────────────────
 
 export interface SelectedFile {
-  id: string;
-  file: File;
-  name: string;
-  size: number;
-  type: string;
-  /** Upload progress 0-100, null = not started */
-  progress: number | null;
-  /** Download URL after upload completes */
-  url: string | null;
-  /** Validation/upload error message */
-  error: string | null;
+    id: string;
+    file: File;
+    name: string;
+    size: number;
+    type: string;
+    /** Upload progress 0-100, null = not started */
+    progress: number | null;
+    /** Download URL after upload completes */
+    url: string | null;
+    /** Validation/upload error message */
+    error: string | null;
 }
 
 interface FileUploadFieldProps {
-  files: SelectedFile[];
-  onFilesChange: (files: SelectedFile[]) => void;
-  disabled?: boolean;
-  maxFiles?: number;
-  label: string;
-  hint?: string;
+    files: SelectedFile[];
+    onFilesChange: (files: SelectedFile[]) => void;
+    disabled?: boolean;
+    maxFiles?: number;
+    label: string;
+    hint?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -51,23 +51,23 @@ interface FileUploadFieldProps {
 // ─────────────────────────────────────────────
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  const label = getFileTypeLabel(mimeType);
+    const label = getFileTypeLabel(mimeType);
 
-  if (label === "XLSX" || label === "CSV") {
+    if (label === "XLSX" || label === "CSV") {
+        return (
+            <FileSpreadsheet
+                size={20}
+                className="shrink-0 text-[var(--color-accent-success)]"
+            />
+        );
+    }
+
     return (
-      <FileSpreadsheet
-        size={20}
-        className="shrink-0 text-[var(--color-accent-success)]"
-      />
+        <FileText
+            size={20}
+            className="shrink-0 text-[var(--color-accent-info)]"
+        />
     );
-  }
-
-  return (
-    <FileText
-      size={20}
-      className="shrink-0 text-[var(--color-accent-info)]"
-    />
-  );
 }
 
 // ─────────────────────────────────────────────
@@ -75,235 +75,235 @@ function FileIcon({ mimeType }: { mimeType: string }) {
 // ─────────────────────────────────────────────
 
 const ACCEPT =
-  ".pdf,.docx,.xlsx,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
+    ".pdf,.docx,.xlsx,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
 
 export function FileUploadField({
-  files,
-  onFilesChange,
-  disabled = false,
-  maxFiles = 5,
-  label,
-  hint,
+    files,
+    onFilesChange,
+    disabled = false,
+    maxFiles = 5,
+    label,
+    hint,
 }: FileUploadFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
-  // ─── Process selected/dropped files ───
-  const processFiles = useCallback(
-    (fileList: FileList | File[]) => {
-      const arr = Array.from(fileList);
-      if (arr.length === 0) return;
+    // ─── Process selected/dropped files ───
+    const processFiles = useCallback(
+        (fileList: FileList | File[]) => {
+            const arr = Array.from(fileList);
+            if (arr.length === 0) return;
 
-      const newFiles: SelectedFile[] = [];
+            const newFiles: SelectedFile[] = [];
 
-      for (const file of arr) {
-        if (files.length + newFiles.length >= maxFiles) break;
+            for (const file of arr) {
+                if (files.length + newFiles.length >= maxFiles) break;
 
-        const validationErr = validateFile(file);
+                const validationErr = validateFile(file);
 
-        newFiles.push({
-          id: crypto.randomUUID(),
-          file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          progress: null,
-          url: null,
-          error: validationErr?.message.vi ?? null,
-        });
-      }
-
-      if (newFiles.length > 0) {
-        onFilesChange([...files, ...newFiles]);
-      }
-    },
-    [files, maxFiles, onFilesChange],
-  );
-
-  // ─── Click to open file picker ───
-  const handleClick = useCallback(() => {
-    if (disabled) return;
-    inputRef.current?.click();
-  }, [disabled]);
-
-  // ─── Native file input change ───
-  const handleInputChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = event.target.files;
-      if (selected && selected.length > 0) {
-        processFiles(selected);
-      }
-      // Reset input so same file can be selected again
-      event.target.value = "";
-    },
-    [processFiles],
-  );
-
-  // ─── Drag and drop ───
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!disabled) setIsDragging(true);
-    },
-    [disabled],
-  );
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-      if (disabled) return;
-
-      const droppedFiles = e.dataTransfer.files;
-      if (droppedFiles && droppedFiles.length > 0) {
-        processFiles(droppedFiles);
-      }
-    },
-    [disabled, processFiles],
-  );
-
-  // ─── Remove file ───
-  const handleRemove = useCallback(
-    (id: string) => {
-      onFilesChange(files.filter((f) => f.id !== id));
-    },
-    [files, onFilesChange],
-  );
-
-  const canAddMore = files.length < maxFiles && !disabled;
-
-  return (
-    <div className="space-y-3">
-      {/* Label */}
-      <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-        {label}
-      </p>
-      {hint && (
-        <p className="text-xs text-[var(--color-text-muted)]">{hint}</p>
-      )}
-
-      {/* Hidden file input */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        multiple
-        disabled={disabled}
-        className="hidden"
-        onChange={handleInputChange}
-      />
-
-      {/* Dropzone / Upload button */}
-      {canAddMore && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleClick}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleClick();
+                newFiles.push({
+                    id: crypto.randomUUID(),
+                    file,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    progress: null,
+                    url: null,
+                    error: validationErr?.message.vi ?? null,
+                });
             }
-          }}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed px-4 py-4 text-sm transition-all active:scale-[0.98] ${
-            isDragging
-              ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-              : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
-          } ${disabled ? "pointer-events-none opacity-50" : ""}`}
-        >
-          {files.length === 0 ? (
-            <Upload size={24} className="opacity-60" />
-          ) : (
-            <FileUp size={20} className="opacity-60" />
-          )}
-          <span className="text-center">
-            {files.length === 0
-              ? "Nhấn để chọn hoặc kéo thả tệp vào đây"
-              : `Thêm tệp (${files.length}/${maxFiles})`}
-          </span>
-          <span className="text-xxs opacity-60">
-            PDF, DOCX, XLSX, CSV · tối đa 20MB
-          </span>
-        </div>
-      )}
 
-      {/* File list */}
-      {files.length > 0 && (
-        <div className="space-y-2">
-          {files.map((f) => (
-            <div
-              key={f.id}
-              className={`flex items-center gap-3 rounded-[var(--radius-sm)] border px-3 py-2.5 ${
-                f.error
-                  ? "border-[var(--color-accent-error)] bg-red-50"
-                  : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]"
-              }`}
-            >
-              <FileIcon mimeType={f.type} />
+            if (newFiles.length > 0) {
+                onFilesChange([...files, ...newFiles]);
+            }
+        },
+        [files, maxFiles, onFilesChange],
+    );
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-normal text-[var(--color-text-primary)]">
-                  {f.name}
+    // ─── Click to open file picker ───
+    const handleClick = useCallback(() => {
+        if (disabled) return;
+        inputRef.current?.click();
+    }, [disabled]);
+
+    // ─── Native file input change ───
+    const handleInputChange = useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>) => {
+            const selected = event.target.files;
+            if (selected && selected.length > 0) {
+                processFiles(selected);
+            }
+            // Reset input so same file can be selected again
+            event.target.value = "";
+        },
+        [processFiles],
+    );
+
+    // ─── Drag and drop ───
+    const handleDragOver = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!disabled) setIsDragging(true);
+        },
+        [disabled],
+    );
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+            if (disabled) return;
+
+            const droppedFiles = e.dataTransfer.files;
+            if (droppedFiles && droppedFiles.length > 0) {
+                processFiles(droppedFiles);
+            }
+        },
+        [disabled, processFiles],
+    );
+
+    // ─── Remove file ───
+    const handleRemove = useCallback(
+        (id: string) => {
+            onFilesChange(files.filter((f) => f.id !== id));
+        },
+        [files, onFilesChange],
+    );
+
+    const canAddMore = files.length < maxFiles && !disabled;
+
+    return (
+        <div className="flex h-full flex-col gap-2 flex-1 justify-between">
+            {/* Label */}
+            <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    {label}
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    {formatFileSize(f.size)}
-                  </span>
-                  <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {getFileTypeLabel(f.type)}
-                  </span>
-                  {f.progress !== null && f.progress < 100 && (
-                    <span className="text-xs text-[var(--color-accent-info)]">
-                      {f.progress}%
-                    </span>
-                  )}
-                  {f.error && (
-                    <span className="text-xs text-[var(--color-accent-error)]">
-                      {f.error}
-                    </span>
-                  )}
-                </div>
-
-                {/* Progress bar */}
-                {f.progress !== null && f.progress < 100 && (
-                  <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--color-border-subtle)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--color-brand-primary)] transition-[width] duration-200"
-                      style={{ width: `${f.progress}%` }}
-                    />
-                  </div>
+                {hint && (
+                    <p className="text-xs text-[var(--color-text-muted)]">{hint}</p>
                 )}
-              </div>
-
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemove(f.id);
-                  }}
-                  className="shrink-0 rounded-full p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-border-subtle)] hover:text-[var(--color-accent-error)]"
-                  aria-label="Remove file"
-                >
-                  <X size={16} />
-                </button>
-              )}
             </div>
-          ))}
+
+            {/* Hidden file input */}
+            <input
+                ref={inputRef}
+                type="file"
+                accept={ACCEPT}
+                multiple
+                disabled={disabled}
+                className="hidden"
+                onChange={handleInputChange}
+            />
+
+            {/* Dropzone / Upload button */}
+            {canAddMore && (
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleClick}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleClick();
+                        }
+                    }}
+                    onDragOver={handleDragOver}
+                    onDragEnter={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border-2 border-dashed px-4 py-4 text-sm transition-all active:scale-[0.98] ${isDragging
+                        ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                        : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
+                        } ${disabled ? "pointer-events-none opacity-50" : ""}`}
+                >
+                    {files.length === 0 ? (
+                        <Upload size={24} className="opacity-60" />
+                    ) : (
+                        <FileUp size={20} className="opacity-60" />
+                    )}
+                    <span className="text-center">
+                        {files.length === 0
+                            ? "Nhấn để chọn hoặc kéo thả tệp vào đây"
+                            : `Thêm tệp (${files.length}/${maxFiles})`}
+                    </span>
+                    <span className="text-xxs opacity-60">
+                        PDF, DOCX, XLSX, CSV · tối đa 20MB
+                    </span>
+                </div>
+            )}
+
+            {/* File list */}
+            {files.length > 0 && (
+                <div className="flex flex-col gap-2">
+                    {files.map((f) => (
+                        <div
+                            key={f.id}
+                            className={`flex items-center gap-3 rounded-[var(--radius-sm)] border px-3 py-2.5 ${f.error
+                                ? "border-[var(--color-accent-error)] bg-red-50"
+                                : "border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]"
+                                }`}
+                        >
+                            <FileIcon mimeType={f.type} />
+
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-normal text-[var(--color-text-primary)]">
+                                    {f.name}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                        {formatFileSize(f.size)}
+                                    </span>
+                                    <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                                        {getFileTypeLabel(f.type)}
+                                    </span>
+                                    {f.progress !== null && f.progress < 100 && (
+                                        <span className="text-xs text-[var(--color-accent-info)]">
+                                            {f.progress}%
+                                        </span>
+                                    )}
+                                    {f.error && (
+                                        <span className="text-xs text-[var(--color-accent-error)]">
+                                            {f.error}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Progress bar */}
+                                {f.progress !== null && f.progress < 100 && (
+                                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--color-border-subtle)]">
+                                        <div
+                                            className="h-full rounded-full bg-[var(--color-brand-primary)] transition-[width] duration-200"
+                                            style={{ width: `${f.progress}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {!disabled && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemove(f.id);
+                                    }}
+                                    className="shrink-0 rounded-full p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-border-subtle)] hover:text-[var(--color-accent-error)]"
+                                    aria-label="Remove file"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

@@ -1,0 +1,303 @@
+/**
+ * voucherExcelImport.ts
+ * ─────────────────────────────────────────────
+ * Utility đọc file Excel (XLSX) tự do (không cần theo mẫu),
+ * để người dùng map cột và import vào Phiếu Nhập Kho.
+ *
+ * Flow:
+ * 1. readSheetPreview()   → đọc headers (A,B,C...) + sample row từ startRow
+ * 2. parseVoucherRows()   → parse toàn bộ file theo columnMapping, match product
+ * 3. summarizeResults()   → thống kê kết quả
+ */
+
+import ExcelJS from "exceljs";
+import type { Product } from "@bduck/shared-types";
+
+// ─────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────
+
+/** Thông tin 1 cột từ sheet, gồm key (A/B/...) và giá trị mẫu tại startRow */
+export interface SheetColumnInfo {
+  /** Chữ cái cột: A, B, C, ... */
+  key: string;
+  /** Giá trị tại dòng mẫu (startRow) */
+  sampleValue: string;
+}
+
+export interface SheetPreview {
+  columns: SheetColumnInfo[];
+  /** Tên sheet được đọc */
+  sheetName: string;
+  /** Tổng số hàng có dữ liệu (không kể header) */
+  totalDataRows: number;
+}
+
+/** Mapping từ slot hệ thống → chữ cái cột file */
+export interface VoucherColumnMapping {
+  /** Tên sản phẩm (bắt buộc) */
+  productName: string | null;
+  /** SKU/Mã sản phẩm (tùy chọn, ưu tiên match) */
+  sku: string | null;
+  /** Số lượng (bắt buộc) */
+  quantity: string | null;
+  /** Đơn giá (tùy chọn) */
+  unitPrice: string | null;
+  /** Ghi chú (tùy chọn) */
+  notes: string | null;
+}
+
+export interface VoucherItemParseResult {
+  rowNumber: number;
+  rawName: string;
+  rawSku: string;
+  rawQuantity: string;
+  rawUnitPrice: string;
+  rawNotes: string;
+  matchedProduct: Product | null;
+  parsedQuantity: number | null;
+  parsedUnitPrice: number | null;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface VoucherItemParseStats {
+  totalRows: number;
+  validRows: number;
+  errorRows: number;
+  warningRows: number;
+}
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+
+/** Chuyển index cột (0-indexed) sang chữ cái: 0→A, 1→B, ..., 25→Z, 26→AA */
+function colIndexToLetter(index: number): string {
+  let result = "";
+  let n = index;
+  while (n >= 0) {
+    result = String.fromCharCode((n % 26) + 65) + result;
+    n = Math.floor(n / 26) - 1;
+  }
+  return result;
+}
+
+/** Lấy text từ cell value (ExcelJS trả về nhiều kiểu) */
+function getCellText(cell: ExcelJS.Cell): string {
+  const v = cell.value;
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object" && "richText" in v) {
+    return (v as ExcelJS.CellRichTextValue).richText
+      .map((rt) => rt.text)
+      .join("");
+  }
+  if (typeof v === "object" && "result" in v) {
+    return String((v as ExcelJS.CellFormulaValue).result ?? "");
+  }
+  if (v instanceof Date) return v.toLocaleDateString("vi-VN");
+  return String(v);
+}
+
+const normalizeStr = (s: string) =>
+  s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+
+// ─────────────────────────────────────────────
+// STEP 1: ĐỌC PREVIEW
+// ─────────────────────────────────────────────
+
+/**
+ * Đọc sheet đầu tiên, lấy danh sách cột và giá trị mẫu tại startRow.
+ * @param file    File XLSX
+ * @param startRow Hàng bắt đầu có dữ liệu (1-indexed, default 2)
+ */
+export async function readSheetPreview(
+  file: File,
+  startRow = 2,
+): Promise<SheetPreview> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error("File Excel không có sheet dữ liệu.");
+
+  // Xác định số cột thực tế từ dòng mẫu
+  const sampleRow = sheet.getRow(startRow);
+  const lastCol = sheet.columnCount || 26;
+
+  const columns: SheetColumnInfo[] = [];
+  for (let c = 1; c <= Math.min(lastCol, 52); c++) {
+    const cell = sampleRow.getCell(c);
+    const rawText = getCellText(cell);
+    // Chỉ thêm cột nếu có giá trị hoặc là cột A-Z đầu tiên
+    if (rawText || c <= 26) {
+      columns.push({
+        key: colIndexToLetter(c - 1),
+        sampleValue: rawText,
+      });
+    }
+  }
+
+  // Đếm số hàng có dữ liệu từ startRow
+  let totalDataRows = 0;
+  sheet.eachRow((_, rowNum) => {
+    if (rowNum >= startRow) totalDataRows++;
+  });
+
+  return {
+    columns: columns.filter((col) => col.sampleValue !== "" || col.key <= "F"),
+    sheetName: sheet.name,
+    totalDataRows,
+  };
+}
+
+// ─────────────────────────────────────────────
+// STEP 2: PARSE TOÀN BỘ FILE
+// ─────────────────────────────────────────────
+
+/**
+ * Parse toàn bộ sheet theo mapping đã xác định, match với products catalog.
+ */
+export async function parseVoucherRows(
+  file: File,
+  mapping: VoucherColumnMapping,
+  startRow: number,
+  products: Product[],
+): Promise<VoucherItemParseResult[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error("File Excel không có sheet dữ liệu.");
+
+  // Build lookup maps cho products
+  const bySkuNorm = new Map<string, Product>();
+  const byNameNorm = new Map<string, Product>();
+  for (const p of products) {
+    if (p.code) bySkuNorm.set(normalizeStr(p.code), p);
+    byNameNorm.set(normalizeStr(p.name), p);
+  }
+
+  const colToIndex = (key: string): number => {
+    let result = 0;
+    for (let i = 0; i < key.length; i++) {
+      result = result * 26 + key.charCodeAt(i) - 64;
+    }
+    return result; // 1-indexed
+  };
+
+  const results: VoucherItemParseResult[] = [];
+
+  sheet.eachRow((row, rowNum) => {
+    if (rowNum < startRow) return;
+
+    const getCol = (key: string | null): string => {
+      if (!key) return "";
+      return getCellText(row.getCell(colToIndex(key)));
+    };
+
+    const rawName = getCol(mapping.productName);
+    const rawSku = getCol(mapping.sku);
+    const rawQuantity = getCol(mapping.quantity);
+    const rawUnitPrice = getCol(mapping.unitPrice);
+    const rawNotes = getCol(mapping.notes);
+
+    // Bỏ qua dòng rỗng hoàn toàn
+    if (!rawName.trim() && !rawSku.trim() && !rawQuantity.trim()) return;
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Match product: ưu tiên SKU
+    let matchedProduct: Product | null = null;
+    if (rawSku.trim()) {
+      matchedProduct = bySkuNorm.get(normalizeStr(rawSku)) ?? null;
+      if (!matchedProduct) {
+        errors.push(`SKU "${rawSku}" không tìm thấy trong catalog.`);
+      }
+    } else if (rawName.trim()) {
+      matchedProduct = byNameNorm.get(normalizeStr(rawName)) ?? null;
+      if (!matchedProduct) {
+        errors.push(`Tên "${rawName}" không tìm thấy trong catalog.`);
+      }
+    }
+
+    if (!rawName.trim() && !rawSku.trim()) {
+      errors.push("Thiếu Tên sản phẩm hoặc SKU.");
+    }
+
+    // Parse quantity
+    let parsedQuantity: number | null = null;
+    if (rawQuantity.trim()) {
+      const n = Number(rawQuantity.replace(/[.,\s]/g, "").trim());
+      if (isNaN(n) || n <= 0) {
+        errors.push(`Số lượng "${rawQuantity}" không hợp lệ (phải > 0).`);
+      } else {
+        parsedQuantity = n;
+      }
+    } else {
+      errors.push("Thiếu Số lượng.");
+    }
+
+    // Parse unit price
+    let parsedUnitPrice: number | null = null;
+    if (rawUnitPrice.trim()) {
+      const n = Number(rawUnitPrice.replace(/[.,\s]/g, "").trim());
+      if (!isNaN(n) && n >= 0) {
+        parsedUnitPrice = n;
+      } else {
+        warnings.push(`Đơn giá "${rawUnitPrice}" không hợp lệ, bỏ qua.`);
+      }
+    }
+
+    // Duplicate check (cùng SKU trong file)
+    const existingIdx = results.findIndex(
+      (r) =>
+        r.matchedProduct?.id === matchedProduct?.id && matchedProduct !== null,
+    );
+    if (existingIdx !== -1) {
+      warnings.push(
+        `Sản phẩm đã xuất hiện ở dòng ${results[existingIdx].rowNumber}.`,
+      );
+    }
+
+    results.push({
+      rowNumber: rowNum,
+      rawName,
+      rawSku,
+      rawQuantity,
+      rawUnitPrice,
+      rawNotes,
+      matchedProduct,
+      parsedQuantity,
+      parsedUnitPrice,
+      errors,
+      warnings,
+    });
+  });
+
+  return results;
+}
+
+// ─────────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────────
+
+export function summarizeVoucherResults(
+  rows: VoucherItemParseResult[],
+): VoucherItemParseStats {
+  return {
+    totalRows: rows.length,
+    validRows: rows.filter((r) => r.errors.length === 0 && r.matchedProduct).length,
+    errorRows: rows.filter((r) => r.errors.length > 0).length,
+    warningRows: rows.filter((r) => r.warnings.length > 0 && r.errors.length === 0)
+      .length,
+  };
+}
