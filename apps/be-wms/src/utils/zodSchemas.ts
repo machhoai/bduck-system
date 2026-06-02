@@ -79,7 +79,7 @@ export const createProductSchema = z.object({
     "SOUVENIR_SALE",
     "SOUVENIR_GIFT",
   ]),
-  min_stock_threshold: z.number().int().min(0).nullable().optional(),
+  unit_price: z.number().int().min(0).nullable().optional(),
   is_serialized: z.boolean(),
   description: z.string().nullable().optional(),
 });

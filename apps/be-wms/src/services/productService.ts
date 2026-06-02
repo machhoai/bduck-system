@@ -68,7 +68,7 @@ export const createProduct = async (
     product_origin: input.product_origin || null,
     unit: input.unit,
     product_type: input.product_type,
-    min_stock_threshold: input.min_stock_threshold ?? null,
+    unit_price: input.unit_price ?? null,
     is_serialized: input.is_serialized,
     description: input.description || null,
   } as any);

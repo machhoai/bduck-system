@@ -76,7 +76,7 @@ export default function LowStockTable({
                   {d.atp}
                 </th>
                 <th className="pb-2 pr-4 text-right font-medium text-[var(--color-text-muted)]">
-                  {d.threshold}
+                  Đơn giá
                 </th>
                 <th className="pb-2 text-center font-medium text-[var(--color-text-muted)]">
                   {d.status}
@@ -107,7 +107,9 @@ export default function LowStockTable({
                       {item.atpQuantity.toLocaleString()}
                     </td>
                     <td className="py-2.5 pr-4 text-right text-[var(--color-text-muted)]">
-                      {item.minStockThreshold?.toLocaleString() ?? "—"}
+                      {item.unitPrice != null
+                        ? `${new Intl.NumberFormat("vi-VN").format(item.unitPrice)} đ`
+                        : "—"}
                     </td>
                     <td className="py-2.5 text-center">
                       <span

@@ -56,7 +56,7 @@ export function ProductFormModal({
     product_type: ProductType.EQUIPMENT,
     product_material: "",
     product_origin: ProductOrigin.DOMESTIC,
-    min_stock_threshold: "",
+    unit_price: "",
     is_serialized: false,
     description: "",
   });
@@ -79,8 +79,8 @@ export function ProductFormModal({
         product_type: product.product_type,
         product_material: product.product_material || "",
         product_origin: product.product_origin || ProductOrigin.DOMESTIC,
-        min_stock_threshold: product.min_stock_threshold
-          ? String(product.min_stock_threshold)
+        unit_price: product.unit_price
+          ? new Intl.NumberFormat("vi-VN").format(product.unit_price)
           : "",
         is_serialized: product.is_serialized,
         description: product.description || "",
@@ -98,7 +98,7 @@ export function ProductFormModal({
         product_type: ProductType.EQUIPMENT,
         product_material: "",
         product_origin: ProductOrigin.DOMESTIC,
-        min_stock_threshold: "",
+        unit_price: "",
         is_serialized: false,
         description: "",
       });
@@ -151,6 +151,19 @@ export function ProductFormModal({
     }
   };
 
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, ""); // Keep only digits
+    if (!rawValue) {
+      setFormData({ ...formData, unit_price: "" });
+      return;
+    }
+    const numberValue = parseInt(rawValue, 10);
+    setFormData({
+      ...formData,
+      unit_price: new Intl.NumberFormat("vi-VN").format(numberValue),
+    });
+  };
+
   const handleAddBomRow = () => {
     setBomList((prev) => [
       ...prev,
@@ -192,8 +205,8 @@ export function ProductFormModal({
 
         const payload = {
           ...formData,
-          min_stock_threshold: formData.min_stock_threshold
-            ? parseInt(formData.min_stock_threshold, 10)
+          unit_price: formData.unit_price
+            ? parseInt(formData.unit_price.replace(/\D/g, ""), 10)
             : null,
           product_image_url: finalImageUrls.length > 0 ? finalImageUrls : null,
           barcode: formData.barcode || null,
@@ -431,21 +444,20 @@ export function ProductFormModal({
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                      Tồn tối thiểu
+                      Đơn giá
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={formData.min_stock_threshold}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          min_stock_threshold: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="0"
+                        value={formData.unit_price}
+                        onChange={handlePriceChange}
+                        className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-4 pr-8 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)] pointer-events-none">
+                        đ
+                      </span>
+                    </div>
                   </div>
                 </div>
 

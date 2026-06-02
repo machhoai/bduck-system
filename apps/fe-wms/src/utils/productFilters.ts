@@ -73,10 +73,10 @@ export function filterProducts(
     if (filters.serialized === "standard" && product.is_serialized === true) {
       return false;
     }
-    if (filters.stock === "configured" && product.min_stock_threshold == null) {
+    if (filters.stock === "configured" && product.unit_price == null) {
       return false;
     }
-    if (filters.stock === "missing" && product.min_stock_threshold != null) {
+    if (filters.stock === "missing" && product.unit_price != null) {
       return false;
     }
 

@@ -97,9 +97,11 @@ export function ProductCard({
             </p>
           </div>
           <div>
-            <p className="text-[var(--color-text-muted)]">{t.products.minStock}</p>
+            <p className="text-[var(--color-text-muted)]">Đơn giá</p>
             <p className="mt-0.5 truncate font-normal text-[var(--color-text-primary)]">
-              {product.min_stock_threshold ?? t.common.noData}
+              {product.unit_price != null
+                ? new Intl.NumberFormat("vi-VN").format(product.unit_price) + " đ"
+                : t.common.noData}
             </p>
           </div>
         </div>

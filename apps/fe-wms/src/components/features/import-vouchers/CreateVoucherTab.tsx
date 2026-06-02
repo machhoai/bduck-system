@@ -97,6 +97,9 @@ const COPY = {
     selectWarehouseFirst: "Chọn kho trước",
     loadingLocations: "Đang tải vị trí...",
     noLocations: "Kho chưa có vị trí",
+    upload: "Tải chứng từ",
+    info: "Thông tin",
+    confirm: "Xác nhận",
   },
   zh: {
     uploadHint: "PDF、DOCX、XLSX、CSV - 每个文件最多 20MB - 最多 5 个文件",
@@ -131,6 +134,9 @@ const COPY = {
     selectWarehouseFirst: "请先选择仓库",
     loadingLocations: "正在加载库位...",
     noLocations: "此仓库暂无库位",
+    upload: "上传文件",
+    info: "信息",
+    confirm: "确认",
   },
 } as const;
 
@@ -592,7 +598,7 @@ export default function CreateVoucherTab({
                   {copy.chooseFromCatalog}
                 </h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  {products.length} {copy.products.toLowerCase()}
+                  {products.length} {copy?.products?.toLowerCase() ?? ""}
                 </p>
               </div>
               <div className="relative sm:w-80">

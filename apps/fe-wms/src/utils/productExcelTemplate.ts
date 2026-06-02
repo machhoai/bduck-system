@@ -14,7 +14,7 @@ type ProductColumnKey =
   | "product_type"
   | "product_material"
   | "product_origin"
-  | "min_stock_threshold"
+  | "unit_price"
   | "is_serialized"
   | "description";
 
@@ -39,7 +39,7 @@ type TemplateText = {
     title: string;
     invalidTitle: string;
     invalidList: string;
-    invalidMinStock: string;
+    invalidUnitPrice: string;
     category: string;
     unit: string;
     type: string;
@@ -122,9 +122,9 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
         note: "Không bắt buộc. DOMESTIC là trong nước, INTERNATIONAL là nhập khẩu.",
         width: 28,
       },
-      min_stock_threshold: {
-        label: "Tồn tối thiểu",
-        note: "Không bắt buộc. Nhập số nguyên không âm để cảnh báo sắp hết hàng.",
+      unit_price: {
+        label: "Đơn giá",
+        note: "Không bắt buộc. Nhập số nguyên không âm để làm đơn giá cơ sở.",
         width: 18,
       },
       is_serialized: {
@@ -148,7 +148,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       product_type: "EQUIPMENT - Thiết bị",
       product_material: "Nhựa",
       product_origin: "DOMESTIC - Trong nước",
-      min_stock_threshold: 5,
+      unit_price: 10000,
       is_serialized: "false - Không theo dõi serial",
       description: "Mô tả tùy chọn",
     },
@@ -156,7 +156,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       title: "BDuck WMS",
       invalidTitle: "Giá trị không hợp lệ",
       invalidList: "Vui lòng chọn một giá trị trong danh sách.",
-      invalidMinStock: "Tồn tối thiểu phải là số nguyên không âm.",
+      invalidUnitPrice: "Đơn giá phải là số nguyên không âm.",
       category: "Chọn danh mục. Hệ thống lấy mã danh mục ở trước dấu '-'.",
       unit: "Chọn đơn vị phổ biến hoặc nhập đơn vị khác nếu cần.",
       type: "Chọn loại sản phẩm theo nghiệp vụ.",
@@ -210,9 +210,9 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
           "false: quản lý theo số lượng thông thường. true: mỗi đơn vị có serial riêng và khó thay đổi sau khi tạo sản phẩm.",
       },
       {
-        section: "Tồn tối thiểu",
+        section: "Đơn giá",
         guide:
-          "Nhập số nguyên không âm để hệ thống cảnh báo khi tồn kho thấp; để trống nếu chưa cấu hình.",
+          "Nhập số nguyên không âm (ví dụ: 10000 cho 10,000đ); để trống nếu chưa có đơn giá.",
       },
     ],
     typeLabels: {
@@ -283,9 +283,9 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
         note: "选填。DOMESTIC 为国内，INTERNATIONAL 为进口。",
         width: 28,
       },
-      min_stock_threshold: {
-        label: "最低库存",
-        note: "选填。请输入非负整数，用于低库存提醒。",
+      unit_price: {
+        label: "单价",
+        note: "选填。请输入非负整数，作为基础单价。",
         width: 18,
       },
       is_serialized: {
@@ -309,7 +309,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       product_type: "EQUIPMENT - 设备",
       product_material: "塑料",
       product_origin: "DOMESTIC - 国内",
-      min_stock_threshold: 5,
+      unit_price: 10000,
       is_serialized: "false - 不管理序列号",
       description: "选填描述",
     },
@@ -317,7 +317,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       title: "BDuck WMS",
       invalidTitle: "无效值",
       invalidList: "请从下拉列表中选择一个值。",
-      invalidMinStock: "最低库存必须是非负整数。",
+      invalidUnitPrice: "单价必须是非负整数。",
       category: "请选择分类。系统会读取 '-' 前面的分类编码。",
       unit: "请选择常用单位，或按需要输入其他单位。",
       type: "请选择产品类型。",
@@ -370,9 +370,9 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
           "false: 按数量管理。true: 每件单独管理序列号，产品创建后不建议更改。",
       },
       {
-        section: "最低库存",
+        section: "单价",
         guide:
-          "请输入非负整数，用于低库存提醒；暂未配置时可留空。",
+          "请输入非负整数（例如：10000）；暂无单价时可留空。",
       },
     ],
     typeLabels: {
@@ -401,7 +401,7 @@ const PRODUCT_COLUMNS: ProductColumnKey[] = [
   "product_type",
   "product_material",
   "product_origin",
-  "min_stock_threshold",
+  "unit_price",
   "is_serialized",
   "description",
 ];
@@ -638,7 +638,7 @@ function addProductSheetValidations(
       allowBlank: true,
       showErrorMessage: true,
       errorTitle: config.text.prompts.invalidTitle,
-      error: config.text.prompts.invalidMinStock,
+      error: config.text.prompts.invalidUnitPrice,
     };
     sheet.getCell(`J${rowNumber}`).dataValidation = listValidation(
       `${refsName}!$G$2:$G$${config.serializedCount + 1}`,

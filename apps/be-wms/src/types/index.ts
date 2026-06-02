@@ -369,7 +369,7 @@ export interface Product {
   product_origin: ProductOrigin | null;
   unit: string; // PCS, BOX, KG, SET…
   product_type: ProductType;
-  min_stock_threshold: number | null;
+  unit_price: number | null;
   is_serialized: boolean;
   description: string | null;
   is_deleted: boolean;

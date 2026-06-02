@@ -34,7 +34,7 @@ export interface ProductStockInfo {
   productCode: string;
   totalQuantity: number;
   atpQuantity: number;
-  minStockThreshold: number | null;
+  unitPrice: number | null;
   isLowStock: boolean;
 }
 
@@ -155,8 +155,8 @@ export function computeLowStockProducts(
     const product = productMap.get(productId);
     if (!product) continue;
 
-    const threshold = product.min_stock_threshold ?? null;
-    const isLow = threshold !== null && agg.atpQty <= threshold;
+    const unitPrice = product.unit_price ?? null;
+    const isLow = agg.atpQty <= 0;
 
     results.push({
       productId,
@@ -164,7 +164,7 @@ export function computeLowStockProducts(
       productCode: product.code,
       totalQuantity: agg.totalQty,
       atpQuantity: agg.atpQty,
-      minStockThreshold: threshold,
+      unitPrice,
       isLowStock: isLow,
     });
   }

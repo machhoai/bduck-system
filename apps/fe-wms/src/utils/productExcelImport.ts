@@ -12,7 +12,7 @@ export interface ProductImportPayload {
   product_origin: ProductOrigin | null;
   unit: string;
   product_type: ProductType;
-  min_stock_threshold: number | null;
+  unit_price: number | null;
   is_serialized: boolean;
   description: string | null;
 }
@@ -41,7 +41,7 @@ const PRODUCT_TEMPLATE_HEADERS = [
   "product_type",
   "product_material",
   "product_origin",
-  "min_stock_threshold",
+  "unit_price",
   "is_serialized",
   "description",
 ] as const;
@@ -82,9 +82,9 @@ const HEADER_ALIASES: Record<string, (typeof PRODUCT_TEMPLATE_HEADERS)[number]> 
     product_origin: "product_origin",
     nguon_goc: "product_origin",
     来源: "product_origin",
-    min_stock_threshold: "min_stock_threshold",
-    ton_toi_thieu: "min_stock_threshold",
-    最低库存: "min_stock_threshold",
+    unit_price: "unit_price",
+    don_gia: "unit_price",
+    单价: "unit_price",
     is_serialized: "is_serialized",
     serial: "is_serialized",
     theo_doi_serial: "is_serialized",
@@ -221,8 +221,8 @@ export async function parseProductImportFile(
     const productType = extractOptionCode(raw.product_type) as ProductType;
     const productOrigin = extractOptionCode(raw.product_origin) as ProductOrigin;
     const parsedSerialized = parseBoolean(raw.is_serialized);
-    const thresholdText = raw.min_stock_threshold.trim();
-    const thresholdNumber = thresholdText ? Number(thresholdText) : null;
+    const priceText = raw.unit_price.trim();
+    const priceNumber = priceText ? Number(priceText) : null;
 
     if (!raw.category_code) errors.push("Thiếu category_code.");
     if (raw.category_code && !category) {
@@ -250,12 +250,12 @@ export async function parseProductImportFile(
       errors.push("is_serialized phải là true/false, yes/no hoặc 1/0.");
     }
     if (
-      thresholdText &&
-      (thresholdNumber === null ||
-        !Number.isInteger(thresholdNumber) ||
-        thresholdNumber < 0)
+      priceText &&
+      (priceNumber === null ||
+        !Number.isInteger(priceNumber) ||
+        priceNumber < 0)
     ) {
-      errors.push("min_stock_threshold phải là số nguyên không âm.");
+      errors.push("unit_price phải là số nguyên không âm.");
     }
 
     const codeKey = normalizeIdentity(raw.code);
@@ -293,7 +293,7 @@ export async function parseProductImportFile(
             product_origin: raw.product_origin ? productOrigin : null,
             unit: raw.unit,
             product_type: productType,
-            min_stock_threshold: thresholdNumber,
+            unit_price: priceNumber,
             is_serialized: parsedSerialized,
             description: raw.description || null,
           }
