@@ -15,7 +15,16 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 /** Default center: Ho Chi Minh City */
 const DEFAULT_CENTER = { latitude: 10.7769, longitude: 106.7009 };
-const DEFAULT_ZOOM = 6;
+const DEFAULT_ZOOM = 10;
+
+const getLightPresetByTime = () => {
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 7) return "dawn";
+    if (hour >= 7 && hour < 17) return "day";
+    if (hour >= 17 && hour < 19) return "dusk";
+    return "night"; // Từ 19h đến 5h sáng
+};
 
 interface WarehouseMapViewProps {
     warehouses: Warehouse[];
@@ -35,6 +44,19 @@ export function WarehouseMapView({
     const [popupWarehouse, setPopupWarehouse] = useState<Warehouse | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [webGlError, setWebGlError] = useState(false);
+    const [lightPreset, setLightPreset] = useState(getLightPresetByTime());
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const currentPreset = getLightPresetByTime();
+            setLightPreset((prev) => {
+                if (prev !== currentPreset) return currentPreset;
+                return prev;
+            });
+        }, 60000); // Kiểm tra mỗi phút 1 lần
+
+        return () => clearInterval(interval);
+    }, []);
 
     const filteredWarehouses = useMemo(() => {
         if (!searchQuery.trim()) return warehouses;
@@ -95,7 +117,8 @@ export function WarehouseMapView({
                         warehouse.coordinate.longitude,
                         warehouse.coordinate.latitude,
                     ],
-                    zoom: 14,
+                    zoom: 17,
+                    pitch: 45,
                     duration: 1200,
                 });
             }
@@ -114,6 +137,18 @@ export function WarehouseMapView({
                     `[data-warehouse-id="${warehouse.id}"]`,
                 );
                 card?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+
+            if (warehouse.coordinate && mapRef.current) {
+                mapRef.current.flyTo({
+                    center: [
+                        warehouse.coordinate.longitude,
+                        warehouse.coordinate.latitude,
+                    ],
+                    zoom: 17,
+                    pitch: 45,
+                    duration: 1200,
+                });
             }
         },
         [],
@@ -177,14 +212,9 @@ export function WarehouseMapView({
     );
 
     return (
-        <section className="relative flex flex-1 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)]">
-            {/* Desktop sidebar */}
-            <aside className="hidden w-80 flex-shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] md:flex">
-                <div className="flex-1 overflow-y-auto p-3">{sidebarContent}</div>
-            </aside>
-
+        <section className="absolute inset-0 flex flex-1 overflow-hidden">
             {/* Map */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 w-full">
                 {webGlError ? (
                     <div className="flex h-full flex-col items-center justify-center bg-[var(--color-surface-card)] p-4 text-center">
                         <WarehouseIcon size={48} className="mx-auto mb-3 text-[var(--color-text-muted)] opacity-50" />
@@ -201,9 +231,18 @@ export function WarehouseMapView({
                         initialViewState={{
                             ...DEFAULT_CENTER,
                             zoom: DEFAULT_ZOOM,
+                            pitch: 45,
                         }}
                         style={{ width: "100%", height: "100%" }}
-                        mapStyle="mapbox://styles/mapbox/light-v11"
+                        mapStyle='mapbox://styles/mapbox/standard'
+                        config={{
+                            basemap: {
+                                lightPreset,
+                                colorMotorways: "#2e89ff",
+                                showPedestrianRoads: false,
+                                show3dObjects: true
+                            }
+                        }}
                         mapboxAccessToken={MAPBOX_TOKEN}
                         attributionControl={false}
                         onError={(e) => {
@@ -213,7 +252,7 @@ export function WarehouseMapView({
                             }
                         }}
                     >
-                        <NavigationControl position="top-right" />
+                        <NavigationControl position="bottom-right" />
 
                         {warehousesWithCoords.map((warehouse) => (
                             <Marker
@@ -301,6 +340,10 @@ export function WarehouseMapView({
                     </div>
                 )}
             </div>
+
+            <aside className="hidden absolute left-5 bottom-5 rounded-2xl z-10 w-80 flex-shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] md:flex">
+                <div className="flex-1 h-full overflow-y-auto p-3">{sidebarContent}</div>
+            </aside>
 
             {/* Mobile bottom sheet */}
             <BottomSheet

@@ -1,26 +1,33 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import {
-  ExpenseCategory,
-  ExpenseCostCenter,
-  ExpenseStatus,
-} from "@bduck/shared-types";
-import type { ExpenseItem } from "@bduck/shared-types";
+/**
+ * ExpenseWorkspace — Shell component with tab navigation
+ *
+ * 2 tabs:
+ * - Dashboard (KPI cards, charts, alerts)
+ * - Nhập liệu (data entry table)
+ *
+ * Handles: warehouse/period selectors, period close/reopen, RBAC
+ */
+
+import { useState, useCallback, useEffect } from "react";
+import { ExpenseStatus } from "@bduck/shared-types";
+import type { ExpenseCategory, ExpenseItem } from "@bduck/shared-types";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useExpenseAuth } from "@/hooks/useExpenseAuth";
 import { useTranslation } from "@/lib/i18n";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useUserStore } from "@/stores/useUserStore";
-import StandardExpenseCell from "./StandardExpenseCell";
-import SemiAutoExpenseCell from "./SemiAutoExpenseCell";
-import { gooeyToast } from "goey-toast";
 import ExpenseDashboard from "./ExpenseDashboard";
+import ExpenseDataEntry from "./ExpenseDataEntry";
+import { gooeyToast } from "goey-toast";
 import {
   AlertTriangle,
+  BarChart3,
   Calendar,
-  Info,
   Lock,
+  LockOpen,
+  PenLine,
   Warehouse as WarehouseIcon,
   X,
 } from "lucide-react";
@@ -33,152 +40,40 @@ const EXPENSE_WRITE_PERMS = [
   "expenses.others.write",
 ];
 
-interface CategoryConfig {
-  key: ExpenseCategory;
-  costCenter: ExpenseCostCenter;
-  isSemiAuto: boolean;
-}
-
-const CATEGORY_CONFIGS: CategoryConfig[] = [
-  { key: ExpenseCategory.RENT, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.ELECTRICITY, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.WATER, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.TRASH_COLLECTION, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.DRINKING_WATER, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.SOCIAL_INSURANCE, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.SALARY_FULLTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.SALARY_PARTTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.MARKETING, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: false },
-  { key: ExpenseCategory.GIFT_EXPENSE, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: true },
-  { key: ExpenseCategory.COGS, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: true },
-  { key: ExpenseCategory.CONSUMABLE_SUPPLIES, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
-  { key: ExpenseCategory.OTHERS, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
-];
-
 function getCurrentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatCurrency(value: number): string {
-  return `${value.toLocaleString("vi-VN")} đ`;
-}
+// ─────────────────────────────────────────────
+// Period Confirm Dialog (used for both close & reopen)
+// ─────────────────────────────────────────────
 
-function getVarianceClass(variance: number): string {
-  if (variance > 10) return "border-accent-error/20 bg-accent-error/10 text-accent-error";
-  if (variance < -10) return "border-accent-success/20 bg-accent-success/10 text-accent-success";
-  return "border-border-subtle bg-surface-card text-text-muted";
-}
-
-function getVarianceDotClass(variance: number): string {
-  if (variance > 10) return "bg-accent-error";
-  if (variance < -10) return "bg-accent-success";
-  return "bg-border-subtle";
-}
-
-function ExpenseRow({
-  config,
-  item,
-  warehouseId,
-  isClosed,
-  onSave,
-  label,
-}: {
-  config: CategoryConfig;
-  item: ExpenseItem | undefined;
-  warehouseId: string;
-  isClosed: boolean;
-  onSave: (category: ExpenseCategory, data: Partial<ExpenseItem>) => void;
-  label: string;
-}) {
-  const { canWrite } = useExpenseAuth(warehouseId, config.key);
-  const effectiveCanWrite = canWrite && !isClosed;
-
-  const actualAmount = item?.actual_amount ?? 0;
-  const budgetAmount = item?.budget_amount ?? 0;
-  const suggestedAmount = item?.suggested_amount ?? null;
-  const variance = budgetAmount > 0
-    ? ((actualAmount - budgetAmount) / budgetAmount) * 100
-    : 0;
-  const usage = budgetAmount > 0 ? Math.min(Math.abs(variance), 100) : 0;
-
-  const handleActualSave = useCallback(
-    (value: number) => onSave(config.key, { actual_amount: value }),
-    [config.key, onSave],
-  );
-
-  const handleBudgetSave = useCallback(
-    (value: number) => onSave(config.key, { budget_amount: value }),
-    [config.key, onSave],
-  );
-
-  return (
-    <tr className="group border-b border-[var(--color-border-soft)] transition-colors hover:bg-[var(--color-surface-card)]">
-      <td className="sticky left-0 z-10 bg-[var(--color-surface-elevated)] p-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors group-hover:bg-[var(--color-surface-card)]">
-        <div className="flex min-w-44 items-center gap-2">
-          <span className={`h-2 w-2 shrink-0 rounded-radius-pill ${getVarianceDotClass(variance)}`} />
-          <span className="truncate">{label}</span>
-        </div>
-      </td>
-      <td className="p-1.5 align-middle">
-        <StandardExpenseCell
-          value={budgetAmount}
-          canWrite={effectiveCanWrite}
-          onSave={handleBudgetSave}
-        />
-      </td>
-      <td className="p-1.5 align-middle">
-        {config.isSemiAuto ? (
-          <SemiAutoExpenseCell
-            value={actualAmount}
-            suggestedAmount={suggestedAmount}
-            canWrite={effectiveCanWrite}
-            onSave={handleActualSave}
-          />
-        ) : (
-          <StandardExpenseCell
-            value={actualAmount}
-            canWrite={effectiveCanWrite}
-            onSave={handleActualSave}
-          />
-        )}
-      </td>
-      <td className="p-1.5 text-right align-middle">
-        {budgetAmount > 0 ? (
-          <div className="ml-auto flex min-w-24 flex-col items-end gap-1">
-            <span className={`inline-flex h-6 min-w-16 items-center justify-center rounded-radius-pill border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(variance)}`}>
-              {variance > 0 ? "+" : ""}
-              {variance.toFixed(1)}%
-            </span>
-            <div className="h-1 w-full overflow-hidden rounded-radius-pill bg-surface-base">
-              <div
-                className={`h-full rounded-radius-pill ${variance > 10 ? "bg-accent-error" : "bg-accent-success"}`}
-                style={{ width: `${usage}%` }}
-              />
-            </div>
-          </div>
-        ) : (
-          <span className="text-text-muted">-</span>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-function ClosePeriodConfirm({
+function PeriodActionConfirm({
+  message,
+  actionLabel,
+  variant,
   onConfirm,
   onCancel,
-  t,
 }: {
+  message: string;
+  actionLabel: string;
+  variant: "danger" | "warning";
   onConfirm: () => void;
   onCancel: () => void;
-  t: { closePeriodConfirm: string; closePeriod: string };
 }) {
+  const borderColor = variant === "danger" ? "border-accent-error/30" : "border-accent-warning/30";
+  const bgColor = variant === "danger" ? "bg-accent-error/5" : "bg-accent-warning/5";
+  const iconColor = variant === "danger" ? "text-accent-error" : "text-accent-warning";
+  const btnBg = variant === "danger"
+    ? "bg-accent-error hover:bg-accent-error/90"
+    : "bg-accent-warning hover:bg-accent-warning/90";
+
   return (
-    <div className="flex w-full flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-accent-warning/30 bg-accent-warning/5 p-4">
-      <AlertTriangle size={16} className="shrink-0 text-accent-warning" />
+    <div className={`flex w-full flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border ${borderColor} ${bgColor} p-4`}>
+      <AlertTriangle size={16} className={`shrink-0 ${iconColor}`} />
       <span className="min-w-56 flex-1 text-xs text-text-secondary">
-        {t.closePeriodConfirm}
+        {message}
       </span>
       <button
         type="button"
@@ -191,19 +86,30 @@ function ClosePeriodConfirm({
       <button
         type="button"
         onClick={onConfirm}
-        className="h-8 w-fit rounded-[var(--radius-sm)] bg-accent-error px-3 text-xs font-semibold text-text-on-dark transition-colors hover:bg-accent-error/90"
+        className={`h-8 w-fit rounded-[var(--radius-sm)] ${btnBg} px-3 text-xs font-semibold text-text-on-dark transition-colors`}
       >
-        {t.closePeriod}
+        {actionLabel}
       </button>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────
+// Tab type
+// ─────────────────────────────────────────────
+
+type ExpenseTab = "dashboard" | "entry";
+
+// ─────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────
+
 export default function ExpenseWorkspace() {
   const { t } = useTranslation();
   const [period, setPeriod] = useState(getCurrentPeriod);
   const [warehouseId, setWarehouseId] = useState("ALL");
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<ExpenseTab>("dashboard");
+  const [confirmAction, setConfirmAction] = useState<"close" | "reopen" | null>(null);
   const [autoSelected, setAutoSelected] = useState(false);
 
   const { warehouses } = useWarehouses();
@@ -229,44 +135,23 @@ export default function ExpenseWorkspace() {
     setAutoSelected(true);
   }, [warehouses, permissions, autoSelected]);
 
-  const { data, loading, error, updateItem, closePeriod } = useExpenses(
+  const { data, loading, error, updateItem, closePeriod, reopenPeriod } = useExpenses(
     warehouseId,
     period,
   );
-  const { canClosePeriod } = useExpenseAuth(warehouseId);
+  const { canClosePeriod, canReopenPeriod } = useExpenseAuth(warehouseId);
 
-  const isClosed = data?.status === ExpenseStatus.CLOSED;
+  // Fix: Only consider period closed for a SPECIFIC warehouse, never for ALL
+  const isClosed = warehouseId !== "ALL" && data?.status === ExpenseStatus.CLOSED;
 
-  const grouped = useMemo(() => {
-    const map = new Map<ExpenseCostCenter, CategoryConfig[]>();
-    for (const config of CATEGORY_CONFIGS) {
-      const list = map.get(config.costCenter) || [];
-      list.push(config);
-      map.set(config.costCenter, list);
-    }
-    return map;
-  }, []);
+  const selectedWarehouseName = warehouseId === "ALL"
+    ? t.expenses.selectors.allWarehouses
+    : warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? warehouseId;
 
-  const handleSaveItem = useCallback(
-    async (category: ExpenseCategory, itemData: Partial<ExpenseItem>) => {
-      try {
-        await gooeyToast.promise(
-          updateItem(category, itemData as Record<string, unknown>),
-          {
-            loading: t.expenses.actions.saving,
-            success: t.expenses.actions.saved,
-            error: t.expenses.actions.saveFailed,
-          },
-        );
-      } catch (err) {
-        console.error("[ExpenseWorkspace] save error:", err);
-      }
-    },
-    [updateItem, t],
-  );
+  // ─── Period Actions ───
 
   const handleClosePeriod = useCallback(async () => {
-    setShowCloseConfirm(false);
+    setConfirmAction(null);
     try {
       await gooeyToast.promise(closePeriod(), {
         loading: t.expenses.actions.closing,
@@ -278,31 +163,44 @@ export default function ExpenseWorkspace() {
     }
   }, [closePeriod, t]);
 
-  const totalActual = useMemo(() => {
-    if (!data?.items) return 0;
-    return Object.values(data.items).reduce(
-      (sum, item) => sum + (item?.actual_amount ?? 0),
-      0,
-    );
-  }, [data?.items]);
+  const handleReopenPeriod = useCallback(async () => {
+    setConfirmAction(null);
+    try {
+      await gooeyToast.promise(reopenPeriod(), {
+        loading: t.expenses.actions.reopening,
+        success: t.expenses.actions.reopened,
+        error: t.expenses.actions.reopenFailed,
+      });
+    } catch (err) {
+      console.error("[ExpenseWorkspace] reopen period error:", err);
+    }
+  }, [reopenPeriod, t]);
 
-  const totalBudget = useMemo(() => {
-    if (!data?.items) return 0;
-    return Object.values(data.items).reduce(
-      (sum, item) => sum + (item?.budget_amount ?? 0),
-      0,
-    );
-  }, [data?.items]);
+  const handleSaveItem = useCallback(
+    async (category: ExpenseCategory, itemData: Partial<ExpenseItem>) => {
+      await updateItem(category, itemData as Record<string, unknown>);
+    },
+    [updateItem],
+  );
 
-  const totalVariance = totalBudget > 0
-    ? ((totalActual - totalBudget) / totalBudget) * 100
-    : 0;
-  const selectedWarehouseName = warehouseId === "ALL"
-    ? t.expenses.selectors.allWarehouses
-    : warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? warehouseId;
+  // ─── Tab Config ───
+
+  const tabs = [
+    {
+      key: "dashboard" as ExpenseTab,
+      label: t.nav.expenseDashboard,
+      icon: BarChart3,
+    },
+    {
+      key: "entry" as ExpenseTab,
+      label: t.nav.expenseEntry,
+      icon: PenLine,
+    },
+  ];
 
   return (
     <div className="space-y-4">
+      {/* ── Header ── */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-normal text-[var(--color-text-muted)]">
@@ -355,167 +253,132 @@ export default function ExpenseWorkspace() {
             </select>
           </div>
 
-          {canClosePeriod && !isClosed && (
+          {/* Close Period button */}
+          {canClosePeriod && !isClosed && warehouseId !== "ALL" && (
             <button
               type="button"
-              onClick={() => setShowCloseConfirm(true)}
-              className="col-span-2 h-9 w-full rounded-[var(--radius-sm)] bg-accent-error px-3 text-sm font-semibold text-text-on-dark transition-colors hover:bg-accent-error/90 sm:col-span-1 sm:w-fit"
+              onClick={() => setConfirmAction("close")}
+              className="col-span-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-[var(--radius-sm)] bg-accent-error px-3 text-sm font-semibold text-text-on-dark transition-colors hover:bg-accent-error/90 sm:col-span-1 sm:w-fit"
             >
+              <Lock size={13} />
               {t.expenses.actions.closePeriod}
+            </button>
+          )}
+
+          {/* Reopen Period button */}
+          {canReopenPeriod && isClosed && (
+            <button
+              type="button"
+              onClick={() => setConfirmAction("reopen")}
+              className="col-span-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-[var(--radius-sm)] border border-accent-warning bg-accent-warning/10 px-3 text-sm font-semibold text-accent-warning transition-colors hover:bg-accent-warning/20 sm:col-span-1 sm:w-fit"
+            >
+              <LockOpen size={13} />
+              {t.expenses.actions.reopenPeriod}
             </button>
           )}
         </div>
       </header>
 
-      {showCloseConfirm && (
-        <ClosePeriodConfirm
+      {/* ── Confirm Dialog ── */}
+      {confirmAction === "close" && (
+        <PeriodActionConfirm
+          message={t.expenses.actions.closePeriodConfirm}
+          actionLabel={t.expenses.actions.closePeriod}
+          variant="danger"
           onConfirm={handleClosePeriod}
-          onCancel={() => setShowCloseConfirm(false)}
-          t={t.expenses.actions}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+      {confirmAction === "reopen" && (
+        <PeriodActionConfirm
+          message={t.expenses.actions.reopenPeriodConfirm}
+          actionLabel={t.expenses.actions.reopenPeriod}
+          variant="warning"
+          onConfirm={handleReopenPeriod}
+          onCancel={() => setConfirmAction(null)}
         />
       )}
 
-      <ExpenseDashboard warehouseId={warehouseId} period={period} />
+      {/* ── Tabs ── */}
+      <div className="flex items-center gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-1">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] text-sm font-medium transition-all duration-200 sm:flex-none sm:px-4 ${
+                isActive
+                  ? "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-sm"
+                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+              }`}
+            >
+              <TabIcon size={14} strokeWidth={isActive ? 2 : 1.5} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {warehouseId === "ALL" && !loading && (
-        <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-accent-info/20 bg-accent-info/5 p-4">
-          <Info size={16} className="shrink-0 text-accent-info" />
-          <span className="text-xs text-text-secondary">
-            {t.expenses.hint.selectWarehouse}
-          </span>
-        </div>
-      )}
-
+      {/* ── Error ── */}
       {error && (
         <div className="w-full rounded-[var(--radius-lg)] border border-accent-error/20 bg-accent-error/10 p-4 text-sm text-accent-error">
           {error}
         </div>
       )}
 
+      {/* ── Loading ── */}
       {loading && (
         <div className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]">
-          <div className="flex gap-2 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3">
-            <div className="h-3 w-24 skeleton-pulse rounded-radius-xs" />
-            <div className="ml-auto h-3 w-16 skeleton-pulse rounded-radius-xs" />
-            <div className="h-3 w-20 skeleton-pulse rounded-radius-xs" />
-            <div className="h-3 w-12 skeleton-pulse rounded-radius-xs" />
-          </div>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2 border-b border-border-soft p-2">
-              <div className="h-3 flex-1 skeleton-pulse rounded-radius-xs" />
-              <div className="h-6 w-28 skeleton-pulse rounded-radius-xs" />
-              <div className="h-6 w-32 skeleton-pulse rounded-radius-xs" />
-              <div className="h-3 w-14 skeleton-pulse rounded-radius-xs" />
+          {activeTab === "dashboard" ? (
+            <div className="flex w-full flex-col gap-4 p-4">
+              <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[100px] animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]" />
+                ))}
+              </div>
             </div>
-          ))}
+          ) : (
+            <>
+              <div className="flex gap-2 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3">
+                <div className="h-3 w-24 skeleton-pulse rounded-radius-xs" />
+                <div className="ml-auto h-3 w-16 skeleton-pulse rounded-radius-xs" />
+                <div className="h-3 w-20 skeleton-pulse rounded-radius-xs" />
+                <div className="h-3 w-12 skeleton-pulse rounded-radius-xs" />
+              </div>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 border-b border-border-soft p-2">
+                  <div className="h-3 flex-1 skeleton-pulse rounded-radius-xs" />
+                  <div className="h-6 w-28 skeleton-pulse rounded-radius-xs" />
+                  <div className="h-6 w-32 skeleton-pulse rounded-radius-xs" />
+                  <div className="h-3 w-14 skeleton-pulse rounded-radius-xs" />
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
+      {/* ── Tab Content ── */}
       {!loading && data && (
-        <div className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {t.expenses.title}
-              </h3>
-              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                {period} · {selectedWarehouseName}
-              </p>
-            </div>
-            <span className={`inline-flex h-6 items-center rounded-[var(--radius-pill)] border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(totalVariance)}`}>
-              {totalBudget > 0 ? `${totalVariance > 0 ? "+" : ""}${totalVariance.toFixed(1)}%` : "-"}
-            </span>
-          </div>
+        <>
+          {activeTab === "dashboard" && (
+            <ExpenseDashboard warehouseId={warehouseId} period={period} />
+          )}
 
-          <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]">
-                  <th className="sticky left-0 z-20 bg-[var(--color-surface-card)] p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t.expenses.columns.category}
-                  </th>
-                  <th className="w-44 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t.expenses.columns.budget}
-                  </th>
-                  <th className="w-56 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t.expenses.columns.actual}
-                  </th>
-                  <th className="w-32 p-2 text-right text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t.expenses.columns.variance}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from(grouped.entries()).map(([costCenter, configs]) => {
-                  const centerLabel = t.expenses.costCenter[costCenter] || costCenter;
-                  const centerBudget = configs.reduce(
-                    (sum, config) => sum + (data.items[config.key]?.budget_amount ?? 0),
-                    0,
-                  );
-                  const centerActual = configs.reduce(
-                    (sum, config) => sum + (data.items[config.key]?.actual_amount ?? 0),
-                    0,
-                  );
-                  const centerVariance = centerBudget > 0
-                    ? ((centerActual - centerBudget) / centerBudget) * 100
-                    : 0;
-
-                  return [
-                    <tr key={`header-${costCenter}`} className="border-y border-border-subtle bg-surface-base">
-                      <td className="sticky left-0 z-10 bg-surface-base p-2 text-xxs font-bold uppercase tracking-widest text-text-muted">
-                        {centerLabel}
-                      </td>
-                      <td className="p-2 text-xxs font-semibold tabular-nums text-text-muted">
-                        {formatCurrency(centerBudget)}
-                      </td>
-                      <td className="p-2 text-xxs font-semibold tabular-nums text-text-muted">
-                        {formatCurrency(centerActual)}
-                      </td>
-                      <td className="p-2 text-right">
-                        <span className={`inline-flex h-5 min-w-14 items-center justify-center rounded-radius-pill border px-1.5 text-micro font-bold tabular-nums ${getVarianceClass(centerVariance)}`}>
-                          {centerBudget > 0 ? `${centerVariance > 0 ? "+" : ""}${centerVariance.toFixed(1)}%` : "-"}
-                        </span>
-                      </td>
-                    </tr>,
-                    ...configs.map((config) => (
-                      <ExpenseRow
-                        key={config.key}
-                        config={config}
-                        item={data.items[config.key]}
-                        warehouseId={warehouseId}
-                        isClosed={isClosed}
-                        onSave={handleSaveItem}
-                        label={t.expenses.category[config.key] || config.key}
-                      />
-                    )),
-                  ];
-                })}
-
-                <tr className="border-t-2 border-border-subtle bg-surface-card font-semibold">
-                  <td className="sticky left-0 z-10 bg-surface-card p-2 text-sm text-text-primary">
-                    {t.expenses.total}
-                  </td>
-                  <td className="p-2 text-sm tabular-nums text-text-primary">
-                    {formatCurrency(totalBudget)}
-                  </td>
-                  <td className="p-2 text-sm tabular-nums text-text-primary">
-                    {formatCurrency(totalActual)}
-                  </td>
-                  <td className="p-2 text-right">
-                    {totalBudget > 0 ? (
-                      <span className={`inline-flex h-6 min-w-16 items-center justify-center rounded-radius-pill border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(totalVariance)}`}>
-                        {totalVariance > 0 ? "+" : ""}
-                        {totalVariance.toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-text-muted">-</span>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {activeTab === "entry" && (
+            <ExpenseDataEntry
+              warehouseId={warehouseId}
+              period={period}
+              isClosed={isClosed}
+              data={data}
+              onSaveItem={handleSaveItem}
+              warehouseName={selectedWarehouseName}
+            />
+          )}
+        </>
       )}
     </div>
   );

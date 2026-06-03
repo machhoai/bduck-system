@@ -24,6 +24,8 @@ const zh: Dictionary = {
     workflows: "流程",
     processConfigs: "流程配置",
     expenses: "费用",
+    expenseDashboard: "报告",
+    expenseEntry: "录入",
     more: "更多",
   },
 
@@ -932,12 +934,17 @@ const zh: Dictionary = {
     actions: {
       closePeriod: "结账",
       closePeriodConfirm: "确定要结账吗？结账后无法修改。",
+      reopenPeriod: "重新开放",
+      reopenPeriodConfirm: "确定要重新打开已结账的会计期间吗？数据可以在开放后进行修改。",
       saving: "正在保存...",
       saved: "已保存",
       saveFailed: "保存失败",
       closing: "正在结账...",
       closed: "已结账",
       closeFailed: "结账失败",
+      reopening: "正在重新开放...",
+      reopened: "已重新开放会计期间",
+      reopenFailed: "重新开放失败",
     },
     selectors: {
       allWarehouses: "所有仓库 (综合)",

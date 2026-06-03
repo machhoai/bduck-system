@@ -45,6 +45,7 @@ interface ExpenseAuthResult {
   canWrite: boolean;
   canRead: boolean;
   canClosePeriod: boolean;
+  canReopenPeriod: boolean;
 }
 
 export function useExpenseAuth(
@@ -59,19 +60,21 @@ export function useExpenseAuth(
       canWrite: false,
       canRead: hasPermission("expenses.consolidated.view"),
       canClosePeriod: false,
+      canReopenPeriod: false,
     };
   }
 
   const canRead = hasPermission("expenses.read", warehouseId);
   const canClosePeriod = hasPermission("expenses.close_period", warehouseId);
+  const canReopenPeriod = hasPermission("expenses.reopen_period", warehouseId);
 
   if (!category) {
-    return { canWrite: false, canRead, canClosePeriod };
+    return { canWrite: false, canRead, canClosePeriod, canReopenPeriod };
   }
 
   const costCenter = CATEGORY_TO_COST_CENTER[category];
   const requiredPerm = COST_CENTER_PERMISSION[costCenter];
   const canWrite = hasPermission(requiredPerm, warehouseId);
 
-  return { canWrite, canRead, canClosePeriod };
+  return { canWrite, canRead, canClosePeriod, canReopenPeriod };
 }

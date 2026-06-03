@@ -15,6 +15,7 @@ import {
   fetchExpenseData,
   updateExpenseItemApi,
   closePeriodApi,
+  reopenPeriodApi,
 } from "./useExpenseApi";
 
 interface UseExpensesReturn {
@@ -27,6 +28,7 @@ interface UseExpensesReturn {
     itemData: Record<string, unknown>,
   ) => Promise<void>;
   closePeriod: () => Promise<void>;
+  reopenPeriod: () => Promise<void>;
 }
 
 export function useExpenses(
@@ -70,6 +72,11 @@ export function useExpenses(
     await refresh();
   }, [warehouseId, period, refresh]);
 
+  const reopenPeriodFn = useCallback(async () => {
+    await reopenPeriodApi(warehouseId, period);
+    await refresh();
+  }, [warehouseId, period, refresh]);
+
   return {
     data,
     loading,
@@ -77,5 +84,6 @@ export function useExpenses(
     refresh,
     updateItem,
     closePeriod: closePeriodFn,
+    reopenPeriod: reopenPeriodFn,
   };
 }

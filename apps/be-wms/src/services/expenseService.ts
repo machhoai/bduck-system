@@ -110,7 +110,7 @@ async function getConsolidatedView(
 
   // Build a virtual aggregated document
   const aggregated = createDefaultDocument("ALL", period, "system");
-  aggregated.status = ExpenseStatus.CLOSED; // Read-only marker
+  aggregated.status = ExpenseStatus.OPEN; // Keep OPEN — FE uses warehouseId==='ALL' for read-only logic
 
   for (const doc of docs) {
     for (const cat of Object.values(ExpenseCategory)) {
@@ -208,6 +208,42 @@ export async function closePeriod(
   }
 
   doc.status = ExpenseStatus.CLOSED;
+  doc.updated_by = userId;
+  doc.updated_at = new Date();
+
+  await expenseRepo.upsert(docId, doc);
+  return doc;
+}
+
+export async function reopenPeriod(
+  warehouseId: string,
+  period: string,
+  userId: string,
+): Promise<ExpenseDocument> {
+  const docId = buildDocId(warehouseId, period);
+  const doc = await expenseRepo.getById(docId);
+
+  if (!doc) {
+    throw {
+      statusCode: 404,
+      messages: {
+        vi: "Không tìm thấy kỳ kế toán.",
+        zh: "未找到会计期间。",
+      },
+    };
+  }
+
+  if (doc.status === ExpenseStatus.OPEN) {
+    throw {
+      statusCode: 400,
+      messages: {
+        vi: "Kỳ kế toán đang mở, không cần mở lại.",
+        zh: "会计期间已开放，无需重新打开。",
+      },
+    };
+  }
+
+  doc.status = ExpenseStatus.OPEN;
   doc.updated_by = userId;
   doc.updated_at = new Date();
 

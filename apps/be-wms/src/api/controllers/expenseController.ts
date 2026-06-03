@@ -25,6 +25,7 @@ import {
   getExpenseData,
   updateExpenseItem,
   closePeriod,
+  reopenPeriod,
 } from "../../services/expenseService.js";
 import { getDashboardMetrics } from "../../services/expenseDashboardService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -270,6 +271,32 @@ export const getDashboardHandler = async (req: Request, res: Response) => {
     return sendSuccess(res, data, {
       vi: "Lấy dữ liệu dashboard thành công.",
       zh: "成功获取仪表盘数据。",
+    });
+  } catch (error) {
+    return handleExpenseError(res, error);
+  }
+};
+
+export const reopenPeriodHandler = async (req: Request, res: Response) => {
+  try {
+    const { warehouseId, period } = periodParamSchema.parse(req.params);
+
+    // RBAC: Check reopen_period permission (separate from close_period)
+    if (!hasPermission(req, "expenses.reopen_period", warehouseId)) {
+      return sendError(
+        res,
+        {
+          vi: "Bạn không có quyền mở lại kỳ kế toán.",
+          zh: "您没有重新开放会计期间的权限。",
+        },
+        403,
+      );
+    }
+
+    const data = await reopenPeriod(warehouseId, period, getRequestUserId(req));
+    return sendSuccess(res, data, {
+      vi: "Đã mở lại kỳ kế toán thành công.",
+      zh: "成功重新开放会计期间。",
     });
   } catch (error) {
     return handleExpenseError(res, error);

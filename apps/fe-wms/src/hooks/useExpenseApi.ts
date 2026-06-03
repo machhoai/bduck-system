@@ -54,6 +54,11 @@ export async function closePeriodApi(warehouseId: string, period: string) {
   return apiFetch(`/${warehouseId}/${period}/close`, { method: "POST" });
 }
 
+/** Reopen a previously closed accounting period */
+export async function reopenPeriodApi(warehouseId: string, period: string) {
+  return apiFetch(`/${warehouseId}/${period}/reopen`, { method: "POST" });
+}
+
 /** Fetch dashboard KPI metrics */
 export async function fetchDashboardMetrics(
   warehouseId: string,

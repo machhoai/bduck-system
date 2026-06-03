@@ -22,6 +22,8 @@ const vi = {
     workflows: "Quy trình",
     processConfigs: "Cấu hình quy trình",
     expenses: "Chi phí",
+    expenseDashboard: "Báo cáo",
+    expenseEntry: "Nhập liệu",
     more: "Thêm",
   },
 
@@ -943,12 +945,17 @@ const vi = {
     actions: {
       closePeriod: "Chốt kỳ",
       closePeriodConfirm: "Bạn có chắc muốn chốt kỳ? Sau khi chốt sẽ không thể chỉnh sửa.",
+      reopenPeriod: "Mở lại kỳ",
+      reopenPeriodConfirm: "Bạn có chắc muốn mở lại kỳ kế toán đã chốt? Dữ liệu có thể được chỉnh sửa sau khi mở.",
       saving: "Đang lưu...",
       saved: "Đã lưu",
       saveFailed: "Lưu thất bại",
       closing: "Đang chốt kỳ...",
       closed: "Đã chốt kỳ kế toán",
       closeFailed: "Chốt kỳ thất bại",
+      reopening: "Đang mở lại kỳ...",
+      reopened: "Đã mở lại kỳ kế toán",
+      reopenFailed: "Mở lại kỳ thất bại",
     },
     selectors: {
       allWarehouses: "Tất cả cửa hàng (Tổng hợp)",

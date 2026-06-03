@@ -12,6 +12,7 @@ import {
   updateItemHandler,
   closePeriodHandler,
   getDashboardHandler,
+  reopenPeriodHandler,
 } from "../controllers/expenseController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 
@@ -30,6 +31,9 @@ router.put("/:warehouseId/:period/items/:category", updateItemHandler);
 
 // CLOSE the accounting period
 router.post("/:warehouseId/:period/close", closePeriodHandler);
+
+// REOPEN a previously closed accounting period
+router.post("/:warehouseId/:period/reopen", reopenPeriodHandler);
 
 export default router;
 
