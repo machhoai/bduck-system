@@ -216,7 +216,7 @@ export function QuickLocationAssign({
     const selectedStrategy = STRATEGY_OPTIONS.find((s) => s.id === strategy);
 
     return (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-gradient-to-r from-violet-50 to-indigo-50">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--color-status-intra-border)] bg-gradient-to-r from-[var(--color-status-intra-bg)] to-[var(--color-status-approved-bg)]">
             {/* Toggle header */}
             <button
                 type="button"
@@ -224,26 +224,26 @@ export function QuickLocationAssign({
                 disabled={disabled}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/50 disabled:opacity-50"
             >
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-violet-600 text-white">
+                <div className="flex h-5 w-5 items-center justify-center rounded bg-[var(--color-status-intra-icon)] text-white">
                     <Wand2 size={11} />
                 </div>
-                <span className="flex-1 text-xs font-semibold text-violet-900">
+                <span className="flex-1 text-xs font-semibold text-[var(--color-status-intra-text)]">
                     Phân vị trí nhanh
                 </span>
                 {unassignedCount > 0 && (
-                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xxs font-bold text-amber-700">
+                    <span className="rounded-full bg-[var(--color-status-pending-bg-muted)] px-1.5 py-0.5 text-xxs font-bold text-[var(--color-status-pending-text)]">
                         {unassignedCount} chưa có vị trí
                     </span>
                 )}
                 <ChevronDown
                     size={14}
-                    className={`text-violet-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    className={`text-[var(--color-status-intra-icon)] transition-transform ${isOpen ? "rotate-180" : ""}`}
                 />
             </button>
 
             {/* Panel body */}
             {isOpen && (
-                <div className="space-y-3 border-t border-violet-100 px-3 py-3">
+                <div className="space-y-3 border-t border-[var(--color-status-intra-border)] px-3 py-3">
                     {/* Strategy selector */}
                     <div className="flex flex-wrap gap-1.5">
                         {STRATEGY_OPTIONS.map((opt) => (
@@ -253,8 +253,8 @@ export function QuickLocationAssign({
                                 onClick={() => setStrategy(opt.id)}
                                 className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xxs font-semibold transition-all ${
                                     strategy === opt.id
-                                        ? "bg-violet-600 text-white shadow-sm"
-                                        : "bg-white text-violet-700 hover:bg-violet-100"
+                                        ? "bg-[var(--color-status-intra-icon)] text-white shadow-sm"
+                                        : "bg-white text-[var(--color-status-intra-text)] hover:bg-[var(--color-status-intra-bg)]"
                                 }`}
                             >
                                 {opt.label}
@@ -264,7 +264,7 @@ export function QuickLocationAssign({
 
                     {/* Strategy description */}
                     {selectedStrategy && (
-                        <p className="text-xxs text-violet-600">
+                        <p className="text-xxs text-[var(--color-status-intra-text)]">
                             {selectedStrategy.description}
                         </p>
                     )}
@@ -285,7 +285,7 @@ export function QuickLocationAssign({
                             <div className="grid gap-2 sm:grid-cols-3">
                                 {Object.entries(PRODUCT_TYPE_LABELS).map(([type, label]) => (
                                     <label key={type} className="block">
-                                        <span className="mb-1 block text-xxs font-semibold text-violet-700">
+                                        <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
                                             {label}
                                         </span>
                                         <LocationSelect
@@ -305,7 +305,7 @@ export function QuickLocationAssign({
                         {strategy === "even-odd" && (
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="block">
-                                    <span className="mb-1 block text-xxs font-semibold text-violet-700">
+                                    <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
                                         Mã chẵn (0, 2, 4, 6, 8)
                                     </span>
                                     <LocationSelect
@@ -317,7 +317,7 @@ export function QuickLocationAssign({
                                     />
                                 </label>
                                 <label className="block">
-                                    <span className="mb-1 block text-xxs font-semibold text-violet-700">
+                                    <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
                                         Mã lẻ (1, 3, 5, 7, 9)
                                     </span>
                                     <LocationSelect
@@ -332,7 +332,7 @@ export function QuickLocationAssign({
                         )}
 
                         {strategy === "by-stock" && (
-                            <p className="rounded-[var(--radius-xs)] bg-white/80 px-2.5 py-2 text-xs text-violet-700">
+                            <p className="rounded-[var(--radius-xs)] bg-white/80 px-2.5 py-2 text-xs text-[var(--color-status-intra-text)]">
                                 Hệ thống sẽ tự động gán vào vị trí đã có tồn kho cho mỗi sản phẩm (ATP cao nhất).
                                 Sản phẩm chưa từng nhập kho sẽ được bỏ qua.
                             </p>
@@ -345,7 +345,7 @@ export function QuickLocationAssign({
                             type="button"
                             onClick={handleApply}
                             disabled={!canApply || disabled}
-                            className="flex h-7 items-center gap-1.5 rounded-[var(--radius-xs)] bg-violet-600 px-3 text-xs font-semibold text-white transition-all hover:bg-violet-700 active:scale-[0.98] disabled:opacity-40"
+                            className="flex h-7 items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-status-intra-icon)] px-3 text-xs font-semibold text-white transition-all hover:bg-[var(--color-status-intra-text)] active:scale-[0.98] disabled:opacity-40"
                         >
                             <Zap size={12} />
                             Áp dụng

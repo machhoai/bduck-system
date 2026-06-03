@@ -228,9 +228,9 @@ export default function ReceivingSessionDrawer({
   ).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-base)]">
       {/* ═══ Header ═══ */}
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <header className="flex items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -240,16 +240,16 @@ export default function ReceivingSessionDrawer({
               }
               onClose();
             }}
-            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100"
+            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)]"
           >
             <X className="h-5 w-5" />
           </button>
           <div>
-            <h2 className="text-base font-bold text-gray-900">
+            <h2 className="text-base font-bold text-[var(--color-text-primary)]">
               Phiên kiểm đếm
             </h2>
             {voucherNumber && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 {voucherNumber} • {supplierName}
               </p>
             )}
@@ -258,7 +258,7 @@ export default function ReceivingSessionDrawer({
 
         <div className="flex items-center gap-2">
           {/* Barcode scanner indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-[var(--color-status-approved-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-approved-text)]">
             <ScanBarcode className="h-3.5 w-3.5" />
             Scanner sẵn sàng
           </div>
@@ -266,20 +266,20 @@ export default function ReceivingSessionDrawer({
       </header>
 
       {/* ═══ Stats bar ═══ */}
-      <div className="flex items-center gap-4 border-b border-gray-100 bg-white px-4 py-2.5">
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+      <div className="flex items-center gap-4 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-2.5">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <Package className="h-3.5 w-3.5" />
           <span>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-[var(--color-text-primary)]">
               {completedItems}
             </span>
             /{items.length} sản phẩm
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <CheckCircle className="h-3.5 w-3.5" />
           <span>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-[var(--color-text-primary)]">
               {totalActual}
             </span>
             /{totalExpected} số lượng
@@ -287,7 +287,7 @@ export default function ReceivingSessionDrawer({
         </div>
 
         {lastSavedAt && (
-          <div className="ml-auto flex items-center gap-1 text-xs text-emerald-600">
+          <div className="ml-auto flex items-center gap-1 text-xs text-[var(--color-success-text)]">
             <Clock className="h-3 w-3" />
             Nháp lưu lúc{" "}
             {lastSavedAt.toLocaleTimeString("vi-VN", {
@@ -305,15 +305,15 @@ export default function ReceivingSessionDrawer({
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="animate-pulse rounded-xl border border-gray-100 bg-white p-4"
+                className="animate-pulse rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4"
               >
                 <div className="flex gap-3">
-                  <div className="h-4 w-32 rounded bg-gray-200" />
-                  <div className="h-4 w-16 rounded bg-gray-200" />
+                  <div className="h-4 w-32 rounded bg-[var(--color-skeleton-base)]" />
+                  <div className="h-4 w-16 rounded bg-[var(--color-skeleton-base)]" />
                 </div>
                 <div className="mt-3 flex gap-3">
-                  <div className="h-8 flex-1 rounded-lg bg-gray-200" />
-                  <div className="h-8 flex-1 rounded-lg bg-gray-200" />
+                  <div className="h-8 flex-1 rounded-lg bg-[var(--color-skeleton-base)]" />
+                  <div className="h-8 flex-1 rounded-lg bg-[var(--color-skeleton-base)]" />
                 </div>
               </div>
             ))}
@@ -336,13 +336,13 @@ export default function ReceivingSessionDrawer({
       </div>
 
       {/* ═══ Footer actions ═══ */}
-      <footer className="border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+      <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 
-              text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-2.5 
+              text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-neutral-50)]"
           >
             <Save className="h-4 w-4" />
             Lưu nháp & Đóng
@@ -352,9 +352,9 @@ export default function ReceivingSessionDrawer({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || completedItems === 0}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 
-              px-4 py-2.5 text-sm font-semibold text-white transition-colors 
-              hover:bg-blue-700 active:bg-blue-800 
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-brand-primary)] 
+              px-4 py-2.5 text-sm font-semibold text-[var(--color-text-on-dark)] transition-colors 
+              hover:bg-[var(--color-brand-primary-dark)] active:opacity-90 
               disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? (

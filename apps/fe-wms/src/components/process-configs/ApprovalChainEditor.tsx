@@ -31,7 +31,7 @@ function ToggleButton({
       disabled={disabled}
       onClick={onClick}
       className={`relative h-7 w-12 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
-        active ? "bg-emerald-500" : "bg-gray-200"
+        active ? "bg-[var(--color-success-icon)]" : "bg-[var(--color-neutral-300)]"
       }`}
       aria-label={label}
     >
@@ -91,7 +91,7 @@ export function ApprovalChainEditor({
     >
       <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -107,7 +107,7 @@ export function ApprovalChainEditor({
           type="button"
           onClick={addLevel}
           disabled={disabled}
-          className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:text-xs"
+          className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] px-3 text-sm font-semibold text-[var(--color-status-approved-text)] transition hover:bg-[var(--color-status-approved-bg-muted)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:text-xs"
         >
           <Plus className="h-4 w-4" />
           {copy.addLevel}
@@ -146,7 +146,7 @@ export function ApprovalChainEditor({
                         role_id: event.target.value,
                       })
                     }
-                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   >
                     <option value="">{copy.selectRole}</option>
                     {roles.map((role) => (
@@ -170,7 +170,7 @@ export function ApprovalChainEditor({
                         label: { ...level.label, vi: event.target.value },
                       })
                     }
-                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   />
                 </label>
 
@@ -187,7 +187,7 @@ export function ApprovalChainEditor({
                         label: { ...level.label, zh: event.target.value },
                       })
                     }
-                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   />
                 </label>
 
@@ -209,7 +209,7 @@ export function ApprovalChainEditor({
                         ),
                       })
                     }
-                    className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 sm:h-8 sm:text-sm"
+                    className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   />
                 </label>
 
@@ -239,7 +239,7 @@ export function ApprovalChainEditor({
                   type="button"
                   disabled={disabled || level.required}
                   onClick={() => removeLevel(index)}
-                  className="flex h-8 w-full items-center justify-center rounded-lg bg-white text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 lg:h-8 lg:w-10 lg:bg-transparent"
+                  className="flex h-8 w-full items-center justify-center rounded-lg bg-white text-gray-400 transition hover:bg-[var(--color-error-bg)] hover:text-[var(--color-error-icon)] disabled:cursor-not-allowed disabled:opacity-30 lg:h-8 lg:w-10 lg:bg-transparent"
                   aria-label={copy.removeLevel}
                 >
                   <Trash2 className="h-4 w-4" />

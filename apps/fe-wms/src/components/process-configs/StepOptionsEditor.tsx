@@ -34,8 +34,8 @@ function SwitchRow({
       onClick={onClick}
       className={`flex h-8 items-center justify-between gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition sm:h-8 sm:text-xs ${
         active
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+          ? "border-[var(--color-status-completed-border)] bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
+          : "border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
       }`}
     >
       <span className="flex min-w-0 items-center gap-2">
@@ -44,7 +44,7 @@ function SwitchRow({
       </span>
       <span
         className={`h-2.5 w-2.5 rounded-full ${
-          active ? "bg-emerald-500" : "bg-gray-300"
+          active ? "bg-[var(--color-success-icon)]" : "bg-[var(--color-neutral-300)]"
         }`}
       />
     </button>
@@ -66,7 +66,7 @@ export function StepOptionsEditor({
   return (
     <section className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3 border-b border-gray-100 pb-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]">
           <UserRoundCog className="h-5 w-5" />
         </div>
         <div>
@@ -92,7 +92,7 @@ export function StepOptionsEditor({
                 <div className="grid gap-4 xl:grid-cols-[minmax(180px,0.8fr)_minmax(300px,1.2fr)]">
                   <div>
                     <div className="flex items-center gap-2">
-                      <BadgeCheck className="h-4 w-4 text-blue-600" />
+                      <BadgeCheck className="h-4 w-4 text-[var(--color-status-approved-text)]" />
                       <h3 className="text-sm font-semibold text-gray-900">
                         {step.label[locale]}
                       </h3>
@@ -120,7 +120,7 @@ export function StepOptionsEditor({
                                 : option.assigned_role_id,
                           });
                         }}
-                        className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:text-sm"
+                        className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
                       >
                         <option value="CREATOR">{copy.creator}</option>
                         <option value="ROLE">{copy.selectedRole}</option>
@@ -140,7 +140,7 @@ export function StepOptionsEditor({
                               assigned_role_id: event.target.value || null,
                             })
                           }
-                          className="mt-1 h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:text-sm"
+                          className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
                         >
                           <option value="">{copy.selectRole}</option>
                           {roles.map((role) => (

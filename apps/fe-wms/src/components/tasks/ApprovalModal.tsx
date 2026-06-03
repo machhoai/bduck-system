@@ -76,34 +76,34 @@ export default function ApprovalModal({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isApprove ? (
-              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-emerald-100">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-[var(--color-success-bg-muted)]">
+                <CheckCircle className="h-5 w-5 text-[var(--color-success-icon)]" />
               </div>
             ) : (
-              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-red-100">
-                <XCircle className="h-5 w-5 text-red-600" />
+              <div className="flex h-8 w-10 items-center justify-center rounded-xl bg-[var(--color-error-bg-muted)]">
+                <XCircle className="h-5 w-5 text-[var(--color-error-icon)]" />
               </div>
             )}
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
               {isApprove ? t.tasks.approval.approve : t.tasks.approval.reject}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+        <div className="mt-4 rounded-lg bg-[var(--color-neutral-50)] p-3 text-sm text-[var(--color-text-secondary)]">
           <p>
-            <span className="font-medium text-gray-800">{t.tasks.modal.type}:</span>{" "}
+            <span className="font-medium text-[var(--color-text-primary)]">{t.tasks.modal.type}:</span>{" "}
             {approval.entity_type}
           </p>
           <p className="mt-1">
-            <span className="font-medium text-gray-800">{t.tasks.modal.entityCode}:</span>{" "}
+            <span className="font-medium text-[var(--color-text-primary)]">{t.tasks.modal.entityCode}:</span>{" "}
             {approval.entity_id?.slice(0, 12)}...
           </p>
         </div>
@@ -111,9 +111,9 @@ export default function ApprovalModal({
         <div className="mt-4">
           <label
             htmlFor="approval-comment"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-[var(--color-text-secondary)]"
           >
-            {t.tasks.detail.notes} {!isApprove && <span className="text-red-500">*</span>}
+            {t.tasks.detail.notes} {!isApprove && <span className="text-[var(--color-error-text)]">*</span>}
           </label>
           <textarea
             id="approval-comment"
@@ -125,7 +125,7 @@ export default function ApprovalModal({
                 ? t.tasks.modal.approvePlaceholder
                 : t.tasks.modal.rejectPlaceholder
             }
-            className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="mt-1.5 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
           />
         </div>
 
@@ -133,7 +133,7 @@ export default function ApprovalModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex-1 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-neutral-50)]"
           >
             {t.common.cancel}
           </button>
@@ -141,10 +141,10 @@ export default function ApprovalModal({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || (!isApprove && !comment.trim())}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--color-text-on-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               isApprove
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-red-600 hover:bg-red-700"
+                ? "bg-[var(--color-success-icon)] hover:opacity-90"
+                : "bg-[var(--color-error-icon)] hover:opacity-90"
             }`}
           >
             {isSubmitting ? (

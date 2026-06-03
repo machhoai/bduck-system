@@ -558,7 +558,7 @@ export default function CreateVoucherTab({
                     type="button"
                     onClick={goPrev}
                     disabled={step === 0}
-                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-30"
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--color-neutral-200)] px-4 py-2 text-xs font-medium text-[var(--color-neutral-600)] transition-all hover:bg-[var(--color-neutral-50)] disabled:opacity-30"
                 >
                     <ChevronLeft size={16} />
                     {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
@@ -577,7 +577,7 @@ export default function CreateVoucherTab({
                             <div key={stepConfig.id} className="flex items-center gap-1">
                                 {idx > 0 && (
                                     <div
-                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-500" : "bg-gray-200"
+                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-[var(--color-status-export-icon)]" : "bg-[var(--color-neutral-200)]"
                                             }`}
                                     />
                                 )}
@@ -855,23 +855,23 @@ export default function CreateVoucherTab({
                                                 {/* Location badge */}
                                                 {hasLocation ? (
                                                     locationHasStock ? (
-                                                        <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xxs font-semibold text-emerald-700">
+                                                        <span className="shrink-0 rounded-full bg-[var(--color-status-completed-bg-muted)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-completed-text)]">
                                                             ✓ {selectedLocation?.code || ""}
                                                         </span>
                                                     ) : (
-                                                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xxs font-semibold text-amber-700">
+                                                        <span className="shrink-0 rounded-full bg-[var(--color-status-pending-bg-muted)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-pending-text)]">
                                                             ⬡ {selectedLocation?.code || ""}
                                                         </span>
                                                     )
                                                 ) : (
-                                                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xxs font-semibold text-red-600">
+                                                    <span className="shrink-0 rounded-full bg-[var(--color-error-bg-muted)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-error-text)]">
                                                         ● {locale === "zh" ? "未选择" : "Chưa chọn"}
                                                     </span>
                                                 )}
                                                 <button
                                                     type="button"
                                                     onClick={() => removeItem(item.id)}
-                                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-red-50 hover:text-[var(--color-accent-error)] group-hover:opacity-100"
+                                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)] group-hover:opacity-100"
                                                     aria-label={(t as any).common?.delete ?? "Delete"}
                                                 >
                                                     <Trash2 size={13} />
@@ -1075,19 +1075,19 @@ export default function CreateVoucherTab({
                                     {formData.items.length}
                                 </p>
                             </div>
-                            <div className="rounded-[var(--radius-sm)] bg-blue-50 p-3">
-                                <p className="text-xxs font-semibold uppercase text-blue-700">
+                            <div className="rounded-[var(--radius-sm)] bg-[var(--color-status-receiving-bg)] p-3">
+                                <p className="text-xxs font-semibold uppercase text-[var(--color-status-receiving-text)]">
                                     {copy.totalQty}
                                 </p>
-                                <p className="mt-2 text-lg font-bold text-blue-800">
+                                <p className="mt-2 text-lg font-bold text-[var(--color-brand-primary-dark)]">
                                     {formatCurrency(totalQuantity)}
                                 </p>
                             </div>
-                            <div className="rounded-[var(--radius-sm)] bg-emerald-50 p-3">
-                                <p className="text-xxs font-semibold uppercase text-emerald-700">
+                            <div className="rounded-[var(--radius-sm)] bg-[var(--color-status-completed-bg)] p-3">
+                                <p className="text-xxs font-semibold uppercase text-[var(--color-status-completed-text)]">
                                     {copy.totalValue}
                                 </p>
-                                <p className="mt-2 text-lg font-bold text-emerald-800">
+                                <p className="mt-2 text-lg font-bold text-[var(--color-status-completed-text)]">
                                     {formatCurrency(totalValue)}
                                 </p>
                             </div>

@@ -31,9 +31,9 @@ export function ProductImportStats({
               item.tone === "error"
                 ? "text-[var(--color-accent-error)]"
                 : item.tone === "warning"
-                  ? "text-amber-600"
+                  ? "text-[var(--color-status-pending-text)]"
                   : item.tone === "success"
-                    ? "text-emerald-600"
+                    ? "text-[var(--color-success-icon)]"
                     : "text-[var(--color-text-primary)]"
             }`}
           >
@@ -95,7 +95,7 @@ export function ConfirmSkipInvalidRowsModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-[500px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-xl">
         <div className="flex items-start gap-3 border-b border-[var(--color-border-soft)] px-5 py-4">
-          <div className="rounded-full bg-red-100 p-2 text-red-600">
+          <div className="rounded-full bg-[var(--color-error-bg-muted)] p-2 text-[var(--color-error-icon)]">
             <AlertTriangle size={20} />
           </div>
           <div className="flex-1">
@@ -147,9 +147,9 @@ function PreviewRow({ row }: { row: ProductImportPreviewRow }) {
     <tr
       className={
         hasErrors
-          ? "bg-red-50 text-red-950"
+          ? "bg-[var(--color-error-bg)] text-[var(--color-error-text-strong)]"
           : hasWarnings
-            ? "bg-amber-50"
+            ? "bg-[var(--color-status-pending-bg)]"
             : "bg-white"
       }
     >
@@ -187,7 +187,7 @@ function StatusBadge({
 }) {
   if (hasErrors) {
     return (
-      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-normal text-red-700">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-error-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-error-text)]">
         Lỗi
       </span>
     );
@@ -195,14 +195,14 @@ function StatusBadge({
 
   if (hasWarnings) {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-normal text-amber-700">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-status-pending-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-status-pending-text)]">
         Cảnh báo
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-xs font-normal text-emerald-700">
+    <span className="inline-flex items-center rounded-full bg-[var(--color-status-completed-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-status-completed-text)]">
       Hợp lệ
     </span>
   );

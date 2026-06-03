@@ -27,13 +27,12 @@ export default function DashboardLayout({
 
             <main
                 id="wms-main-content"
-                className={`flex relative h-screen flex-col pb-[calc(var(--bottomnav-height)+env(safe-area-inset-bottom,0px))] transition-[margin-left] duration-300 ease-in-out lg:pb-0 ${isCollapsed
-                    ? "lg:ml-[var(--sidebar-width-collapsed)]"
-                    : "lg:ml-[var(--sidebar-width-expanded)]"
+                className={`flex relative h-screen  flex-col gap-2 pb-[calc(var(--bottomnav-height)+env(safe-area-inset-bottom,0px))] transition-[margin-left] duration-300 ease-in-out lg:pb-0 ${isCollapsed
+                    ? "lg:ml-[var(--sidebar-width-collapsed)] w-[calc(100vw-var(--sidebar-width-collapsed))]"
+                    : "lg:ml-[var(--sidebar-width-expanded)] w-[calc(100vw-var(--sidebar-width-expanded))]"
                     }`}
             >
                 <TopBar />
-
                 <div className="relative flex w-full flex-1 flex-col overflow-y-auto p-4">
                     {children}
                 </div>

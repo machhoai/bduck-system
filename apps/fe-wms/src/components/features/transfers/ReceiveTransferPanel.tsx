@@ -205,30 +205,30 @@ export default function ReceiveTransferPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 p-4">
-        <div className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-white">
+      <div className="flex items-center gap-3 rounded-xl border border-[var(--color-status-transit-border)] bg-[var(--color-status-transit-bg)] p-4">
+        <div className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-transit-icon)] text-white">
           <ArrowDownRight size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-teal-800">{COPY.title}</h3>
-          <p className="text-xs text-teal-600">
+          <h3 className="text-sm font-bold text-[var(--color-status-transit-text)]">{COPY.title}</h3>
+          <p className="text-xs text-[var(--color-status-transit-text)]">
             {srcWarehouse?.name || COPY.sourceFallback} {"->"}{" "}
             {destWarehouse?.name || COPY.destinationFallback}
           </p>
         </div>
-        <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xxs font-semibold text-teal-700">
+        <span className="rounded-full bg-[var(--color-status-transit-bg-muted)] px-2.5 py-1 text-xxs font-semibold text-[var(--color-status-transit-text)]">
           {order.order_number}
         </span>
       </div>
 
       {isPendingReceive && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-300 py-4">
-          <Package size={32} className="text-gray-400" />
-          <p className="text-sm text-gray-600">{COPY.readyText}</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--color-neutral-300)] py-4">
+          <Package size={32} className="text-[var(--color-text-muted)]" />
+          <p className="text-sm text-[var(--color-neutral-600)]">{COPY.readyText}</p>
           <button
             type="button"
             onClick={handleStartReceiving}
-            className="flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-teal-600"
+            className="flex items-center gap-2 rounded-lg bg-[var(--color-status-transit-icon)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
           >
             <ArrowDownRight size={16} />
             {COPY.startReceiving}
@@ -239,9 +239,9 @@ export default function ReceiveTransferPanel({
       {isReceiving && (
         <>
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-[var(--color-text-secondary)]">
               {COPY.chooseLocations}{" "}
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-[var(--color-text-muted)]">
                 ({items.length} {COPY.products})
               </span>
             </p>
@@ -252,23 +252,23 @@ export default function ReceiveTransferPanel({
               return (
                 <div
                   key={item.item_id}
-                  className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                  className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] p-3"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-xxs font-semibold text-teal-600">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-status-transit-bg-muted)] text-xxs font-semibold text-[var(--color-status-transit-text)]">
                       {index + 1}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
                       {item.product_name}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-[var(--color-text-muted)]">
                       {product?.code} / {product?.unit}
                     </span>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label>
-                      <span className="mb-0.5 block text-xxs text-gray-400">
+                      <span className="mb-0.5 block text-xxs text-[var(--color-text-muted)]">
                         {COPY.receivedQty} ({COPY.expected}:{" "}
                         {item.expected_quantity})
                       </span>
@@ -284,13 +284,13 @@ export default function ReceiveTransferPanel({
                         }
                         min={0}
                         max={item.expected_quantity}
-                        className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-teal-400"
+                        className="w-full rounded border border-[var(--color-border-subtle)] bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
                       />
                     </label>
 
                     <label>
-                      <span className="mb-0.5 flex items-center gap-1 text-xxs text-gray-400">
-                        <MapPin size={10} className="text-teal-500" />
+                      <span className="mb-0.5 flex items-center gap-1 text-xxs text-[var(--color-text-muted)]">
+                        <MapPin size={10} className="text-[var(--color-status-transit-icon)]" />
                         {COPY.destinationLocation} *
                       </span>
                       <select
@@ -303,10 +303,10 @@ export default function ReceiveTransferPanel({
                           )
                         }
                         disabled={locLoading}
-                        className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-teal-400 disabled:opacity-50 ${
+                         className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 ${
                           !item.destination_location_id && !locLoading
-                            ? "border-amber-300"
-                            : "border-gray-200"
+                            ? "border-[var(--color-status-pending-border)]"
+                            : "border-[var(--color-border-subtle)]"
                         }`}
                       >
                         <option value="">
@@ -323,7 +323,7 @@ export default function ReceiveTransferPanel({
 
                   {item.received_quantity !== item.expected_quantity &&
                     item.received_quantity > 0 && (
-                      <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xxs text-amber-700">
+                      <div className="mt-2 flex items-center gap-1.5 rounded-md bg-[var(--color-status-pending-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-status-pending-text)]">
                         <AlertTriangle size={12} className="shrink-0" />
                         <span>
                           {COPY.mismatch
@@ -347,7 +347,7 @@ export default function ReceiveTransferPanel({
             type="button"
             onClick={() => setShowConfirm(true)}
             disabled={!canSubmit || isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-teal-600 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-status-transit-icon)] px-5 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
           >
             <CheckCircle2 size={16} />
             {isSubmitting ? COPY.completing : COPY.confirmReceive}
@@ -358,26 +358,26 @@ export default function ReceiveTransferPanel({
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-[500px] rounded-2xl bg-white p-4 shadow-2xl">
-            <h3 className="text-base font-bold text-gray-900">
+            <h3 className="text-base font-bold text-[var(--color-text-primary)]">
               {COPY.confirmQuestion}
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
               {COPY.confirmDesc.replace(
                 "{warehouse}",
                 destWarehouse?.name || COPY.destinationFallback,
               )}
             </p>
-            <div className="mt-4 max-h-32 overflow-y-auto rounded-lg border border-gray-100 text-xs">
+            <div className="mt-4 max-h-32 overflow-y-auto rounded-lg border border-[var(--color-border-soft)] text-xs">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-[var(--color-surface-subtle)]">
                   <tr>
-                    <th className="px-2 py-1 text-left font-medium text-gray-500">
+                    <th className="px-2 py-1 text-left font-medium text-[var(--color-text-muted)]">
                       {COPY.product}
                     </th>
-                    <th className="px-2 py-1 text-right font-medium text-gray-500">
+                    <th className="px-2 py-1 text-right font-medium text-[var(--color-text-muted)]">
                       SL
                     </th>
-                    <th className="px-2 py-1 text-right font-medium text-gray-500">
+                    <th className="px-2 py-1 text-right font-medium text-[var(--color-text-muted)]">
                       {COPY.location}
                     </th>
                   </tr>
@@ -388,14 +388,14 @@ export default function ReceiveTransferPanel({
                       (l) => l.id === item.destination_location_id,
                     );
                     return (
-                      <tr key={item.item_id} className="border-t border-gray-50">
-                        <td className="px-2 py-1 text-gray-700">
+                      <tr key={item.item_id} className="border-t border-[var(--color-border-soft)]">
+                        <td className="px-2 py-1 text-[var(--color-text-secondary)]">
                           {item.product_name}
                         </td>
                         <td className="px-2 py-1 text-right font-medium">
                           {item.received_quantity}
                         </td>
-                        <td className="px-2 py-1 text-right text-gray-500">
+                        <td className="px-2 py-1 text-right text-[var(--color-text-muted)]">
                           {location?.code || "-"}
                         </td>
                       </tr>
@@ -408,7 +408,7 @@ export default function ReceiveTransferPanel({
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-all hover:bg-gray-50"
+                className="flex-1 rounded-lg border border-[var(--color-neutral-200)] px-4 py-2.5 text-sm font-medium text-[var(--color-neutral-600)] transition-all hover:bg-[var(--color-neutral-50)]"
               >
                 {COPY.cancel}
               </button>
@@ -416,7 +416,7 @@ export default function ReceiveTransferPanel({
                 type="button"
                 onClick={handleCompleteReceiving}
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-teal-600 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[var(--color-status-transit-icon)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
               >
                 {isSubmitting ? COPY.processing : COPY.confirm}
               </button>

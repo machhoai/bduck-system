@@ -45,9 +45,9 @@ function MetricCard({
     title?: string;
 }) {
     const toneClass = {
-        orange: "bg-orange-50 text-orange-700",
-        emerald: "bg-emerald-50 text-emerald-700",
-        amber: "bg-amber-50 text-amber-700",
+        orange: "bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]",
+        emerald: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+        amber: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
     }[tone];
 
     return (
@@ -120,7 +120,7 @@ export default function ExportVoucherPage() {
         <div className="flex flex-col gap-2 -mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
             <div className="sticky flex justify-between items-center top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
                 <div className="flex items-center h-full gap-3">
-                    <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-50 text-orange-700">
+                    <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]">
                         <PackageMinus size={22} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -134,19 +134,19 @@ export default function ExportVoucherPage() {
                 </div>
                 <div className="flex h-10 items-center px-4 bg-white rounded-2xl border border-[var(--color-border-subtle)]">
                     <MetricCard
-                        icon={<IonIcon icon={playForward} size={18} className="text-orange-600" />}
+                        icon={<IonIcon icon={playForward} size={18} className="text-[var(--color-status-export-icon)]" />}
                         value={activeVouchers.length}
                         tone="orange"
                         title={t.exportVoucher.tabs.inProgress}
                     />
                     <MetricCard
-                        icon={<IonIcon icon={time} size={18} className="text-amber-500" />}
+                        icon={<IonIcon icon={time} size={18} className="text-[var(--color-status-pending-icon)]" />}
                         value={pendingApprovalCount}
                         tone="amber"
                         title={t.exportVoucher.status.PENDING_APPROVAL}
                     />
                     <MetricCard
-                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-emerald-500" />}
+                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-[var(--color-success-icon)]" />}
                         value={completedVouchers.length}
                         tone="emerald"
                         title={t.exportVoucher.tabs.history}
@@ -173,16 +173,16 @@ export default function ExportVoucherPage() {
                                     type="button"
                                     onClick={() => handleTabSwitch(tab.id)}
                                     className={`group relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${isActive
-                                        ? "text-orange-600"
+                                        ? "text-[var(--color-status-export-text)]"
                                         : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
                                         }`}
                                 >
-                                    <Icon size={16} className={isActive ? "text-orange-600" : ""} />
+                                    <Icon size={16} className={isActive ? "text-[var(--color-status-export-text)]" : ""} />
                                     <span>{t.exportVoucher.tabs[tab.labelKey]}</span>
                                     {badgeCount > 0 && (
                                         <span
                                             className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold ${isActive
-                                                ? "bg-orange-600 text-white"
+                                                ? "bg-[var(--color-status-export-icon)] text-[var(--color-text-on-dark)]"
                                                 : "bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"
                                                 }`}
                                         >
@@ -192,7 +192,7 @@ export default function ExportVoucherPage() {
                                     {/* Active underline indicator */}
                                     <span
                                         className={`absolute bottom-0 left-2 right-2 h-0.5 rounded-full transition-all duration-200 ${isActive
-                                            ? "bg-orange-600"
+                                            ? "bg-[var(--color-status-export-icon)]"
                                             : "bg-transparent group-hover:bg-[var(--color-border-subtle)]"
                                             }`}
                                     />

@@ -33,34 +33,34 @@ function getEntityMeta(entityType: string, t: Dictionary) {
     const map: Record<string, { label: string; badge: string; iconWrap: string; icon: LucideIcon }> = {
         IMPORT_VOUCHER: {
             label: t.tasks.entityType.IMPORT_VOUCHER,
-            badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-            iconWrap: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+            badge: "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]",
+            iconWrap: "bg-[var(--color-success-bg)] text-[var(--color-success-text-strong)] ring-[var(--color-success-border)]",
             icon: PackagePlus,
         },
         EXPORT_VOUCHER: {
             label: t.tasks.entityType.EXPORT_VOUCHER,
-            badge: "border-amber-200 bg-amber-50 text-amber-700",
-            iconWrap: "bg-amber-50 text-amber-600 ring-amber-100",
+            badge: "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
+            iconWrap: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)] ring-[var(--color-status-pending-border)]",
             icon: PackageMinus,
         },
         TRANSFER_ORDER: {
             label: t.tasks.entityType.TRANSFER_ORDER,
-            badge: "border-violet-200 bg-violet-50 text-violet-700",
-            iconWrap: "bg-violet-50 text-violet-600 ring-violet-100",
+            badge: "border-[var(--color-status-intra-border)] bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]",
+            iconWrap: "bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)] ring-[var(--color-status-intra-border)]",
             icon: ArrowLeftRight,
         },
         PURCHASE_ORDER: {
             label: t.tasks.entityType.PURCHASE_ORDER,
-            badge: "border-blue-200 bg-blue-50 text-blue-700",
-            iconWrap: "bg-blue-50 text-blue-600 ring-blue-100",
+            badge: "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
+            iconWrap: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-[var(--color-status-approved-border)]",
             icon: ShoppingCart,
         },
     };
 
     return map[entityType] || {
         label: entityType,
-        badge: "border-gray-200 bg-gray-50 text-gray-600",
-        iconWrap: "bg-gray-50 text-gray-500 ring-gray-100",
+        badge: "border-[var(--color-status-draft-border)] bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]",
+        iconWrap: "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] ring-[var(--color-status-draft-border)]",
         icon: CheckCircle,
     };
 }
@@ -135,7 +135,7 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
         <button
             type="button"
             onClick={() => onOpenDetail(approval)}
-            className="group relative w-full rounded-lg border border-gray-100 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-md active:scale-[0.99]"
+            className="group relative w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-brand-primary-muted)] hover:shadow-md active:scale-[0.99]"
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
@@ -152,47 +152,47 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
                     </div>
                 </div>
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-300 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-neutral-300)] transition-colors group-hover:bg-[var(--color-brand-primary-muted)] group-hover:text-[var(--color-brand-primary)]">
                     <ChevronRight className="h-4 w-4" />
                 </div>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-xxs font-semibold uppercase text-gray-400">
+                <div className="rounded-lg bg-[var(--color-neutral-50)] px-3 py-2">
+                    <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                         {t.tasks.card.level}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-gray-900">
-                        <Layers className="h-3.5 w-3.5 text-blue-500" />
+                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-[var(--color-text-primary)]">
+                        <Layers className="h-3.5 w-3.5 text-[var(--color-brand-primary)]" />
                         {t.tasks.levelShort}{approval.level + 1}
                     </p>
                 </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-xxs font-semibold uppercase text-gray-400">
+                <div className="rounded-lg bg-[var(--color-neutral-50)] px-3 py-2">
+                    <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                         {t.tasks.card.status}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-amber-700">
+                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-[var(--color-status-pending-text)]">
                         <CheckCircle className="h-3.5 w-3.5" />
                         {t.tasks.pendingLabel}
                     </p>
                 </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <p className="text-xxs font-semibold uppercase text-gray-400">
+                <div className="rounded-lg bg-[var(--color-neutral-50)] px-3 py-2">
+                    <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                         {t.tasks.card.created}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-gray-900">
-                        <Clock className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="mt-1 flex items-center gap-1 text-sm font-bold text-[var(--color-text-primary)]">
+                        <Clock className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                         {timeAgo || t.common.noData}
                     </p>
                 </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-                <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-gray-500">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border-soft)] pt-3">
+                <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
                     <Hash className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{approval.id}</span>
                 </div>
-                <span className="shrink-0 text-xs font-bold text-blue-600">
+                <span className="shrink-0 text-xs font-bold text-[var(--color-brand-primary)]">
                     {t.tasks.tapToView}
                 </span>
             </div>

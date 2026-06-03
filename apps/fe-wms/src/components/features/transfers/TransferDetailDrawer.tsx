@@ -38,6 +38,7 @@ import { db } from "../../../lib/firebase";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
 import ReceiveTransferPanel from "./ReceiveTransferPanel";
+import { getStatusStyle } from "@/components/ui/StatusBadge";
 
 interface TransferItemInput {
   id: string;
@@ -53,14 +54,14 @@ interface TransferDetailDrawerProps {
 function DetailSkeleton() {
   return (
     <div className="animate-pulse space-y-4 p-4">
-      <div className="h-5 w-2/3 rounded bg-gray-200" />
+      <div className="h-5 w-2/3 rounded bg-[var(--color-skeleton-base)]" />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gray-100" />
+            <div className="h-8 w-8 rounded-lg bg-[var(--color-neutral-100)]" />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 w-16 rounded bg-gray-100" />
-              <div className="h-4 w-40 rounded bg-gray-200" />
+              <div className="h-3 w-16 rounded bg-[var(--color-neutral-100)]" />
+              <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
             </div>
           </div>
         ))}
@@ -95,20 +96,6 @@ function formatDate(val: unknown): string {
     minute: "2-digit",
   });
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
-  PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-blue-100 text-blue-700",
-  EXPORT_CREATED: "bg-indigo-100 text-indigo-700",
-  PICKING: "bg-purple-100 text-purple-700",
-  IN_TRANSIT: "bg-sky-100 text-sky-700",
-  PENDING_RECEIVE: "bg-teal-100 text-teal-700",
-  RECEIVING: "bg-cyan-100 text-cyan-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-600",
-  CANCELLED: "bg-gray-100 text-gray-500",
-};
 
 export default function TransferDetailDrawer({
   orderId,
@@ -179,7 +166,7 @@ export default function TransferDetailDrawer({
         ] ?? order.status)
       : "";
 
-  const statusColor = STATUS_COLORS[order?.status ?? ""] ?? STATUS_COLORS.DRAFT;
+  const statusColor = getStatusStyle(order?.status ?? "DRAFT");
 
   return (
     <>
@@ -192,16 +179,16 @@ export default function TransferDetailDrawer({
       {/* Drawer */}
       <div className="fixed top-0 right-0 z-50 flex h-[calc(100dvh-68px)] w-[90%] flex-col bg-white shadow-2xl md:h-full lg:w-2/3">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]">
               <ArrowRightLeft className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">
+              <h2 className="text-base font-bold text-[var(--color-text-primary)]">
                 {transferText.detail?.title ?? "Chi tiết chuyển kho"}
               </h2>
-              <p className="mt-0.5 text-xxs text-gray-500">
+              <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
                 {order?.order_number ?? orderId.slice(0, 12) + "..."}
               </p>
             </div>
@@ -209,7 +196,7 @@ export default function TransferDetailDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
           >
             <X className="h-5 w-5" />
           </button>
@@ -221,8 +208,8 @@ export default function TransferDetailDrawer({
             <DetailSkeleton />
           ) : !order ? (
             <div className="flex flex-col items-center justify-center p-12 text-center">
-              <Package className="h-8 w-12 text-gray-300" />
-              <p className="mt-3 text-sm font-medium text-gray-500">
+              <Package className="h-8 w-12 text-[var(--color-neutral-300)]" />
+              <p className="mt-3 text-sm font-medium text-[var(--color-text-muted)]">
                 {transferText.detail?.notFound ?? "Không tìm thấy phiếu"}
               </p>
             </div>
@@ -238,8 +225,8 @@ export default function TransferDetailDrawer({
                 <span
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xxs font-semibold ${
                     order.transfer_type === TransferType.INTRA_WAREHOUSE
-                      ? "bg-violet-50 text-violet-600"
-                      : "bg-sky-50 text-sky-600"
+                      ? "bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]"
+                      : "bg-[var(--color-status-transit-bg)] text-[var(--color-status-transit-text)]"
                   }`}
                 >
                   {order.transfer_type === TransferType.INTRA_WAREHOUSE
@@ -278,11 +265,11 @@ export default function TransferDetailDrawer({
 
               {/* Items summary */}
               <div className="mt-4 px-4">
-                <h3 className="mb-2 text-xxs font-semibold uppercase tracking-wider text-gray-400">
+                <h3 className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                   {transferText.detail?.items ?? "Danh sách hàng"} ({items.length})
                 </h3>
                 {items.length === 0 ? (
-                  <p className="py-3 text-center text-xs text-gray-400">
+                  <p className="py-3 text-center text-xs text-[var(--color-text-muted)]">
                     {transferText.detail?.noItems ?? "Không có sản phẩm"}
                   </p>
                 ) : (
@@ -290,12 +277,12 @@ export default function TransferDetailDrawer({
                     {items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2"
+                        className="flex items-center justify-between rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-3 py-2"
                       >
-                        <span className="truncate text-sm text-gray-700">
+                        <span className="truncate text-sm text-[var(--color-text-secondary)]">
                           {item.product_id.slice(0, 8)}...
                         </span>
-                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                        <span className="text-sm font-semibold text-[var(--color-text-primary)] tabular-nums">
                           x{item.quantity}
                         </span>
                       </div>
@@ -306,7 +293,7 @@ export default function TransferDetailDrawer({
 
               {/* Receive panel — only when PENDING_RECEIVE or RECEIVING */}
               {isReceivePhase && (
-                <div className="mt-4 border-t border-gray-100 px-4 pt-4 pb-4">
+                <div className="mt-4 border-t border-[var(--color-border-soft)] px-4 pt-4 pb-4">
                   <ReceiveTransferPanel
                     order={order}
                     orderItems={items}
@@ -325,8 +312,8 @@ export default function TransferDetailDrawer({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="w-28 shrink-0 text-xs text-gray-400">{label}</span>
-      <span className="text-sm font-medium text-gray-800">{value}</span>
+    <span className="w-28 shrink-0 text-xs text-[var(--color-text-muted)]">{label}</span>
+      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{value}</span>
     </div>
   );
 }

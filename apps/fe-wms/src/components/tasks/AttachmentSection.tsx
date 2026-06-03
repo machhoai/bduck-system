@@ -72,15 +72,15 @@ function getFileExt(url: string): string {
 function getExtColor(ext: string): string {
     switch (ext) {
         case "pdf":
-            return "bg-red-100 text-red-700";
+            return "bg-[var(--color-error-bg-muted)] text-[var(--color-error-text)]";
         case "docx":
-            return "bg-blue-100 text-blue-700";
+            return "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]";
         case "xlsx":
-            return "bg-green-100 text-green-700";
+            return "bg-[var(--color-status-completed-bg-muted)] text-[var(--color-status-completed-text)]";
         case "csv":
-            return "bg-amber-100 text-amber-700";
+            return "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)]";
         default:
-            return "bg-gray-100 text-gray-600";
+            return "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]";
     }
 }
 
@@ -158,7 +158,7 @@ export default function AttachmentSection({ urls, t }: AttachmentSectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => handleView(url)}
-                                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--color-status-approved-text)] transition-colors hover:bg-[var(--color-status-approved-bg)]"
                                     title={t.tasks.attachments.viewFile}
                                 >
                                     <Eye className="h-3.5 w-3.5" />

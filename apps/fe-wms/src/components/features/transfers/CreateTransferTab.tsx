@@ -437,7 +437,7 @@ export default function CreateTransferTab({
                             <div key={s.id} className="flex items-center gap-1">
                                 {index > 0 && (
                                     <div
-                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-500" : "bg-gray-200"
+                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-[var(--color-status-export-icon)]" : "bg-[var(--color-neutral-200)]"
                                             }`}
                                     />
                                 )}
@@ -448,10 +448,10 @@ export default function CreateTransferTab({
                                     }}
                                     disabled={!isCompleted && !isActive}
                                     className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isActive
-                                        ? "bg-orange-500 text-white shadow-sm"
+                                        ? "bg-[var(--color-status-export-icon)] text-white shadow-sm"
                                         : isCompleted
-                                            ? "bg-orange-100 text-orange-600"
-                                            : "bg-gray-100 text-gray-400"
+                                            ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
+                                            : "bg-[var(--color-neutral-100)] text-[var(--color-neutral-400)]"
                                         }`}
                                 >
                                     <Icon size={14} />
@@ -466,7 +466,7 @@ export default function CreateTransferTab({
                         type="button"
                         onClick={() => canGoNext() && setStep((step + 1) as StepId)}
                         disabled={!canGoNext()}
-                        className="flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-orange-600 disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-status-export-icon)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-status-export-text)] disabled:opacity-50"
                     >
                         {copy.next}
                         <ChevronRight size={14} />
@@ -477,8 +477,8 @@ export default function CreateTransferTab({
                         onClick={() => setShowConfirm(true)}
                         disabled={isSubmitting}
                         className={`flex items-center gap-1.5 rounded-lg px-5 py-2 text-xs font-semibold text-white transition-all disabled:opacity-50 ${isIntra
-                            ? "bg-emerald-500 hover:bg-emerald-600"
-                            : "bg-orange-500 hover:bg-orange-600"
+                            ? "bg-[var(--color-status-completed-icon)] hover:bg-[var(--color-status-completed-text)]"
+                            : "bg-[var(--color-status-export-icon)] hover:bg-[var(--color-status-export-text)]"
                             }`}
                     >
                         {isSubmitting
@@ -510,14 +510,14 @@ export default function CreateTransferTab({
                                                 setItems([]);
                                             }}
                                             className={`flex items-start gap-3 rounded-xl border-2 p-3.5 text-left transition-all ${transferType === tt.value
-                                                ? "border-orange-500 bg-orange-50 shadow-sm"
-                                                : "border-gray-200 bg-white hover:border-gray-300"
+                                                ? "border-[var(--color-status-export-icon)] bg-[var(--color-status-export-bg)] shadow-sm"
+                                                : "border-[var(--color-neutral-200)] bg-white hover:border-[var(--color-neutral-300)]"
                                                 }`}
                                         >
                                             <div
                                                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${transferType === tt.value
-                                                    ? "bg-orange-500 text-white"
-                                                    : "bg-gray-100 text-gray-500"
+                                                    ? "bg-[var(--color-status-export-icon)] text-white"
+                                                    : "bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)]"
                                                     }`}
                                             >
                                                 <TIcon size={18} />
@@ -525,8 +525,8 @@ export default function CreateTransferTab({
                                             <div className="min-w-0">
                                                 <p
                                                     className={`text-sm font-semibold ${transferType === tt.value
-                                                        ? "text-orange-700"
-                                                        : "text-gray-700"
+                                                        ? "text-[var(--color-status-export-text)]"
+                                                        : "text-[var(--color-neutral-700)]"
                                                         }`}
                                                 >
                                                     {copy[tt.labelKey]}
@@ -576,7 +576,7 @@ export default function CreateTransferTab({
                                                 setItems([]);
                                             }}
                                             disabled={warehousesLoading}
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                                            className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
                                         >
                                             <option value="">
                                                 {warehousesLoading ? copy.loading : copy.chooseSource}
@@ -606,7 +606,7 @@ export default function CreateTransferTab({
                                             value={destWarehouseId}
                                             onChange={(e) => setDestWarehouseId(e.target.value)}
                                             disabled={warehousesLoading}
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                                            className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
                                         >
                                             <option value="">
                                                 {warehousesLoading
@@ -626,7 +626,7 @@ export default function CreateTransferTab({
                                 {sourceWarehouseId &&
                                     destWarehouseId &&
                                     sourceWarehouseId === destWarehouseId && (
-                                        <div className="flex items-center gap-1.5 text-xs text-red-500">
+                                        <div className="flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
                                             <AlertTriangle size={14} />
                                             <span>{copy.sameWarehouse}</span>
                                         </div>
@@ -652,7 +652,7 @@ export default function CreateTransferTab({
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
                                 placeholder={copy.notesPlaceholder}
-                                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                                className="w-full resize-none rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)]"
                             />
                         </div>
                     </div>
@@ -720,7 +720,7 @@ export default function CreateTransferTab({
                                             <button
                                                 type="button"
                                                 onClick={() => addProduct(product.id)}
-                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-all hover:bg-orange-600"
+                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-status-export-icon)] text-white transition-all hover:bg-[var(--color-status-export-text)]"
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -733,12 +733,12 @@ export default function CreateTransferTab({
                         {/* Selected Products */}
                         <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <div className="mb-3 flex items-center gap-2">
-                                <Package size={16} className="text-orange-500" />
+                                <Package size={16} className="text-[var(--color-status-export-icon)]" />
                                 <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                     {copy.selectedProducts}
                                 </p>
                                 {items.length > 0 && (
-                                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xxs font-bold text-orange-600">
+                                    <span className="rounded-full bg-[var(--color-status-export-bg-muted)] px-2 py-0.5 text-xxs font-bold text-[var(--color-status-export-text)]">
                                         {items.length}
                                     </span>
                                 )}
@@ -766,7 +766,7 @@ export default function CreateTransferTab({
                                             >
                                                 {/* Card Header */}
                                                 <div className="flex items-center gap-2 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] px-3 py-2">
-                                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-xxs font-semibold text-orange-600">
+                                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-status-export-bg-muted)] text-xxs font-semibold text-[var(--color-status-export-text)]">
                                                         {index + 1}
                                                     </span>
                                                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
@@ -778,7 +778,7 @@ export default function CreateTransferTab({
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItem(item.id)}
-                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-error-icon)] group-hover:opacity-100"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
@@ -805,7 +805,7 @@ export default function CreateTransferTab({
                                                                     )
                                                                 }
                                                                 min={1}
-                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-orange-400"
+                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)]"
                                                             />
                                                         </label>
 
@@ -827,10 +827,10 @@ export default function CreateTransferTab({
                                                                     !sourceWarehouseId ||
                                                                     !hasLocations
                                                                 }
-                                                                className={`h-8 w-full rounded-[var(--radius-xs)] border bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-orange-400 disabled:opacity-50 ${!hasLocations &&
+                                                                className={`h-8 w-full rounded-[var(--radius-xs)] border bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50 ${!hasLocations &&
                                                                     !isLocLoading &&
                                                                     sourceWarehouseId
-                                                                    ? "border-amber-300"
+                                                                    ? "border-[var(--color-status-pending-border)]"
                                                                     : "border-[var(--color-border-subtle)]"
                                                                     }`}
                                                             >
@@ -877,7 +877,7 @@ export default function CreateTransferTab({
                                                                         )
                                                                     }
                                                                     disabled={dstLocLoading || !sourceWarehouseId}
-                                                                    className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-orange-400 disabled:opacity-50"
+                                                                    className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50"
                                                                 >
                                                                     <option value="">
                                                                         {copy.selectDestinationLocation}
@@ -899,7 +899,7 @@ export default function CreateTransferTab({
                                                                     item.destination_location_id &&
                                                                     item.source_location_id ===
                                                                     item.destination_location_id && (
-                                                                        <p className="mt-0.5 text-xxs text-red-500">
+                                                                        <p className="mt-0.5 text-xxs text-[var(--color-error-text)]">
                                                                             {copy.sameLocation}
                                                                         </p>
                                                                     )}
@@ -916,7 +916,7 @@ export default function CreateTransferTab({
                                                             );
                                                             if (item.quantity <= atp) return null;
                                                             return (
-                                                                <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-amber-50 px-2.5 py-1.5 text-xxs text-amber-700">
+                                                                <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
                                                                     <AlertTriangle
                                                                         size={12}
                                                                         className="shrink-0"
@@ -959,7 +959,7 @@ export default function CreateTransferTab({
                                 <div className="mb-4 flex items-center gap-2">
                                     <ClipboardList
                                         size={18}
-                                        className="text-orange-500"
+                                        className="text-[var(--color-status-export-icon)]"
                                     />
                                     <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
                                         {copy.confirmTitle}
@@ -1004,7 +1004,7 @@ export default function CreateTransferTab({
                                 </div>
 
                                 {isIntra && (
-                                    <div className="mt-3 rounded-[var(--radius-sm)] bg-blue-50 p-3 text-xs text-blue-700">
+                                    <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-status-transit-bg)] p-3 text-xs text-[var(--color-status-transit-text)]">
                                         <span className="font-semibold">{copy.noteTitle}:</span>{" "}
                                         {copy.intraNotice}
                                     </div>
@@ -1030,11 +1030,11 @@ export default function CreateTransferTab({
                                             {items.length}
                                         </p>
                                     </div>
-                                    <div className="col-span-2 rounded-[var(--radius-sm)] bg-orange-50 p-3">
-                                        <p className="text-xxs font-semibold uppercase text-orange-700">
+                                    <div className="col-span-2 rounded-[var(--radius-sm)] bg-[var(--color-status-export-bg)] p-3">
+                                        <p className="text-xxs font-semibold uppercase text-[var(--color-status-export-text)]">
                                             {copy.totalQty}
                                         </p>
-                                        <p className="mt-2 text-lg font-bold text-orange-800">
+                                        <p className="mt-2 text-lg font-bold text-[var(--color-status-export-text)]">
                                             {items.reduce((sum, i) => sum + (i.quantity || 0), 0)}
                                         </p>
                                     </div>
@@ -1097,8 +1097,8 @@ export default function CreateTransferTab({
                                 onClick={handleSubmit}
                                 disabled={isSubmitting}
                                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50 ${isIntra
-                                    ? "bg-emerald-500 hover:bg-emerald-600"
-                                    : "bg-orange-500 hover:bg-orange-600"
+                                    ? "bg-[var(--color-status-completed-icon)] hover:bg-[var(--color-status-completed-text)]"
+                                    : "bg-[var(--color-status-export-icon)] hover:bg-[var(--color-status-export-text)]"
                                     }`}
                             >
                                 {isSubmitting ? copy.processing : copy.confirm}

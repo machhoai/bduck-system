@@ -1,22 +1,20 @@
 "use client";
 
-import { useUserStore } from "../../stores/useUserStore";
 import { useTranslation } from "../../lib/i18n";
 import NotificationBell from "../ui/NotificationBell";
 import ClockWeatherWidget from "../ui/ClockWeatherWidget";
+import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 
 export default function TopBar() {
-    const user = useUserStore((s) => s.user);
     const { lang } = useTranslation();
 
     return (
-        <div className="flex h-10 justify-between items-center gap-2 px-2 py-2 backdrop-blur-md">
-            <div className="h-full flex">
+        <div className="flex sticky top-0 z-50 h-10 w-full justify-between items-center gap-2 px-4 pt-2">
+            <div className="h-full flex items-center gap-2">
                 <ClockWeatherWidget locale={(lang || "vi") as "vi" | "zh"} />
+                <DeviceStatusIndicator />
             </div>
-            <div className="bg-white rounded-full">
-                <NotificationBell />
-            </div>
-        </div >
+            <NotificationBell />
+        </div>
     );
 }

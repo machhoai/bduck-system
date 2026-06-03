@@ -243,7 +243,7 @@ export default function PickingSessionDrawer({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]">
             <Package size={18} />
           </div>
           <div>
@@ -285,7 +285,7 @@ export default function PickingSessionDrawer({
                   key={item.id}
                   className={`rounded-xl border p-4 transition-colors ${
                     isOverPicked
-                      ? "border-amber-300 bg-amber-50"
+                      ? "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)]"
                       : "border-gray-100 bg-white"
                   }`}
                 >
@@ -300,7 +300,7 @@ export default function PickingSessionDrawer({
                       </p>
                     </div>
                     {isOverPicked && (
-                      <div className="flex items-center gap-1 text-amber-600">
+                      <div className="flex items-center gap-1 text-[var(--color-status-pending-text)]">
                         <AlertTriangle size={14} />
                         <span className="text-xxs font-medium">Vượt SL</span>
                       </div>
@@ -322,8 +322,8 @@ export default function PickingSessionDrawer({
                         disabled={isSubmitting}
                         className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition-colors focus:ring-2 ${
                           isOverPicked
-                            ? "border-amber-300 text-amber-700 focus:border-amber-400 focus:ring-amber-100"
-                            : "border-gray-200 text-gray-900 focus:border-orange-400 focus:ring-orange-100"
+                            ? "border-[var(--color-status-pending-border)] text-[var(--color-status-pending-text)] focus:border-[var(--color-status-pending-icon)] focus:ring-[var(--color-status-pending-bg-muted)]"
+                            : "border-[var(--color-border-subtle)] text-[var(--color-text-primary)] focus:border-[var(--color-border-focus)] focus:ring-[var(--color-brand-primary-muted)]"
                         }`}
                       />
                     </div>
@@ -337,7 +337,7 @@ export default function PickingSessionDrawer({
                         onChange={(e) => updateItemNotes(item.id, e.target.value)}
                         placeholder="Ghi chú..."
                         disabled={isSubmitting}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition-colors focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                        className="w-full rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
                       />
                     </div>
                   </div>
@@ -358,7 +358,7 @@ export default function PickingSessionDrawer({
             <span className="text-gray-600">{totalRequested}</span>
           </span>
           {hasOverPicked && (
-            <span className="flex items-center gap-1 text-amber-600">
+            <span className="flex items-center gap-1 text-[var(--color-status-pending-text)]">
               <AlertTriangle size={12} />
               Có sản phẩm vượt số lượng yêu cầu
             </span>
@@ -370,7 +370,7 @@ export default function PickingSessionDrawer({
             type="button"
             onClick={handleSaveDraft}
             disabled={isSaving || isSubmitting}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-xs font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-4 py-2.5 text-xs font-medium text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
           >
             Lưu nháp
           </button>
@@ -378,7 +378,7 @@ export default function PickingSessionDrawer({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || isSaving}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--color-status-export-icon)] px-4 py-2.5 text-xs font-semibold text-[var(--color-text-on-dark)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
           >
             <Send size={14} />
             {isSubmitting ? "Đang xử lý..." : "Hoàn tất soạn hàng"}

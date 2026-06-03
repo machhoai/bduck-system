@@ -28,39 +28,39 @@ interface WarehouseAuditCardProps {
 const actionStyles: Record<string, { icon: LucideIcon; color: string }> = {
   CREATE: {
     icon: ClipboardList,
-    color: "border-emerald-100 bg-emerald-50 text-emerald-600",
+    color: "border-[var(--color-status-completed-border)] bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
   },
   UPDATE: {
     icon: PenSquare,
-    color: "border-amber-100 bg-amber-50 text-amber-700",
+    color: "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
   },
   APPROVE: {
     icon: CheckCircle2,
-    color: "border-green-100 bg-green-50 text-green-700",
+    color: "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
   },
   REJECT: {
     icon: XCircle,
-    color: "border-rose-100 bg-rose-50 text-rose-600",
+    color: "border-[var(--color-error-border)] bg-[var(--color-error-bg)] text-[var(--color-error-text)]",
   },
   CANCEL: {
     icon: XCircle,
-    color: "border-slate-200 bg-slate-50 text-slate-600",
+    color: "border-[var(--color-status-draft-border)] bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]",
   },
   SOFT_DELETE: {
     icon: Trash2,
-    color: "border-rose-100 bg-rose-50 text-rose-600",
+    color: "border-[var(--color-error-border)] bg-[var(--color-error-bg)] text-[var(--color-error-text)]",
   },
   QUARANTINE: {
     icon: ShieldAlert,
-    color: "border-orange-100 bg-orange-50 text-orange-700",
+    color: "border-[var(--color-status-export-border)] bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]",
   },
   RELEASE: {
     icon: Undo2,
-    color: "border-sky-100 bg-sky-50 text-sky-700",
+    color: "border-[var(--color-status-transit-border)] bg-[var(--color-status-transit-bg)] text-[var(--color-status-transit-text)]",
   },
   TRANSFER: {
     icon: ArrowRightLeft,
-    color: "border-indigo-100 bg-indigo-50 text-indigo-700",
+    color: "border-[var(--color-status-picking-border)] bg-[var(--color-status-picking-bg)] text-[var(--color-status-picking-text)]",
   },
 };
 
@@ -112,7 +112,7 @@ export function WarehouseAuditCard({ warehouseId }: WarehouseAuditCardProps) {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-[var(--radius-md)] border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2 text-sm text-[var(--color-error-text)]">
             {t.common.error}: {error}
           </div>
         ) : scopedLogs.length === 0 ? (

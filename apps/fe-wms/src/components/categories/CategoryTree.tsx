@@ -61,11 +61,11 @@ export default function CategoryTree({
 
   return (
     <div className="hidden md:block">
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-sm">
         {tree.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-[var(--color-border-soft)]">
             {tree.map((node) => (
               <TreeItem
                 key={node.id}
@@ -103,14 +103,14 @@ function TreeItem({
   return (
     <div>
       <div
-        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50"
+        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--color-neutral-50)]"
         style={{ paddingLeft: `${16 + depth * 24}px` }}
       >
         {/* Expand toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className={`shrink-0 rounded-md p-0.5 text-gray-400 transition-colors
-            ${hasChildren ? "hover:bg-gray-200 hover:text-gray-600" : "invisible"}`}
+          className={`shrink-0 rounded-md p-0.5 text-[var(--color-text-muted)] transition-colors
+            ${hasChildren ? "hover:bg-[var(--color-neutral-200)] hover:text-[var(--color-text-secondary)]" : "invisible"}`}
           disabled={!hasChildren}
         >
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -118,19 +118,19 @@ function TreeItem({
 
         {/* Icon */}
         {hasChildren || depth === 0 ? (
-          <FolderOpen size={18} className="shrink-0 text-amber-500" />
+          <FolderOpen size={18} className="shrink-0 text-[var(--color-status-pending-icon)]" />
         ) : (
-          <Folder size={18} className="shrink-0 text-gray-400" />
+          <Folder size={18} className="shrink-0 text-[var(--color-text-muted)]" />
         )}
 
         {/* Name + Code */}
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-medium text-gray-900">{node.name}</span>
-          <span className="ml-2 text-xs text-gray-400">{node.code}</span>
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">{node.name}</span>
+          <span className="ml-2 text-xs text-[var(--color-text-muted)]">{node.code}</span>
         </div>
 
         {/* Type badge */}
-        <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600">
+        <span className="shrink-0 rounded-full bg-[var(--color-status-approved-bg)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-status-approved-text)]">
           {t.categories.types[node.type as keyof typeof t.categories.types]}
         </span>
 
@@ -139,7 +139,7 @@ function TreeItem({
           {hasPermission("category.update") && (
             <button
               onClick={() => onEdit(node)}
-              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+              className="rounded-lg p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
               title={t.common.edit}
             >
               <Pencil size={15} />
@@ -148,7 +148,7 @@ function TreeItem({
           {hasPermission("category.delete") && (
             <button
               onClick={() => onDelete(node)}
-              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+              className="rounded-lg p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-error-bg)] hover:text-[var(--color-error-icon)]"
               title={t.common.delete}
             >
               <Trash2 size={15} />
@@ -180,8 +180,8 @@ function EmptyState() {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <FolderOpen size={48} className="mb-4 text-gray-300" />
-      <p className="text-sm text-gray-400">{t.categories.empty}</p>
+      <FolderOpen size={48} className="mb-4 text-[var(--color-neutral-300)]" />
+      <p className="text-sm text-[var(--color-text-muted)]">{t.categories.empty}</p>
     </div>
   );
 }

@@ -44,12 +44,12 @@ const STATUS_CONFIG: Record<
     string,
     { bg: string; text: string; Icon: React.ElementType }
 > = {
-    DRAFT: { bg: "bg-gray-100", text: "text-gray-600", Icon: Clock },
-    PENDING_APPROVAL: { bg: "bg-amber-50", text: "text-amber-700", Icon: Clock },
-    APPROVED: { bg: "bg-blue-50", text: "text-blue-700", Icon: CheckCircle },
-    REJECTED: { bg: "bg-red-50", text: "text-red-700", Icon: XCircle },
-    PICKING: { bg: "bg-purple-50", text: "text-purple-700", Icon: PackageOpen },
-    SHIPPED: { bg: "bg-teal-50", text: "text-teal-700", Icon: Truck },
+    DRAFT: { bg: "bg-[var(--color-status-draft-bg)]", text: "text-[var(--color-status-draft-text)]", Icon: Clock },
+    PENDING_APPROVAL: { bg: "bg-[var(--color-status-pending-bg)]", text: "text-[var(--color-status-pending-text)]", Icon: Clock },
+    APPROVED: { bg: "bg-[var(--color-status-approved-bg)]", text: "text-[var(--color-status-approved-text)]", Icon: CheckCircle },
+    REJECTED: { bg: "bg-[var(--color-status-rejected-bg)]", text: "text-[var(--color-status-rejected-text)]", Icon: XCircle },
+    PICKING: { bg: "bg-[var(--color-status-picking-bg)]", text: "text-[var(--color-status-picking-text)]", Icon: PackageOpen },
+    SHIPPED: { bg: "bg-[var(--color-status-shipped-bg)]", text: "text-[var(--color-status-shipped-text)]", Icon: Truck },
 };
 
 function formatDate(value: unknown): string {
@@ -243,7 +243,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                         onClick={() => setStatusFilter("")}
                         className={`h-6 shrink-0 rounded-full px-2 text-xxs font-semibold transition-colors ${
                             !statusFilter
-                                ? "bg-orange-600 text-white"
+                                ? "bg-[var(--color-status-export-icon)] text-[var(--color-text-on-dark)]"
                                 : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)]"
                         }`}
                     >
@@ -382,7 +382,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => onClone(getClonePayload(voucher))}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-orange-50 px-2 text-xxs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-status-export-bg)] px-2 text-xxs font-semibold text-[var(--color-status-export-text)] transition-colors hover:bg-[var(--color-status-export-bg-muted)]"
                                             title={exportText.actions?.editVoucher}
                                         >
                                             <Copy size={12} />
@@ -394,7 +394,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => setPickingVoucherId(voucher.id)}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-orange-600 px-2 text-xxs font-semibold text-white transition-colors hover:bg-orange-700"
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-status-export-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
                                             title={exportText.actions?.pick}
                                         >
                                             <Play size={12} />
@@ -406,7 +406,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => void handleCompleteExport(voucher.id)}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-emerald-600 px-2 text-xxs font-semibold text-white transition-colors hover:bg-emerald-700"
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
                                             title={exportText.actions?.complete}
                                         >
                                             <CheckCircle size={12} />

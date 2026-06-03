@@ -127,13 +127,13 @@ export default function CategoryFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="w-[90%] rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
             {editCategory ? t.categories.edit : t.categories.addNew}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
           >
             <X size={20} />
           </button>
@@ -143,24 +143,24 @@ export default function CategoryFormModal({
         <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5">
           {/* Name */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              {t.categories.name} <span className="text-red-500">*</span>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+              {t.categories.name} <span className="text-[var(--color-error-icon)]">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
-                outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm
+                outline-none transition-colors focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
               placeholder="VD: Thiết bị vui chơi"
             />
           </div>
 
           {/* Code */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              {t.categories.code} <span className="text-red-500">*</span>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+              {t.categories.code} <span className="text-[var(--color-error-icon)]">*</span>
             </label>
             <input
               type="text"
@@ -168,8 +168,8 @@ export default function CategoryFormModal({
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               required
               disabled={!!editCategory} // Code không cho sửa
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm uppercase
-                outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
+              className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm uppercase
+                outline-none transition-colors focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]
                 disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="VD: EQUIP-PLAY"
             />
@@ -177,15 +177,15 @@ export default function CategoryFormModal({
 
           {/* Type */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              {t.categories.type} <span className="text-red-500">*</span>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+              {t.categories.type} <span className="text-[var(--color-error-icon)]">*</span>
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
               disabled={!!editCategory} // Type không cho sửa
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
-                outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
+              className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm
+                outline-none transition-colors focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]
                 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {PRODUCT_TYPES.map((pt) => (
@@ -198,14 +198,14 @@ export default function CategoryFormModal({
 
           {/* Parent */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
               {t.categories.parent}
             </label>
             <select
               value={parentId}
               onChange={(e) => setParentId(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
-                outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm
+                outline-none transition-colors focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
             >
               <option value="">{t.categories.noParent}</option>
               {availableParents.map((cat) => (
@@ -219,15 +219,15 @@ export default function CategoryFormModal({
 
           {/* Description */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
               {t.categories.description}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
-                outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full resize-none rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm
+                outline-none transition-colors focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
               placeholder="Mô tả tùy chọn..."
             />
           </div>
@@ -237,16 +237,16 @@ export default function CategoryFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600
-                transition-colors hover:bg-gray-50"
+              className="rounded-xl border border-[var(--color-border-subtle)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-secondary)]
+                transition-colors hover:bg-[var(--color-neutral-50)]"
             >
               {t.common.cancel}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white
-                transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-[var(--color-brand-primary)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-on-dark)]
+                transition-all hover:bg-[var(--color-brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? t.categories.saving : t.common.save}
             </button>

@@ -10,10 +10,12 @@
 @theme {
     --color-brand-primary: #0066cc;
     --color-brand-primary-hover: #005bb8;
+    --color-brand-primary-dark: #004a99;
     --color-brand-primary-muted: #0066cc1a;
     --color-primary-focus: #0071e3;
     --color-primary-on-dark: #2997ff;
 
+    --color-bg-base: #f5f5f7;
     --color-surface-base: #f5f5f7;
     --color-surface-elevated: #ffffff;
     --color-surface-card: #fafafc;
@@ -68,6 +70,137 @@
     --text-micro--line-height: 10px;
     --text-xxs: 10px;
     --text-xxs--line-height: 14px;
+
+    /* ============================================
+     * SEMANTIC ERROR / DANGER COLORS
+     * Tương đương: red-50 / red-100 / red-700 / red-200
+     * ============================================ */
+    --color-error-bg: #fef2f2;
+    --color-error-bg-muted: #fee2e2;
+    --color-error-text: #b91c1c;
+    --color-error-text-strong: #991b1b;
+    --color-error-border: #fecaca;
+    --color-error-icon: #dc2626;
+
+    /* ============================================
+     * SEMANTIC SUCCESS COLORS
+     * Tương đương: emerald-50 / emerald-100 / emerald-700 / emerald-200
+     * ============================================ */
+    --color-success-bg: #ecfdf5;
+    --color-success-bg-muted: #d1fae5;
+    --color-success-text: #065f46;
+    --color-success-text-strong: #047857;
+    --color-success-border: #a7f3d0;
+    --color-success-icon: #10b981;
+
+    /* ============================================
+     * SEMANTIC WARNING COLORS
+     * Tương đương: amber-50 / amber-100 / amber-700 / amber-200
+     * ============================================ */
+    --color-warning-bg: #fffbeb;
+    --color-warning-bg-muted: #fef3c7;
+    --color-warning-text: #92400e;
+    --color-warning-text-strong: #78350f;
+    --color-warning-border: #fde68a;
+    --color-warning-icon: #f59e0b;
+
+    /* ============================================
+     * NEUTRAL / GRAY SURFACE TOKENS
+     * Thay thế toàn bộ gray-* utilities
+     * ============================================ */
+    --color-neutral-50: #f9fafb;
+    --color-neutral-100: #f3f4f6;
+    --color-neutral-200: #e5e7eb;
+    --color-neutral-300: #d1d5db;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #6b7280;
+    --color-neutral-600: #4b5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1f2937;
+    --color-neutral-900: #111827;
+    --color-neutral-950: #030712;
+
+    /* ============================================
+     * VOUCHER / TASK STATUS BADGE COLORS (WMS đặc thù)
+     * Dùng cho status maps trong các component
+     * ============================================ */
+
+    /* DRAFT → Neutral gray */
+    --color-status-draft-bg: #f3f4f6;
+    --color-status-draft-text: #6b7280;
+    --color-status-draft-border: #e5e7eb;
+
+    /* PENDING_APPROVAL → Amber/Warning */
+    --color-status-pending-bg: #fffbeb;
+    --color-status-pending-bg-muted: #fef3c7;
+    --color-status-pending-text: #b45309;
+    --color-status-pending-border: #fde68a;
+    --color-status-pending-icon: #f59e0b;
+
+    /* APPROVED → Primary blue */
+    --color-status-approved-bg: #eff6ff;
+    --color-status-approved-bg-muted: #dbeafe;
+    --color-status-approved-text: #1d4ed8;
+    --color-status-approved-border: #bfdbfe;
+    --color-status-approved-icon: #3b82f6;
+
+    /* RECEIVING → Brand primary (nhập kho) */
+    --color-status-receiving-bg: #eff6ff;
+    --color-status-receiving-bg-muted: #dbeafe;
+    --color-status-receiving-text: #0066cc;
+    --color-status-receiving-border: #bfdbfe;
+    --color-status-receiving-icon: #0066cc;
+
+    /* COMPLETED → Emerald/Success */
+    --color-status-completed-bg: #ecfdf5;
+    --color-status-completed-bg-muted: #d1fae5;
+    --color-status-completed-text: #065f46;
+    --color-status-completed-border: #a7f3d0;
+    --color-status-completed-icon: #10b981;
+
+    /* REJECTED / CANCELLED → Red/Error */
+    --color-status-rejected-bg: #fef2f2;
+    --color-status-rejected-bg-muted: #fee2e2;
+    --color-status-rejected-text: #b91c1c;
+    --color-status-rejected-border: #fecaca;
+    --color-status-rejected-icon: #dc2626;
+
+    /* PICKING → Purple */
+    --color-status-picking-bg: #f5f3ff;
+    --color-status-picking-bg-muted: #ede9fe;
+    --color-status-picking-text: #6d28d9;
+    --color-status-picking-border: #ddd6fe;
+    --color-status-picking-icon: #7c3aed;
+
+    /* IN_TRANSIT → Sky */
+    --color-status-transit-bg: #f0f9ff;
+    --color-status-transit-bg-muted: #e0f2fe;
+    --color-status-transit-text: #0369a1;
+    --color-status-transit-border: #bae6fd;
+    --color-status-transit-icon: #0ea5e9;
+
+    /* EXPORT_PENDING / Transfer → Orange */
+    --color-status-export-bg: #fff7ed;
+    --color-status-export-bg-muted: #ffedd5;
+    --color-status-export-text: #c2410c;
+    --color-status-export-border: #fed7aa;
+    --color-status-export-icon: #ea580c;
+
+    /* INTRA (nội bộ) → Violet */
+    --color-status-intra-bg: #f5f3ff;
+    --color-status-intra-text: #5b21b6;
+    --color-status-intra-border: #ddd6fe;
+    --color-status-intra-icon: #7c3aed;
+
+    /* SHIPPED → Teal */
+    --color-status-shipped-bg: #f0fdfa;
+    --color-status-shipped-bg-muted: #ccfbf1;
+    --color-status-shipped-text: #0f766e;
+    --color-status-shipped-border: #99f6e4;
+    --color-status-shipped-icon: #14b8a6;
+
+    /* Surface subtle — hover state for ghost buttons */
+    --color-surface-subtle: #f3f4f6;
 }
 
 @layer base {

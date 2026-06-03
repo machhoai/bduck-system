@@ -29,8 +29,8 @@ export default function CategoryFlatList({
   if (categories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center md:hidden">
-        <FolderOpen size={48} className="mb-4 text-gray-300" />
-        <p className="text-sm text-gray-400">{t.categories.empty}</p>
+        <FolderOpen size={48} className="mb-4 text-[var(--color-neutral-300)]" />
+        <p className="text-sm text-[var(--color-text-muted)]">{t.categories.empty}</p>
       </div>
     );
   }
@@ -40,18 +40,18 @@ export default function CategoryFlatList({
       {categories.map((cat) => (
         <div
           key={cat.id}
-          className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm
+          className="flex items-center gap-3 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3.5 shadow-sm
             active:scale-[0.98] transition-transform"
         >
           {/* Left: Icon + Info */}
-          <FolderOpen size={20} className="shrink-0 text-amber-500" />
+          <FolderOpen size={20} className="shrink-0 text-[var(--color-status-pending-icon)]" />
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-900 truncate">
+              <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
                 {cat.name}
               </span>
-              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xxs font-medium text-blue-600">
+              <span className="shrink-0 rounded-full bg-[var(--color-status-approved-bg)] px-2 py-0.5 text-xxs font-medium text-[var(--color-status-approved-text)]">
                 {
                   t.categories.types[
                     cat.type as keyof typeof t.categories.types
@@ -59,7 +59,7 @@ export default function CategoryFlatList({
                 }
               </span>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
               <span>{cat.code}</span>
               {cat.parent_id && nameMap.has(cat.parent_id) && (
                 <>
@@ -75,7 +75,7 @@ export default function CategoryFlatList({
             {hasPermission("category.update") && (
               <button
                 onClick={() => onEdit(cat)}
-                className="rounded-xl p-2 text-gray-400 transition-colors active:bg-blue-50 active:text-blue-600"
+                className="rounded-xl p-2 text-[var(--color-text-muted)] transition-colors active:bg-[var(--color-brand-primary-muted)] active:text-[var(--color-brand-primary)]"
               >
                 <Pencil size={16} />
               </button>
@@ -83,7 +83,7 @@ export default function CategoryFlatList({
             {hasPermission("category.delete") && (
               <button
                 onClick={() => onDelete(cat)}
-                className="rounded-xl p-2 text-gray-400 transition-colors active:bg-red-50 active:text-red-500"
+                className="rounded-xl p-2 text-[var(--color-text-muted)] transition-colors active:bg-[var(--color-error-bg)] active:text-[var(--color-error-icon)]"
               >
                 <Trash2 size={16} />
               </button>

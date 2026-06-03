@@ -38,6 +38,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
 import { approveRecord, rejectRecord } from "@/hooks/useApprovalApi";
 import AttachmentSection from "./AttachmentSection";
+import { getStatusStyle } from "@/components/ui/StatusBadge";
 
 interface TaskDetailDrawerProps {
     approval: ApprovalRecord;
@@ -78,12 +79,12 @@ function formatCurrency(val: number): string {
 function Field({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
     return (
         <div className="flex items-start gap-3 py-2.5">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
                 <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-gray-400">{label}</p>
-                <p className="mt-0.5 break-all text-sm font-medium text-gray-900">{value || "—"}</p>
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+                <p className="mt-0.5 break-all text-sm font-medium text-[var(--color-text-primary)]">{value || "—"}</p>
             </div>
         </div>
     );
@@ -92,14 +93,14 @@ function Field({ icon: Icon, label, value }: { icon: React.ElementType; label: s
 function DetailSkeleton() {
     return (
         <div className="animate-pulse space-y-4 p-4">
-            <div className="h-5 w-2/3 rounded bg-gray-200" />
+            <div className="h-5 w-2/3 rounded bg-[var(--color-skeleton-base)]" />
             <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-gray-100" />
+                        <div className="h-8 w-8 rounded-lg bg-[var(--color-neutral-100)]" />
                         <div className="flex-1 space-y-1.5">
-                            <div className="h-3 w-16 rounded bg-gray-100" />
-                            <div className="h-4 w-40 rounded bg-gray-200" />
+                            <div className="h-3 w-16 rounded bg-[var(--color-neutral-100)]" />
+                            <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
                         </div>
                     </div>
                 ))}
@@ -123,23 +124,12 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
-        // Use correct i18n status map based on entity type
         const statusMap = isExport
             ? (t as any).exportVoucher?.status || {}
             : t.importVoucher.status;
         const label = statusMap[voucher.status as string] || voucher.status;
-        const colorMap: Record<string, string> = {
-            DRAFT: "bg-gray-100 text-gray-600",
-            PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-            APPROVED: isExport ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700",
-            RECEIVING: "bg-blue-100 text-blue-700",
-            PICKING: "bg-purple-100 text-purple-700",
-            SHIPPED: "bg-teal-100 text-teal-700",
-            COMPLETED: "bg-green-100 text-green-700",
-            CANCELLED: "bg-red-100 text-red-600",
-            REJECTED: "bg-red-100 text-red-600",
-        };
-        return { label, color: colorMap[voucher.status] || "bg-gray-100 text-gray-600" };
+        const color = getStatusStyle(voucher.status);
+        return { label, color };
     }, [voucher, t, isExport]);
 
     const totalValue = useMemo(
@@ -208,17 +198,19 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
             <div className="fixed top-0 right-0 z-50 flex h-[calc(100vh-68px)] md:h-full w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header — color-coded by entity type */}
                 <div className={`flex items-center justify-between border-b px-4 py-4 ${
-                    isExport ? "border-orange-100 bg-orange-50/30" : "border-gray-100"
+                    isExport ? "border-[var(--color-status-export-border)] bg-[var(--color-status-export-bg)]" : "border-[var(--color-border-soft)]"
                 }`}>
                     <div className="flex items-center gap-3">
                         <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                            isExport ? "bg-orange-100 text-orange-600" : "bg-emerald-100 text-emerald-600"
+                            isExport
+                                ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
+                                : "bg-[var(--color-success-bg-muted)] text-[var(--color-success-text)]"
                         }`}>
                             {isExport ? <PackageMinus className="h-4.5 w-4.5" /> : <PackagePlus className="h-4.5 w-4.5" />}
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900">{t.tasks.detail.title}</h2>
-                            <p className="mt-0.5 text-xs text-gray-500">
+                            <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t.tasks.detail.title}</h2>
+                            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                                 {voucher?.voucher_number || approval.entity_id?.slice(0, 12) + "..."}
                             </p>
                         </div>
@@ -226,7 +218,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -238,8 +230,8 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                         <DetailSkeleton />
                     ) : !voucher ? (
                         <div className="flex flex-col items-center justify-center p-12 text-center">
-                            <FileText className="h-8 w-12 text-gray-300" />
-                            <p className="mt-3 text-sm font-medium text-gray-500">{t.tasks.detail.notFound}</p>
+                            <FileText className="h-8 w-12 text-[var(--color-neutral-300)]" />
+                            <p className="mt-3 text-sm font-medium text-[var(--color-text-muted)]">{t.tasks.detail.notFound}</p>
                         </div>
                     ) : (
                         <>
@@ -273,28 +265,28 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
                             {/* Items */}
                             <div className="mt-4 px-4">
-                                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                                     {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                                 </h3>
                                 {loadingItems ? (
                                     <div className="animate-pulse space-y-2">
                                         {Array.from({ length: 3 }).map((_, i) => (
-                                            <div key={i} className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
-                                                <div className="h-4 w-40 rounded bg-gray-200" />
-                                                <div className="mt-2 h-3 w-24 rounded bg-gray-100" />
+                                            <div key={i} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 p-3">
+                                                <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
+                                                <div className="mt-2 h-3 w-24 rounded bg-[var(--color-neutral-100)]" />
                                             </div>
                                         ))}
                                     </div>
                                 ) : items.length === 0 ? (
-                                    <p className="py-4 text-center text-sm text-gray-400">{t.tasks.items.empty}</p>
+                                    <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">{t.tasks.items.empty}</p>
                                 ) : (
                                     <div className="space-y-2">
                                         {items.map((item, idx) => (
-                                            <div key={item.id || idx} className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3">
+                                            <div key={item.id || idx} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-4 py-3">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-semibold text-gray-900">{item.product_name}</p>
-                                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                                        <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.product_name}</p>
+                                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
                                                             {item.product_code && (
                                                                 <span className="flex items-center gap-0.5">
                                                                     <Ruler className="h-3 w-3" />
@@ -308,19 +300,19 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                                                                 </span>
                                                             )}
                                                             {item.unit && (
-                                                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xxs font-medium text-gray-600">
+                                                                <span className="rounded bg-[var(--color-neutral-100)] px-1.5 py-0.5 text-xxs font-medium text-[var(--color-neutral-600)]">
                                                                     {item.unit}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="text-right flex-shrink-0">
-                                                        <p className="text-sm font-semibold text-gray-900">
+                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                                             {formatCurrency(item.expected_quantity * item.unit_price)}đ
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="mt-1.5 text-xs text-gray-500">
+                                                <div className="mt-1.5 text-xs text-[var(--color-text-muted)]">
                                                     {t.tasks.detail.quantity}: {formatCurrency(item.expected_quantity)}
                                                     {item.unit_price > 0 && <> × {formatCurrency(item.unit_price)}đ</>}
                                                 </div>
@@ -331,9 +323,9 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
                                 {/* Total */}
                                 {totalValue > 0 && (
-                                    <div className="mt-3 flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
-                                        <span className="text-sm font-medium text-blue-700">{t.tasks.detail.totalValue}</span>
-                                        <span className="text-base font-bold text-blue-800">{formatCurrency(totalValue)}đ</span>
+                                    <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-status-approved-bg)] px-4 py-3">
+                                        <span className="text-sm font-medium text-[var(--color-status-approved-text)]">{t.tasks.detail.totalValue}</span>
+                                        <span className="text-base font-bold text-[var(--color-brand-primary)]">{formatCurrency(totalValue)}đ</span>
                                     </div>
                                 )}
                             </div>
@@ -346,20 +338,20 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
 
                 {/* Footer: Approval actions (always show — all tasks are approvals) */}
                 {!isLoading && voucher && (
-                    <div className="border-t border-gray-100 bg-white px-4 py-4">
+                    <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
                         <textarea
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             rows={2}
                             placeholder={t.tasks.approval.commentPlaceholder}
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                            className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
                         />
                         <div className="mt-3 flex items-center gap-3">
                             <button
                                 type="button"
                                 onClick={() => handleDecision(false)}
                                 disabled={isSubmitting}
-                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                                 {t.tasks.approval.reject}
@@ -368,7 +360,7 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                                 type="button"
                                 onClick={() => handleDecision(true)}
                                 disabled={isSubmitting}
-                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-accent-success)] px-4 py-3 text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition-all hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                                 {t.tasks.approval.approve}

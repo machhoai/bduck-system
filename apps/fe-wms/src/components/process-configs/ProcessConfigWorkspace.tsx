@@ -49,9 +49,9 @@ function StatTile({
     tone: "blue" | "emerald" | "amber";
 }) {
     const toneClass = {
-        blue: "bg-blue-50 text-blue-700",
-        emerald: "bg-emerald-50 text-emerald-700",
-        amber: "bg-amber-50 text-amber-700",
+        blue: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
+        emerald: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+        amber: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
     }[tone];
 
     return (
@@ -110,15 +110,15 @@ function EntitySelector({
                             type="button"
                             onClick={() => onSelect(key)}
                             className={`min-w-40 snap-start rounded-lg border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] lg:min-w-0 lg:w-full ${active
-                                    ? "border-blue-300 ring-2 ring-blue-100"
+                                    ? "border-[var(--color-brand-primary)] ring-2 ring-[var(--color-brand-primary-muted)]"
                                     : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                                 }`}
                         >
                             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
                                 <div
                                     className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${config
-                                            ? "bg-blue-50 text-blue-600"
-                                            : "bg-gray-100 text-gray-500"
+                                            ? "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
+                                            : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
                                         }`}
                                 >
                                     <Icon className="h-5 w-5" />
@@ -129,7 +129,7 @@ function EntitySelector({
                                             {meta.label[locale]}
                                         </p>
                                         <ChevronRight
-                                            className={`hidden h-4 w-4 shrink-0 lg:block ${active ? "text-blue-600" : "text-gray-300"
+                                            className={`hidden h-4 w-4 shrink-0 lg:block ${active ? "text-[var(--color-status-approved-text)]" : "text-[var(--color-neutral-300)]"
                                                 }`}
                                         />
                                     </div>
@@ -139,8 +139,8 @@ function EntitySelector({
                                     <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:mt-3 lg:gap-2">
                                         <span
                                             className={`rounded-full px-2 py-1 text-xxs font-semibold ${config
-                                                    ? "bg-emerald-50 text-emerald-700"
-                                                    : "bg-amber-50 text-amber-700"
+                                                    ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
+                                                    : "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
                                                 }`}
                                         >
                                             {config ? copy.configured : copy.missing}
@@ -151,7 +151,7 @@ function EntitySelector({
                                             </span>
                                         )}
                                         {config?.warehouse_id && (
-                                            <span className="rounded-full bg-blue-50 px-2 py-1 text-xxs font-semibold text-blue-700">
+                                            <span className="rounded-full bg-[var(--color-status-approved-bg)] px-2 py-1 text-xxs font-semibold text-[var(--color-status-approved-text)]">
                                                 {copy.warehouseScope}
                                             </span>
                                         )}
@@ -205,8 +205,8 @@ function PipelinePreview({
                     >
                         <span
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xxs ${index === 1 && autoApprove
-                                    ? "bg-amber-100 text-amber-700"
-                                    : "bg-blue-100 text-blue-700"
+                                    ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)]"
+                                    : "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
                                 }`}
                         >
                             {index + 1}
@@ -235,20 +235,20 @@ function MissingConfigPanel({
     const Icon = meta.icon;
 
     return (
-        <div className="mx-4 mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-5 lg:mx-0 lg:mt-0 lg:p-4">
+        <div className="mx-4 mt-4 rounded-lg border border-dashed border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-5 lg:mx-0 lg:mt-0 lg:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600 shadow-sm">
+                    <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)] text-[var(--color-status-pending-text)] shadow-sm">
                         <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-amber-950">
+                        <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
                             {meta.label[locale]}
                         </p>
                         <h2 className="mt-1 text-lg font-bold text-gray-950">
                             {copy.missing}
                         </h2>
-                        <p className="mt-2 text-sm leading-6 text-amber-900">
+                        <p className="mt-2 text-sm leading-6 text-[var(--color-status-pending-text)]">
                             {copy.createDefaultHint}
                         </p>
                     </div>
@@ -359,7 +359,7 @@ function ConfigDetailPanel({
             <div className="border-b border-gray-100 bg-white p-4 max-lg:mx-4 max-lg:mt-4 max-lg:rounded-lg max-lg:border max-lg:shadow-sm sm:p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]">
                             <Icon className="h-6 w-6" />
                         </div>
                         <div>
@@ -367,7 +367,7 @@ function ConfigDetailPanel({
                                 <h1 className="text-lg font-bold text-gray-950">
                                     {meta.label[locale]}
                                 </h1>
-                                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                <span className="rounded-full bg-[var(--color-status-completed-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-status-completed-text)]">
                                     {copy.configured}
                                 </span>
                             </div>
@@ -378,7 +378,7 @@ function ConfigDetailPanel({
                                 <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-600">
                                     {config.warehouse_id ? copy.warehouseScope : copy.globalScope}
                                 </span>
-                                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
+                                <span className="rounded-full bg-[var(--color-status-approved-bg)] px-2.5 py-1 text-[var(--color-status-approved-text)]">
                                     {activeLevels.length} {copy.activeLevels}
                                 </span>
                             </div>
@@ -388,7 +388,7 @@ function ConfigDetailPanel({
                         type="button"
                         onClick={handleSave}
                         disabled={saving}
-                        className="hidden h-8 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
+                        className="hidden h-8 items-center justify-center gap-2 rounded-lg bg-[var(--color-success-icon)] px-4 text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
                     >
                         {saving ? (
                             <Clock3 className="h-4 w-4 animate-spin" />
@@ -411,10 +411,10 @@ function ConfigDetailPanel({
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-3">
                             <div
-                                className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${autoApprove
-                                        ? "bg-amber-50 text-amber-600"
-                                        : "bg-gray-100 text-gray-500"
-                                    }`}
+                                    className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${autoApprove
+                                            ? "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
+                                            : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
+                                        }`}
                             >
                                 <Zap className="h-5 w-5" />
                             </div>
@@ -431,8 +431,8 @@ function ConfigDetailPanel({
                             type="button"
                             onClick={() => setAutoApprove((value) => !value)}
                             className={`flex h-8 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-8 ${autoApprove
-                                    ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)] hover:bg-[var(--color-status-pending-border)]"
+                                : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] hover:bg-[var(--color-neutral-200)]"
                                 }`}
                         >
                             {autoApprove ? (
@@ -444,8 +444,8 @@ function ConfigDetailPanel({
                         </button>
                     </div>
                     {autoApprove && (
-                        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                        <div className="mt-4 flex items-start gap-2 rounded-lg border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-3 py-2 text-xs leading-5 text-[var(--color-status-pending-text)]">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-status-pending-icon)]" />
                             {copy.autoApproveWarning}
                         </div>
                     )}
@@ -474,7 +474,7 @@ function ConfigDetailPanel({
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-success-icon)] text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {saving ? (
                         <Clock3 className="h-4 w-4 animate-spin" />

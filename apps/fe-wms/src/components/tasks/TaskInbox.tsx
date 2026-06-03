@@ -41,20 +41,20 @@ type EntityFilter = (typeof ENTITY_FILTERS)[number]["key"];
 
 function TaskSkeleton() {
     return (
-        <div className="animate-pulse rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="animate-pulse rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
             <div className="flex items-start gap-3">
-                <div className="h-8 w-11 rounded-lg bg-gray-200" />
+                <div className="h-8 w-11 rounded-lg bg-[var(--color-skeleton-base)]" />
                 <div className="min-w-0 flex-1 space-y-2">
-                    <div className="h-3 w-20 rounded bg-gray-200" />
-                    <div className="h-4 w-40 rounded bg-gray-200" />
-                    <div className="h-3 w-28 rounded bg-gray-100" />
+                    <div className="h-3 w-20 rounded bg-[var(--color-skeleton-base)]" />
+                    <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
+                    <div className="h-3 w-28 rounded bg-[var(--color-neutral-100)]" />
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-gray-100" />
+                <div className="h-8 w-8 rounded-lg bg-[var(--color-neutral-100)]" />
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="h-8 rounded-lg bg-gray-100" />
-                <div className="h-8 rounded-lg bg-gray-100" />
-                <div className="h-8 rounded-lg bg-gray-100" />
+                <div className="h-8 rounded-lg bg-[var(--color-neutral-100)]" />
+                <div className="h-8 rounded-lg bg-[var(--color-neutral-100)]" />
+                <div className="h-8 rounded-lg bg-[var(--color-neutral-100)]" />
             </div>
         </div>
     );
@@ -70,16 +70,16 @@ function StatTile({
     tone: "blue" | "emerald" | "amber";
 }) {
     const toneClass = {
-        blue: "bg-blue-50 text-blue-700 ring-blue-100",
-        emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-        amber: "bg-amber-50 text-amber-700 ring-amber-100",
+        blue: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-[var(--color-status-approved-border)]",
+        emerald: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] ring-[var(--color-success-border)]",
+        amber: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)] ring-[var(--color-status-pending-border)]",
     }[tone];
 
     return (
-        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase text-gray-400">{label}</p>
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{label}</p>
             <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-lg font-bold text-gray-950">{value}</span>
+                <span className="text-lg font-bold text-[var(--color-text-primary)]">{value}</span>
                 <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ring-1 ${toneClass}`}>
                     <Layers className="h-4 w-4" />
                 </span>
@@ -109,15 +109,17 @@ function EntityFilterButton({
             onClick={onClick}
             className={`flex h-8 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors active:scale-[0.98] ${
                 active
-                    ? "border-blue-200 bg-blue-50 text-blue-700"
-                    : "border-gray-100 bg-white text-gray-600 hover:border-gray-200 hover:bg-gray-50"
+                    ? "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
+                    : "border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-neutral-50)]"
             }`}
         >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
             <span
                 className={`rounded-full px-2 py-0.5 text-xxs ${
-                    active ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                    active
+                        ? "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
+                        : "bg-[var(--color-neutral-100)] text-[var(--color-text-muted)]"
                 }`}
             >
                 {count}
@@ -128,12 +130,12 @@ function EntityFilterButton({
 
 function EmptyState({ title, hint }: { title: string; hint: string }) {
     return (
-        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-14 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-50">
-                <Inbox className="h-7 w-7 text-gray-300" />
+        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-14 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[var(--color-neutral-50)]">
+                <Inbox className="h-7 w-7 text-[var(--color-neutral-300)]" />
             </div>
-            <p className="mt-4 text-sm font-semibold text-gray-700">{title}</p>
-            <p className="mt-1 text-xs text-gray-400">{hint}</p>
+            <p className="mt-4 text-sm font-semibold text-[var(--color-text-secondary)]">{title}</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{hint}</p>
         </div>
     );
 }
@@ -190,18 +192,18 @@ export default function TaskInbox() {
 
     return (
         <div className="flex w-full flex-col gap-5">
-            <div className="rounded-lg border border-gray-100 bg-white px-4 py-5 shadow-sm sm:px-5">
+            <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-5 shadow-sm sm:px-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-1 ring-[var(--color-status-approved-border)]">
                             <ClipboardCheck className="h-6 w-6" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase text-blue-600">
+                            <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
                                 {t.tasks.workspaceLabel}
                             </p>
-                            <h1 className="mt-1 text-lg font-bold text-gray-950">{t.tasks.title}</h1>
-                            <p className="mt-1 text-sm text-gray-500">
+                            <h1 className="mt-1 text-lg font-bold text-[var(--color-text-primary)]">{t.tasks.title}</h1>
+                            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                                 {loading
                                     ? t.tasks.loading
                                     : `${taskStats.total} ${t.tasks.pendingCount}`}
@@ -238,8 +240,8 @@ export default function TaskInbox() {
                 <section className="min-w-0">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
-                            <h2 className="text-base font-bold text-gray-950">{t.tasks.queueTitle}</h2>
-                            <p className="text-xs text-gray-500">
+                            <h2 className="text-base font-bold text-[var(--color-text-primary)]">{t.tasks.queueTitle}</h2>
+                            <p className="text-xs text-[var(--color-text-muted)]">
                                 {loading
                                     ? t.tasks.loading
                                     : `${visibleTasks.length} ${t.tasks.visibleCount}`}
@@ -271,36 +273,36 @@ export default function TaskInbox() {
 
                 <aside className="hidden xl:block">
                     <div className="sticky top-4 space-y-3">
-                        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
-                            <p className="text-xs font-semibold uppercase text-gray-400">
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
+                            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
                                 {t.tasks.summary.title}
                             </p>
                             <div className="mt-4 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-500">{t.tasks.summary.levels}</span>
-                                    <span className="text-sm font-bold text-gray-950">
+                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.levels}</span>
+                                    <span className="text-sm font-bold text-[var(--color-text-primary)]">
                                         {taskStats.levelCount}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-500">{t.tasks.summary.imports}</span>
-                                    <span className="text-sm font-bold text-emerald-700">
+                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.imports}</span>
+                                    <span className="text-sm font-bold text-[var(--color-success-text-strong)]">
                                         {taskStats.importCount}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-500">{t.tasks.summary.exports}</span>
-                                    <span className="text-sm font-bold text-amber-700">
+                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.exports}</span>
+                                    <span className="text-sm font-bold text-[var(--color-status-pending-text)]">
                                         {taskStats.exportCount}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-                            <p className="text-sm font-semibold text-blue-800">
+                        <div className="rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] p-4">
+                            <p className="text-sm font-semibold text-[var(--color-status-approved-text)]">
                                 {t.tasks.summary.realtimeTitle}
                             </p>
-                            <p className="mt-1 text-xs leading-5 text-blue-700">
+                            <p className="mt-1 text-xs leading-5 text-[var(--color-status-approved-text)]">
                                 {t.tasks.summary.realtimeHint}
                             </p>
                         </div>

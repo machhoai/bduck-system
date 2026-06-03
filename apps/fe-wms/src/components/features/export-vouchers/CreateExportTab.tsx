@@ -364,7 +364,7 @@ export default function CreateExportTab({
                         <div key={s.id} className="flex items-center gap-1">
                             {index > 0 && (
                                 <div
-                                    className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-600" : "bg-gray-200"
+                                    className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-[var(--color-status-export-icon)]" : "bg-[var(--color-neutral-200)]"
                                         }`}
                                 />
                             )}
@@ -375,10 +375,10 @@ export default function CreateExportTab({
                                 }}
                                 disabled={!isCompleted && !isActive}
                                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isActive
-                                    ? "bg-orange-600 text-white shadow-sm"
+                                    ? "bg-[var(--color-status-export-icon)] text-white shadow-sm"
                                     : isCompleted
-                                        ? "bg-orange-100 text-orange-600"
-                                        : "bg-gray-100 text-gray-400"
+                                        ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
+                                        : "bg-[var(--color-neutral-100)] text-[var(--color-neutral-400)]"
                                     }`}
                             >
                                 <Icon size={14} />
@@ -406,8 +406,8 @@ export default function CreateExportTab({
                                             setDestinationWarehouseId("");
                                         }}
                                         className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${exportType === et.value
-                                            ? "border-orange-600 bg-orange-50 text-orange-700"
-                                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                            ? "border-[var(--color-status-export-icon)] bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]"
+                                            : "border-[var(--color-neutral-200)] bg-white text-[var(--color-neutral-600)] hover:border-[var(--color-neutral-300)]"
                                             }`}
                                     >
                                         {copy[et.labelKey]}
@@ -426,7 +426,7 @@ export default function CreateExportTab({
                                         value={warehouseId}
                                         onChange={(e) => setWarehouseId(e.target.value)}
                                         disabled={warehousesLoading}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                                        className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
                                     >
                                         <option value="">
                                             {warehousesLoading ? copy.loading : copy.chooseSource}
@@ -450,7 +450,7 @@ export default function CreateExportTab({
                                         value={destinationWarehouseId}
                                         onChange={(e) => setDestinationWarehouseId(e.target.value)}
                                         disabled={warehousesLoading}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                                        className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
                                     >
                                         <option value="">
                                             {warehousesLoading
@@ -469,7 +469,7 @@ export default function CreateExportTab({
                                 {warehouseId &&
                                     destinationWarehouseId &&
                                     warehouseId === destinationWarehouseId && (
-                                        <div className="col-span-full flex items-center gap-1.5 text-xs text-red-500">
+                                        <div className="col-span-full flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
                                             <AlertTriangle size={14} />
                                             <span>{copy.sameWarehouse}</span>
                                         </div>
@@ -486,7 +486,7 @@ export default function CreateExportTab({
                                     value={warehouseId}
                                     onChange={(e) => setWarehouseId(e.target.value)}
                                     disabled={warehousesLoading}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+                                    className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
                                 >
                                     <option value="">
                                         {warehousesLoading ? copy.loading : copy.chooseWarehouse}
@@ -515,13 +515,13 @@ export default function CreateExportTab({
                                         ? copy.reasonPlaceholder
                                         : copy.notesPlaceholder
                                 }
-                                className={`w-full resize-none rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 ${exportType === "ADJUSTMENT" && notes.trim().length === 0
-                                    ? "border-red-300"
-                                    : "border-gray-200"
+                                className={`w-full resize-none rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] ${exportType === "ADJUSTMENT" && notes.trim().length === 0
+                                    ? "border-[var(--color-error-border)]"
+                                    : "border-[var(--color-border-subtle)]"
                                     }`}
                             />
                             {exportType === "ADJUSTMENT" && notes.trim().length === 0 && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="mt-1 text-xs text-[var(--color-error-text)]">
                                     {copy.reasonRequired}
                                 </p>
                             )}
@@ -552,7 +552,7 @@ export default function CreateExportTab({
                                 value={productSearch}
                                 onChange={(e) => setProductSearch(e.target.value)}
                                 placeholder={copy.searchProduct}
-                                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                                className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)]"
                             />
                         </div>
 
@@ -571,7 +571,7 @@ export default function CreateExportTab({
                                     return (
                                         <div
                                             key={p.id}
-                                            className={`flex items-center gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 ${isAdded ? "bg-orange-50 opacity-60" : "hover:bg-white"
+                                            className={`flex items-center gap-3 border-b border-[var(--color-border-soft)] px-3 py-2 last:border-b-0 ${isAdded ? "bg-[var(--color-status-export-bg)] opacity-60" : "hover:bg-white"
                                                 }`}
                                         >
                                             <div className="min-w-0 flex-1">
@@ -587,7 +587,7 @@ export default function CreateExportTab({
                                                 type="button"
                                                 disabled={isAdded}
                                                 onClick={() => addProduct(p.id)}
-                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-status-export-icon)] text-white transition-all hover:bg-[var(--color-status-export-text)] disabled:cursor-not-allowed disabled:opacity-30"
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -623,7 +623,7 @@ export default function CreateExportTab({
                                             >
                                                 <div className="mb-2 flex items-center justify-between">
                                                     <div className="flex min-w-0 items-center gap-2">
-                                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-xxs font-semibold text-orange-600">
+                                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-status-export-bg-muted)] text-xxs font-semibold text-[var(--color-status-export-text)]">
                                                             {index + 1}
                                                         </span>
                                                         <span className="truncate text-sm font-medium text-gray-900">
@@ -636,7 +636,7 @@ export default function CreateExportTab({
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItem(item.id)}
-                                                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-[var(--color-error-text)] hover:bg-[var(--color-error-bg)]"
                                                     >
                                                         <Trash2 size={12} />
                                                         {copy.delete}
@@ -658,7 +658,7 @@ export default function CreateExportTab({
                                                                 )
                                                             }
                                                             min={1}
-                                                            className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400"
+                                                            className="w-full rounded border border-[var(--color-border-subtle)] bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)]"
                                                         />
                                                     </label>
                                                     <label>
@@ -676,7 +676,7 @@ export default function CreateExportTab({
                                                                 )
                                                             }
                                                             min={0}
-                                                            className="w-full rounded border border-gray-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400"
+                                                            className="w-full rounded border border-[var(--color-border-subtle)] bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)]"
                                                         />
                                                     </label>
                                                     <label>
@@ -703,9 +703,9 @@ export default function CreateExportTab({
                                                                     disabled={
                                                                         isLoading || !warehouseId || !hasLocations
                                                                     }
-                                                                    className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-orange-400 disabled:opacity-50 ${!hasLocations && !isLoading && warehouseId
-                                                                        ? "border-amber-300"
-                                                                        : "border-gray-200"
+                                                                    className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50 ${!hasLocations && !isLoading && warehouseId
+                                                                        ? "border-[var(--color-status-pending-border)]"
+                                                                        : "border-[var(--color-border-subtle)]"
                                                                         }`}
                                                                 >
                                                                     <option value="">
@@ -747,7 +747,7 @@ export default function CreateExportTab({
                                                         );
                                                         if (item.quantity <= atp) return null;
                                                         return (
-                                                            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xxs text-amber-700">
+                                                            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
                                                                 <AlertTriangle
                                                                     size={12}
                                                                     className="shrink-0"
@@ -852,7 +852,7 @@ export default function CreateExportTab({
                         type="button"
                         onClick={() => canGoNext() && setStep((step + 1) as StepId)}
                         disabled={!canGoNext()}
-                        className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-orange-600 disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-status-export-icon)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-status-export-text)] disabled:opacity-50"
                     >
                         {copy.next}
                         <ChevronRight size={14} />
@@ -862,7 +862,7 @@ export default function CreateExportTab({
                         type="button"
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-600 disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-status-completed-icon)] px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-[var(--color-status-completed-text)] disabled:opacity-50"
                     >
                         {isSubmitting ? copy.submitting : copy.submit}
                     </button>

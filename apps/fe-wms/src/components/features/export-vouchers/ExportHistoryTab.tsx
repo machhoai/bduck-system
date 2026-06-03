@@ -28,8 +28,8 @@ const STATUS_CONFIG: Record<
     string,
     { bg: string; text: string; Icon: React.ElementType }
 > = {
-    COMPLETED: { bg: "bg-emerald-50", text: "text-emerald-700", Icon: CheckCircle },
-    CANCELLED: { bg: "bg-gray-100", text: "text-gray-600", Icon: XCircle },
+    COMPLETED: { bg: "bg-[var(--color-status-completed-bg)]", text: "text-[var(--color-status-completed-text)]", Icon: CheckCircle },
+    CANCELLED: { bg: "bg-[var(--color-status-draft-bg)]", text: "text-[var(--color-status-draft-text)]", Icon: XCircle },
 };
 
 function formatDate(value: unknown): string {
@@ -163,7 +163,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                         onClick={() => setStatusFilter("")}
                         className={`h-6 shrink-0 rounded-full px-2 text-xxs font-semibold transition-colors ${
                             !statusFilter
-                                ? "bg-orange-600 text-white"
+                                ? "bg-[var(--color-status-export-icon)] text-[var(--color-text-on-dark)]"
                                 : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)]"
                         }`}
                     >
@@ -228,7 +228,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                             setStatusFilter("");
                             setWarehouseFilter("");
                         }}
-                        className="h-6 px-2 text-xxs font-medium text-orange-700 hover:underline"
+                        className="h-6 px-2 text-xxs font-medium text-[var(--color-status-export-text)] hover:underline"
                     >
                         {exportText.filter?.clearFilters}
                     </button>
@@ -313,7 +313,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => onClone(getClonePayload(voucher))}
-                                        className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-orange-50 px-2 text-xxs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+                                        className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-status-export-bg)] px-2 text-xxs font-semibold text-[var(--color-status-export-text)] transition-colors hover:bg-[var(--color-status-export-bg-muted)]"
                                         title={exportText.actions?.clone}
                                     >
                                         <Copy size={12} />

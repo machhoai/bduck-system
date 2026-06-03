@@ -46,9 +46,9 @@ function MetricCard({
     title?: string;
 }) {
     const toneClass = {
-        orange: "bg-orange-50 text-orange-700",
-        amber: "bg-amber-50 text-amber-700",
-        emerald: "bg-emerald-50 text-emerald-700",
+        orange: "bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]",
+        amber: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
+        emerald: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
     }[tone];
 
     return (
@@ -117,7 +117,7 @@ export default function TransferPage() {
             {/* Header */}
             <div className="sticky flex justify-between items-center top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
                 <div className="flex items-start h-full gap-3">
-                    <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-orange-500/30 text-orange-700">
+                    <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]">
                         <ArrowRightLeft size={20} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -135,19 +135,19 @@ export default function TransferPage() {
                         title={transferText.metrics?.inProgress ?? t.transfer.tabs.inProgress}
                         value={activeOrders.length}
                         tone="orange"
-                        icon={<IonIcon icon={playForward} size={18} className="text-orange-500" />}
+                        icon={<IonIcon icon={playForward} size={18} className="text-[var(--color-status-export-icon)]" />}
                     />
                     <MetricCard
                         title={transferText.metrics?.pendingApproval ?? t.transfer.status.PENDING_APPROVAL}
                         value={pendingApprovalCount}
                         tone="amber"
-                        icon={<IonIcon icon={timer} size={18} className="text-amber-500" />}
+                        icon={<IonIcon icon={timer} size={18} className="text-[var(--color-status-pending-icon)]" />}
                     />
                     <MetricCard
                         title={transferText.metrics?.completed ?? t.transfer.status.COMPLETED}
                         value={completedOrders.length}
                         tone="emerald"
-                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-emerald-500" />}
+                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-[var(--color-success-icon)]" />}
                     />
                 </div>
             </div>
@@ -173,16 +173,16 @@ export default function TransferPage() {
                                     type="button"
                                     onClick={() => handleTabSwitch(tab.id)}
                                     className={`group relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${isActive
-                                        ? "text-orange-600"
+                                        ? "text-[var(--color-status-export-text)]"
                                         : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
                                         }`}
                                 >
-                                    <Icon size={16} className={isActive ? "text-orange-600" : ""} />
+                                    <Icon size={16} className={isActive ? "text-[var(--color-status-export-text)]" : ""} />
                                     <span>{t.transfer.tabs[tab.labelKey]}</span>
                                     {badgeCount > 0 && (
                                         <span
                                             className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold ${isActive
-                                                ? "bg-orange-600 text-white"
+                                                ? "bg-[var(--color-status-export-icon)] text-[var(--color-text-on-dark)]"
                                                 : "bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"
                                                 }`}
                                         >
@@ -192,7 +192,7 @@ export default function TransferPage() {
                                     {/* Active underline indicator */}
                                     <span
                                         className={`absolute bottom-0 left-2 right-2 h-0.5 rounded-full transition-all duration-200 ${isActive
-                                            ? "bg-orange-600"
+                                            ? "bg-[var(--color-status-export-icon)]"
                                             : "bg-transparent group-hover:bg-[var(--color-border-subtle)]"
                                             }`}
                                     />

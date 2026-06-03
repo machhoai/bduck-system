@@ -45,9 +45,9 @@ function MetricCard({
     title?: string;
 }) {
     const toneClass = {
-        blue: "bg-blue-50 text-blue-700",
-        emerald: "bg-emerald-50 text-emerald-700",
-        amber: "bg-amber-50 text-amber-700",
+        blue: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
+        emerald: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+        amber: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
     }[tone];
 
     return (
@@ -134,19 +134,19 @@ export default function ImportVoucherPage() {
                 </div>
                 <div className="flex h-10 items-center px-4 bg-white rounded-2xl border border-[var(--color-border-subtle)]">
                     <MetricCard
-                        icon={<IonIcon icon={playForward} size={18} className="text-blue-500" />}
+                        icon={<IonIcon icon={playForward} size={18} className="text-[var(--color-status-approved-icon)]" />}
                         value={activeVouchers.length}
                         tone="blue"
                         title={t.importVoucher.tabs.create}
                     />
                     <MetricCard
-                        icon={<IonIcon icon={time} size={18} className="text-amber-500" />}
+                        icon={<IonIcon icon={time} size={18} className="text-[var(--color-status-pending-icon)]" />}
                         value={pendingApprovalCount}
                         tone="amber"
                         title={t.importVoucher.tabs.inProgress}
                     />
                     <MetricCard
-                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-emerald-500" />}
+                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-[var(--color-success-icon)]" />}
                         value={completedVouchers.length}
                         tone="emerald"
                         title={t.importVoucher.tabs.history}

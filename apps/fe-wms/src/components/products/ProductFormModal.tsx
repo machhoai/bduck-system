@@ -324,7 +324,7 @@ export function ProductFormModal({
                 {/* Category */}
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Danh mục <span className="text-red-500">*</span>
+                    Danh mục <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <select
                     required={activeTab === "info"}
@@ -348,7 +348,7 @@ export function ProductFormModal({
                 {/* Type */}
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Loại hình <span className="text-red-500">*</span>
+                    Loại hình <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <select
                     required={activeTab === "info"}
@@ -372,7 +372,7 @@ export function ProductFormModal({
                 {/* Name */}
                 <div className="col-span-2">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Tên sản phẩm <span className="text-red-500">*</span>
+                    Tên sản phẩm <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <input
                     required={activeTab === "info"}
@@ -389,7 +389,7 @@ export function ProductFormModal({
                 {/* Code */}
                 <div>
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Mã (SKU) <span className="text-red-500">*</span>
+                    Mã (SKU) <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <input
                     required={activeTab === "info"}
@@ -429,7 +429,7 @@ export function ProductFormModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                      Đơn vị <span className="text-red-500">*</span>
+                      Đơn vị <span className="text-[var(--color-accent-error)]">*</span>
                     </label>
                     <input
                       required={activeTab === "info"}
@@ -569,7 +569,7 @@ export function ProductFormModal({
                         <button
                           type="button"
                           onClick={() => removeImage(i, true)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 bg-[var(--color-accent-error)] text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X size={14} />
                         </button>
@@ -589,7 +589,7 @@ export function ProductFormModal({
                         <button
                           type="button"
                           onClick={() => removeImage(i, false)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 bg-[var(--color-accent-error)] text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X size={14} />
                         </button>

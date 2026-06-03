@@ -231,12 +231,12 @@ export default function TransferRouteMap({
 
     if (webGlError || !MAPBOX_TOKEN) {
         return (
-            <section className="overflow-hidden rounded-xl border border-gray-100 bg-white">
-                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
-                    <MapPin size={16} className="text-orange-500" />
-                    <p className="text-sm font-semibold text-gray-900">{copy.routePreview}</p>
+            <section className="overflow-hidden rounded-xl border border-[var(--color-border-soft)] bg-white">
+                <div className="flex items-center gap-2 border-b border-[var(--color-border-soft)] px-4 py-3">
+                    <MapPin size={16} className="text-[var(--color-status-export-icon)]" />
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.routePreview}</p>
                 </div>
-                <div className="flex h-48 items-center justify-center bg-gray-50 text-xs text-gray-400">
+                <div className="flex h-48 items-center justify-center bg-[var(--color-surface-subtle)] text-xs text-[var(--color-text-muted)]">
                     {webGlError ? copy.webGlError : "Missing NEXT_PUBLIC_MAPBOX_TOKEN"}
                 </div>
             </section>
@@ -244,7 +244,7 @@ export default function TransferRouteMap({
     }
 
     return (
-        <section className="relative overflow-hidden rounded-xl border border-gray-100 bg-white">
+        <section className="relative overflow-hidden rounded-xl border border-[var(--color-border-soft)] bg-white">
             {/* Map */}
             <div className="relative h-56 sm:h-64 lg:h-72">
                 <Map
@@ -302,10 +302,10 @@ export default function TransferRouteMap({
                     {srcCoord && (
                         <Marker longitude={srcCoord.longitude} latitude={srcCoord.latitude} anchor="bottom">
                             <div className="flex flex-col items-center">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full border-3 border-white bg-orange-500 text-white shadow-lg">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full border-3 border-white bg-[var(--color-status-export-icon)] text-white shadow-lg">
                                     <WarehouseIcon size={14} />
                                 </div>
-                                <span className="mt-0.5 rounded bg-orange-500 px-1.5 py-0.5 text-micro font-bold text-white shadow">
+                                <span className="mt-0.5 rounded bg-[var(--color-status-export-icon)] px-1.5 py-0.5 text-micro font-bold text-white shadow">
                                     {copy.from}
                                 </span>
                             </div>
@@ -316,10 +316,10 @@ export default function TransferRouteMap({
                     {dstCoord && (
                         <Marker longitude={dstCoord.longitude} latitude={dstCoord.latitude} anchor="bottom">
                             <div className="flex flex-col items-center">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full border-3 border-white bg-blue-500 text-white shadow-lg">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full border-3 border-white bg-[var(--color-status-transit-icon)] text-white shadow-lg">
                                     <WarehouseIcon size={14} />
                                 </div>
-                                <span className="mt-0.5 rounded bg-blue-500 px-1.5 py-0.5 text-micro font-bold text-white shadow">
+                                <span className="mt-0.5 rounded bg-[var(--color-status-transit-icon)] px-1.5 py-0.5 text-micro font-bold text-white shadow">
                                     {copy.to}
                                 </span>
                             </div>
@@ -331,8 +331,8 @@ export default function TransferRouteMap({
                 {statusLabel && (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-[2px]">
                         <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 shadow-sm">
-                            <Navigation size={14} className="text-gray-400" />
-                            <span className="text-xs font-medium text-gray-500">{statusLabel}</span>
+                            <Navigation size={14} className="text-[var(--color-text-muted)]" />
+                            <span className="text-xs font-medium text-[var(--color-text-muted)]">{statusLabel}</span>
                         </div>
                     </div>
                 )}
@@ -341,8 +341,8 @@ export default function TransferRouteMap({
                 {routeLoading && (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                         <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 shadow-sm">
-                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-                            <span className="text-xs font-medium text-gray-500">{copy.loadingRoute}</span>
+                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-status-export-icon)] border-t-transparent" />
+                            <span className="text-xs font-medium text-[var(--color-text-muted)]">{copy.loadingRoute}</span>
                         </div>
                     </div>
                 )}
@@ -350,7 +350,7 @@ export default function TransferRouteMap({
                 {/* Route error */}
                 {routeError && !routeLoading && (
                     <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2">
-                        <div className="rounded-full bg-red-50 px-3 py-1 text-xxs font-medium text-red-500 shadow-sm">
+                        <div className="rounded-full bg-[var(--color-error-bg)] px-3 py-1 text-xxs font-medium text-[var(--color-error-icon)] shadow-sm">
                             {copy.routeError}
                         </div>
                     </div>
@@ -359,30 +359,30 @@ export default function TransferRouteMap({
 
             {/* Route info bar */}
             {(sourceWarehouse || destinationWarehouse) && (
-                <div className="absolute top-2 left-2 rounded-full w-fit z-50 flex items-center gap-2 border-b border-gray-50 bg-white/80 px-2 py-2">
+                <div className="absolute top-2 left-2 rounded-full w-fit z-50 flex items-center gap-2 border-b border-[var(--color-border-soft)] bg-white/80 px-2 py-2">
                     <div className="flex items-center gap-1.5">
-                        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ${sourceWarehouse ? "bg-orange-500" : "bg-gray-300"}`}>
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ${sourceWarehouse ? "bg-[var(--color-status-export-icon)]" : "bg-[var(--color-neutral-300)]"}`}>
                             <WarehouseIcon size={10} />
                         </span>
-                        <span className="text-xs font-medium text-gray-700">
+                        <span className="text-xs font-medium text-[var(--color-text-secondary)]">
                             {sourceWarehouse?.name || copy.waitingSource}
                         </span>
                     </div>
-                    <ArrowRight size={14} className="shrink-0 text-gray-400" />
+                    <ArrowRight size={14} className="shrink-0 text-[var(--color-text-muted)]" />
                     <div className="flex items-center gap-1.5">
-                        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ${destinationWarehouse ? "bg-blue-500" : "bg-gray-300"}`}>
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ${destinationWarehouse ? "bg-[var(--color-status-transit-icon)]" : "bg-[var(--color-neutral-300)]"}`}>
                             <WarehouseIcon size={10} />
                         </span>
-                        <span className="text-xs font-medium text-gray-700">
+                        <span className="text-xs font-medium text-[var(--color-text-secondary)]">
                             {destinationWarehouse?.name || copy.waitingDest}
                         </span>
                     </div>
                     {route && !routeLoading && (
                         <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xxs font-semibold text-blue-600">
+                            <span className="rounded-full bg-[var(--color-status-approved-bg)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-approved-text)]">
                                 {formatDistance(route.distance)}
                             </span>
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xxs font-semibold text-emerald-600">
+                            <span className="rounded-full bg-[var(--color-status-completed-bg)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-completed-text)]">
                                 ~{formatDuration(route.duration)}
                             </span>
                         </div>

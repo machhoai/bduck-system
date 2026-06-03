@@ -28,7 +28,7 @@ function weatherIcon(code: number) {
 }
 
 /* ── Day labels ── */
-const DAYS_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"] as const;
+const DAYS_VI = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"] as const;
 const DAYS_ZH = ["\u65e5", "\u4e00", "\u4e8c", "\u4e09", "\u56db", "\u4e94", "\u516d"] as const;
 
 const MONTHS_VI = [
@@ -129,7 +129,7 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
 
     return (
         <div
-            className="relative flex h-full cursor-default items-center overflow-hidden rounded-full bg-white transition-[width] duration-300 ease-in-out"
+            className="relative flex h-full cursor-default items-center overflow-hidden rounded-full bg-white transition-[width] duration-300 ease-in-out shadow-sm"
             style={{ width: currentWidth || "auto" }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -140,17 +140,17 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200 ${hovered ? "pointer-events-none absolute opacity-0" : "opacity-100"
                     }`}
             >
-                <span className="text-xxs font-semibold text-gray-500">
+                <span className="text-xs font-semibold text-gray-500">
                     {dayLabel}
                 </span>
-                <span className="text-xxs font-bold tabular-nums text-gray-800">
+                <span className="text-xs font-bold tabular-nums text-gray-800">
                     {timeStr}
                 </span>
                 {weather && (
                     <>
                         <span className="mx-0.5 h-3 w-px bg-gray-200" />
                         {WIcon && <WIcon size={12} className="text-amber-500" />}
-                        <span className="text-xxs font-semibold text-gray-600">
+                        <span className="text-xs font-semibold text-gray-600">
                             {weather.temp}&deg;C
                         </span>
                     </>
@@ -163,18 +163,17 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200 ${hovered ? "opacity-100" : "pointer-events-none absolute opacity-0"
                     }`}
             >
-                <span className="text-xxs font-bold tabular-nums text-gray-800">
-                    {timeStr}
-                </span>
-                <span className="mx-0.5 h-3 w-px bg-gray-200" />
-                <span className="text-xxs font-semibold text-gray-500">
+                <span className="text-xs font-semibold text-gray-500">
                     {fullDate}
+                </span>
+                <span className="text-xs font-bold tabular-nums text-gray-800">
+                    {timeStr}
                 </span>
                 {weather && (
                     <>
                         <span className="mx-0.5 h-3 w-px bg-gray-200" />
                         {WIcon && <WIcon size={12} className="text-amber-500" />}
-                        <span className="text-xxs font-semibold text-gray-600">
+                        <span className="text-xs font-semibold text-gray-600">
                             {weather.temp}&deg;C
                         </span>
                     </>

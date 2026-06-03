@@ -26,9 +26,9 @@ const STATUS_CONFIG: Record<
     string,
     { bg: string; text: string; Icon: React.ElementType }
 > = {
-    COMPLETED: { bg: "bg-emerald-50", text: "text-emerald-700", Icon: CheckCircle },
-    REJECTED: { bg: "bg-red-50", text: "text-red-600", Icon: XCircle },
-    CANCELLED: { bg: "bg-gray-100", text: "text-gray-600", Icon: XCircle },
+    COMPLETED: { bg: "bg-[var(--color-status-completed-bg)]", text: "text-[var(--color-status-completed-text)]", Icon: CheckCircle },
+    REJECTED: { bg: "bg-[var(--color-status-rejected-bg)]", text: "text-[var(--color-status-rejected-text)]", Icon: XCircle },
+    CANCELLED: { bg: "bg-[var(--color-status-draft-bg)]", text: "text-[var(--color-status-draft-text)]", Icon: XCircle },
 };
 
 function formatDate(value: unknown): string {

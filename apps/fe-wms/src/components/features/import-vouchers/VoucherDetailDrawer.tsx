@@ -35,6 +35,7 @@ import { db } from "@/lib/firebase";
 import { useTranslation } from "@/lib/i18n";
 import type { ImportVoucher } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
+import { getStatusStyle } from "@/components/ui/StatusBadge";
 
 interface VoucherDetailDrawerProps {
     voucher: ImportVoucher;
@@ -93,12 +94,12 @@ function Field({
 }) {
     return (
         <div className="flex items-start gap-3 py-2.5">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
                 <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-gray-400">{label}</p>
-                <p className="mt-0.5 break-all text-sm font-medium text-gray-900">
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+                <p className="mt-0.5 break-all text-sm font-medium text-[var(--color-text-primary)]">
                     {value || "—"}
                 </p>
             </div>
@@ -186,16 +187,7 @@ export default function VoucherDetailDrawer({
 
     const statusKey = voucher.status as keyof typeof t.importVoucher.status;
     const statusLabel = t.importVoucher.status[statusKey] || voucher.status;
-    const statusColorMap: Record<string, string> = {
-        DRAFT: "bg-gray-100 text-gray-600",
-        PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-        APPROVED: "bg-emerald-100 text-emerald-700",
-        RECEIVING: "bg-blue-100 text-blue-700",
-        COMPLETED: "bg-green-100 text-green-700",
-        CANCELLED: "bg-red-100 text-red-600",
-        REJECTED: "bg-red-100 text-red-600",
-    };
-    const statusColor = statusColorMap[voucher.status] || "bg-gray-100 text-gray-600";
+    const statusColor = getStatusStyle(voucher.status);
 
     const totalValue = useMemo(
         () => items.reduce((sum, i) => sum + i.expected_quantity * i.unit_price, 0),
@@ -213,19 +205,19 @@ export default function VoucherDetailDrawer({
 
             <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
+                <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900">
+                        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
                             {t.importVoucher.detail.title}
                         </h2>
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                             {voucher.voucher_number}
                         </p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -252,28 +244,28 @@ export default function VoucherDetailDrawer({
 
                     {/* Items */}
                     <div className="mt-4 px-4">
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                             {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                         </h3>
                         {loadingItems ? (
                             <div className="animate-pulse space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
-                                        <div className="h-4 w-40 rounded bg-gray-200" />
-                                        <div className="mt-2 h-3 w-24 rounded bg-gray-100" />
+                                    <div key={i} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 p-3">
+                                        <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
+                                        <div className="mt-2 h-3 w-24 rounded bg-[var(--color-neutral-100)]" />
                                     </div>
                                 ))}
                             </div>
                         ) : items.length === 0 ? (
-                            <p className="py-4 text-center text-sm text-gray-400">{t.tasks.items.empty}</p>
+                            <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">{t.tasks.items.empty}</p>
                         ) : (
                             <div className="space-y-2">
                                 {items.map((item, idx) => (
-                                    <div key={item.id || idx} className="rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3">
+                                    <div key={item.id || idx} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-4 py-3">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-semibold text-gray-900">{item.product_name}</p>
-                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.product_name}</p>
+                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
                                                     {item.product_code && (
                                                         <span className="flex items-center gap-0.5">
                                                             <Ruler className="h-3 w-3" />
@@ -287,17 +279,17 @@ export default function VoucherDetailDrawer({
                                                         </span>
                                                     )}
                                                     {item.unit && (
-                                                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xxs font-medium text-gray-600">
+                                                        <span className="rounded bg-[var(--color-neutral-100)] px-1.5 py-0.5 text-xxs font-medium text-[var(--color-neutral-600)]">
                                                             {item.unit}
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <p className="flex-shrink-0 text-sm font-semibold text-gray-900">
+                                            <p className="flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
                                                 {formatCurrency(item.expected_quantity * item.unit_price)}đ
                                             </p>
                                         </div>
-                                        <div className="mt-1.5 text-xs text-gray-500">
+                                        <div className="mt-1.5 text-xs text-[var(--color-text-muted)]">
                                             {t.tasks.detail.quantity}: {formatCurrency(item.expected_quantity)}
                                             {item.unit_price > 0 && <> × {formatCurrency(item.unit_price)}đ</>}
                                         </div>
@@ -307,9 +299,9 @@ export default function VoucherDetailDrawer({
                         )}
 
                         {totalValue > 0 && (
-                            <div className="mt-3 flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
-                                <span className="text-sm font-medium text-blue-700">{t.tasks.detail.totalValue}</span>
-                                <span className="text-base font-bold text-blue-800">{formatCurrency(totalValue)}đ</span>
+                            <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-status-approved-bg)] px-4 py-3">
+                                <span className="text-sm font-medium text-[var(--color-status-approved-text)]">{t.tasks.detail.totalValue}</span>
+                                <span className="text-base font-bold text-[var(--color-brand-primary)]">{formatCurrency(totalValue)}đ</span>
                             </div>
                         )}
                     </div>

@@ -97,7 +97,7 @@ export default function SidebarMenuItem({
                     >
                         {label}
                         {showBadge && (
-                            <span className="ml-1.5 inline-flex size-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white">
+                            <span className="ml-1.5 inline-flex size-4 items-center justify-center rounded-full bg-[var(--color-accent-error)] px-1 text-micro font-bold text-white">
                                 {badgeCount}
                             </span>
                         )}

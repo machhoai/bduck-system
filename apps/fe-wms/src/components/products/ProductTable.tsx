@@ -49,13 +49,13 @@ export function ProductTable({
             placeholder="Tìm kiếm theo Tên, Mã SKU hoặc Barcode..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-[var(--color-border-subtle)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] focus:border-[var(--color-border-focus)] transition-all text-sm"
           />
         </div>
 
         <button
           onClick={onAddNew}
-          className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
+          className="w-full sm:w-auto px-5 py-2.5 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
         >
           <Plus size={18} />
           Thêm Sản phẩm
@@ -127,7 +127,7 @@ export function ProductTable({
               filteredProducts.map((product) => (
                 <tr
                   key={product.id}
-                  className="hover:bg-blue-50/30 transition-colors group"
+                  className="hover:bg-[var(--color-brand-primary-muted)] transition-colors group"
                 >
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -154,7 +154,7 @@ export function ProductTable({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <p className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded inline-block text-sm">
+                    <p className="font-medium text-[var(--color-status-approved-text)] bg-[var(--color-status-approved-bg)] px-2 py-0.5 rounded inline-block text-sm">
                       {product.code}
                     </p>
                     {product.barcode && (
@@ -181,7 +181,7 @@ export function ProductTable({
                   </td>
                   <td className="px-4 py-4 text-center">
                     {product.is_serialized ? (
-                      <span className="inline-flex px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                      <span className="inline-flex px-2 py-1 bg-[var(--color-status-completed-bg-muted)] text-[var(--color-status-completed-text)] text-xs font-semibold rounded-full">
                         Có
                       </span>
                     ) : (
@@ -194,7 +194,7 @@ export function ProductTable({
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onEdit(product)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        className="p-1.5 text-[var(--color-status-approved-text)] hover:bg-[var(--color-status-approved-bg)] rounded-md transition-colors"
                         title="Chỉnh sửa"
                       >
                         <Edit2 size={16} />
@@ -209,7 +209,7 @@ export function ProductTable({
                             onDelete(product.id);
                           }
                         }}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        className="p-1.5 text-[var(--color-error-icon)] hover:bg-[var(--color-error-bg)] rounded-md transition-colors"
                         title="Xóa"
                       >
                         <Trash2 size={16} />
