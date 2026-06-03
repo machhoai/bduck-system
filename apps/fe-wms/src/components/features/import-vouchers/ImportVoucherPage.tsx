@@ -10,6 +10,8 @@ import CreateVoucherTab from "./CreateVoucherTab";
 import HistoryTab from "./HistoryTab";
 import ImportVoucherSkeleton from "./ImportVoucherSkeleton";
 import InProgressTab from "./InProgressTab";
+import { IonIcon } from "@/components/ui/IonIcon";
+import { playForward, checkmarkCircle, time } from "ionicons/icons";
 
 type TabId = "create" | "inProgress" | "history";
 
@@ -32,13 +34,15 @@ const TAB_DEFINITIONS: TabDef[] = [
 ];
 
 function MetricCard({
-    label,
+    icon,
     value,
     tone,
+    title
 }: {
-    label: string;
+    icon: React.ReactNode;
     value: number;
     tone: "blue" | "emerald" | "amber";
+    title?: string;
 }) {
     const toneClass = {
         blue: "bg-blue-50 text-blue-700",
@@ -47,12 +51,13 @@ function MetricCard({
     }[tone];
 
     return (
-        <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-            <p className="text-xxs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                {label}
-            </p>
+        <div
+            className="flex items-center justify-center gap-1 px-2"
+            title={title}
+        >
+            {icon}
             <p
-                className={`mt-2 inline-flex rounded-lg px-2 py-1 text-lg font-bold ${toneClass}`}
+                className={`leading-0 inline-flex !bg-transparent text-md font-bold ${toneClass}`}
             >
                 {value}
             </p>
@@ -112,10 +117,10 @@ export default function ImportVoucherPage() {
     }
 
     return (
-        <div className="flex flex-col -mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
-            <div className="sticky top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+        <div className="flex flex-col gap-2 -mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
+            <div className="sticky flex justify-between items-center top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+                <div className="flex items-center h-full gap-3">
+                    <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
                         <PackagePlus size={22} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -127,29 +132,31 @@ export default function ImportVoucherPage() {
                         </p>
                     </div>
                 </div>
-            </div>
-
-            <div className="flex h-full flex-1 flex-col gap-3">
-                <div className="grid grid-cols-3 gap-2 lg:gap-3">
+                <div className="flex h-10 items-center px-4 bg-white rounded-2xl border border-[var(--color-border-subtle)]">
                     <MetricCard
-                        label={t.importVoucher.tabs.inProgress}
+                        icon={<IonIcon icon={playForward} size={18} className="text-blue-500" />}
                         value={activeVouchers.length}
                         tone="blue"
+                        title={t.importVoucher.tabs.create}
                     />
                     <MetricCard
-                        label={t.importVoucher.status.PENDING_APPROVAL}
+                        icon={<IonIcon icon={time} size={18} className="text-amber-500" />}
                         value={pendingApprovalCount}
                         tone="amber"
+                        title={t.importVoucher.tabs.inProgress}
                     />
                     <MetricCard
-                        label={t.importVoucher.tabs.history}
+                        icon={<IonIcon icon={checkmarkCircle} size={18} className="text-emerald-500" />}
                         value={completedVouchers.length}
                         tone="emerald"
+                        title={t.importVoucher.tabs.history}
                     />
                 </div>
+            </div>
 
-                <div className="sticky top-[88px] z-20 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white/95 p-1 shadow-sm backdrop-blur lg:static">
-                    <div className="grid grid-cols-3 gap-1">
+            <div className="flex h-full flex-1 flex-col gap-2">
+                <div className="sticky top-[88px] z-20 lg:static">
+                    <div className="flex items-center border-b border-[var(--color-border-subtle)]">
                         {visibleTabs.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = effectiveTab === tab.id;
@@ -165,25 +172,30 @@ export default function ImportVoucherPage() {
                                     key={tab.id}
                                     type="button"
                                     onClick={() => handleTabSwitch(tab.id)}
-                                    className={`relative flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition-all active:scale-[0.99] sm:text-sm ${isActive
-                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                        : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-secondary)]"
+                                    className={`group relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${isActive
+                                        ? "text-[var(--color-brand-primary)]"
+                                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
                                         }`}
                                 >
-                                    <Icon size={16} />
-                                    <span className="truncate">
-                                        {t.importVoucher.tabs[tab.labelKey]}
-                                    </span>
+                                    <Icon size={16} className={isActive ? "text-[var(--color-brand-primary)]" : ""} />
+                                    <span>{t.importVoucher.tabs[tab.labelKey]}</span>
                                     {badgeCount > 0 && (
                                         <span
                                             className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold ${isActive
-                                                ? "bg-white/20 text-white"
-                                                : "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                                ? "bg-[var(--color-brand-primary)] text-white"
+                                                : "bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"
                                                 }`}
                                         >
-                                            {badgeCount}
+                                            {badgeCount > 99 ? "99+" : badgeCount}
                                         </span>
                                     )}
+                                    {/* Active underline indicator */}
+                                    <span
+                                        className={`absolute bottom-0 left-2 right-2 h-0.5 rounded-full transition-all duration-200 ${isActive
+                                            ? "bg-[var(--color-brand-primary)]"
+                                            : "bg-transparent group-hover:bg-[var(--color-border-subtle)]"
+                                            }`}
+                                    />
                                 </button>
                             );
                         })}

@@ -9,6 +9,7 @@ Hệ thống WMS là ứng dụng có mật độ dữ liệu cực cao (Extreme
 ## 1. Typography (Hệ thống Cỡ chữ Nén)
 Hệ thống sử dụng font mặc định sans-serif, bắt đầu từ kích thước siêu nhỏ (8px):
 
+* **Luật thép: Luôn luôn sử dụng ký tự UTF-8 không chấp nhận loại định dạng ký tự khác.
 * **Micro text (`text-micro` - 8px):** CỠ CHỮ NHỎ NHẤT. Chỉ dùng cho các thông tin siêu phụ trợ: Version numbers, chú thích vi mô (asterisks), các Tag trạng thái bị nhồi nhét trong không gian cực hẹp, hoặc nhãn phụ của biểu đồ.
 * **Nano text (`text-xxs` - 10px):** Dùng cho Tiêu đề cột của bảng dữ liệu (Table Headers - kết hợp `uppercase`, `tracking-wider` và `font-semibold`), Timestamp (ngày giờ phụ), hoặc mô tả phụ dưới tên sản phẩm.
 * **Small text (`text-xs` - 12px):** Dùng cho Text trong các Badge trạng thái tiêu chuẩn, Tooltip, hoặc các Label của Form Input.

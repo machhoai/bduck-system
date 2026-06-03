@@ -553,9 +553,19 @@ export default function CreateVoucherTab({
 
     return (
         <div className="flex flex-1 h-full flex-col gap-4">
-            <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
-                <div className="grid min-w-[640px] grid-cols-4 gap-2 lg:min-w-0">
-                    {STEPS.map((stepConfig) => {
+            <div className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
+                <button
+                    type="button"
+                    onClick={goPrev}
+                    disabled={step === 0}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-30"
+                >
+                    <ChevronLeft size={16} />
+                    {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
+                </button>
+
+                <div className="flex">
+                    {STEPS.map((stepConfig, idx) => {
                         const Icon = stepConfig.icon;
                         const isActive = step === stepConfig.id;
                         const isCompleted = step > stepConfig.id;
@@ -564,28 +574,56 @@ export default function CreateVoucherTab({
                             stepConfig.fallback;
 
                         return (
-                            <button
-                                key={stepConfig.id}
-                                type="button"
-                                disabled={!isCompleted && !isActive}
-                                onClick={() => setStep(stepConfig.id)}
-                                className={`flex h-8 items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left transition-all ${isActive
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : isCompleted
-                                        ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-                                        : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
-                                    }`}
-                            >
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20">
-                                    <Icon size={15} />
-                                </span>
-                                <span className="min-w-0 truncate text-sm font-semibold">
-                                    {label}
-                                </span>
-                            </button>
+                            <div key={stepConfig.id} className="flex items-center gap-1">
+                                {idx > 0 && (
+                                    <div
+                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-orange-500" : "bg-gray-200"
+                                            }`}
+                                    />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isCompleted || isActive) setStep(stepConfig.id);
+                                    }}
+                                    disabled={!isCompleted && !isActive}
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isActive
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : isCompleted
+                                            ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                            : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
+                                        }`}
+                                >
+                                    <Icon size={14} />
+                                    <span className="hidden sm:inline">{label}</span>
+                                </button>
+                            </div>
                         );
                     })}
                 </div>
+
+                {step < 3 ? (
+                    <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={!canGoNext()}
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-brand-primary)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
+                    >
+                        {(t as any).importVoucher?.form?.next ?? "Tiếp theo"}
+                        <ChevronRight size={16} />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-xs font-semibold text-white transition-all disabled:opacity-50"
+                    >
+                        {isSubmitting
+                            ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")
+                            : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
+                    </button>
+                )}
             </div>
 
             {step === 0 && (
@@ -1057,43 +1095,6 @@ export default function CreateVoucherTab({
                     </aside>
                 </section>
             )}
-
-            <div className="fixed bottom-[76px] left-0 right-0 z-30 border-t border-[var(--color-border-subtle)] bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:static lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none">
-                <div className="flex items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={goPrev}
-                        disabled={step === 0}
-                        className="flex h-8 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] disabled:opacity-30 lg:h-8"
-                    >
-                        <ChevronLeft size={16} />
-                        {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
-                    </button>
-
-                    {step < 3 ? (
-                        <button
-                            type="button"
-                            onClick={goNext}
-                            disabled={!canGoNext()}
-                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.99] disabled:opacity-50 lg:h-8 lg:flex-none"
-                        >
-                            {(t as any).importVoucher?.form?.next ?? "Tiếp theo"}
-                            <ChevronRight size={16} />
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 text-sm font-semibold text-white transition-all hover:brightness-95 active:scale-[0.99] disabled:opacity-50 lg:h-8 lg:flex-none"
-                        >
-                            {isSubmitting
-                                ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")
-                                : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
-                        </button>
-                    )}
-                </div>
-            </div>
         </div>
     );
 }

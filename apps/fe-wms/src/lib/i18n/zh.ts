@@ -1019,6 +1019,11 @@ Object.assign(zh.importVoucher, {
     completed: "已完成",
     cancelled: "已取消",
     results: "个结果",
+    allStatuses: "全部",
+    sortBy: "排序",
+    newestFirst: "最新优先",
+    oldestFirst: "最旧优先",
+    voucherAsc: "单号 A-Z",
   },
   actions: {
     viewDetail: "查看详情",
@@ -1084,12 +1089,18 @@ Object.assign(zh.exportVoucher, {
     clone: "再次创建",
   },
   filter: {
+    searchPlaceholder: "按单号、收件人、出库类型搜索...",
     status: "状态",
     warehouse: "出库仓库",
     all: "全部",
+    allStatuses: "全部",
     clearFilters: "清除筛选",
     results: "个结果",
     noMatches: "未找到匹配的单据。",
+    sortBy: "排序",
+    newestFirst: "最新优先",
+    oldestFirst: "最旧优先",
+    voucherAsc: "单号 A-Z",
   },
 });
 

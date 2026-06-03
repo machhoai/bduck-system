@@ -1,11 +1,10 @@
 "use client";
 
 import { useSidebarStore } from "../../stores/useSidebarStore";
-import { useUserStore } from "../../stores/useUserStore";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import MobileDrawer from "./MobileDrawer";
-import NotificationBell from "../ui/NotificationBell";
+import TopBar from "./TopBar";
 
 /**
  * DashboardLayout — Main layout orchestrator
@@ -20,7 +19,6 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const isCollapsed = useSidebarStore((s) => s.isCollapsed);
-    const user = useUserStore((s) => s.user);
 
     return (
         <div className="min-h-screen bg-[var(--color-surface-base)]">
@@ -34,15 +32,7 @@ export default function DashboardLayout({
                     : "lg:ml-[var(--sidebar-width-expanded)]"
                     }`}
             >
-                {/* ── Compact top bar ── */}
-                <div className="flex h-8 items-center justify-end gap-2 border-b border-gray-100/60 bg-white/60 px-4 backdrop-blur-md">
-                    <NotificationBell />
-                    {user && (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                            {(user.full_name || user.email || "U").charAt(0).toUpperCase()}
-                        </div>
-                    )}
-                </div>
+                <TopBar />
 
                 <div className="relative flex w-full flex-1 flex-col overflow-y-auto p-4">
                     {children}
@@ -53,4 +43,3 @@ export default function DashboardLayout({
         </div>
     );
 }
-

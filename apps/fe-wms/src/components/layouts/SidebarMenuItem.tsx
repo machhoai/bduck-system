@@ -46,58 +46,64 @@ export default function SidebarMenuItem({
       `}
         >
             {/* Active indicator */}
-            {isActive && (
-                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--color-brand-primary)]" />
+            {showBadge && (
+                <span className={`absolute left-0 flex items-center justify-between top-1/2  -translate-y-1/2 bg-[var(--color-brand-primary)] ${isCollapsed && showBadge && !isActive ? "!size-2 rounded-full" : "h-5 w-fit rounded-r-full"}`}>
+                    {isCollapsed && showBadge && isActive && (
+                        <span className=" flex items-center justify-center rounded-full pl-0.5 pr-1 text-xs font-bold text-white shadow-sm">
+                            {badgeCount > 9 ? "9+" : badgeCount}
+                        </span>
+                    )}
+                </span>
+            )}
+
+            {showBadge && !isCollapsed && (
+                <span
+                    className={`flex size-4 items-center justify-center rounded-full p-1.5 leading-0 text-xxs font-bold shadow-sm ${isActive
+                        ? "bg-[var(--color-brand-primary)] text-white"
+                        : "bg-[var(--color-brand-primary)]/90 text-white"
+                        }`}
+                >
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
             )}
 
             {/* Icon + dot badge (collapsed mode) */}
-            <span className="relative shrink-0">
+            <span className={`shrink-0 ${(isCollapsed && showBadge) ? "pl-2" : ""}`}>
                 <Icon size={19} strokeWidth={1.8} />
-                {isCollapsed && showBadge && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white shadow-sm">
-                        {badgeCount > 99 ? "99+" : badgeCount}
-                    </span>
-                )}
             </span>
 
             {/* Label + badge (expanded mode) */}
-            {!isCollapsed && (
-                <>
-                    <span className="min-w-0 flex-1 truncate text-sm font-normal tracking-normal">
-                        {label}
-                    </span>
-                    {showBadge && (
-                        <span
-                            className={`flex size-4 items-center justify-center rounded-full p-1.5 leading-0 text-xxs font-bold shadow-sm ${isActive
-                                ? "bg-red-500 text-white"
-                                : "bg-red-500/90 text-white"
-                                }`}
-                        >
-                            {badgeCount > 99 ? "99+" : badgeCount}
+            {
+                !isCollapsed && (
+                    <>
+                        <span className="min-w-0 flex-1 truncate text-sm font-normal tracking-normal">
+                            {label}
                         </span>
-                    )}
-                </>
-            )}
+                    </>
+                )
+            }
 
             {/* Tooltip khi collapsed */}
-            {isCollapsed && (
-                <span
-                    className="
+            {
+                isCollapsed && (
+                    <span
+                        className="
           absolute left-full ml-2 rounded-[var(--radius-sm)] px-2 py-1 text-xs font-normal
           bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]
           border border-[var(--color-border-subtle)]
           opacity-0 pointer-events-none group-hover:opacity-100
           transition-opacity duration-150 whitespace-nowrap z-50
         "
-                >
-                    {label}
-                    {showBadge && (
-                        <span className="ml-1.5 inline-flex size-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white">
-                            {badgeCount}
-                        </span>
-                    )}
-                </span>
-            )}
-        </Link>
+                    >
+                        {label}
+                        {showBadge && (
+                            <span className="ml-1.5 inline-flex size-4 items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white">
+                                {badgeCount}
+                            </span>
+                        )}
+                    </span>
+                )
+            }
+        </Link >
     );
 }

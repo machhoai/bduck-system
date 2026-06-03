@@ -11,78 +11,78 @@ import SidebarMenuItem from "./SidebarMenuItem";
 import SidebarUserPanel from "./SidebarUserPanel";
 
 export default function Sidebar() {
-  const { t } = useTranslation();
-  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
-  const hasPermission = useUserStore((s) => s.hasPermission);
-  const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
-  const badges = useMenuBadges();
+    const { t } = useTranslation();
+    const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+    const hasPermission = useUserStore((s) => s.hasPermission);
+    const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
+    const badges = useMenuBadges();
 
-  return (
-    <aside
-      className={`
+    return (
+        <aside
+            className={`
         fixed left-0 top-0 z-40 hidden h-screen flex-col border-r
         border-[var(--color-border-soft)] bg-[var(--color-surface-nav)]
         text-[var(--color-text-on-dark)]
-        transition-[width] duration-300 ease-in-out lg:flex
+        transition-[width] duration-300 ease-in-out lg:flex rounded-r-md pt-3
         ${isCollapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width-expanded)]"}
       `}
-    >
-      <div
-        className={`flex h-8 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
-      >
-        <div
-          className="
+        >
+            <div
+                className={`flex h-8 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
+            >
+                <div
+                    className="
             flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]
             bg-[var(--color-text-on-dark)] text-[var(--color-surface-nav)]
           "
-        >
-          <Warehouse size={18} strokeWidth={2} />
-        </div>
+                >
+                    <Warehouse size={18} strokeWidth={2} />
+                </div>
 
-        {!isCollapsed && (
-          <div className="min-w-0">
-            <p className="truncate text-xs font-normal tracking-normal text-[var(--color-text-on-dark)]">
-              {t.sidebar.systemName}
-            </p>
-            <p className="truncate text-xxs font-normal uppercase tracking-normal text-white/60">
-              {t.sidebar.moduleName}
-            </p>
-          </div>
-        )}
-      </div>
+                {!isCollapsed && (
+                    <div className="min-w-0">
+                        <p className="truncate text-xs font-normal tracking-normal text-[var(--color-text-on-dark)]">
+                            {t.sidebar.systemName}
+                        </p>
+                        <p className="truncate text-xxs font-normal uppercase tracking-normal text-white/60">
+                            {t.sidebar.moduleName}
+                        </p>
+                    </div>
+                )}
+            </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
-        {!isCollapsed && (
-          <p className="mb-1.5 px-2.5 text-xxs font-normal uppercase tracking-normal text-white/50">
-            {t.sidebar.navigation}
-          </p>
-        )}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
+                {!isCollapsed && (
+                    <p className="mb-1.5 px-2.5 text-xxs font-normal uppercase tracking-normal text-white/50">
+                        {t.sidebar.navigation}
+                    </p>
+                )}
 
-        <nav className="space-y-1">
-          {visibleItems.map((item) => (
-            <SidebarMenuItem
-              key={item.id}
-              item={item}
-              isCollapsed={isCollapsed}
-              label={
-                t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey
-              }
-              badgeCount={
-                item.badgeKey
-                  ? badges[item.badgeKey as keyof typeof badges] || 0
-                  : 0
-              }
-            />
-          ))}
-        </nav>
-      </div>
+                <nav className="space-y-1">
+                    {visibleItems.map((item) => (
+                        <SidebarMenuItem
+                            key={item.id}
+                            item={item}
+                            isCollapsed={isCollapsed}
+                            label={
+                                t.nav[item.labelKey as keyof typeof t.nav] || item.labelKey
+                            }
+                            badgeCount={
+                                item.badgeKey
+                                    ? badges[item.badgeKey as keyof typeof badges] || 0
+                                    : 0
+                            }
+                        />
+                    ))}
+                </nav>
+            </div>
 
-      <div className="border-t border-white/10 px-2.5 py-3">
-        <SidebarUserPanel isCollapsed={isCollapsed} />
-        <div className="mt-2.5">
-          <SidebarActions isCollapsed={isCollapsed} showCollapse />
-        </div>
-      </div>
-    </aside>
-  );
+            <div className="border-t border-white/10 px-2.5 py-3">
+                <SidebarUserPanel isCollapsed={isCollapsed} />
+                <div className="mt-2.5">
+                    <SidebarActions isCollapsed={isCollapsed} showCollapse />
+                </div>
+            </div>
+        </aside>
+    );
 }
