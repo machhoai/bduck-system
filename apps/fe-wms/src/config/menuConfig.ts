@@ -106,6 +106,7 @@ export const menuItems: MenuItem[] = [
         icon: ArrowRightLeft,
         href: "/transfers",
         permission: "transfers.read",
+        badgeKey: "transfers",
     },
     {
         id: "expenses",

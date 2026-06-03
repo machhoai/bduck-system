@@ -183,7 +183,7 @@ export default function ExportVoucherPage() {
                           : "bg-orange-50 text-orange-700"
                       }`}
                     >
-                      {badgeCount}
+                      {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   )}
                 </button>

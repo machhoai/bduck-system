@@ -143,6 +143,18 @@ const vi = {
     deleteSuccessDescription: "Sản phẩm đã được đánh dấu xóa mềm.",
     deleteErrorDescription: "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
     redirectingCategories: "Đang chuyển sang tab danh mục",
+    sortBy: "Sắp xếp theo",
+    sortDirection: "Thứ tự",
+    sortFields: {
+      name: "Tên sản phẩm",
+      code: "Mã SKU",
+      barcode: "Barcode",
+      unit_price: "Đơn giá",
+      product_type: "Loại sản phẩm",
+      product_origin: "Nguồn gốc",
+      created_at: "Ngày tạo",
+      updated_at: "Ngày cập nhật",
+    },
   },
 
   warehouses: {

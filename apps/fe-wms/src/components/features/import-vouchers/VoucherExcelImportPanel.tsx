@@ -46,20 +46,21 @@ interface VoucherExcelImportPanelProps {
   products: Product[];
   /** Callback khi người dùng xác nhận thêm sản phẩm */
   onImport: (
-    items: { productId: string; quantity: number; unitPrice: number; notes: string }[]
+    items: { productId: string; quantity: number; unitPrice: number; notes: string; locationCode: string }[]
   ) => void;
 }
 
 type PanelPhase = "upload" | "mapping" | "preview";
 
 const REQUIRED_SLOTS = ["productName", "quantity"] as const;
-const OPTIONAL_SLOTS = ["sku", "unitPrice", "notes"] as const;
+const OPTIONAL_SLOTS = ["sku", "unitPrice", "location", "notes"] as const;
 
 const SLOT_LABELS: Record<string, { label: string; labelZh: string; required: boolean }> = {
   productName: { label: "Tên sản phẩm", labelZh: "产品名称", required: true },
   quantity: { label: "Số lượng", labelZh: "数量", required: true },
   sku: { label: "SKU / Mã SP", labelZh: "SKU", required: false },
   unitPrice: { label: "Đơn giá", labelZh: "单价", required: false },
+  location: { label: "Vị trí kho", labelZh: "库位", required: false },
   notes: { label: "Ghi chú", labelZh: "备注", required: false },
 };
 
@@ -69,6 +70,7 @@ const EMPTY_MAPPING: VoucherColumnMapping = {
   quantity: null,
   unitPrice: null,
   notes: null,
+  location: null,
 };
 
 // ─────────────────────────────────────────────
@@ -203,6 +205,7 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
               <th className="px-3 py-2">Trạng thái</th>
               <th className="px-3 py-2">Sản phẩm (catalog)</th>
               <th className="px-3 py-2">SKU</th>
+              <th className="px-3 py-2">Vị trí</th>
               <th className="px-3 py-2 text-right">SL</th>
               <th className="px-3 py-2 text-right">Đơn giá</th>
               <th className="px-3 py-2">Lỗi / Cảnh báo</th>
@@ -248,6 +251,9 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
                   </td>
                   <td className="px-3 py-2 text-[var(--color-text-muted)]">
                     {(row.matchedProduct?.code ?? row.rawSku) || "—"}
+                  </td>
+                  <td className="px-3 py-2 text-[var(--color-text-muted)]">
+                    {row.parsedLocationCode || "—"}
                   </td>
                   <td className="px-3 py-2 text-right">{row.parsedQuantity ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
@@ -404,6 +410,7 @@ export function VoucherExcelImportPanel({
         quantity: r.parsedQuantity!,
         unitPrice: r.parsedUnitPrice ?? 0,
         notes: r.rawNotes,
+        locationCode: r.parsedLocationCode,
       }));
 
     if (validItems.length === 0) {

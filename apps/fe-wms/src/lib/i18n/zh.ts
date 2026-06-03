@@ -142,6 +142,18 @@ const zh: Dictionary = {
     deleteSuccessDescription: "产品已标记为软删除。",
     deleteErrorDescription: "请稍后重试或联系管理员。",
     redirectingCategories: "正在跳转到分类标签",
+    sortBy: "排序字段",
+    sortDirection: "排序方向",
+    sortFields: {
+      name: "产品名称",
+      code: "SKU 编码",
+      barcode: "条形码",
+      unit_price: "单价",
+      product_type: "产品类型",
+      product_origin: "来源",
+      created_at: "创建日期",
+      updated_at: "更新日期",
+    },
   },
 
   warehouses: {

@@ -45,6 +45,8 @@ export interface VoucherColumnMapping {
   unitPrice: string | null;
   /** Ghi chú (tùy chọn) */
   notes: string | null;
+  /** Vị trí kho (tùy chọn, match theo code hoặc name) */
+  location: string | null;
 }
 
 export interface VoucherItemParseResult {
@@ -54,6 +56,10 @@ export interface VoucherItemParseResult {
   rawQuantity: string;
   rawUnitPrice: string;
   rawNotes: string;
+  /** Raw location value from Excel (trimmed) */
+  rawLocation: string;
+  /** Normalized location code for downstream matching */
+  parsedLocationCode: string;
   matchedProduct: Product | null;
   parsedQuantity: number | null;
   parsedUnitPrice: number | null;
@@ -248,6 +254,7 @@ export async function parseVoucherRows(
     const rawQuantity = getCol(mapping.quantity);
     const rawUnitPrice = getCol(mapping.unitPrice);
     const rawNotes = getCol(mapping.notes);
+    const rawLocation = getCol(mapping.location);
 
     // Bỏ qua dòng rỗng hoàn toàn
     if (!rawName.trim() && !rawSku.trim() && !rawQuantity.trim()) return;
@@ -309,6 +316,9 @@ export async function parseVoucherRows(
       );
     }
 
+    // Location: just pass the raw trimmed value; matching happens in CreateVoucherTab
+    const parsedLocationCode = rawLocation.trim();
+
     results.push({
       rowNumber: rowNum,
       rawName,
@@ -316,6 +326,8 @@ export async function parseVoucherRows(
       rawQuantity,
       rawUnitPrice,
       rawNotes,
+      rawLocation,
+      parsedLocationCode,
       matchedProduct,
       parsedQuantity,
       parsedUnitPrice,

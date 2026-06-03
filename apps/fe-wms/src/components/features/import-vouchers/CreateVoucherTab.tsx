@@ -32,6 +32,7 @@ import {
 import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 import { VoucherExcelImportPanel } from "./VoucherExcelImportPanel";
+import { QuickLocationAssign } from "./QuickLocationAssign";
 
 type Locale = "vi" | "zh";
 
@@ -235,7 +236,7 @@ export default function CreateVoucherTab({
     const { locations, loading: locationsLoading } = useWarehouseLocations(
         formData.warehouse_id || undefined,
     );
-    const { getAllLocationsForProduct, getAtp, loading: inventoryLoading } =
+    const { getAllLocationsForProduct, getLocationsForProduct, getAtp, loading: inventoryLoading } =
         useInventoryByWarehouse(formData.warehouse_id || undefined);
 
     const selectedWarehouse = warehouses.find(
@@ -360,6 +361,7 @@ export default function CreateVoucherTab({
                 quantity: number;
                 unitPrice: number;
                 notes: string;
+                locationCode: string;
             }[]
         ) => {
             setFormData((current) => {
@@ -368,11 +370,36 @@ export default function CreateVoucherTab({
                     .filter((item) => !existingIds.has(item.productId))
                     .map((item) => {
                         const product = products.find((p) => p.id === item.productId);
+
+                        // Try to resolve location from Excel locationCode
+                        let resolvedLocationId = "";
+                        if (item.locationCode) {
+                            const code = item.locationCode.trim().toLowerCase();
+                            const matched = locations.find(
+                                (loc) =>
+                                    loc.code.toLowerCase() === code ||
+                                    loc.name.toLowerCase() === code,
+                            );
+                            if (matched) resolvedLocationId = matched.id;
+                        }
+
+                        // Fallback: auto-assign from existing inventory
+                        if (!resolvedLocationId) {
+                            const invLocs = getLocationsForProduct(item.productId);
+                            if (invLocs.length > 0) {
+                                // Pick location with highest ATP
+                                const best = invLocs.reduce((a, b) =>
+                                    b.atpQty > a.atpQty ? b : a,
+                                );
+                                resolvedLocationId = best.locationId;
+                            }
+                        }
+
                         return {
                             id: crypto.randomUUID(),
                             product_id: item.productId,
                             product_name: product?.name ?? item.productId,
-                            warehouse_location_id: "",
+                            warehouse_location_id: resolvedLocationId,
                             expected_quantity: item.quantity,
                             actual_quantity: 0,
                             unit_price: item.unitPrice,
@@ -383,7 +410,36 @@ export default function CreateVoucherTab({
                 return { ...current, items: [...current.items, ...newItems] };
             });
         },
-        [products]
+        [products, locations, getLocationsForProduct]
+    );
+
+    // Batch assign locations from QuickLocationAssign
+    const batchAssignLocations = useCallback(
+        (assignments: Map<string, string>) => {
+            setFormData((current) => ({
+                ...current,
+                items: current.items.map((item) => {
+                    const newLocId = assignments.get(item.id);
+                    return newLocId
+                        ? { ...item, warehouse_location_id: newLocId }
+                        : item;
+                }),
+            }));
+        },
+        [],
+    );
+
+    // Get best location (highest ATP) for QuickLocationAssign
+    const getBestLocationForProduct = useCallback(
+        (productId: string): string | null => {
+            const invLocs = getLocationsForProduct(productId);
+            if (invLocs.length === 0) return null;
+            const best = invLocs.reduce((a, b) =>
+                b.atpQty > a.atpQty ? b : a,
+            );
+            return best.locationId;
+        },
+        [getLocationsForProduct],
     );
 
     const removeItem = (id: string) => {
@@ -623,7 +679,7 @@ export default function CreateVoucherTab({
 
             {step === 2 && (
                 <div className="flex-1 flex gap-3">
-                    <section className="h-full flex flex-col gap-2">
+                    <section className="h-full flex-1 flex flex-col gap-2">
                         {/* Excel import panel - inline, above catalog */}
                         <VoucherExcelImportPanel
                             uploadedFiles={files}
@@ -668,7 +724,7 @@ export default function CreateVoucherTab({
                                     {copy.noProducts}
                                 </div>
                             ) : (
-                                <div className="grid max-h-96 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                                <div className="grid gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                                     {filteredProducts.map((product) => (
                                         <ProductPickerCard
                                             key={product.id}
@@ -699,161 +755,211 @@ export default function CreateVoucherTab({
                             />
                         </div>
 
+                        {/* Quick Location Assign toolbar */}
+                        {formData.items.length > 0 && formData.warehouse_id && (
+                            <QuickLocationAssign
+                                items={formData.items}
+                                products={products}
+                                locations={locations}
+                                getBestLocation={getBestLocationForProduct}
+                                onAssign={batchAssignLocations}
+                                disabled={locationsLoading || inventoryLoading}
+                            />
+                        )}
+
                         {formData.items.length === 0 ? (
                             <div className="flex flex-1 items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
                                 {copy.emptyItems}
                             </div>
                         ) : (
-                            <div className="flex-1 h-full space-y-3 overflow-y-auto pr-1">
+                            <div className="flex-1 h-full space-y-2 overflow-y-auto pr-1">
                                 {formData.items.map((item, index) => {
                                     const product = products.find(
                                         (productItem) => productItem.id === item.product_id,
                                     );
 
+                                    // Location status for badge
+                                    const invLocations = getAllLocationsForProduct(item.product_id);
+                                    const invLocationIds = new Set(invLocations.map((il) => il.locationId));
+                                    const hasLocation = !!item.warehouse_location_id;
+                                    const locationHasStock = hasLocation && invLocationIds.has(item.warehouse_location_id);
+                                    const selectedLocation = hasLocation
+                                        ? locations.find((l) => l.id === item.warehouse_location_id)
+                                        : null;
+                                    const subtotal = (item.expected_quantity || 0) * (item.unit_price || 0);
+
+                                    // Sort locations: existing stock first
+                                    const sortedLocations = [...locations].sort((a, b) => {
+                                        const aHas = invLocationIds.has(a.id) ? 0 : 1;
+                                        const bHas = invLocationIds.has(b.id) ? 0 : 1;
+                                        return aHas - bHas;
+                                    });
+
                                     return (
                                         <div
                                             key={item.id}
-                                            className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white p-3"
+                                            className="group rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white transition-shadow hover:shadow-sm"
                                         >
-                                            <div className="mb-3 flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-semibold text-[var(--color-brand-primary)]">
-                                                        #{index + 1}
-                                                    </p>
-                                                    <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                                            {/* ── Card Header ── */}
+                                            <div className="flex items-center gap-2.5 border-b border-[var(--color-border-soft)] px-3 py-2">
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-brand-primary)] text-xxs font-bold text-white">
+                                                    {index + 1}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                                         {item.product_name}
                                                     </p>
-                                                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                                                        {product?.code} / {product?.unit}
+                                                    <p className="text-xxs text-[var(--color-text-muted)]">
+                                                        {product?.code} · {product?.unit}
+                                                        {product?.barcode ? ` · ${product.barcode}` : ""}
                                                     </p>
                                                 </div>
+                                                {/* Location badge */}
+                                                {hasLocation ? (
+                                                    locationHasStock ? (
+                                                        <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xxs font-semibold text-emerald-700">
+                                                            ✓ {selectedLocation?.code || ""}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xxs font-semibold text-amber-700">
+                                                            ⬡ {selectedLocation?.code || ""}
+                                                        </span>
+                                                    )
+                                                ) : (
+                                                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xxs font-semibold text-red-600">
+                                                        ● {locale === "zh" ? "未选择" : "Chưa chọn"}
+                                                    </span>
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => removeItem(item.id)}
-                                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-accent-error)] transition-colors hover:bg-red-50"
+                                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-red-50 hover:text-[var(--color-accent-error)] group-hover:opacity-100"
                                                     aria-label={(t as any).common?.delete ?? "Delete"}
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={13} />
                                                 </button>
                                             </div>
 
-                                            <div className="grid gap-3 sm:grid-cols-2">
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                        {copy.expectedQty} *
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        min={1}
-                                                        value={item.expected_quantity || ""}
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "expected_quantity",
-                                                                Number(event.target.value),
-                                                            )
-                                                        }
-                                                        className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
-                                                    />
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                        {copy.unitPrice}
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        min={0}
-                                                        value={item.unit_price || ""}
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "unit_price",
-                                                                Number(event.target.value),
-                                                            )
-                                                        }
-                                                        className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
-                                                    />
-                                                </label>
-                                                <label className="block sm:col-span-2">
-                                                    <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                        {copy.location} *
-                                                    </span>
-                                                    <select
-                                                        value={item.warehouse_location_id}
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "warehouse_location_id",
-                                                                event.target.value,
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            locationsLoading || inventoryLoading || !formData.warehouse_id
-                                                        }
-                                                        className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 lg:h-9 lg:text-sm"
-                                                    >
-                                                        <option value="">
-                                                            {!formData.warehouse_id
-                                                                ? copy.selectWarehouseFirst
-                                                                : locationsLoading || inventoryLoading
-                                                                    ? copy.loadingLocations
-                                                                    : locations.length === 0
-                                                                        ? copy.noLocations
-                                                                        : copy.selectLocation}
-                                                        </option>
-                                                        {(() => {
-                                                            const invLocations = getAllLocationsForProduct(item.product_id);
-                                                            const invLocationIds = new Set(invLocations.map((il) => il.locationId));
-                                                            // Sort: locations with existing stock first
-                                                            const sorted = [...locations].sort((a, b) => {
-                                                                const aHas = invLocationIds.has(a.id) ? 0 : 1;
-                                                                const bHas = invLocationIds.has(b.id) ? 0 : 1;
-                                                                return aHas - bHas;
-                                                            });
-                                                            return sorted.map((location) => {
+                                            {/* ── Card Body ── */}
+                                            <div className="px-3 py-2.5">
+                                                {/* Row 1: Qty / Price / Condition / Note */}
+                                                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                                    <label className="block">
+                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                            {copy.expectedQty} *
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            value={item.expected_quantity || ""}
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "expected_quantity",
+                                                                    Number(event.target.value),
+                                                                )
+                                                            }
+                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                        />
+                                                    </label>
+                                                    <label className="block">
+                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                            {copy.unitPrice}
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            value={item.unit_price || ""}
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "unit_price",
+                                                                    Number(event.target.value),
+                                                                )
+                                                            }
+                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                        />
+                                                    </label>
+                                                    <label className="block">
+                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                            {copy.condition}
+                                                        </span>
+                                                        <select
+                                                            value={item.condition}
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "condition",
+                                                                    event.target.value,
+                                                                )
+                                                            }
+                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                        >
+                                                            <option value="GOOD">{copy.good}</option>
+                                                            <option value="DAMAGED">{copy.damaged}</option>
+                                                            <option value="MISSING">{copy.missing}</option>
+                                                        </select>
+                                                    </label>
+                                                    <label className="block">
+                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                            {copy.itemNote}
+                                                        </span>
+                                                        <input
+                                                            value={item.notes}
+                                                            onChange={(event) =>
+                                                                updateItem(item.id, "notes", event.target.value)
+                                                            }
+                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                        />
+                                                    </label>
+                                                </div>
+
+                                                {/* Row 2: Location (full width) + subtotal */}
+                                                <div className="mt-2 flex items-end gap-3">
+                                                    <label className="block flex-1">
+                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                            {copy.location} *
+                                                        </span>
+                                                        <select
+                                                            value={item.warehouse_location_id}
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "warehouse_location_id",
+                                                                    event.target.value,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                locationsLoading || inventoryLoading || !formData.warehouse_id
+                                                            }
+                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                                                        >
+                                                            <option value="">
+                                                                {!formData.warehouse_id
+                                                                    ? copy.selectWarehouseFirst
+                                                                    : locationsLoading || inventoryLoading
+                                                                        ? copy.loadingLocations
+                                                                        : locations.length === 0
+                                                                            ? copy.noLocations
+                                                                            : copy.selectLocation}
+                                                            </option>
+                                                            {sortedLocations.map((location) => {
                                                                 const qty = getAtp(item.product_id, location.id);
                                                                 const hasStock = invLocationIds.has(location.id);
                                                                 return (
                                                                     <option key={location.id} value={location.id}>
-                                                                        {location.name} ({location.code}){hasStock ? ` / ATP: ${qty}` : ""}
+                                                                        {location.name} ({location.code}){hasStock ? ` · ATP: ${qty}` : ""}
                                                                     </option>
                                                                 );
-                                                            });
-                                                        })()}
-                                                    </select>
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                        {copy.condition}
-                                                    </span>
-                                                    <select
-                                                        value={item.condition}
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "condition",
-                                                                event.target.value,
-                                                            )
-                                                        }
-                                                        className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
-                                                    >
-                                                        <option value="GOOD">{copy.good}</option>
-                                                        <option value="DAMAGED">{copy.damaged}</option>
-                                                        <option value="MISSING">{copy.missing}</option>
-                                                    </select>
-                                                </label>
-                                                <label className="block">
-                                                    <span className="mb-1 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                        {copy.itemNote}
-                                                    </span>
-                                                    <input
-                                                        value={item.notes}
-                                                        onChange={(event) =>
-                                                            updateItem(item.id, "notes", event.target.value)
-                                                        }
-                                                        className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base outline-none focus:border-[var(--color-border-focus)] lg:h-9 lg:text-sm"
-                                                    />
-                                                </label>
+                                                            })}
+                                                        </select>
+                                                    </label>
+                                                    {subtotal > 0 && (
+                                                        <p className="shrink-0 pb-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+                                                            = {formatCurrency(subtotal)}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );

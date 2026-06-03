@@ -111,11 +111,9 @@ function WarehouseMapPreview({
           </div>
         ) : warehouse && coordinate && MAPBOX_TOKEN ? (
           <Map
-            initialViewState={{
-              latitude: coordinate.latitude,
-              longitude: coordinate.longitude,
-              zoom: 14,
-            }}
+            longitude={coordinate.longitude}
+            latitude={coordinate.latitude}
+            zoom={14}
             style={{ width: "100%", height: "100%" }}
             mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={MAPBOX_TOKEN}

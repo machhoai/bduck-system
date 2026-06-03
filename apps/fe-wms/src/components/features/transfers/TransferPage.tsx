@@ -157,19 +157,37 @@ export default function TransferPage() {
             {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = effectiveTab === tab.id;
+              const badgeCount =
+                tab.id === "inProgress"
+                  ? activeOrders.length
+                  : tab.id === "history"
+                    ? completedOrders.length
+                    : 0;
+
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => handleTabSwitch(tab.id)}
-                  className={`flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-xs font-semibold transition-all ${
+                  className={`relative flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition-all active:scale-[0.99] sm:text-sm ${
                     isActive
                       ? "bg-orange-500 text-white shadow-sm"
                       : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
                   }`}
                 >
                   <Icon size={14} />
-                  {t.transfer.tabs[tab.labelKey]}
+                  <span className="truncate">{t.transfer.tabs[tab.labelKey]}</span>
+                  {badgeCount > 0 && (
+                    <span
+                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xxs font-bold ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-orange-50 text-orange-700"
+                      }`}
+                    >
+                      {badgeCount > 99 ? "99+" : badgeCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
