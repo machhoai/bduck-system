@@ -24,8 +24,8 @@ type Locale = "vi" | "zh";
 /* ── Weather icon mapper (WMO codes) → ionicons filled strings ── */
 function weatherIcon(code: number): string {
     if (code === 0 || code === 1) return sunny;           // ☀️  Nắng
-    if (code === 2)               return partlySunny;     // ⛅  Mây rải rác
-    if (code === 3)               return cloudy;          // ☁️  Nhiều mây
+    if (code === 2) return partlySunny;     // ⛅  Mây rải rác
+    if (code === 3) return cloudy;          // ☁️  Nhiều mây
     if (code >= 45 && code <= 48) return cloud;           // 🌫️  Sương mù
     if (code >= 51 && code <= 55) return rainy;           // 🌦️  Mưa phùn
     if (code >= 56 && code <= 57) return snow;            // 🌨️  Mưa đá nhẹ
@@ -34,7 +34,7 @@ function weatherIcon(code: number): string {
     if (code >= 71 && code <= 77) return snow;            // ❄️  Tuyết
     if (code >= 80 && code <= 82) return water;           // 🌧️  Mưa nặng hạt
     if (code >= 85 && code <= 86) return snow;            // 🌨️  Tuyết rào
-    if (code >= 95)               return thunderstorm;    // ⛈️  Sấm sét
+    if (code >= 95) return thunderstorm;    // ⛈️  Sấm sét
     return cloud;
 }
 
@@ -50,7 +50,7 @@ function weatherColor(code: number): string {
     if (code >= 71 && code <= 77) return "text-sky-300";          // ❄️ Tuyết — sky
     if (code >= 80 && code <= 82) return "text-blue-600";         // 🌧️ Mưa nặng hạt — xanh đậm
     if (code >= 85 && code <= 86) return "text-sky-400";          // 🌨️ Tuyết rào — sky
-    if (code >= 95)               return "text-violet-500";       // ⛈️ Sấm sét — tím
+    if (code >= 95) return "text-violet-500";       // ⛈️ Sấm sét — tím
     return "text-slate-400";
 }
 
