@@ -119,7 +119,7 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
 
     const fullDate = locale === "zh"
         ? `${now.getFullYear()}\u5e74${now.getMonth() + 1}\u6708${now.getDate()}\u65e5 \u5468${DAYS_ZH[now.getDay()]}`
-        : `${DAYS_VI[now.getDay()]}, ${pad(now.getDate())} ${MONTHS_VI[now.getMonth()]} ${now.getFullYear()}`;
+        : `${pad(now.getDate())} ${MONTHS_VI[now.getMonth()]} ${now.getFullYear()}`;
 
     const WIcon = weather ? weatherIcon(weather.code) : null;
 
@@ -129,43 +129,22 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
 
     return (
         <div
-            className="relative flex h-full cursor-default items-center overflow-hidden rounded-full bg-white transition-[width] duration-300 ease-in-out shadow-sm"
-            style={{ width: currentWidth || "auto" }}
+            className="relative flex w-fit h-full cursor-default items-center overflow-hidden rounded-full bg-white transition-[width] duration-300 ease-in-out shadow-sm"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* Collapsed content (always rendered for measurement) */}
             <div
-                ref={collapsedRef}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200 ${hovered ? "pointer-events-none absolute opacity-0" : "opacity-100"
-                    }`}
+                className={`flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200`}
             >
-                <span className="text-xs font-semibold text-gray-500">
-                    {dayLabel}
-                </span>
-                <span className="text-xs font-bold tabular-nums text-gray-800">
-                    {timeStr}
-                </span>
-                {weather && (
-                    <>
-                        <span className="mx-0.5 h-3 w-px bg-gray-200" />
-                        {WIcon && <WIcon size={12} className="text-amber-500" />}
-                        <span className="text-xs font-semibold text-gray-600">
-                            {weather.temp}&deg;C
-                        </span>
-                    </>
-                )}
-            </div>
-
-            {/* Expanded content */}
-            <div
-                ref={expandedRef}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200 ${hovered ? "opacity-100" : "pointer-events-none absolute opacity-0"
-                    }`}
-            >
-                <span className="text-xs font-semibold text-gray-500">
-                    {fullDate}
-                </span>
+                <div className={`flex gap-1 overflow-hidden ease-in-out duration-300 ${!hovered && locale === "vi" ? "w-[35px]" : `${locale === "zh" && !hovered ? "w-[30px]" : "w-[140px]"}`}`}>
+                    <span className="text-xs font-semibold text-gray-500">
+                        {dayLabel},
+                    </span>
+                    <span className="text-xs font-semibold text-gray-500">
+                        {fullDate}
+                    </span>
+                </div>
                 <span className="text-xs font-bold tabular-nums text-gray-800">
                     {timeStr}
                 </span>
