@@ -76,9 +76,9 @@ function StatTile({
     }[tone];
 
     return (
-        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{label}</p>
-            <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+            <p className="text-xs font-semibold text-[var(--color-text-muted)]">{label}</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
                 <span className="text-lg font-bold text-[var(--color-text-primary)]">{value}</span>
                 <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ring-1 ${toneClass}`}>
                     <Layers className="h-4 w-4" />
@@ -107,20 +107,18 @@ function EntityFilterButton({
         <button
             type="button"
             onClick={onClick}
-            className={`flex h-8 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors active:scale-[0.98] ${
-                active
-                    ? "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
-                    : "border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-neutral-50)]"
-            }`}
+            className={`flex h-8 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors active:scale-[0.98] ${active
+                ? "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
+                : "border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-subtle)] hover:bg-[var(--color-neutral-50)]"
+                }`}
         >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
             <span
-                className={`rounded-full px-2 py-0.5 text-xxs ${
-                    active
-                        ? "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
-                        : "bg-[var(--color-neutral-100)] text-[var(--color-text-muted)]"
-                }`}
+                className={`rounded-full px-2 py-0.5 text-xxs ${active
+                    ? "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
+                    : "bg-[var(--color-neutral-100)] text-[var(--color-text-muted)]"
+                    }`}
             >
                 {count}
             </span>
@@ -130,7 +128,7 @@ function EntityFilterButton({
 
 function EmptyState({ title, hint }: { title: string; hint: string }) {
     return (
-        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-14 text-center">
+        <div className="flex min-h-[320px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-14 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[var(--color-neutral-50)]">
                 <Inbox className="h-7 w-7 text-[var(--color-neutral-300)]" />
             </div>
@@ -192,34 +190,32 @@ export default function TaskInbox() {
 
     return (
         <div className="flex w-full flex-col gap-5">
-            <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-5 shadow-sm sm:px-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-1 ring-[var(--color-status-approved-border)]">
-                            <ClipboardCheck className="h-6 w-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
-                                {t.tasks.workspaceLabel}
-                            </p>
-                            <h1 className="mt-1 text-lg font-bold text-[var(--color-text-primary)]">{t.tasks.title}</h1>
-                            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                                {loading
-                                    ? t.tasks.loading
-                                    : `${taskStats.total} ${t.tasks.pendingCount}`}
-                            </p>
-                        </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-14 aspect-square shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-1 ring-[var(--color-status-approved-border)]">
+                        <ClipboardCheck className="h-6 w-6" />
                     </div>
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
+                            {t.tasks.workspaceLabel}
+                        </p>
+                        <h1 className="text-lg font-bold text-[var(--color-text-primary)]">{t.tasks.title}</h1>
+                        <p className="text-sm text-[var(--color-text-muted)]">
+                            {loading
+                                ? t.tasks.loading
+                                : `${taskStats.total} ${t.tasks.pendingCount}`}
+                        </p>
+                    </div>
+                </div>
 
-                    <div className="grid grid-cols-3 gap-2 lg:w-[420px]">
-                        <StatTile label={t.tasks.stats.total} value={taskStats.total} tone="blue" />
-                        <StatTile label={t.tasks.stats.imports} value={taskStats.importCount} tone="emerald" />
-                        <StatTile label={t.tasks.stats.exports} value={taskStats.exportCount} tone="amber" />
-                    </div>
+                <div className="grid grid-cols-3 gap-2 lg:w-[420px]">
+                    <StatTile label={t.tasks.stats.total} value={taskStats.total} tone="blue" />
+                    <StatTile label={t.tasks.stats.imports} value={taskStats.importCount} tone="emerald" />
+                    <StatTile label={t.tasks.stats.exports} value={taskStats.exportCount} tone="amber" />
                 </div>
             </div>
 
-            <div className="flex w-full gap-4 overflow-x-auto pb-1">
+            <div className="flex w-full gap-2 overflow-x-auto pb-1">
                 {ENTITY_FILTERS.map((filter) => (
                     <EntityFilterButton
                         key={filter.key}
@@ -236,8 +232,8 @@ export default function TaskInbox() {
                 ))}
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-                <section className="min-w-0">
+            <div className="flex w-full gap-4">
+                <section className="flex-1 ">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                             <h2 className="text-base font-bold text-[var(--color-text-primary)]">{t.tasks.queueTitle}</h2>
@@ -249,65 +245,67 @@ export default function TaskInbox() {
                         </div>
                     </div>
 
-                    {loading ? (
-                        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                            {Array.from({ length: 6 }).map((_, i) => (
-                                <TaskSkeleton key={i} />
-                            ))}
-                        </div>
-                    ) : visibleTasks.length === 0 ? (
-                        <EmptyState title={t.tasks.empty} hint={t.tasks.emptyHint} />
-                    ) : (
-                        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                            {visibleTasks.map((task) => (
-                                <TaskCard
-                                    key={task.id}
-                                    approval={task}
-                                    onOpenDetail={handleOpenDetail}
-                                    t={t}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+                    <div className="flex w-full gap-2">
+                        {loading ? (
+                            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3 flex-1">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <TaskSkeleton key={i} />
+                                ))}
+                            </div>
+                        ) : visibleTasks.length === 0 ? (
+                            <EmptyState title={t.tasks.empty} hint={t.tasks.emptyHint} />
+                        ) : (
+                            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3 flex-1">
+                                {visibleTasks.map((task) => (
+                                    <TaskCard
+                                        key={task.id}
+                                        approval={task}
+                                        onOpenDetail={handleOpenDetail}
+                                        t={t}
+                                    />
+                                ))}
+                            </div>
+                        )}
 
-                <aside className="hidden xl:block">
-                    <div className="sticky top-4 space-y-3">
-                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
-                            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                                {t.tasks.summary.title}
-                            </p>
-                            <div className="mt-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.levels}</span>
-                                    <span className="text-sm font-bold text-[var(--color-text-primary)]">
-                                        {taskStats.levelCount}
-                                    </span>
+                        <aside className="hidden xl:block h-full">
+                            <div className="sticky top-4 space-y-3">
+                                <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
+                                    <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                                        {t.tasks.summary.title}
+                                    </p>
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.levels}</span>
+                                            <span className="text-sm font-bold text-[var(--color-text-primary)]">
+                                                {taskStats.levelCount}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.imports}</span>
+                                            <span className="text-sm font-bold text-[var(--color-success-text-strong)]">
+                                                {taskStats.importCount}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.exports}</span>
+                                            <span className="text-sm font-bold text-[var(--color-status-pending-text)]">
+                                                {taskStats.exportCount}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.imports}</span>
-                                    <span className="text-sm font-bold text-[var(--color-success-text-strong)]">
-                                        {taskStats.importCount}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.exports}</span>
-                                    <span className="text-sm font-bold text-[var(--color-status-pending-text)]">
-                                        {taskStats.exportCount}
-                                    </span>
+                                <div className="rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] p-4">
+                                    <p className="text-sm font-semibold text-[var(--color-status-approved-text)]">
+                                        {t.tasks.summary.realtimeTitle}
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5 text-[var(--color-status-approved-text)]">
+                                        {t.tasks.summary.realtimeHint}
+                                    </p>
                                 </div>
                             </div>
-                        </div>
-                        <div className="rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] p-4">
-                            <p className="text-sm font-semibold text-[var(--color-status-approved-text)]">
-                                {t.tasks.summary.realtimeTitle}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-[var(--color-status-approved-text)]">
-                                {t.tasks.summary.realtimeHint}
-                            </p>
-                        </div>
+                        </aside>
                     </div>
-                </aside>
+                </section>
             </div>
 
             {selectedTask && (

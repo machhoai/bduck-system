@@ -184,6 +184,9 @@ export default function NotificationBell() {
                             </p>
                         </div>
                     )}
+                    <div className="px-4 py-1 text-center text-xs text-[var(--color-text-muted)]">
+                        v{process.env.NEXT_PUBLIC_BUILD_VERSION ?? "dev"}
+                    </div>
                 </div>
             )}
         </div>
