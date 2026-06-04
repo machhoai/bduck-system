@@ -1,6 +1,71 @@
 {
     "indexes": [
         {
+            "collectionGroup": "product_categories",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "is_deleted",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "created_at",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "organizations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "is_deleted",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "name",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "export_vouchers",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "is_deleted",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "warehouse_id",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "action_time",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
             "collectionGroup": "attachments",
             "queryScope": "COLLECTION",
             "fields": [
