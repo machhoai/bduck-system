@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSnow, Droplets, Sun, Wind } from "lucide-react";
+import {
+    sunny,
+    partlySunny,
+    cloud,
+    cloudy,
+    thunderstorm,
+    rainy,
+    snow,
+    water,
+} from "ionicons/icons";
+import { IonIcon } from "@/components/ui/IonIcon";
 
 /* ── Types ── */
 interface WeatherData {
@@ -11,20 +21,37 @@ interface WeatherData {
 
 type Locale = "vi" | "zh";
 
-/* ── Weather icon mapper (WMO codes) ── */
-function weatherIcon(code: number) {
-    if (code === 0 || code === 1) return Sun;
-    if (code === 2 || code === 3) return Cloud;
-    if (code >= 45 && code <= 48) return Wind;
-    if (code >= 51 && code <= 55) return CloudDrizzle;
-    if (code >= 56 && code <= 57) return Droplets;
-    if (code >= 61 && code <= 65) return CloudRain;
-    if (code >= 66 && code <= 67) return CloudSnow;
-    if (code >= 71 && code <= 77) return CloudSnow;
-    if (code >= 80 && code <= 82) return CloudRain;
-    if (code >= 85 && code <= 86) return CloudSnow;
-    if (code >= 95) return CloudLightning;
-    return Cloud;
+/* ── Weather icon mapper (WMO codes) → ionicons filled strings ── */
+function weatherIcon(code: number): string {
+    if (code === 0 || code === 1) return sunny;           // ☀️  Nắng
+    if (code === 2)               return partlySunny;     // ⛅  Mây rải rác
+    if (code === 3)               return cloudy;          // ☁️  Nhiều mây
+    if (code >= 45 && code <= 48) return cloud;           // 🌫️  Sương mù
+    if (code >= 51 && code <= 55) return rainy;           // 🌦️  Mưa phùn
+    if (code >= 56 && code <= 57) return snow;            // 🌨️  Mưa đá nhẹ
+    if (code >= 61 && code <= 65) return rainy;           // 🌧️  Mưa
+    if (code >= 66 && code <= 67) return snow;            // 🌨️  Mưa lạnh
+    if (code >= 71 && code <= 77) return snow;            // ❄️  Tuyết
+    if (code >= 80 && code <= 82) return water;           // 🌧️  Mưa nặng hạt
+    if (code >= 85 && code <= 86) return snow;            // 🌨️  Tuyết rào
+    if (code >= 95)               return thunderstorm;    // ⛈️  Sấm sét
+    return cloud;
+}
+
+/* ── Weather icon color mapper (WMO codes) ── */
+function weatherColor(code: number): string {
+    if (code === 0 || code === 1) return "text-amber-400";        // ☀️ Nắng — vàng
+    if (code === 2 || code === 3) return "text-slate-400";        // ⛅ Nhiều mây — xám
+    if (code >= 45 && code <= 48) return "text-slate-500";        // 🌫️ Sương mù/gió — slate đậm
+    if (code >= 51 && code <= 55) return "text-cyan-400";         // 🌦️ Mưa phùn — cyan
+    if (code >= 56 && code <= 57) return "text-cyan-300";         // 🌨️ Mưa đá nhẹ — cyan nhạt
+    if (code >= 61 && code <= 65) return "text-blue-500";         // 🌧️ Mưa — xanh dương
+    if (code >= 66 && code <= 67) return "text-blue-300";         // 🌨️ Mưa lạnh — xanh nhạt
+    if (code >= 71 && code <= 77) return "text-sky-300";          // ❄️ Tuyết — sky
+    if (code >= 80 && code <= 82) return "text-blue-600";         // 🌧️ Mưa nặng hạt — xanh đậm
+    if (code >= 85 && code <= 86) return "text-sky-400";          // 🌨️ Tuyết rào — sky
+    if (code >= 95)               return "text-violet-500";       // ⛈️ Sấm sét — tím
+    return "text-slate-400";
 }
 
 /* ── Day labels ── */
@@ -32,9 +59,9 @@ const DAYS_VI = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Th
 const DAYS_ZH = ["\u65e5", "\u4e00", "\u4e8c", "\u4e09", "\u56db", "\u4e94", "\u516d"] as const;
 
 const MONTHS_VI = [
-    "Th\u00e1ng 1", "Th\u00e1ng 2", "Th\u00e1ng 3", "Th\u00e1ng 4",
-    "Th\u00e1ng 5", "Th\u00e1ng 6", "Th\u00e1ng 7", "Th\u00e1ng 8",
-    "Th\u00e1ng 9", "Th\u00e1ng 10", "Th\u00e1ng 11", "Th\u00e1ng 12",
+    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4",
+    "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8",
+    "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
 ] as const;
 
 /* ── Pad number ── */
@@ -121,11 +148,8 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
         ? `${now.getFullYear()}\u5e74${now.getMonth() + 1}\u6708${now.getDate()}\u65e5 \u5468${DAYS_ZH[now.getDay()]}`
         : `${pad(now.getDate())} ${MONTHS_VI[now.getMonth()]} ${now.getFullYear()}`;
 
-    const WIcon = weather ? weatherIcon(weather.code) : null;
-
-    const currentWidth = hovered
-        ? Math.max(expandedW + 8, collapsedW + 8)
-        : collapsedW + 8;
+    const wIcon = weather ? weatherIcon(weather.code) : null;
+    const wColor = weather ? weatherColor(weather.code) : "";
 
     return (
         <div
@@ -133,10 +157,7 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Collapsed content (always rendered for measurement) */}
-            <div
-                className={`flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap px-3 transition-opacity duration-200`}
-            >
+            <div className="flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap px-3">
                 <div className={`flex gap-1 overflow-hidden ease-in-out duration-300 ${!hovered && locale === "vi" ? "w-[35px]" : `${locale === "zh" && !hovered ? "w-[30px]" : "w-[140px]"}`}`}>
                     <span className="text-xs font-semibold text-gray-500">
                         {dayLabel},
@@ -148,10 +169,10 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
                 <span className="text-xs font-bold tabular-nums text-gray-800">
                     {timeStr}
                 </span>
-                {weather && (
+                {weather && wIcon && (
                     <>
                         <span className="mx-0.5 h-3 w-px bg-gray-200" />
-                        {WIcon && <WIcon size={12} className="text-amber-500" />}
+                        <IonIcon icon={wIcon} size={16} className={wColor} />
                         <span className="text-xs font-semibold text-gray-600">
                             {weather.temp}&deg;C
                         </span>

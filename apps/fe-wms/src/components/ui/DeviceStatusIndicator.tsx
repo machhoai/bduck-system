@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cloud, Loader2, Wifi } from "lucide-react";
+import { Cloud, Loader2, Wifi, WifiOff } from "lucide-react";
 import {
     collection,
     limit,
@@ -12,6 +12,8 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import { onAuthStateChanged } from "firebase/auth";
+import IonIcon from "./IonIcon";
+import { cloud, cloudOffline } from "ionicons/icons";
 
 type FirestoreSyncStatus = "syncing" | "online" | "offline";
 
@@ -122,14 +124,14 @@ export default function DeviceStatusIndicator() {
     const environmentLabel = useMemo(() => getEnvironmentLabel(), []);
 
     const internetTitle = isInternetOnline
-        ? "Internet online"
-        : "Internet offline";
+        ? "Online"
+        : "Offline";
     const firestoreTitle =
         firestoreStatus === "online"
-            ? "Firestore online"
+            ? "Database connected"
             : firestoreStatus === "syncing"
-                ? "Firestore syncing"
-                : "Firestore offline";
+                ? "Database syncing"
+                : "Database disconnected";
 
     return (
         <div className="flex h-full items-center gap-1.5">
@@ -138,9 +140,16 @@ export default function DeviceStatusIndicator() {
                 title={internetTitle}
                 aria-label={internetTitle}
             >
-                <Wifi
-                    className={`h-4 w-4 ${isInternetOnline ? "text-[var(--color-success-icon)]" : "text-[var(--color-error-icon)]"}`}
-                />
+                {isInternetOnline ? (
+                    <Wifi
+                        className="h-4 w-4 text-[var(--color-success-icon)]"
+                    />
+                ) : (
+                    <WifiOff
+                        className="h-4 w-4 text-[var(--color-error-icon)]"
+                    />
+                )
+                }
                 {!isInternetOnline && (
                     <span className="absolute right-0 top-0 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[var(--color-accent-error)] text-[8px] font-bold leading-none text-white">
                         !
@@ -153,10 +162,11 @@ export default function DeviceStatusIndicator() {
                 title={firestoreTitle}
                 aria-label={firestoreTitle}
             >
-                <Cloud
-                    className={`h-4 w-4 ${firestoreStatus === "offline" ? "text-[var(--color-error-icon)]" : "text-sky-600"
-                        }`}
-                />
+                {firestoreStatus !== "offline" ? (
+                    <IonIcon icon={cloud} className="h-4 w-4 text-sky-600" />
+                ) : (
+                    <IonIcon icon={cloudOffline} className="h-4 w-4 text-[var(--color-error-icon)]" />
+                )}
                 {firestoreStatus === "syncing" && (
                     <Loader2 className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-spin text-sky-600" />
                 )}
