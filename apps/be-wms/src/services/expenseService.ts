@@ -84,12 +84,22 @@ async function getForSingleWarehouse(
   }
 
   // Rule 4: Always refresh suggested_amount from WMS
-  const auto = await calculateAutoExpenses(warehouseId, period);
-  if (doc.items[ExpenseCategory.COGS]) {
-    doc.items[ExpenseCategory.COGS].suggested_amount = auto.cogs;
-  }
-  if (doc.items[ExpenseCategory.GIFT_EXPENSE]) {
-    doc.items[ExpenseCategory.GIFT_EXPENSE].suggested_amount = auto.gift;
+  // Wrapped in try-catch: missing Firestore index or query error should NOT
+  // crash the entire expense page. Suggestions degrade gracefully to null.
+  try {
+    const auto = await calculateAutoExpenses(warehouseId, period);
+    if (doc.items[ExpenseCategory.COGS]) {
+      doc.items[ExpenseCategory.COGS].suggested_amount = auto.cogs;
+    }
+    if (doc.items[ExpenseCategory.GIFT_EXPENSE]) {
+      doc.items[ExpenseCategory.GIFT_EXPENSE].suggested_amount = auto.gift;
+    }
+  } catch (autoErr) {
+    console.error(
+      "[expenseService] calculateAutoExpenses failed (non-fatal):",
+      autoErr,
+    );
+    // Continue — suggested_amount stays as previously stored or null
   }
 
   // Persist the updated suggestions (non-blocking fire-and-forget)
