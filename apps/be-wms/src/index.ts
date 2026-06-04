@@ -65,6 +65,7 @@ app.get("/", (_req, res) => {
   res.json({
     service: "be-wms",
     status: "healthy",
+    version: getBuildVersion(),
     timestamp: new Date().toISOString(),
   });
 });

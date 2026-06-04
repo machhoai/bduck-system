@@ -1,5 +1,6 @@
 import "./globals.css";
 import ToastProvider from "../components/providers/ToastProvider";
+import VersionLogger from "../components/ui/VersionLogger";
 
 export const metadata = {
   title: "B.Duck WMS - He thong Quan ly Kho",
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body>
         {children}
         <ToastProvider />
+        <VersionLogger />
       </body>
     </html>
   );
