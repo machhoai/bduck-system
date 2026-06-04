@@ -3,16 +3,25 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Auto-generate build version: yy/m/d.N
- * N = BUILD_NUMBER env var (from CI/CD pipeline), defaults to 0 for local dev
+ * Auto-generate build version: yymmd.BUILD_ID
+ *
+ * Priority:
+ *  1. BUILD_NUMBER              — Docker / self-hosted CI (sequential number)
+ *  2. VERCEL_GIT_COMMIT_SHA     — Vercel injects this automatically at build time (short git SHA)
+ *  3. "dev"                     — local development fallback
  */
 function generateBuildVersion(): string {
   const now = new Date();
-  const yy = String(now.getFullYear()).slice(2); // "26"
-  const m = String(now.getMonth() + 1);          // "6" (no leading zero)
-  const d = String(now.getDate());               // "4" (no leading zero)
-  const buildNum = process.env.BUILD_NUMBER ?? "0";
-  return `${yy}${m}${d}.${buildNum}`;
+  const yy = String(now.getFullYear()).slice(2);
+  const m  = String(now.getMonth() + 1);
+  const d  = String(now.getDate());
+
+  const buildId =
+    process.env.BUILD_NUMBER ??
+    (process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)) ??
+    "dev";
+
+  return `${yy}${m}${d}.${buildId}`;
 }
 
 const appDir = dirname(fileURLToPath(import.meta.url));
