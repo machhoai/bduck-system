@@ -44,6 +44,19 @@ export interface ProductTypeDistribution {
   percentage: number;
 }
 
+/**
+ * Tổng giá trị tồn kho = Σ (atp_quantity × unit_price)
+ * Chỉ tính sản phẩm có unit_price != null.
+ * Dùng ATP (khả dụng) làm cơ sở, không tính quarantine/in-transit.
+ */
+export interface InventoryValueResult {
+  totalValue: number;
+  atpValue: number;
+  valueByType: { type: string; value: number; percentage: number }[];
+  coveredSkuCount: number; // Số SKU có unit_price
+  totalSkuCount: number;   // Tổng SKU
+}
+
 // ---------------------------------------------------------------------------
 // KPI Aggregation
 // ---------------------------------------------------------------------------
@@ -262,4 +275,73 @@ export function computeStockComparison(
     warehouseName: warehouseMap.get(id) || id,
     ...data,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Inventory Value (Giá trị tồn kho) — products.price.view gated
+// ---------------------------------------------------------------------------
+
+/**
+ * Tính tổng giá trị tồn kho = Σ atp_quantity × unit_price
+ *
+ * Logic:
+ *  - Aggregate inventory by product
+ *  - Nhân atp_quantity với unit_price (bỏ qua sản phẩm không có giá)
+ *  - Phân tích theo ProductType cho chart
+ *
+ * RBAC: Caller phải check canViewPrice trước khi gọi hàm này.
+ */
+export function computeInventoryValue(
+  inventory: Inventory[],
+  products: Product[],
+  warehouseFilter?: string,
+): InventoryValueResult {
+  const filtered = warehouseFilter
+    ? inventory.filter((i) => i.warehouse_id === warehouseFilter)
+    : inventory;
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  // Aggregate atp by product
+  const atpByProduct = new Map<string, number>();
+  for (const item of filtered) {
+    atpByProduct.set(
+      item.product_id,
+      (atpByProduct.get(item.product_id) ?? 0) + item.atp_quantity,
+    );
+  }
+
+  const uniqueSkuCount = atpByProduct.size;
+  let totalValue = 0;
+  let atpValue = 0;
+  let coveredSkuCount = 0;
+
+  const typeValueMap = new Map<string, number>();
+
+  for (const [productId, atpQty] of atpByProduct) {
+    const product = productMap.get(productId);
+    if (!product || product.unit_price == null) continue;
+
+    coveredSkuCount++;
+    const value = atpQty * product.unit_price;
+    atpValue += value;
+    totalValue += value;
+
+    const type = product.product_type || "UNKNOWN";
+    typeValueMap.set(type, (typeValueMap.get(type) ?? 0) + value);
+  }
+
+  const valueByType = Array.from(typeValueMap.entries()).map(([type, value]) => ({
+    type,
+    value,
+    percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0,
+  }));
+
+  return {
+    totalValue,
+    atpValue,
+    valueByType,
+    coveredSkuCount,
+    totalSkuCount: uniqueSkuCount,
+  };
 }

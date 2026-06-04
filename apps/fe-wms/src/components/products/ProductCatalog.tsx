@@ -88,6 +88,7 @@ export function ProductCatalog({
             <ProductCard
               key={product.id}
               product={product}
+              variant="catalog"
               category={categoryById.get(product.category_id)}
               onEdit={onEdit}
               onDelete={onDelete}

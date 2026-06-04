@@ -157,6 +157,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "创建、编辑、软删除产品，更新BOM。",
     },
   },
+  {
+    key: "products.price.view",
+    group: "products",
+    label: { vi: "Xem đơn giá sản phẩm", zh: "查看产品单价" },
+    description: {
+      vi: "Xem đơn giá sản phẩm trong mọi màn hình: danh mục, tồn kho, phiếu nhập/xuất. Chỉ nên cấp cho quản lý và kế toán.",
+      zh: "在所有界面（目录、库存、入/出库单）查看产品单价。仅应授予管理者和财务人员。",
+    },
+  },
 
   // ── Categories ──
   {

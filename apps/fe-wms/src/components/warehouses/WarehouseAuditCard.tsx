@@ -91,9 +91,9 @@ export function WarehouseAuditCard({ warehouseId }: WarehouseAuditCardProps) {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+    <div className="flex max-h-[400px] flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-5">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           {t.warehouses.recentActivity}
         </h3>
       </div>

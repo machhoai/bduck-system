@@ -63,7 +63,7 @@ export default function NotificationBell() {
     };
 
     return (
-        <div className="relative h-full bg-white rounded-full aspect-square cursor-pointer shadow-sm" ref={dropdownRef}>
+        <div className="relative h-8 bg-white rounded-full aspect-square cursor-pointer shadow-sm" ref={dropdownRef}>
             {/* Bell button */}
             <button
                 type="button"

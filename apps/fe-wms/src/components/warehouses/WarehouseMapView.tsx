@@ -5,11 +5,11 @@ import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
 import { Plus, Search, Warehouse as WarehouseIcon } from "lucide-react";
 import type { MapRef } from "react-map-gl/mapbox";
 import type { Warehouse } from "@bduck/shared-types";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "@/lib/i18n";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { WarehouseMapCard } from "./WarehouseMapCard";
+import { WarehousePopupCard } from "./WarehousePopupCard";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -281,48 +281,15 @@ export function WarehouseMapView({
                                 longitude={popupWarehouse.coordinate.longitude}
                                 latitude={popupWarehouse.coordinate.latitude}
                                 anchor="bottom"
-                                offset={40}
+                                offset={20}
                                 closeOnClick={false}
                                 onClose={() => setPopupWarehouse(null)}
-                                className="[&_.mapboxgl-popup-content]:overflow-hidden [&_.mapboxgl-popup-content]:rounded-[22px] [&_.mapboxgl-popup-content]:border [&_.mapboxgl-popup-content]:border-[var(--color-border-subtle)] [&_.mapboxgl-popup-content]:p-0 [&_.mapboxgl-popup-content]:shadow-xl !w-80"
+                                className="[&_.mapboxgl-popup-content]:overflow-hidden [&_.mapboxgl-popup-content]:w-fit [&_.mapboxgl-popup-content]:rounded-[30px] [&_.mapboxgl-popup-content]:border [&_.mapboxgl-popup-content]:border-[var(--color-border-subtle)] [&_.mapboxgl-popup-content]:p-0 [&_.mapboxgl-popup-content]:shadow-2xl [&_.mapboxgl-popup-close-button]:hidden"
                             >
-                                <div className="flex flex-col">
-                                    {popupWarehouse.warehouse_image_url ? (
-                                        <div className="relative h-32 w-full bg-[var(--color-surface-subtle)]">
-                                            <Image
-                                                src={popupWarehouse.warehouse_image_url}
-                                                alt={popupWarehouse.name}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex h-32 w-full items-center justify-center bg-[var(--color-surface-subtle)]">
-                                            <WarehouseIcon className="h-8 w-10 text-[var(--color-text-disabled)]" />
-                                        </div>
-                                    )}
-                                    <div className="p-4">
-                                        <p className="text-base font-semibold text-[var(--color-text-primary)]">
-                                            {popupWarehouse.name}
-                                        </p>
-                                        <p className="mt-1 flex items-center text-xs text-[var(--color-text-muted)]">
-                                            <span className="font-medium text-[var(--color-text-secondary)]">{popupWarehouse.code}</span>
-                                            <span className="mx-1.5 h-1 w-1 rounded-full bg-[var(--color-border-subtle)]"></span>
-                                            {t.warehouses.types[popupWarehouse.type]}
-                                        </p>
-                                        {popupWarehouse.address && (
-                                            <p className="mt-2 text-xs text-[var(--color-text-secondary)] line-clamp-2 leading-relaxed">
-                                                {popupWarehouse.address}
-                                            </p>
-                                        )}
-                                        <Link
-                                            href={`/warehouses/${popupWarehouse.id}`}
-                                            className="mt-4 flex w-full items-center justify-center rounded-xl bg-[var(--color-brand-primary)] py-2 text-sm font-medium text-white transition-all hover:bg-[var(--color-brand-primary-hover)] hover:shadow-md active:scale-[0.98]"
-                                        >
-                                            Vào kho
-                                        </Link>
-                                    </div>
-                                </div>
+                                <WarehousePopupCard
+                                    warehouse={popupWarehouse}
+                                    onClose={() => setPopupWarehouse(null)}
+                                />
                             </Popup>
                         )}
                     </Map>
