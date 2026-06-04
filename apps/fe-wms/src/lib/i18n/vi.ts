@@ -1010,6 +1010,10 @@ const vi = {
             budget: "Ngân sách",
             actual: "Thực chi",
             usage: "Sử dụng",
+            syncing: "Đang đồng bộ doanh thu...",
+            lastSync: "Đồng bộ doanh thu lúc",
+            notSynced: "Chưa đồng bộ doanh thu",
+            joyWorldRevenue: "JoyWorld",
         },
         actions: {
             closePeriod: "Chốt kỳ",

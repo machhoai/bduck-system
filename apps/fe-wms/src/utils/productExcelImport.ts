@@ -222,7 +222,18 @@ export async function parseProductImportFile(
     const productOrigin = extractOptionCode(raw.product_origin) as ProductOrigin;
     const parsedSerialized = parseBoolean(raw.is_serialized);
     const priceText = raw.unit_price.trim();
-    const priceNumber = priceText ? Number(priceText) : null;
+    // Handle Vietnamese/EU locale: "20.786,74" or "20786,74"
+    // Step 1: Remove thousand separators (dots before comma)
+    // Step 2: Replace comma decimal separator with dot
+    const priceNormalized = priceText
+      ? priceText.replace(/\./g, "").replace(",", ".")
+      : "";
+    const priceRaw = priceNormalized ? Number(priceNormalized) : null;
+    // Round to nearest integer (Excel may store 20786.74 for "20787")
+    const priceNumber =
+      priceRaw !== null && !isNaN(priceRaw) ? Math.round(priceRaw) : priceRaw;
+
+    // ... existing validations ...
 
     if (!raw.category_code) errors.push("Thiếu category_code.");
     if (raw.category_code && !category) {
@@ -252,10 +263,10 @@ export async function parseProductImportFile(
     if (
       priceText &&
       (priceNumber === null ||
-        !Number.isInteger(priceNumber) ||
+        isNaN(priceNumber) ||
         priceNumber < 0)
     ) {
-      errors.push("unit_price phải là số nguyên không âm.");
+      errors.push("unit_price phải là số không âm.");
     }
 
     const codeKey = normalizeIdentity(raw.code);

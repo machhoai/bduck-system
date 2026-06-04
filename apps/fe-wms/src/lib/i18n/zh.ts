@@ -999,6 +999,10 @@ const zh: Dictionary = {
       budget: "预算",
       actual: "实际支出",
       usage: "使用率",
+      syncing: "正在同步营收数据...",
+      lastSync: "营收同步时间",
+      notSynced: "尚未同步营收数据",
+      joyWorldRevenue: "JoyWorld",
     },
     actions: {
       closePeriod: "结账",

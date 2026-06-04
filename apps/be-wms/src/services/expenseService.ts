@@ -56,6 +56,7 @@ function createDefaultDocument(
     period,
     status: ExpenseStatus.OPEN,
     items: createDefaultItems() as Record<ExpenseCategory, ExpenseItem>,
+    custom_items: {},
     created_by: userId,
     updated_by: userId,
     is_deleted: false,

@@ -15,46 +15,48 @@
 
 import { useState } from "react";
 import {
-  ComposedChart,
-  Bar,
-  Line,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+    ComposedChart,
+    Bar,
+    Line,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
 } from "recharts";
 import { useTranslation } from "@/lib/i18n";
 import {
-  useExpenseDashboardMetrics,
-  type DashboardKPI,
-  type CostCenterStat,
-  type TopExpenseItem,
+    useExpenseDashboardMetrics,
+    type DashboardKPI,
+    type CostCenterStat,
+    type TopExpenseItem,
 } from "@/hooks/useExpenseDashboardMetrics";
 import { ExpenseCostCenter } from "@bduck/shared-types";
 import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  Factory,
-  Megaphone,
-  ShoppingBag,
-  SquareAsterisk,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  X,
-  DollarSign,
-  Receipt,
-  PiggyBank,
-  Percent,
+    AlertTriangle,
+    ArrowDown,
+    ArrowUp,
+    Factory,
+    Megaphone,
+    ShoppingBag,
+    SquareAsterisk,
+    TrendingDown,
+    TrendingUp,
+    Users,
+    X,
+    DollarSign,
+    Receipt,
+    PiggyBank,
+    Percent,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useRevenueSync } from "@/hooks/useRevenueSync";
+import { RefreshCw, Clock } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -63,43 +65,43 @@ import { Skeleton } from "@/components/ui/Skeleton";
 const EMPTY_KPI: DashboardKPI = { value: 0, prevValue: 0, trend: 0 };
 
 const COST_CENTER_ICONS: Record<ExpenseCostCenter, typeof Factory> = {
-  [ExpenseCostCenter.OPERATIONS]: Factory,
-  [ExpenseCostCenter.HR]: Users,
-  [ExpenseCostCenter.MARKETING]: Megaphone,
-  [ExpenseCostCenter.MERCHANDISE]: ShoppingBag,
-  [ExpenseCostCenter.OTHERS]: SquareAsterisk,
+    [ExpenseCostCenter.OPERATIONS]: Factory,
+    [ExpenseCostCenter.HR]: Users,
+    [ExpenseCostCenter.MARKETING]: Megaphone,
+    [ExpenseCostCenter.MERCHANDISE]: ShoppingBag,
+    [ExpenseCostCenter.OTHERS]: SquareAsterisk,
 };
 
 const COST_CENTER_STYLE: Record<ExpenseCostCenter, { color: string; bg: string }> = {
-  [ExpenseCostCenter.OPERATIONS]: { color: "#0066cc", bg: "#0066cc1a" },
-  [ExpenseCostCenter.HR]: { color: "#6366f1", bg: "#6366f11a" },
-  [ExpenseCostCenter.MARKETING]: { color: "#f59e0b", bg: "#f59e0b1a" },
-  [ExpenseCostCenter.MERCHANDISE]: { color: "#257a3e", bg: "#257a3e1a" },
-  [ExpenseCostCenter.OTHERS]: { color: "#7a7a7a", bg: "#7a7a7a1a" },
+    [ExpenseCostCenter.OPERATIONS]: { color: "#0066cc", bg: "#0066cc1a" },
+    [ExpenseCostCenter.HR]: { color: "#6366f1", bg: "#6366f11a" },
+    [ExpenseCostCenter.MARKETING]: { color: "#f59e0b", bg: "#f59e0b1a" },
+    [ExpenseCostCenter.MERCHANDISE]: { color: "#257a3e", bg: "#257a3e1a" },
+    [ExpenseCostCenter.OTHERS]: { color: "#7a7a7a", bg: "#7a7a7a1a" },
 };
 
 const PIE_COLORS = ["#0066cc", "#6366f1", "#f59e0b", "#257a3e", "#7a7a7a"];
 
 const KPI_CONFIGS = [
-  { icon: DollarSign, color: "#0066cc", bg: "#0066cc1a" },
-  { icon: Receipt, color: "#b42318", bg: "#b423181a" },
-  { icon: PiggyBank, color: "#257a3e", bg: "#257a3e1a" },
-  { icon: Percent, color: "#6366f1", bg: "#6366f11a" },
+    { icon: DollarSign, color: "#0066cc", bg: "#0066cc1a" },
+    { icon: Receipt, color: "#b42318", bg: "#b423181a" },
+    { icon: PiggyBank, color: "#257a3e", bg: "#257a3e1a" },
+    { icon: Percent, color: "#6366f1", bg: "#6366f11a" },
 ] as const;
 
 type TopExpenseMode = "highest" | "increased" | "lowest";
 
 /** Full currency — 20.000.000đ, never abbreviated */
 function formatCurrency(value: number): string {
-  return `${value.toLocaleString("vi-VN")}đ`;
+    return `${value.toLocaleString("vi-VN")}đ`;
 }
 
 /** Short axis label — 20tr, 1.5 tỷ for chart Y axis only */
 function formatAxisValue(value: number): string {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}tỷ`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}tr`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return String(value);
+    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}tỷ`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}tr`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+    return String(value);
 }
 
 // ─────────────────────────────────────────────
@@ -107,10 +109,10 @@ function formatAxisValue(value: number): string {
 // ─────────────────────────────────────────────
 
 const TOOLTIP_STYLE = {
-  borderRadius: "var(--radius-sm)",
-  border: "1px solid var(--color-border-subtle)",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-  fontSize: "13px",
+    borderRadius: "var(--radius-sm)",
+    border: "1px solid var(--color-border-subtle)",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+    fontSize: "13px",
 };
 
 // ─────────────────────────────────────────────
@@ -118,47 +120,47 @@ const TOOLTIP_STYLE = {
 // ─────────────────────────────────────────────
 
 function KPICard({ title, kpi, suffix, index }: {
-  title: string;
-  kpi: DashboardKPI;
-  suffix?: string;
-  index: number;
+    title: string;
+    kpi: DashboardKPI;
+    suffix?: string;
+    index: number;
 }) {
-  const cfg = KPI_CONFIGS[index] || KPI_CONFIGS[0];
-  const Icon = cfg.icon;
-  const trendUp = kpi.trend > 0;
-  const TrendIcon = trendUp ? TrendingUp : TrendingDown;
-  const isProfit = index === 2;
-  const trendColor = isProfit
-    ? (trendUp ? "#257a3e" : "#b42318")
-    : (trendUp ? "#b42318" : "#257a3e");
+    const cfg = KPI_CONFIGS[index] || KPI_CONFIGS[0];
+    const Icon = cfg.icon;
+    const trendUp = kpi.trend > 0;
+    const TrendIcon = trendUp ? TrendingUp : TrendingDown;
+    const isProfit = index === 2;
+    const trendColor = isProfit
+        ? (trendUp ? "#257a3e" : "#b42318")
+        : (trendUp ? "#b42318" : "#257a3e");
 
-  return (
-    <div className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 text-left transition-all hover:shadow-md">
-      <div className="mb-3 flex items-center gap-3">
-        <div
-          className="flex h-8 w-10 items-center justify-center rounded-[var(--radius-sm)]"
-          style={{ backgroundColor: cfg.bg, color: cfg.color }}
-        >
-          <Icon size={20} strokeWidth={1.7} />
+    return (
+        <div className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 text-left transition-all hover:shadow-md">
+            <div className="mb-3 flex items-center gap-3">
+                <div
+                    className="flex h-8 w-10 items-center justify-center rounded-[var(--radius-sm)]"
+                    style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                >
+                    <Icon size={20} strokeWidth={1.7} />
+                </div>
+                <span className="text-xs font-medium text-[var(--color-text-muted)]">{title}</span>
+            </div>
+            <div className="flex items-end justify-between gap-2">
+                <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
+                    {index === 3 ? `${kpi.value.toFixed(1)}${suffix}` : `${formatCurrency(kpi.value)}`}
+                </p>
+                {kpi.trend !== 0 && (
+                    <span
+                        className="inline-flex h-5 items-center gap-0.5 rounded-full px-1.5 text-micro font-bold tabular-nums"
+                        style={{ color: trendColor, backgroundColor: `${trendColor}14` }}
+                    >
+                        <TrendIcon size={10} strokeWidth={2.5} />
+                        {Math.abs(kpi.trend).toFixed(1)}%
+                    </span>
+                )}
+            </div>
         </div>
-        <span className="text-xs font-medium text-[var(--color-text-muted)]">{title}</span>
-      </div>
-      <div className="flex items-end justify-between gap-2">
-        <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
-          {index === 3 ? `${kpi.value.toFixed(1)}${suffix}` : `${formatCurrency(kpi.value)}`}
-        </p>
-        {kpi.trend !== 0 && (
-          <span
-            className="inline-flex h-5 items-center gap-0.5 rounded-full px-1.5 text-micro font-bold tabular-nums"
-            style={{ color: trendColor, backgroundColor: `${trendColor}14` }}
-          >
-            <TrendIcon size={10} strokeWidth={2.5} />
-            {Math.abs(kpi.trend).toFixed(1)}%
-          </span>
-        )}
-      </div>
-    </div>
-  );
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -166,58 +168,58 @@ function KPICard({ title, kpi, suffix, index }: {
 // ─────────────────────────────────────────────
 
 function CostCenterStatCard({ stat, label, onClick }: {
-  stat: CostCenterStat;
-  label: string;
-  onClick: () => void;
+    stat: CostCenterStat;
+    label: string;
+    onClick: () => void;
 }) {
-  const Icon = COST_CENTER_ICONS[stat.costCenter];
-  const style = COST_CENTER_STYLE[stat.costCenter];
-  const isOver = stat.usagePercent > 100;
-  const trendUp = stat.trend > 0;
+    const Icon = COST_CENTER_ICONS[stat.costCenter];
+    const style = COST_CENTER_STYLE[stat.costCenter];
+    const isOver = stat.usagePercent > 100;
+    const trendUp = stat.trend > 0;
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-left transition-all hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
-    >
-      <div className="mb-2 flex items-center gap-2">
-        <div
-          className="flex h-7 w-8 items-center justify-center rounded-[var(--radius-sm)]"
-          style={{ backgroundColor: style.bg, color: style.color }}
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-left transition-all hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
         >
-          <Icon size={16} strokeWidth={1.7} />
-        </div>
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--color-text-primary)]">
-          {label}
-        </span>
-        {stat.trend !== 0 && (
-          <span
-            className="shrink-0 text-micro font-bold tabular-nums"
-            style={{ color: trendUp ? "#b42318" : "#257a3e" }}
-          >
-            {trendUp ? "+" : ""}{stat.trend.toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <p className="mb-2 text-sm font-bold tabular-nums text-[var(--color-text-primary)]">
-        {formatCurrency(stat.actualTotal)}
-      </p>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-card)]">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${Math.min(stat.usagePercent, 100)}%`,
-            backgroundColor: isOver ? "#b42318" : style.color,
-          }}
-        />
-      </div>
-      <div className="mt-1 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
-        <span>{formatCurrency(stat.budgetTotal)}</span>
-        <span>{stat.usagePercent.toFixed(0)}%</span>
-      </div>
-    </button>
-  );
+            <div className="mb-2 flex items-center gap-2">
+                <div
+                    className="flex h-7 w-8 items-center justify-center rounded-[var(--radius-sm)]"
+                    style={{ backgroundColor: style.bg, color: style.color }}
+                >
+                    <Icon size={16} strokeWidth={1.7} />
+                </div>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                    {label}
+                </span>
+                {stat.trend !== 0 && (
+                    <span
+                        className="shrink-0 text-micro font-bold tabular-nums"
+                        style={{ color: trendUp ? "#b42318" : "#257a3e" }}
+                    >
+                        {trendUp ? "+" : ""}{stat.trend.toFixed(1)}%
+                    </span>
+                )}
+            </div>
+            <p className="mb-2 text-sm font-bold tabular-nums text-[var(--color-text-primary)]">
+                {formatCurrency(stat.actualTotal)}
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-card)]">
+                <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                        width: `${Math.min(stat.usagePercent, 100)}%`,
+                        backgroundColor: isOver ? "#b42318" : style.color,
+                    }}
+                />
+            </div>
+            <div className="mt-1 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
+                <span>{formatCurrency(stat.budgetTotal)}</span>
+                <span>{stat.usagePercent.toFixed(0)}%</span>
+            </div>
+        </button>
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -225,81 +227,81 @@ function CostCenterStatCard({ stat, label, onClick }: {
 // ─────────────────────────────────────────────
 
 function CostCenterDetailModal({ stat, label, onClose, t }: {
-  stat: CostCenterStat;
-  label: string;
-  onClose: () => void;
-  t: ReturnType<typeof useTranslation>["t"];
+    stat: CostCenterStat;
+    label: string;
+    onClose: () => void;
+    t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const Icon = COST_CENTER_ICONS[stat.costCenter];
-  const style = COST_CENTER_STYLE[stat.costCenter];
-  const isOver = stat.usagePercent > 100;
+    const Icon = COST_CENTER_ICONS[stat.costCenter];
+    const style = COST_CENTER_STYLE[stat.costCenter];
+    const isOver = stat.usagePercent > 100;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="w-[90%] max-w-[500px] rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)]"
-              style={{ backgroundColor: style.bg, color: style.color }}
+                className="w-[90%] max-w-[500px] rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
             >
-              <Icon size={16} />
+                <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div
+                            className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)]"
+                            style={{ backgroundColor: style.bg, color: style.color }}
+                        >
+                            <Icon size={16} />
+                        </div>
+                        <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
+                            {t.expenses.dashboard.groupDetail}: {label}
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                        {[
+                            { label: t.expenses.dashboard.actual, value: formatCurrency(stat.actualTotal), color: undefined },
+                            { label: t.expenses.dashboard.budget, value: formatCurrency(stat.budgetTotal), color: undefined },
+                            { label: t.expenses.dashboard.usage, value: `${stat.usagePercent.toFixed(1)}%`, color: isOver ? "#b42318" : "#257a3e" },
+                        ].map((item) => (
+                            <div key={item.label} className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3 text-center">
+                                <p className="text-xxs text-[var(--color-text-muted)]">{item.label}</p>
+                                <p className="text-sm font-bold tabular-nums" style={item.color ? { color: item.color } : undefined}>
+                                    {item.value}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
+                        <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                                width: `${Math.min(stat.usagePercent, 100)}%`,
+                                backgroundColor: isOver ? "#b42318" : style.color,
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+                        <span className="text-xs text-[var(--color-text-muted)]">{t.expenses.dashboard.change} MoM</span>
+                        <span
+                            className="ml-auto text-sm font-bold tabular-nums"
+                            style={{ color: stat.trend > 0 ? "#b42318" : "#257a3e" }}
+                        >
+                            {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
+                        </span>
+                    </div>
+                </div>
             </div>
-            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-              {t.expenses.dashboard.groupDetail}: {label}
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
-          >
-            <X size={14} />
-          </button>
         </div>
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: t.expenses.dashboard.actual, value: formatCurrency(stat.actualTotal), color: undefined },
-              { label: t.expenses.dashboard.budget, value: formatCurrency(stat.budgetTotal), color: undefined },
-              { label: t.expenses.dashboard.usage, value: `${stat.usagePercent.toFixed(1)}%`, color: isOver ? "#b42318" : "#257a3e" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3 text-center">
-                <p className="text-xxs text-[var(--color-text-muted)]">{item.label}</p>
-                <p className="text-sm font-bold tabular-nums" style={item.color ? { color: item.color } : undefined}>
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${Math.min(stat.usagePercent, 100)}%`,
-                backgroundColor: isOver ? "#b42318" : style.color,
-              }}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
-            <span className="text-xs text-[var(--color-text-muted)]">{t.expenses.dashboard.change} MoM</span>
-            <span
-              className="ml-auto text-sm font-bold tabular-nums"
-              style={{ color: stat.trend > 0 ? "#b42318" : "#257a3e" }}
-            >
-              {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -308,87 +310,87 @@ function CostCenterDetailModal({ stat, label, onClose, t }: {
 // ─────────────────────────────────────────────
 
 function ExpenseTrendChart({ data, title, subtitle, t }: {
-  data: { month: string; revenue: number; expenses: number }[];
-  title: string;
-  subtitle: string;
-  t: ReturnType<typeof useTranslation>["t"];
+    data: { month: string; revenue: number; expenses: number }[];
+    title: string;
+    subtitle: string;
+    t: ReturnType<typeof useTranslation>["t"];
 }) {
-  if (!data || data.length === 0) {
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                <p className="mt-1 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+                <div className="flex flex-1 items-center justify-center">
+                    <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Add % change to data
+    const enriched = data.map((d, i) => ({
+        ...d,
+        change: i > 0 && data[i - 1].expenses > 0
+            ? ((d.expenses - data[i - 1].expenses) / data[i - 1].expenses * 100)
+            : 0,
+    }));
+
     return (
-      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <p className="mt-1 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+        <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <div className="mb-4 shrink-0">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+            </div>
+            <div className="min-h-[260px] flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={enriched} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
+                        <XAxis
+                            dataKey="month"
+                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                        />
+                        <YAxis
+                            allowDecimals={false}
+                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={formatAxisValue}
+                        />
+                        <Tooltip
+                            contentStyle={TOOLTIP_STYLE}
+                            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                            formatter={(value) => [formatCurrency(Number(value))]}
+                        />
+                        <Legend
+                            height={28}
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
+                        />
+                        <Bar
+                            dataKey="expenses"
+                            name="Chi phí"
+                            fill="#b42318"
+                            fillOpacity={0.7}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={32}
+                        />
+                        <Line
+                            dataKey="expenses"
+                            name="Xu hướng"
+                            type="monotone"
+                            stroke="#b42318"
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: "#b42318" }}
+                            activeDot={{ r: 5 }}
+                        />
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
         </div>
-      </div>
     );
-  }
-
-  // Add % change to data
-  const enriched = data.map((d, i) => ({
-    ...d,
-    change: i > 0 && data[i - 1].expenses > 0
-      ? ((d.expenses - data[i - 1].expenses) / data[i - 1].expenses * 100)
-      : 0,
-  }));
-
-  return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-4 shrink-0">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
-      </div>
-      <div className="min-h-[260px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={enriched} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={formatAxisValue}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              cursor={{ fill: "rgba(0,0,0,0.03)" }}
-              formatter={(value) => [formatCurrency(Number(value))]}
-            />
-            <Legend
-              height={28}
-              iconType="circle"
-              iconSize={8}
-              wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
-            />
-            <Bar
-              dataKey="expenses"
-              name="Chi phí"
-              fill="#b42318"
-              fillOpacity={0.7}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={32}
-            />
-            <Line
-              dataKey="expenses"
-              name="Xu hướng"
-              type="monotone"
-              stroke="#b42318"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#b42318" }}
-              activeDot={{ r: 5 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────
@@ -397,92 +399,92 @@ function ExpenseTrendChart({ data, title, subtitle, t }: {
 // ─────────────────────────────────────────────
 
 function RevenueExpenseChart({ data, title, t }: {
-  data: { month: string; revenue: number; expenses: number; net: number }[];
-  title: string;
-  t: ReturnType<typeof useTranslation>["t"];
+    data: { month: string; revenue: number; expenses: number; net: number }[];
+    title: string;
+    t: ReturnType<typeof useTranslation>["t"];
 }) {
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
-        </div>
-      </div>
-    );
-  }
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                <div className="flex flex-1 items-center justify-center">
+                    <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+                </div>
+            </div>
+        );
+    }
 
-  return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <h3 className="mb-4 shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
-        {title}
-      </h3>
-      <div className="min-h-[260px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={formatAxisValue}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              cursor={{ fill: "rgba(0,0,0,0.03)" }}
-              formatter={(value) => [formatCurrency(Number(value))]}
-            />
-            <Legend
-              height={28}
-              iconType="circle"
-              iconSize={8}
-              wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
-            />
-            <Area
-              dataKey="net"
-              name="Lợi nhuận"
-              type="monotone"
-              fill="#257a3e"
-              fillOpacity={0.15}
-              stroke="none"
-            />
-            <Bar
-              dataKey="revenue"
-              name="Doanh thu"
-              fill="#0066cc"
-              fillOpacity={0.8}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={28}
-            />
-            <Bar
-              dataKey="expenses"
-              name="Chi phí"
-              fill="#b42318"
-              fillOpacity={0.7}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={28}
-            />
-            <Line
-              dataKey="net"
-              name="Lợi nhuận ròng"
-              type="monotone"
-              stroke="#257a3e"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#257a3e" }}
-              activeDot={{ r: 5 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
+    return (
+        <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <h3 className="mb-4 shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                {title}
+            </h3>
+            <div className="min-h-[260px] flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
+                        <XAxis
+                            dataKey="month"
+                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                        />
+                        <YAxis
+                            allowDecimals={false}
+                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={formatAxisValue}
+                        />
+                        <Tooltip
+                            contentStyle={TOOLTIP_STYLE}
+                            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                            formatter={(value) => [formatCurrency(Number(value))]}
+                        />
+                        <Legend
+                            height={28}
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
+                        />
+                        <Area
+                            dataKey="net"
+                            name="Lợi nhuận"
+                            type="monotone"
+                            fill="#257a3e"
+                            fillOpacity={0.15}
+                            stroke="none"
+                        />
+                        <Bar
+                            dataKey="revenue"
+                            name="Doanh thu"
+                            fill="#0066cc"
+                            fillOpacity={0.8}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={28}
+                        />
+                        <Bar
+                            dataKey="expenses"
+                            name="Chi phí"
+                            fill="#b42318"
+                            fillOpacity={0.7}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={28}
+                        />
+                        <Line
+                            dataKey="net"
+                            name="Lợi nhuận ròng"
+                            type="monotone"
+                            stroke="#257a3e"
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: "#257a3e" }}
+                            activeDot={{ r: 5 }}
+                        />
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -490,73 +492,73 @@ function RevenueExpenseChart({ data, title, t }: {
 // ─────────────────────────────────────────────
 
 function AllocationDonutChart({ data, title, costCenterLabels, t }: {
-  data: { costCenter: string; amount: number; percentage: number; color: string }[];
-  title: string;
-  costCenterLabels: Record<string, string>;
-  t: ReturnType<typeof useTranslation>["t"];
+    data: { costCenter: string; amount: number; percentage: number; color: string }[];
+    title: string;
+    costCenterLabels: Record<string, string>;
+    t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const total = data.reduce((sum, s) => sum + s.amount, 0);
+    const total = data.reduce((sum, s) => sum + s.amount, 0);
 
-  const chartData = data.map((item, i) => ({
-    name: costCenterLabels[item.costCenter] || item.costCenter,
-    value: item.amount,
-    fill: PIE_COLORS[i % PIE_COLORS.length],
-  }));
+    const chartData = data.map((item, i) => ({
+        name: costCenterLabels[item.costCenter] || item.costCenter,
+        value: item.amount,
+        fill: PIE_COLORS[i % PIE_COLORS.length],
+    }));
 
-  if (!data || data.length === 0) {
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                <div className="flex flex-1 items-center justify-center">
+                    <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+        <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                <span className="text-xxs font-bold tabular-nums text-[var(--color-text-primary)]">
+                    {formatCurrency(total)}
+                </span>
+            </div>
+            <div className="min-h-[300px] flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={65}
+                            outerRadius={105}
+                            paddingAngle={4}
+                            cornerRadius={6}
+                            dataKey="value"
+                            nameKey="name"
+                            stroke="none"
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                            contentStyle={TOOLTIP_STYLE}
+                            formatter={(value) => [formatCurrency(Number(value))]}
+                        />
+                        <Legend
+                            verticalAlign="bottom"
+                            height={36}
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: "13px" }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
         </div>
-      </div>
     );
-  }
-
-  return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <span className="text-xxs font-bold tabular-nums text-[var(--color-text-primary)]">
-          {formatCurrency(total)}
-        </span>
-      </div>
-      <div className="min-h-[300px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={65}
-              outerRadius={105}
-              paddingAngle={4}
-              cornerRadius={6}
-              dataKey="value"
-              nameKey="name"
-              stroke="none"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              formatter={(value) => [formatCurrency(Number(value))]}
-            />
-            <Legend
-              verticalAlign="bottom"
-              height={36}
-              iconType="circle"
-              iconSize={8}
-              wrapperStyle={{ fontSize: "13px" }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────
@@ -564,84 +566,83 @@ function AllocationDonutChart({ data, title, costCenterLabels, t }: {
 // ─────────────────────────────────────────────
 
 function TopExpensesTable({ items, t }: {
-  items: TopExpenseItem[];
-  t: ReturnType<typeof useTranslation>["t"];
+    items: TopExpenseItem[];
+    t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const [mode, setMode] = useState<TopExpenseMode>("highest");
+    const [mode, setMode] = useState<TopExpenseMode>("highest");
 
-  const sorted = [...items].sort((a, b) => {
-    if (mode === "highest") return b.amount - a.amount;
-    if (mode === "increased") return b.changePercent - a.changePercent;
-    return a.amount - b.amount;
-  }).slice(0, 10);
+    const sorted = [...items].sort((a, b) => {
+        if (mode === "highest") return b.amount - a.amount;
+        if (mode === "increased") return b.changePercent - a.changePercent;
+        return a.amount - b.amount;
+    }).slice(0, 10);
 
-  const modes: { key: TopExpenseMode; label: string }[] = [
-    { key: "highest", label: t.expenses.dashboard.topHighest },
-    { key: "increased", label: t.expenses.dashboard.topIncreased },
-    { key: "lowest", label: t.expenses.dashboard.topLowest },
-  ];
+    const modes: { key: TopExpenseMode; label: string }[] = [
+        { key: "highest", label: t.expenses.dashboard.topHighest },
+        { key: "increased", label: t.expenses.dashboard.topIncreased },
+        { key: "lowest", label: t.expenses.dashboard.topLowest },
+    ];
 
-  return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {t.expenses.dashboard.topExpenses}
-        </h3>
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-0.5">
-          {modes.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => setMode(m.key)}
-              className={`h-6 rounded-md px-2.5 text-xxs font-semibold transition-all ${
-                mode === m.key
-                  ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 space-y-0.5 overflow-y-auto">
-        {sorted.map((item, i) => {
-          const isPositiveChange = item.changePercent > 0;
-          return (
-            <div key={item.category} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2 transition-colors hover:bg-[var(--color-surface-card)]">
-              <span className="w-5 text-center text-xxs font-bold tabular-nums text-[var(--color-text-muted)]">
-                {i + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-[var(--color-text-primary)]">{item.label}</p>
-                <p className="text-micro text-[var(--color-text-muted)]">
-                  {t.expenses.costCenter[item.costCenter as keyof typeof t.expenses.costCenter] || item.costCenter}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold tabular-nums text-[var(--color-text-primary)]">
-                  {formatCurrency(item.amount)}
-                </p>
-                {item.changePercent !== 0 && (
-                  <span
-                    className="inline-flex items-center gap-0.5 text-micro font-bold tabular-nums"
-                    style={{ color: isPositiveChange ? "#b42318" : "#257a3e" }}
-                  >
-                    {isPositiveChange ? <ArrowUp size={8} /> : <ArrowDown size={8} />}
-                    {Math.abs(item.changePercent).toFixed(1)}%
-                  </span>
-                )}
-              </div>
+    return (
+        <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {t.expenses.dashboard.topExpenses}
+                </h3>
+                <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-0.5">
+                    {modes.map((m) => (
+                        <button
+                            key={m.key}
+                            type="button"
+                            onClick={() => setMode(m.key)}
+                            className={`h-6 rounded-md px-2.5 text-xxs font-semibold transition-all ${mode === m.key
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                }`}
+                        >
+                            {m.label}
+                        </button>
+                    ))}
+                </div>
             </div>
-          );
-        })}
-        {sorted.length === 0 && (
-          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
-        )}
-      </div>
-    </div>
-  );
+
+            <div className="flex-1 space-y-0.5 overflow-y-auto">
+                {sorted.map((item, i) => {
+                    const isPositiveChange = item.changePercent > 0;
+                    return (
+                        <div key={item.category} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2 transition-colors hover:bg-[var(--color-surface-card)]">
+                            <span className="w-5 text-center text-xxs font-bold tabular-nums text-[var(--color-text-muted)]">
+                                {i + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium text-[var(--color-text-primary)]">{item.label}</p>
+                                <p className="text-micro text-[var(--color-text-muted)]">
+                                    {t.expenses.costCenter[item.costCenter as keyof typeof t.expenses.costCenter] || item.costCenter}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-bold tabular-nums text-[var(--color-text-primary)]">
+                                    {formatCurrency(item.amount)}
+                                </p>
+                                {item.changePercent !== 0 && (
+                                    <span
+                                        className="inline-flex items-center gap-0.5 text-micro font-bold tabular-nums"
+                                        style={{ color: isPositiveChange ? "#b42318" : "#257a3e" }}
+                                    >
+                                        {isPositiveChange ? <ArrowUp size={8} /> : <ArrowDown size={8} />}
+                                        {Math.abs(item.changePercent).toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+                {sorted.length === 0 && (
+                    <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+                )}
+            </div>
+        </div>
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -649,55 +650,55 @@ function TopExpensesTable({ items, t }: {
 // ─────────────────────────────────────────────
 
 function OverBudgetAlerts({ stores, title, emptyText }: {
-  stores: { warehouseName: string; budgetUsed: number; totalBudget: number; totalActual: number }[];
-  title: string;
-  emptyText: string;
+    stores: { warehouseName: string; budgetUsed: number; totalBudget: number; totalActual: number }[];
+    title: string;
+    emptyText: string;
 }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        {stores.length > 0 && (
-          <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-micro font-bold" style={{ color: "#b42318", backgroundColor: "#b423181a" }}>
-            <AlertTriangle size={10} />
-            {stores.length}
-          </span>
-        )}
-      </div>
-      {stores.length === 0 ? (
-        <p className="py-3 text-center text-xs text-[var(--color-text-muted)]">{emptyText}</p>
-      ) : (
-        <div className="grid gap-2 lg:grid-cols-2">
-          {stores.map((store) => {
-            const isOver = store.budgetUsed > 100;
-            return (
-              <div key={store.warehouseName} className="rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{store.warehouseName}</span>
-                  <span className="text-xxs font-bold tabular-nums" style={{ color: isOver ? "#b42318" : "#257a3e" }}>
-                    {store.budgetUsed}%
-                  </span>
+    return (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+                {stores.length > 0 && (
+                    <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-micro font-bold" style={{ color: "#b42318", backgroundColor: "#b423181a" }}>
+                        <AlertTriangle size={10} />
+                        {stores.length}
+                    </span>
+                )}
+            </div>
+            {stores.length === 0 ? (
+                <p className="py-3 text-center text-xs text-[var(--color-text-muted)]">{emptyText}</p>
+            ) : (
+                <div className="grid gap-2 lg:grid-cols-2">
+                    {stores.map((store) => {
+                        const isOver = store.budgetUsed > 100;
+                        return (
+                            <div key={store.warehouseName} className="rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{store.warehouseName}</span>
+                                    <span className="text-xxs font-bold tabular-nums" style={{ color: isOver ? "#b42318" : "#257a3e" }}>
+                                        {store.budgetUsed}%
+                                    </span>
+                                </div>
+                                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
+                                    <div
+                                        className="h-full rounded-full transition-all duration-500"
+                                        style={{
+                                            width: `${Math.min(store.budgetUsed, 100)}%`,
+                                            backgroundColor: isOver ? "#b42318" : "#257a3e",
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-1.5 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
+                                    <span>{formatCurrency(store.totalBudget)}</span>
+                                    <span>{formatCurrency(store.totalActual)}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(store.budgetUsed, 100)}%`,
-                      backgroundColor: isOver ? "#b42318" : "#257a3e",
-                    }}
-                  />
-                </div>
-                <div className="mt-1.5 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
-                  <span>{formatCurrency(store.totalBudget)}</span>
-                  <span>{formatCurrency(store.totalActual)}</span>
-                </div>
-              </div>
-            );
-          })}
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -705,40 +706,40 @@ function OverBudgetAlerts({ stores, title, emptyText }: {
 // ─────────────────────────────────────────────
 
 function DashboardSkeleton() {
-  return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-            <div className="mb-3 flex items-center gap-3">
-              <Skeleton className="h-8 w-10" variant="rect" />
-              <Skeleton className="h-4 w-24" variant="text" />
+    return (
+        <div className="flex w-full flex-col gap-4">
+            <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                        <div className="mb-3 flex items-center gap-3">
+                            <Skeleton className="h-8 w-10" variant="rect" />
+                            <Skeleton className="h-4 w-24" variant="text" />
+                        </div>
+                        <Skeleton className="h-8 w-28" variant="text" />
+                    </div>
+                ))}
             </div>
-            <Skeleton className="h-8 w-28" variant="text" />
-          </div>
-        ))}
-      </div>
-      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-            <Skeleton className="mb-2 h-5 w-24" variant="text" />
-            <Skeleton className="h-6 w-32" variant="text" />
-            <Skeleton className="mt-2 h-1.5 w-full" variant="rect" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-          <Skeleton className="mb-4 h-5 w-40" variant="text" />
-          <Skeleton className="h-[260px] w-full" variant="rect" />
+            <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                        <Skeleton className="mb-2 h-5 w-24" variant="text" />
+                        <Skeleton className="h-6 w-32" variant="text" />
+                        <Skeleton className="mt-2 h-1.5 w-full" variant="rect" />
+                    </div>
+                ))}
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                    <Skeleton className="mb-4 h-5 w-40" variant="text" />
+                    <Skeleton className="h-[260px] w-full" variant="rect" />
+                </div>
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+                    <Skeleton className="mb-4 h-5 w-40" variant="text" />
+                    <Skeleton className="mx-auto h-[200px] w-[200px]" variant="circle" />
+                </div>
+            </div>
         </div>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-          <Skeleton className="mb-4 h-5 w-40" variant="text" />
-          <Skeleton className="mx-auto h-[200px] w-[200px]" variant="circle" />
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 // ─────────────────────────────────────────────
@@ -746,104 +747,184 @@ function DashboardSkeleton() {
 // ─────────────────────────────────────────────
 
 export default function ExpenseDashboard({
-  warehouseId,
-  period,
+    warehouseId,
+    period,
 }: {
-  warehouseId: string;
-  period: string;
+    warehouseId: string;
+    period: string;
 }) {
-  const { t } = useTranslation();
-  const { metrics, loading, error } = useExpenseDashboardMetrics(warehouseId, period);
-  const [selectedCostCenter, setSelectedCostCenter] = useState<ExpenseCostCenter | null>(null);
+    const { t } = useTranslation();
+    const { metrics, loading, error } = useExpenseDashboardMetrics(warehouseId, period);
+    const { revenue: revenueSync, syncing, syncTime } = useRevenueSync(period);
+    const [selectedCostCenter, setSelectedCostCenter] = useState<ExpenseCostCenter | null>(null);
 
-  const selectedStat = selectedCostCenter
-    ? metrics.costCenterStats?.find((s) => s.costCenter === selectedCostCenter) ?? null
-    : null;
+    // Override KPIs with JoyWorld real-time revenue when available
+    const joyRevenue = revenueSync?.total_revenue ?? 0;
+    const hasJoyRevenue = joyRevenue > 0;
 
-  if (error) {
+    const grossRevenueKPI: DashboardKPI = hasJoyRevenue
+        ? { value: joyRevenue, prevValue: metrics.grossRevenue?.prevValue ?? 0, trend: metrics.grossRevenue?.prevValue ? ((joyRevenue - (metrics.grossRevenue?.prevValue ?? 0)) / (metrics.grossRevenue?.prevValue || 1)) * 100 : 0 }
+        : (metrics.grossRevenue ?? EMPTY_KPI);
+
+    const totalExpensesKPI = metrics.totalExpenses ?? EMPTY_KPI;
+
+    const netProfitValue = hasJoyRevenue
+        ? joyRevenue - totalExpensesKPI.value
+        : (metrics.netProfit?.value ?? 0);
+    const netProfitKPI: DashboardKPI = hasJoyRevenue
+        ? { value: netProfitValue, prevValue: metrics.netProfit?.prevValue ?? 0, trend: metrics.netProfit?.prevValue ? ((netProfitValue - (metrics.netProfit?.prevValue ?? 0)) / Math.abs(metrics.netProfit?.prevValue || 1)) * 100 : 0 }
+        : (metrics.netProfit ?? EMPTY_KPI);
+
+    const profitMarginValue = hasJoyRevenue && joyRevenue > 0
+        ? (netProfitValue / joyRevenue) * 100
+        : (metrics.profitMargin?.value ?? 0);
+    const profitMarginKPI: DashboardKPI = hasJoyRevenue
+        ? { value: profitMarginValue, prevValue: metrics.profitMargin?.prevValue ?? 0, trend: metrics.profitMargin?.prevValue ? profitMarginValue - (metrics.profitMargin?.prevValue ?? 0) : 0 }
+        : (metrics.profitMargin ?? EMPTY_KPI);
+
+    const selectedStat = selectedCostCenter
+        ? metrics.costCenterStats?.find((s) => s.costCenter === selectedCostCenter) ?? null
+        : null;
+
+    if (error) {
+        return (
+            <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border p-4" style={{ borderColor: "#b4231833", backgroundColor: "#b4231808" }}>
+                <AlertTriangle size={16} style={{ color: "#b42318" }} />
+                <span className="text-xs" style={{ color: "#b42318" }}>{error}</span>
+            </div>
+        );
+    }
+
+    if (loading) return <DashboardSkeleton />;
+
     return (
-      <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border p-4" style={{ borderColor: "#b4231833", backgroundColor: "#b4231808" }}>
-        <AlertTriangle size={16} style={{ color: "#b42318" }} />
-        <span className="text-xs" style={{ color: "#b42318" }}>{error}</span>
-      </div>
-    );
-  }
+        <div className="flex w-full flex-col gap-4">
+            {/* ── KPI Cards ── */}
+            <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
+                <KPICard title={t.expenses.dashboard.grossRevenue} kpi={grossRevenueKPI} suffix="đ" index={0} />
+                <KPICard title={t.expenses.dashboard.totalExpenses} kpi={totalExpensesKPI} suffix="đ" index={1} />
+                <KPICard title={t.expenses.dashboard.netProfit} kpi={netProfitKPI} suffix="đ" index={2} />
+                <KPICard title={t.expenses.dashboard.profitMargin} kpi={profitMarginKPI} suffix="%" index={3} />
+            </div>
 
-  if (loading) return <DashboardSkeleton />;
+            {/* ── Revenue Sync Status Badge ── */}
+            {/* <div className="flex items-center gap-2 text-xxs text-[var(--color-text-muted)]">
+        {syncing ? (
+          <>
+            <RefreshCw size={12} className="animate-spin" />
+            <span>{t.expenses.dashboard.syncing || "Đang đồng bộ doanh thu..."}</span>
+          </>
+        ) : syncTime ? (
+          <>
+            <Clock size={12} />
+            <span>
+              {t.expenses.dashboard.lastSync || "Đồng bộ doanh thu lúc"}:{" "}
+              {syncTime.toLocaleString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </span>
+          </>
+        ) : (
+          <>
+            <Clock size={12} />
+            <span>{t.expenses.dashboard.notSynced || "Chưa đồng bộ doanh thu"}</span>
+          </>
+        )}
+        {revenueSync && (
+          <span className="ml-auto text-xxs font-semibold tabular-nums text-[var(--color-brand-primary)]">
+            {t.expenses.dashboard.joyWorldRevenue || "JoyWorld"}: {formatCurrency(revenueSync.total_revenue)}
+          </span>
+        )}
+      </div> */}
 
-  return (
-    <div className="flex w-full flex-col gap-4">
-      {/* ── KPI Cards ── */}
-      <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
-        <KPICard title={t.expenses.dashboard.grossRevenue} kpi={metrics.grossRevenue ?? EMPTY_KPI} suffix="đ" index={0} />
-        <KPICard title={t.expenses.dashboard.totalExpenses} kpi={metrics.totalExpenses ?? EMPTY_KPI} suffix="đ" index={1} />
-        <KPICard title={t.expenses.dashboard.netProfit} kpi={metrics.netProfit ?? EMPTY_KPI} suffix="đ" index={2} />
-        <KPICard title={t.expenses.dashboard.profitMargin} kpi={metrics.profitMargin ?? EMPTY_KPI} suffix="%" index={3} />
-      </div>
+            {/* ── Cost Center Stats ── */}
+            {metrics.costCenterStats?.length > 0 && (
+                <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        {t.expenses.dashboard.costCenterStats}
+                    </h3>
+                    <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                        {metrics.costCenterStats.map((stat) => (
+                            <CostCenterStatCard
+                                key={stat.costCenter}
+                                stat={stat}
+                                label={t.expenses.costCenter[stat.costCenter] || stat.costCenter}
+                                onClick={() => setSelectedCostCenter(stat.costCenter)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
 
-      {/* ── Cost Center Stats ── */}
-      {metrics.costCenterStats?.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            {t.expenses.dashboard.costCenterStats}
-          </h3>
-          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-            {metrics.costCenterStats.map((stat) => (
-              <CostCenterStatCard
-                key={stat.costCenter}
-                stat={stat}
-                label={t.expenses.costCenter[stat.costCenter] || stat.costCenter}
-                onClick={() => setSelectedCostCenter(stat.costCenter)}
-              />
-            ))}
-          </div>
+            {/* ── Charts Row 1: Trend + Donut ── */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <ExpenseTrendChart
+                    data={hasJoyRevenue
+                        ? (metrics.trendData ?? []).map((d) => {
+                            const monthNum = period.split("-")[1];
+                            const label = `T${parseInt(monthNum, 10)}`;
+                            if (d.month === label) {
+                                return { ...d, revenue: joyRevenue };
+                            }
+                            return d;
+                        })
+                        : (metrics.trendData ?? [])
+                    }
+                    title={t.expenses.dashboard.expenseTrend}
+                    subtitle={t.expenses.dashboard.expenseTrendDesc}
+                    t={t}
+                />
+                <AllocationDonutChart
+                    data={metrics.costCenterBreakdown ?? []}
+                    title={t.expenses.dashboard.expenseBreakdown}
+                    costCenterLabels={t.expenses.costCenter}
+                    t={t}
+                />
+            </div>
+
+            {/* ── Charts Row 2: Revenue vs Expense + Top Expenses ── */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <RevenueExpenseChart
+                    data={hasJoyRevenue
+                        ? (metrics.revenueExpenseMonthly ?? []).map((d) => {
+                            // Override revenue for the current period month
+                            const monthNum = period.split("-")[1];
+                            const label = `T${parseInt(monthNum, 10)}`;
+                            if (d.month === label) {
+                                return { ...d, revenue: joyRevenue, net: joyRevenue - d.expenses };
+                            }
+                            return d;
+                        })
+                        : (metrics.revenueExpenseMonthly ?? [])
+                    }
+                    title={t.expenses.dashboard.revenueVsExpenseMonthly}
+                    t={t}
+                />
+                <TopExpensesTable items={metrics.topExpenses ?? []} t={t} />
+            </div>
+
+            {/* ── Over Budget (only ALL mode) ── */}
+            {warehouseId === "ALL" && (
+                <OverBudgetAlerts
+                    stores={metrics.overBudgetStores ?? []}
+                    title={t.expenses.dashboard.overBudgetStores}
+                    emptyText={t.expenses.dashboard.noOverBudget}
+                />
+            )}
+
+            {/* ── Cost Center Detail Modal ── */}
+            {selectedStat && (
+                <CostCenterDetailModal
+                    stat={selectedStat}
+                    label={t.expenses.costCenter[selectedStat.costCenter] || selectedStat.costCenter}
+                    onClose={() => setSelectedCostCenter(null)}
+                    t={t}
+                />
+            )}
         </div>
-      )}
-
-      {/* ── Charts Row 1: Trend + Donut ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <ExpenseTrendChart
-          data={metrics.trendData ?? []}
-          title={t.expenses.dashboard.expenseTrend}
-          subtitle={t.expenses.dashboard.expenseTrendDesc}
-          t={t}
-        />
-        <AllocationDonutChart
-          data={metrics.costCenterBreakdown ?? []}
-          title={t.expenses.dashboard.expenseBreakdown}
-          costCenterLabels={t.expenses.costCenter}
-          t={t}
-        />
-      </div>
-
-      {/* ── Charts Row 2: Revenue vs Expense + Top Expenses ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RevenueExpenseChart
-          data={metrics.revenueExpenseMonthly ?? []}
-          title={t.expenses.dashboard.revenueVsExpenseMonthly}
-          t={t}
-        />
-        <TopExpensesTable items={metrics.topExpenses ?? []} t={t} />
-      </div>
-
-      {/* ── Over Budget (only ALL mode) ── */}
-      {warehouseId === "ALL" && (
-        <OverBudgetAlerts
-          stores={metrics.overBudgetStores ?? []}
-          title={t.expenses.dashboard.overBudgetStores}
-          emptyText={t.expenses.dashboard.noOverBudget}
-        />
-      )}
-
-      {/* ── Cost Center Detail Modal ── */}
-      {selectedStat && (
-        <CostCenterDetailModal
-          stat={selectedStat}
-          label={t.expenses.costCenter[selectedStat.costCenter] || selectedStat.costCenter}
-          onClose={() => setSelectedCostCenter(null)}
-          t={t}
-        />
-      )}
-    </div>
-  );
+    );
 }

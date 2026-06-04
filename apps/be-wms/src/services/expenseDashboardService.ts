@@ -19,8 +19,6 @@ import { db } from "../config/firebase.js";
 import {
   ExpenseCategory,
   ExpenseCostCenter,
-  ExportType,
-  ExportVoucherStatus,
 } from "@bduck/shared-types";
 import type { ExpenseDocument } from "@bduck/shared-types";
 import * as expenseRepo from "../repositories/expenseRepository.js";
@@ -80,8 +78,8 @@ const CATEGORY_TO_COST_CENTER: Record<ExpenseCategory, ExpenseCostCenter> = {
   [ExpenseCategory.SALARY_FULLTIME]: ExpenseCostCenter.HR,
   [ExpenseCategory.SALARY_PARTTIME]: ExpenseCostCenter.HR,
   [ExpenseCategory.MARKETING]: ExpenseCostCenter.MARKETING,
-  [ExpenseCategory.GIFT_EXPENSE]: ExpenseCostCenter.MARKETING,
-  [ExpenseCategory.COGS]: ExpenseCostCenter.MARKETING,
+  [ExpenseCategory.GIFT_EXPENSE]: ExpenseCostCenter.MERCHANDISE,
+  [ExpenseCategory.COGS]: ExpenseCostCenter.MERCHANDISE,
   [ExpenseCategory.CONSUMABLE_SUPPLIES]: ExpenseCostCenter.OTHERS,
   [ExpenseCategory.OTHERS]: ExpenseCostCenter.OTHERS,
 };
@@ -90,6 +88,7 @@ const COST_CENTER_COLORS: Record<ExpenseCostCenter, string> = {
   [ExpenseCostCenter.OPERATIONS]: "var(--color-brand-primary)",
   [ExpenseCostCenter.HR]: "var(--color-accent-warning)",
   [ExpenseCostCenter.MARKETING]: "var(--color-accent-success)",
+  [ExpenseCostCenter.MERCHANDISE]: "#257a3e",
   [ExpenseCostCenter.OTHERS]: "var(--color-text-muted)",
 };
 
@@ -113,46 +112,21 @@ function buildKPI(value: number, prevValue: number): KPIMetric {
 }
 
 // ─────────────────────────────────────────────
-// Revenue Calculation (from export vouchers)
+// Revenue Calculation (from revenue_sync collection — JoyWorld API)
 // ─────────────────────────────────────────────
 
 async function calculateRevenue(
-  warehouseId: string | null,
+  _warehouseId: string | null,
   period: string,
 ): Promise<number> {
-  const [year, month] = period.split("-").map(Number);
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  // Revenue comes from JoyWorld system (global, not per-warehouse)
+  const docRef = db.collection("revenue_sync").doc(period);
+  const snap = await docRef.get();
 
-  let query = db
-    .collection("export_vouchers")
-    .where("status", "==", ExportVoucherStatus.COMPLETED)
-    .where("export_type", "==", ExportType.SALE_POS)
-    .where("is_deleted", "==", false)
-    .where("action_time", ">=", startDate)
-    .where("action_time", "<", endDate);
+  if (!snap.exists) return 0;
 
-  if (warehouseId) {
-    query = query.where("warehouse_id", "==", warehouseId);
-  }
-
-  const snap = await query.get();
-  let total = 0;
-
-  for (const doc of snap.docs) {
-    const itemsSnap = await db
-      .collection("export_vouchers")
-      .doc(doc.id)
-      .collection("items")
-      .get();
-
-    for (const itemDoc of itemsSnap.docs) {
-      const item = itemDoc.data();
-      total += (item.picked_quantity || 0) * (item.unit_price || 0);
-    }
-  }
-
-  return total;
+  const data = snap.data();
+  return Number(data?.total_revenue ?? 0);
 }
 
 // ─────────────────────────────────────────────
@@ -182,6 +156,7 @@ function buildCostCenterBreakdown(
     [ExpenseCostCenter.OPERATIONS]: 0,
     [ExpenseCostCenter.HR]: 0,
     [ExpenseCostCenter.MARKETING]: 0,
+    [ExpenseCostCenter.MERCHANDISE]: 0,
     [ExpenseCostCenter.OTHERS]: 0,
   };
 

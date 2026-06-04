@@ -177,6 +177,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Expenses: Authenticated read (for expense dashboard realtime) ──
+    match /expenses/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Revenue Sync: Authenticated read (for dashboard revenue overlay) ──
+    match /revenue_sync/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Default: Deny all ──
     match /{document=**} {
       allow read, write: if false;
