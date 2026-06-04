@@ -72,6 +72,20 @@ app.get("/", (_req, res) => {
 // ---------------------------------------------------------------------------
 // Start Server
 // ---------------------------------------------------------------------------
+function getBuildVersion(): string {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const m  = String(now.getMonth() + 1);
+  const d  = String(now.getDate());
+  const buildId = process.env.BUILD_NUMBER ?? "dev";
+  return `${yy}${m}${d}.${buildId}`;
+}
+
 app.listen(PORT, () => {
-  console.info(`[be-wms] Server running on port ${PORT}`);
+  const version = getBuildVersion();
+  console.info("\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510");
+  console.info(`\u2502  be-wms  v${version.padEnd(27)}\u2502`);
+  console.info(`\u2502  Port    ${String(PORT).padEnd(28)}\u2502`);
+  console.info(`\u2502  Env     ${(process.env.NODE_ENV ?? "development").padEnd(28)}\u2502`);
+  console.info("\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518");
 });

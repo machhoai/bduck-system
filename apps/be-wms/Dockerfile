@@ -33,6 +33,9 @@ COPY packages/eslint-config/ ./packages/eslint-config/
 COPY apps/be-wms/ ./apps/be-wms/
 
 # Build the backend application and its workspace dependencies
+# BUILD_NUMBER is passed via --build-arg from CI/CD and baked into the binary
+ARG BUILD_NUMBER=0
+ENV BUILD_NUMBER=$BUILD_NUMBER
 RUN pnpm --filter @bduck/be-wms... build
 
 # ==============================================================================
