@@ -12,7 +12,7 @@ function generateBuildVersion(): string {
   const m = String(now.getMonth() + 1);          // "6" (no leading zero)
   const d = String(now.getDate());               // "4" (no leading zero)
   const buildNum = process.env.BUILD_NUMBER ?? "0";
-  return `${yy}/${m}/${d}.${buildNum}`;
+  return `${yy}${m}${d}.${buildNum}`;
 }
 
 const appDir = dirname(fileURLToPath(import.meta.url));
