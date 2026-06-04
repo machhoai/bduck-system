@@ -32,7 +32,7 @@ export default function TopBar() {
     }, [pathname]);
 
     return (
-        <div className="flex absolute top-0 z-50 h-20 w-full items-start justify-between gap-2 px-4 pt-2">
+        <div className={`flex absolute top-0 z-50 w-full items-start justify-between gap-2 px-4 pt-2 ${scrolled ? "h-20" : "h-12"}`}>
             {/*
              * Gradient blur overlay:
              * - Trên cùng: blur đầy + bg mờ (opaque mask)
@@ -41,7 +41,7 @@ export default function TopBar() {
              * dùng CSS mask để clip vùng blur theo chiều dọc.
              */}
             <div
-                className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"
+                className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0 hidden"
                     }`}
                 style={{
                     backdropFilter: "blur(14px)",
