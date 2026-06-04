@@ -10,6 +10,7 @@
  * - warehouseId === 'ALL' → always read-only (Consolidated view)
  * - Maps category to cost center → checks permission key
  * - Supports both global and warehouse-scoped permissions
+ * - useExpenseAuthByCostCenter: direct cost center check for custom items
  */
 
 import { useUserStore } from "@/stores/useUserStore";
@@ -28,8 +29,8 @@ const CATEGORY_TO_COST_CENTER: Record<ExpenseCategory, ExpenseCostCenter> = {
   [ExpenseCategory.SALARY_FULLTIME]: ExpenseCostCenter.HR,
   [ExpenseCategory.SALARY_PARTTIME]: ExpenseCostCenter.HR,
   [ExpenseCategory.MARKETING]: ExpenseCostCenter.MARKETING,
-  [ExpenseCategory.GIFT_EXPENSE]: ExpenseCostCenter.MARKETING,
-  [ExpenseCategory.COGS]: ExpenseCostCenter.MARKETING,
+  [ExpenseCategory.GIFT_EXPENSE]: ExpenseCostCenter.MERCHANDISE,
+  [ExpenseCategory.COGS]: ExpenseCostCenter.MERCHANDISE,
   [ExpenseCategory.CONSUMABLE_SUPPLIES]: ExpenseCostCenter.OTHERS,
   [ExpenseCategory.OTHERS]: ExpenseCostCenter.OTHERS,
 };
@@ -38,6 +39,7 @@ const COST_CENTER_PERMISSION: Record<ExpenseCostCenter, string> = {
   [ExpenseCostCenter.OPERATIONS]: "expenses.operations.write",
   [ExpenseCostCenter.HR]: "expenses.hr.write",
   [ExpenseCostCenter.MARKETING]: "expenses.marketing.write",
+  [ExpenseCostCenter.MERCHANDISE]: "expenses.merchandise.write",
   [ExpenseCostCenter.OTHERS]: "expenses.others.write",
 };
 
@@ -77,4 +79,20 @@ export function useExpenseAuth(
   const canWrite = hasPermission(requiredPerm, warehouseId);
 
   return { canWrite, canRead, canClosePeriod, canReopenPeriod };
+}
+
+/**
+ * useExpenseAuthByCostCenter — Direct cost center permission check
+ * Used for custom expense items which don't have an ExpenseCategory enum.
+ */
+export function useExpenseAuthByCostCenter(
+  warehouseId: string,
+  costCenter: ExpenseCostCenter,
+): { canWrite: boolean } {
+  const hasPermission = useUserStore((s) => s.hasPermission);
+
+  if (warehouseId === "ALL") return { canWrite: false };
+
+  const requiredPerm = COST_CENTER_PERMISSION[costCenter];
+  return { canWrite: hasPermission(requiredPerm, warehouseId) };
 }

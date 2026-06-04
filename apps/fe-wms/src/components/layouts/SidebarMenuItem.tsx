@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { MenuItem } from "../../config/menuConfig";
+import { menuItems, type MenuItem } from "../../config/menuConfig";
+
+/**
+ * Check if any other menu item has an exact match for the pathname.
+ * Prevents parent route from being active when a more specific child route exists.
+ */
+function menuHasExactChild(pathname: string, parentHref: string): boolean {
+    return menuItems.some(
+        (m) => m.href !== parentHref && m.href.startsWith(parentHref + "/") && pathname.startsWith(m.href),
+    );
+}
 
 interface SidebarMenuItemProps {
     item: MenuItem;
@@ -27,7 +37,8 @@ export default function SidebarMenuItem({
 }: SidebarMenuItemProps) {
     const pathname = usePathname();
     const isActive =
-        pathname === item.href || pathname.startsWith(item.href + "/");
+        pathname === item.href ||
+        (pathname.startsWith(item.href + "/") && !menuHasExactChild(pathname, item.href));
     const Icon = item.icon;
     const showBadge = badgeCount > 0;
 

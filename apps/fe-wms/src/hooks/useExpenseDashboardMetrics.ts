@@ -4,7 +4,7 @@
  * useExpenseDashboardMetrics — Real-time KPI data from API
  *
  * ► Fetches dashboard metrics from /api/expenses/dashboard/:warehouseId/:period
- * ► Reacts to warehouseId and period changes
+ * ► Includes per-cost-center stats, trend data, and top expenses
  * ► Returns loading/error states for skeleton handling
  */
 
@@ -31,6 +31,30 @@ export interface CostCenterBreakdown {
   color: string;
 }
 
+export interface CostCenterStat {
+  costCenter: ExpenseCostCenter;
+  actualTotal: number;
+  budgetTotal: number;
+  usagePercent: number;
+  trend: number; // MoM change %
+}
+
+export interface TopExpenseItem {
+  category: string;
+  label: string;
+  amount: number;
+  prevAmount: number;
+  changePercent: number;
+  costCenter: ExpenseCostCenter;
+}
+
+export interface RevenueExpenseMonthly {
+  month: string;
+  revenue: number;
+  expenses: number;
+  net: number; // revenue - expenses (positive = profit, negative = loss)
+}
+
 export interface OverBudgetStore {
   warehouseId: string;
   warehouseName: string;
@@ -46,6 +70,9 @@ export interface DashboardMetrics {
   profitMargin: DashboardKPI;
   trendData: TrendPoint[];
   costCenterBreakdown: CostCenterBreakdown[];
+  costCenterStats: CostCenterStat[];
+  topExpenses: TopExpenseItem[];
+  revenueExpenseMonthly: RevenueExpenseMonthly[];
   overBudgetStores: OverBudgetStore[];
 }
 
@@ -58,6 +85,9 @@ const EMPTY_METRICS: DashboardMetrics = {
   profitMargin: EMPTY_KPI,
   trendData: [],
   costCenterBreakdown: [],
+  costCenterStats: [],
+  topExpenses: [],
+  revenueExpenseMonthly: [],
   overBudgetStores: [],
 };
 
@@ -83,8 +113,8 @@ export function useExpenseDashboardMetrics(
       const data = (await fetchDashboardMetrics(
         warehouseId,
         period,
-      )) as DashboardMetrics;
-      setMetrics(data);
+      )) as Partial<DashboardMetrics>;
+      setMetrics({ ...EMPTY_METRICS, ...data });
     } catch (err) {
       console.error("[useExpenseDashboardMetrics] fetch error:", err);
       const apiErr = err as { messages?: { vi?: string } };

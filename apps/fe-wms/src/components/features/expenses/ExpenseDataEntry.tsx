@@ -3,22 +3,22 @@
 /**
  * ExpenseDataEntry — Bảng nhập liệu chi phí theo kỳ kế toán
  *
- * Props-driven: nhận data, isClosed, warehouse context từ parent.
- * Tách biệt khỏi Dashboard để giao diện gọn hơn.
+ * 5 nhóm: OPERATIONS, HR, MARKETING, MERCHANDISE, OTHERS
+ * Hỗ trợ custom items (user tự tạo) trong mỗi nhóm.
  */
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import {
   ExpenseCategory,
   ExpenseCostCenter,
 } from "@bduck/shared-types";
-import type { ExpenseItem } from "@bduck/shared-types";
-import { useExpenseAuth } from "@/hooks/useExpenseAuth";
+import type { ExpenseItem, ExpenseCustomItem } from "@bduck/shared-types";
+import { useExpenseAuth, useExpenseAuthByCostCenter } from "@/hooks/useExpenseAuth";
 import { useTranslation } from "@/lib/i18n";
 import StandardExpenseCell from "./StandardExpenseCell";
 import SemiAutoExpenseCell from "./SemiAutoExpenseCell";
 import { gooeyToast } from "goey-toast";
-import { Info } from "lucide-react";
+import { Info, Plus, Trash2 } from "lucide-react";
 
 interface CategoryConfig {
   key: ExpenseCategory;
@@ -36,10 +36,18 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
   { key: ExpenseCategory.SALARY_FULLTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
   { key: ExpenseCategory.SALARY_PARTTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
   { key: ExpenseCategory.MARKETING, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: false },
-  { key: ExpenseCategory.GIFT_EXPENSE, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: true },
-  { key: ExpenseCategory.COGS, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: true },
+  { key: ExpenseCategory.GIFT_EXPENSE, costCenter: ExpenseCostCenter.MERCHANDISE, isSemiAuto: true },
+  { key: ExpenseCategory.COGS, costCenter: ExpenseCostCenter.MERCHANDISE, isSemiAuto: true },
   { key: ExpenseCategory.CONSUMABLE_SUPPLIES, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
   { key: ExpenseCategory.OTHERS, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
+];
+
+const COST_CENTER_ORDER: ExpenseCostCenter[] = [
+  ExpenseCostCenter.OPERATIONS,
+  ExpenseCostCenter.HR,
+  ExpenseCostCenter.MARKETING,
+  ExpenseCostCenter.MERCHANDISE,
+  ExpenseCostCenter.OTHERS,
 ];
 
 function formatCurrency(value: number): string {
@@ -59,16 +67,11 @@ function getVarianceDotClass(variance: number): string {
 }
 
 // ─────────────────────────────────────────────
-// Row Component
+// Standard Expense Row
 // ─────────────────────────────────────────────
 
 function ExpenseRow({
-  config,
-  item,
-  warehouseId,
-  isClosed,
-  onSave,
-  label,
+  config, item, warehouseId, isClosed, onSave, label,
 }: {
   config: CategoryConfig;
   item: ExpenseItem | undefined;
@@ -92,26 +95,21 @@ function ExpenseRow({
     (value: number) => onSave(config.key, { actual_amount: value }),
     [config.key, onSave],
   );
-
   const handleBudgetSave = useCallback(
     (value: number) => onSave(config.key, { budget_amount: value }),
     [config.key, onSave],
   );
 
   return (
-    <tr className="group border-b border-[var(--color-border-soft)] transition-colors hover:bg-[var(--color-surface-card)]">
-      <td className="sticky left-0 z-10 bg-[var(--color-surface-elevated)] p-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors group-hover:bg-[var(--color-surface-card)]">
+    <tr className="group border-b border-border-soft transition-colors hover:bg-surface-card">
+      <td className="sticky left-0 z-10 bg-surface-elevated p-2 text-sm font-medium text-text-primary transition-colors group-hover:bg-surface-card">
         <div className="flex min-w-44 items-center gap-2">
           <span className={`h-2 w-2 shrink-0 rounded-radius-pill ${getVarianceDotClass(variance)}`} />
           <span className="truncate">{label}</span>
         </div>
       </td>
       <td className="p-1.5 align-middle">
-        <StandardExpenseCell
-          value={budgetAmount}
-          canWrite={effectiveCanWrite}
-          onSave={handleBudgetSave}
-        />
+        <StandardExpenseCell value={budgetAmount} canWrite={effectiveCanWrite} onSave={handleBudgetSave} />
       </td>
       <td className="p-1.5 align-middle">
         {config.isSemiAuto ? (
@@ -122,19 +120,14 @@ function ExpenseRow({
             onSave={handleActualSave}
           />
         ) : (
-          <StandardExpenseCell
-            value={actualAmount}
-            canWrite={effectiveCanWrite}
-            onSave={handleActualSave}
-          />
+          <StandardExpenseCell value={actualAmount} canWrite={effectiveCanWrite} onSave={handleActualSave} />
         )}
       </td>
       <td className="p-1.5 text-right align-middle">
         {budgetAmount > 0 ? (
           <div className="ml-auto flex min-w-24 flex-col items-end gap-1">
             <span className={`inline-flex h-6 min-w-16 items-center justify-center rounded-radius-pill border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(variance)}`}>
-              {variance > 0 ? "+" : ""}
-              {variance.toFixed(1)}%
+              {variance > 0 ? "+" : ""}{variance.toFixed(1)}%
             </span>
             <div className="h-1 w-full overflow-hidden rounded-radius-pill bg-surface-base">
               <div
@@ -143,6 +136,107 @@ function ExpenseRow({
               />
             </div>
           </div>
+        ) : (
+          <span className="text-text-muted">-</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Custom Item Row
+// ─────────────────────────────────────────────
+
+function CustomItemRow({
+  item, warehouseId, isClosed, onSave, onDelete,
+}: {
+  item: ExpenseCustomItem;
+  warehouseId: string;
+  isClosed: boolean;
+  onSave: (itemId: string, data: { label: string; cost_center: string; actual_amount: number; budget_amount: number | null; }) => Promise<void>;
+  onDelete: (itemId: string) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const { canWrite } = useExpenseAuthByCostCenter(warehouseId, item.cost_center);
+  const effectiveCanWrite = canWrite && !isClosed;
+  const [deleting, setDeleting] = useState(false);
+
+  const actualAmount = item.actual_amount ?? 0;
+  const budgetAmount = item.budget_amount ?? 0;
+  const variance = budgetAmount > 0
+    ? ((actualAmount - budgetAmount) / budgetAmount) * 100
+    : 0;
+
+  const handleActualSave = useCallback(
+    (value: number) => {
+      onSave(item.id, {
+        label: item.label,
+        cost_center: item.cost_center,
+        actual_amount: value,
+        budget_amount: item.budget_amount,
+      });
+    },
+    [item, onSave],
+  );
+
+  const handleBudgetSave = useCallback(
+    (value: number) => {
+      onSave(item.id, {
+        label: item.label,
+        cost_center: item.cost_center,
+        actual_amount: item.actual_amount,
+        budget_amount: value,
+      });
+    },
+    [item, onSave],
+  );
+
+  const handleDelete = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await gooeyToast.promise(onDelete(item.id), {
+        loading: t.expenses.actions.deleting,
+        success: t.expenses.actions.deleted,
+        error: t.expenses.actions.deleteFailed,
+      });
+    } catch (err) {
+      console.error("[CustomItemRow] delete error:", err);
+    } finally {
+      setDeleting(false);
+    }
+  }, [item.id, onDelete, t]);
+
+  return (
+    <tr className="group border-b border-border-soft transition-colors hover:bg-surface-card">
+      <td className="sticky left-0 z-10 bg-surface-elevated p-2 text-sm font-medium text-text-primary transition-colors group-hover:bg-surface-card">
+        <div className="flex min-w-44 items-center gap-2">
+          <span className={`h-2 w-2 shrink-0 rounded-radius-pill ${getVarianceDotClass(variance)}`} />
+          <span className="truncate text-brand-primary">{item.label}</span>
+          {effectiveCanWrite && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="ml-auto shrink-0 rounded-radius-xs p-0.5 text-text-muted opacity-0 transition-all hover:bg-accent-error/10 hover:text-accent-error group-hover:opacity-100 disabled:opacity-50"
+              aria-label={t.expenses.actions.removeCustomItem}
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
+        </div>
+      </td>
+      <td className="p-1.5 align-middle">
+        <StandardExpenseCell value={budgetAmount} canWrite={effectiveCanWrite} onSave={handleBudgetSave} />
+      </td>
+      <td className="p-1.5 align-middle">
+        <StandardExpenseCell value={actualAmount} canWrite={effectiveCanWrite} onSave={handleActualSave} />
+      </td>
+      <td className="p-1.5 text-right align-middle">
+        {budgetAmount > 0 ? (
+          <span className={`inline-flex h-6 min-w-16 items-center justify-center rounded-radius-pill border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(variance)}`}>
+            {variance > 0 ? "+" : ""}{variance.toFixed(1)}%
+          </span>
         ) : (
           <span className="text-text-muted">-</span>
         )}
@@ -161,8 +255,11 @@ interface ExpenseDataEntryProps {
   isClosed: boolean;
   data: {
     items: Record<string, ExpenseItem | undefined>;
+    custom_items?: Record<string, ExpenseCustomItem>;
   };
   onSaveItem: (category: ExpenseCategory, itemData: Partial<ExpenseItem>) => Promise<void>;
+  onSaveCustomItem: (itemId: string, data: { label: string; cost_center: string; actual_amount: number; budget_amount: number | null; }) => Promise<void>;
+  onDeleteCustomItem: (itemId: string) => Promise<void>;
   warehouseName: string;
 }
 
@@ -172,9 +269,12 @@ export default function ExpenseDataEntry({
   isClosed,
   data,
   onSaveItem,
+  onSaveCustomItem,
+  onDeleteCustomItem,
   warehouseName,
 }: ExpenseDataEntryProps) {
   const { t } = useTranslation();
+  const [newItemLabels, setNewItemLabels] = useState<Record<string, string>>({});
 
   const grouped = useMemo(() => {
     const map = new Map<ExpenseCostCenter, CategoryConfig[]>();
@@ -186,17 +286,27 @@ export default function ExpenseDataEntry({
     return map;
   }, []);
 
+  // Filter custom items by cost center
+  const customItemsByCostCenter = useMemo(() => {
+    const map = new Map<ExpenseCostCenter, ExpenseCustomItem[]>();
+    if (!data.custom_items) return map;
+    for (const item of Object.values(data.custom_items)) {
+      if (item.is_deleted) continue;
+      const list = map.get(item.cost_center) || [];
+      list.push(item);
+      map.set(item.cost_center, list);
+    }
+    return map;
+  }, [data.custom_items]);
+
   const handleSaveItem = useCallback(
     async (category: ExpenseCategory, itemData: Partial<ExpenseItem>) => {
       try {
-        await gooeyToast.promise(
-          onSaveItem(category, itemData),
-          {
-            loading: t.expenses.actions.saving,
-            success: t.expenses.actions.saved,
-            error: t.expenses.actions.saveFailed,
-          },
-        );
+        await gooeyToast.promise(onSaveItem(category, itemData), {
+          loading: t.expenses.actions.saving,
+          success: t.expenses.actions.saved,
+          error: t.expenses.actions.saveFailed,
+        });
       } catch (err) {
         console.error("[ExpenseDataEntry] save error:", err);
       }
@@ -204,86 +314,107 @@ export default function ExpenseDataEntry({
     [onSaveItem, t],
   );
 
+  const handleAddCustomItem = useCallback(
+    async (costCenter: ExpenseCostCenter) => {
+      const label = newItemLabels[costCenter]?.trim();
+      if (!label) return;
+      const itemId = crypto.randomUUID();
+      try {
+        await gooeyToast.promise(
+          onSaveCustomItem(itemId, {
+            label,
+            cost_center: costCenter,
+            actual_amount: 0,
+            budget_amount: null,
+          }),
+          {
+            loading: t.expenses.actions.saving,
+            success: t.expenses.actions.saved,
+            error: t.expenses.actions.saveFailed,
+          },
+        );
+        setNewItemLabels((prev) => ({ ...prev, [costCenter]: "" }));
+      } catch (err) {
+        console.error("[ExpenseDataEntry] add custom item error:", err);
+      }
+    },
+    [newItemLabels, onSaveCustomItem, t],
+  );
+
+  // Totals
   const totalActual = useMemo(() => {
-    return Object.values(data.items).reduce(
-      (sum, item) => sum + (item?.actual_amount ?? 0),
-      0,
-    );
-  }, [data.items]);
+    let sum = Object.values(data.items).reduce((s, item) => s + (item?.actual_amount ?? 0), 0);
+    if (data.custom_items) {
+      sum += Object.values(data.custom_items)
+        .filter((i) => !i.is_deleted)
+        .reduce((s, item) => s + (item.actual_amount ?? 0), 0);
+    }
+    return sum;
+  }, [data.items, data.custom_items]);
 
   const totalBudget = useMemo(() => {
-    return Object.values(data.items).reduce(
-      (sum, item) => sum + (item?.budget_amount ?? 0),
-      0,
-    );
-  }, [data.items]);
+    let sum = Object.values(data.items).reduce((s, item) => s + (item?.budget_amount ?? 0), 0);
+    if (data.custom_items) {
+      sum += Object.values(data.custom_items)
+        .filter((i) => !i.is_deleted)
+        .reduce((s, item) => s + (item.budget_amount ?? 0), 0);
+    }
+    return sum;
+  }, [data.items, data.custom_items]);
 
   const totalVariance = totalBudget > 0
     ? ((totalActual - totalBudget) / totalBudget) * 100
     : 0;
 
-  // Consolidated mode: read-only hint
+  // Consolidated mode
   if (warehouseId === "ALL") {
     return (
-      <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-accent-info/20 bg-accent-info/5 p-4">
+      <div className="flex w-full items-center gap-3 rounded-radius-lg border border-accent-info/20 bg-accent-info/5 p-4">
         <Info size={16} className="shrink-0 text-accent-info" />
-        <span className="text-xs text-text-secondary">
-          {t.expenses.hint.selectWarehouse}
-        </span>
+        <span className="text-xs text-text-secondary">{t.expenses.hint.selectWarehouse}</span>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            {t.expenses.title}
-          </h3>
-          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-            {period} · {warehouseName}
-          </p>
-        </div>
-        <span className={`inline-flex h-6 items-center rounded-[var(--radius-pill)] border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(totalVariance)}`}>
-          {totalBudget > 0 ? `${totalVariance > 0 ? "+" : ""}${totalVariance.toFixed(1)}%` : "-"}
-        </span>
-      </div>
-
+    <div className="w-full overflow-hidden rounded-radius-lg border border-border-soft bg-surface-elevated">
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]">
-              <th className="sticky left-0 z-20 bg-[var(--color-surface-card)] p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            <tr className="border-b border-border-subtle bg-surface-card">
+              <th className="sticky left-0 z-20 bg-surface-card p-2 text-left text-xxs font-semibold uppercase tracking-wider text-text-muted">
                 {t.expenses.columns.category}
               </th>
-              <th className="w-44 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              <th className="w-44 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-text-muted">
                 {t.expenses.columns.budget}
               </th>
-              <th className="w-56 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              <th className="w-56 p-2 text-left text-xxs font-semibold uppercase tracking-wider text-text-muted">
                 {t.expenses.columns.actual}
               </th>
-              <th className="w-32 p-2 text-right text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              <th className="w-32 p-2 text-right text-xxs font-semibold uppercase tracking-wider text-text-muted">
                 {t.expenses.columns.variance}
               </th>
             </tr>
           </thead>
           <tbody>
-            {Array.from(grouped.entries()).map(([costCenter, configs]) => {
+            {COST_CENTER_ORDER.map((costCenter) => {
+              const configs = grouped.get(costCenter) || [];
+              const customItems = customItemsByCostCenter.get(costCenter) || [];
               const centerLabel = t.expenses.costCenter[costCenter] || costCenter;
+
+              // Group totals
               const centerBudget = configs.reduce(
-                (sum, config) => sum + (data.items[config.key]?.budget_amount ?? 0),
-                0,
-              );
+                (sum, config) => sum + (data.items[config.key]?.budget_amount ?? 0), 0,
+              ) + customItems.reduce((sum, i) => sum + (i.budget_amount ?? 0), 0);
               const centerActual = configs.reduce(
-                (sum, config) => sum + (data.items[config.key]?.actual_amount ?? 0),
-                0,
-              );
+                (sum, config) => sum + (data.items[config.key]?.actual_amount ?? 0), 0,
+              ) + customItems.reduce((sum, i) => sum + (i.actual_amount ?? 0), 0);
               const centerVariance = centerBudget > 0
                 ? ((centerActual - centerBudget) / centerBudget) * 100
                 : 0;
 
               return [
+                /* Group header */
                 <tr key={`header-${costCenter}`} className="border-y border-border-subtle bg-surface-base">
                   <td className="sticky left-0 z-10 bg-surface-base p-2 text-xxs font-bold uppercase tracking-widest text-text-muted">
                     {centerLabel}
@@ -300,6 +431,8 @@ export default function ExpenseDataEntry({
                     </span>
                   </td>
                 </tr>,
+
+                /* Standard rows */
                 ...configs.map((config) => (
                   <ExpenseRow
                     key={config.key}
@@ -311,9 +444,38 @@ export default function ExpenseDataEntry({
                     label={t.expenses.category[config.key] || config.key}
                   />
                 )),
+
+                /* Custom items */
+                ...customItems.map((item) => (
+                  <CustomItemRow
+                    key={item.id}
+                    item={item}
+                    warehouseId={warehouseId}
+                    isClosed={isClosed}
+                    onSave={onSaveCustomItem}
+                    onDelete={onDeleteCustomItem}
+                  />
+                )),
+
+                /* Add custom item row */
+                !isClosed && (
+                  <AddCustomItemRow
+                    key={`add-${costCenter}`}
+                    costCenter={costCenter}
+                    warehouseId={warehouseId}
+                    label={newItemLabels[costCenter] || ""}
+                    onLabelChange={(v) =>
+                      setNewItemLabels((prev) => ({ ...prev, [costCenter]: v }))
+                    }
+                    onAdd={() => handleAddCustomItem(costCenter)}
+                    placeholder={t.expenses.actions.customItemPlaceholder}
+                    addLabel={t.expenses.actions.addCustomItem}
+                  />
+                ),
               ];
             })}
 
+            {/* Total row */}
             <tr className="border-t-2 border-border-subtle bg-surface-card font-semibold">
               <td className="sticky left-0 z-10 bg-surface-card p-2 text-sm text-text-primary">
                 {t.expenses.total}
@@ -327,8 +489,7 @@ export default function ExpenseDataEntry({
               <td className="p-2 text-right">
                 {totalBudget > 0 ? (
                   <span className={`inline-flex h-6 min-w-16 items-center justify-center rounded-radius-pill border px-2 text-xxs font-bold tabular-nums ${getVarianceClass(totalVariance)}`}>
-                    {totalVariance > 0 ? "+" : ""}
-                    {totalVariance.toFixed(1)}%
+                    {totalVariance > 0 ? "+" : ""}{totalVariance.toFixed(1)}%
                   </span>
                 ) : (
                   <span className="text-text-muted">-</span>
@@ -339,5 +500,50 @@ export default function ExpenseDataEntry({
         </table>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Add Custom Item Row
+// ─────────────────────────────────────────────
+
+function AddCustomItemRow({
+  costCenter, warehouseId, label, onLabelChange, onAdd, placeholder, addLabel,
+}: {
+  costCenter: ExpenseCostCenter;
+  warehouseId: string;
+  label: string;
+  onLabelChange: (v: string) => void;
+  onAdd: () => void;
+  placeholder: string;
+  addLabel: string;
+}) {
+  const { canWrite } = useExpenseAuthByCostCenter(warehouseId, costCenter);
+  if (!canWrite) return null;
+
+  return (
+    <tr className="border-b border-border-soft">
+      <td colSpan={4} className="p-1.5">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            className="h-7 flex-1 rounded-radius-xs border border-dashed border-border-subtle bg-transparent px-2 text-xs text-text-secondary placeholder:text-text-muted focus:border-brand-primary focus:outline-none"
+            placeholder={placeholder}
+            value={label}
+            onChange={(e) => onLabelChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          />
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={!label.trim()}
+            className="flex h-7 w-fit items-center gap-1 rounded-radius-xs bg-brand-primary/10 px-2 text-xxs font-medium text-brand-primary transition-colors hover:bg-brand-primary/20 disabled:opacity-40"
+          >
+            <Plus size={12} />
+            {addLabel}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }

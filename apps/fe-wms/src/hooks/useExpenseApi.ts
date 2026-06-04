@@ -66,3 +66,33 @@ export async function fetchDashboardMetrics(
 ) {
   return apiFetch(`/dashboard/${warehouseId}/${period}`);
 }
+
+/** Save or update a custom expense item */
+export async function saveCustomExpenseItem(
+  warehouseId: string,
+  period: string,
+  itemId: string,
+  data: {
+    label: string;
+    cost_center: string;
+    actual_amount: number;
+    budget_amount: number | null;
+    note?: string | null;
+  },
+) {
+  return apiFetch(`/${warehouseId}/${period}/custom-items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Soft-delete a custom expense item (is_deleted: true) */
+export async function deleteCustomExpenseItem(
+  warehouseId: string,
+  period: string,
+  itemId: string,
+) {
+  return apiFetch(`/${warehouseId}/${period}/custom-items/${itemId}`, {
+    method: "DELETE",
+  });
+}

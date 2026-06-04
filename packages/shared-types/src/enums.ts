@@ -315,6 +315,7 @@ export enum ExpenseCostCenter {
     OPERATIONS = 'OPERATIONS',
     HR = 'HR',
     MARKETING = 'MARKETING',
+    MERCHANDISE = 'MERCHANDISE',
     OTHERS = 'OTHERS',
 }
 
@@ -329,8 +330,9 @@ export enum ExpenseCategory {
     SOCIAL_INSURANCE = 'SOCIAL_INSURANCE',
     SALARY_FULLTIME = 'SALARY_FULLTIME',
     SALARY_PARTTIME = 'SALARY_PARTTIME',
-    // MARKETING
+    // MARKETING (quảng cáo, chiến dịch)
     MARKETING = 'MARKETING',
+    // MERCHANDISE (hàng hóa)
     GIFT_EXPENSE = 'GIFT_EXPENSE', // Semi-auto from WMS
     COGS = 'COGS', // Cost of Goods Sold - Semi-auto from WMS
     // OTHERS

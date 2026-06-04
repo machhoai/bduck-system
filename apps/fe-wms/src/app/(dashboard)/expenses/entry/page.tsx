@@ -1,17 +1,17 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import ExpenseDashboard from "@/components/features/expenses/ExpenseDashboard";
+import ExpenseEntryPage from "@/components/features/expenses/ExpenseEntryPage";
 
 function getCurrentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function ExpensesDashboardRoute() {
+export default function ExpensesEntryRoute() {
   const searchParams = useSearchParams();
   const warehouseId = searchParams.get("warehouse") || "ALL";
   const period = searchParams.get("period") || getCurrentPeriod();
 
-  return <ExpenseDashboard warehouseId={warehouseId} period={period} />;
+  return <ExpenseEntryPage warehouseId={warehouseId} period={period} />;
 }

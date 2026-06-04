@@ -1,222 +1,671 @@
 "use client";
 
+/**
+ * ExpenseDashboard — Full analytics dashboard for expenses
+ *
+ * Style: Mirrors main inventory dashboard (rounded-lg cards, var() colors)
+ * Charts: recharts library
+ *  - Expense Trend: ComposedChart (Bar + Line — Same Data Composed Chart)
+ *  - Revenue vs Expense: ComposedChart (Line + Bar + Area — Line Bar Area Composed Chart)
+ *  - Expense Allocation: PieChart with paddingAngle + cornerRadius (gap & rounded corners)
+ *  - Top Expenses: table with mode switcher
+ *
+ * Currency: always full number, e.g. 20.000.000đ (never abbreviated)
+ */
+
+import { useState } from "react";
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import { useTranslation } from "@/lib/i18n";
 import {
   useExpenseDashboardMetrics,
   type DashboardKPI,
-  type CostCenterBreakdown,
+  type CostCenterStat,
+  type TopExpenseItem,
 } from "@/hooks/useExpenseDashboardMetrics";
+import { ExpenseCostCenter } from "@bduck/shared-types";
 import {
   AlertTriangle,
-  DollarSign,
-  Percent,
-  PiggyBank,
-  Receipt,
+  ArrowDown,
+  ArrowUp,
+  Factory,
+  Megaphone,
+  ShoppingBag,
+  SquareAsterisk,
   TrendingDown,
   TrendingUp,
+  Users,
+  X,
+  DollarSign,
+  Receipt,
+  PiggyBank,
+  Percent,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-const KPI_ICONS = [DollarSign, Receipt, PiggyBank, Percent] as const;
-const KPI_COLORS = [
-  "border-brand-primary/20 bg-brand-primary-muted text-brand-primary",
-  "border-accent-warning/20 bg-accent-warning/10 text-accent-warning",
-  "border-accent-success/20 bg-accent-success/10 text-accent-success",
-  "border-accent-info/20 bg-accent-info/10 text-accent-info",
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+
+const EMPTY_KPI: DashboardKPI = { value: 0, prevValue: 0, trend: 0 };
+
+const COST_CENTER_ICONS: Record<ExpenseCostCenter, typeof Factory> = {
+  [ExpenseCostCenter.OPERATIONS]: Factory,
+  [ExpenseCostCenter.HR]: Users,
+  [ExpenseCostCenter.MARKETING]: Megaphone,
+  [ExpenseCostCenter.MERCHANDISE]: ShoppingBag,
+  [ExpenseCostCenter.OTHERS]: SquareAsterisk,
+};
+
+const COST_CENTER_STYLE: Record<ExpenseCostCenter, { color: string; bg: string }> = {
+  [ExpenseCostCenter.OPERATIONS]: { color: "#0066cc", bg: "#0066cc1a" },
+  [ExpenseCostCenter.HR]: { color: "#6366f1", bg: "#6366f11a" },
+  [ExpenseCostCenter.MARKETING]: { color: "#f59e0b", bg: "#f59e0b1a" },
+  [ExpenseCostCenter.MERCHANDISE]: { color: "#257a3e", bg: "#257a3e1a" },
+  [ExpenseCostCenter.OTHERS]: { color: "#7a7a7a", bg: "#7a7a7a1a" },
+};
+
+const PIE_COLORS = ["#0066cc", "#6366f1", "#f59e0b", "#257a3e", "#7a7a7a"];
+
+const KPI_CONFIGS = [
+  { icon: DollarSign, color: "#0066cc", bg: "#0066cc1a" },
+  { icon: Receipt, color: "#b42318", bg: "#b423181a" },
+  { icon: PiggyBank, color: "#257a3e", bg: "#257a3e1a" },
+  { icon: Percent, color: "#6366f1", bg: "#6366f11a" },
 ] as const;
 
-function KPICard({
-  title,
-  kpi,
-  suffix,
-  formatValue,
-  index,
-}: {
+type TopExpenseMode = "highest" | "increased" | "lowest";
+
+/** Full currency — 20.000.000đ, never abbreviated */
+function formatCurrency(value: number): string {
+  return `${value.toLocaleString("vi-VN")}đ`;
+}
+
+/** Short axis label — 20tr, 1.5 tỷ for chart Y axis only */
+function formatAxisValue(value: number): string {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}tỷ`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}tr`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  return String(value);
+}
+
+// ─────────────────────────────────────────────
+// Shared tooltip style (matches main dashboard)
+// ─────────────────────────────────────────────
+
+const TOOLTIP_STYLE = {
+  borderRadius: "var(--radius-sm)",
+  border: "1px solid var(--color-border-subtle)",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+  fontSize: "13px",
+};
+
+// ─────────────────────────────────────────────
+// KPI Card (matches StatCard from main dashboard)
+// ─────────────────────────────────────────────
+
+function KPICard({ title, kpi, suffix, index }: {
   title: string;
   kpi: DashboardKPI;
   suffix?: string;
-  formatValue?: (v: number) => string;
   index: number;
 }) {
-  const displayValue = formatValue
-    ? formatValue(kpi.value)
-    : kpi.value.toLocaleString("vi-VN");
+  const cfg = KPI_CONFIGS[index] || KPI_CONFIGS[0];
+  const Icon = cfg.icon;
   const trendUp = kpi.trend > 0;
   const TrendIcon = trendUp ? TrendingUp : TrendingDown;
-  const trendColor = trendUp ? "text-accent-success" : "text-accent-error";
-  const trendBg = trendUp ? "bg-accent-success/8" : "bg-accent-error/8";
-  const Icon = KPI_ICONS[index] || DollarSign;
-  const colorClass = KPI_COLORS[index] || KPI_COLORS[0];
+  const isProfit = index === 2;
+  const trendColor = isProfit
+    ? (trendUp ? "#257a3e" : "#b42318")
+    : (trendUp ? "#b42318" : "#257a3e");
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+    <div className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 text-left transition-all hover:shadow-md">
       <div className="mb-3 flex items-center gap-3">
-        <div className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border ${colorClass}`}>
+        <div
+          className="flex h-8 w-10 items-center justify-center rounded-[var(--radius-sm)]"
+          style={{ backgroundColor: cfg.bg, color: cfg.color }}
+        >
           <Icon size={20} strokeWidth={1.7} />
         </div>
-        <span className="truncate text-xs font-medium text-[var(--color-text-muted)]">
-          {title}
-        </span>
+        <span className="text-xs font-medium text-[var(--color-text-muted)]">{title}</span>
       </div>
       <div className="flex items-end justify-between gap-2">
-        <span className="min-w-0 truncate text-lg font-semibold leading-none tracking-tight tabular-nums text-[var(--color-text-primary)]">
-          {displayValue}{suffix}
-        </span>
-        <span className={`inline-flex h-5 items-center gap-0.5 rounded-radius-pill px-1.5 text-micro font-bold tabular-nums ${trendBg} ${trendColor}`}>
-          <TrendIcon size={10} strokeWidth={2.5} />
-          {Math.abs(kpi.trend).toFixed(1)}%
-        </span>
+        <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
+          {index === 3 ? `${kpi.value.toFixed(1)}${suffix}` : `${formatCurrency(kpi.value)}`}
+        </p>
+        {kpi.trend !== 0 && (
+          <span
+            className="inline-flex h-5 items-center gap-0.5 rounded-full px-1.5 text-micro font-bold tabular-nums"
+            style={{ color: trendColor, backgroundColor: `${trendColor}14` }}
+          >
+            <TrendIcon size={10} strokeWidth={2.5} />
+            {Math.abs(kpi.trend).toFixed(1)}%
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function TrendChart({
-  data,
-  title,
-  legendRevenue,
-  legendExpenses,
-}: {
+// ─────────────────────────────────────────────
+// Cost Center Stat Card (clickable)
+// ─────────────────────────────────────────────
+
+function CostCenterStatCard({ stat, label, onClick }: {
+  stat: CostCenterStat;
+  label: string;
+  onClick: () => void;
+}) {
+  const Icon = COST_CENTER_ICONS[stat.costCenter];
+  const style = COST_CENTER_STYLE[stat.costCenter];
+  const isOver = stat.usagePercent > 100;
+  const trendUp = stat.trend > 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-left transition-all hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <div
+          className="flex h-7 w-8 items-center justify-center rounded-[var(--radius-sm)]"
+          style={{ backgroundColor: style.bg, color: style.color }}
+        >
+          <Icon size={16} strokeWidth={1.7} />
+        </div>
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--color-text-primary)]">
+          {label}
+        </span>
+        {stat.trend !== 0 && (
+          <span
+            className="shrink-0 text-micro font-bold tabular-nums"
+            style={{ color: trendUp ? "#b42318" : "#257a3e" }}
+          >
+            {trendUp ? "+" : ""}{stat.trend.toFixed(1)}%
+          </span>
+        )}
+      </div>
+      <p className="mb-2 text-sm font-bold tabular-nums text-[var(--color-text-primary)]">
+        {formatCurrency(stat.actualTotal)}
+      </p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-card)]">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${Math.min(stat.usagePercent, 100)}%`,
+            backgroundColor: isOver ? "#b42318" : style.color,
+          }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
+        <span>{formatCurrency(stat.budgetTotal)}</span>
+        <span>{stat.usagePercent.toFixed(0)}%</span>
+      </div>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Cost Center Detail Modal
+// ─────────────────────────────────────────────
+
+function CostCenterDetailModal({ stat, label, onClose, t }: {
+  stat: CostCenterStat;
+  label: string;
+  onClose: () => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const Icon = COST_CENTER_ICONS[stat.costCenter];
+  const style = COST_CENTER_STYLE[stat.costCenter];
+  const isOver = stat.usagePercent > 100;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-[90%] max-w-[500px] rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)]"
+              style={{ backgroundColor: style.bg, color: style.color }}
+            >
+              <Icon size={16} />
+            </div>
+            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
+              {t.expenses.dashboard.groupDetail}: {label}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: t.expenses.dashboard.actual, value: formatCurrency(stat.actualTotal), color: undefined },
+              { label: t.expenses.dashboard.budget, value: formatCurrency(stat.budgetTotal), color: undefined },
+              { label: t.expenses.dashboard.usage, value: `${stat.usagePercent.toFixed(1)}%`, color: isOver ? "#b42318" : "#257a3e" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3 text-center">
+                <p className="text-xxs text-[var(--color-text-muted)]">{item.label}</p>
+                <p className="text-sm font-bold tabular-nums" style={item.color ? { color: item.color } : undefined}>
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${Math.min(stat.usagePercent, 100)}%`,
+                backgroundColor: isOver ? "#b42318" : style.color,
+              }}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+            <span className="text-xs text-[var(--color-text-muted)]">{t.expenses.dashboard.change} MoM</span>
+            <span
+              className="ml-auto text-sm font-bold tabular-nums"
+              style={{ color: stat.trend > 0 ? "#b42318" : "#257a3e" }}
+            >
+              {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Expense Trend — ComposedChart (Bar + Line)
+// "Same Data Composed Chart" from recharts
+// ─────────────────────────────────────────────
+
+function ExpenseTrendChart({ data, title, subtitle, t }: {
   data: { month: string; revenue: number; expenses: number }[];
   title: string;
-  legendRevenue: string;
-  legendExpenses: string;
+  subtitle: string;
+  t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const maxValue = Math.max(...data.flatMap((d) => [d.revenue, d.expenses]), 1);
-
-  return (
-    <div className="flex flex-1 flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {title}
-        </h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-3 rounded-radius-pill bg-brand-primary/80" />
-            <span className="text-micro text-text-muted">{legendRevenue}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-3 rounded-radius-pill bg-accent-error/60" />
-            <span className="text-micro text-text-muted">{legendExpenses}</span>
-          </div>
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <p className="mt-1 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid h-[260px] grid-cols-6 items-end gap-2">
-        {data.map((point) => (
-          <div key={point.month} className="flex h-full flex-col items-center gap-1">
-            <div className="flex w-full flex-1 items-end gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-1 pb-1">
-              <div
-                className="min-h-1 flex-1 rounded-t-sm bg-brand-primary/80 transition-all duration-300"
-                style={{ height: `${(point.revenue / maxValue) * 100}%` }}
-              />
-              <div
-                className="min-h-1 flex-1 rounded-t-sm bg-accent-error/60 transition-all duration-300"
-                style={{ height: `${(point.expenses / maxValue) * 100}%` }}
-              />
-            </div>
-            <span className="whitespace-nowrap text-micro text-text-muted">
-              {point.month}
-            </span>
-          </div>
-        ))}
+  // Add % change to data
+  const enriched = data.map((d, i) => ({
+    ...d,
+    change: i > 0 && data[i - 1].expenses > 0
+      ? ((d.expenses - data[i - 1].expenses) / data[i - 1].expenses * 100)
+      : 0,
+  }));
+
+  return (
+    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+      <div className="mb-4 shrink-0">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+      </div>
+      <div className="min-h-[260px] flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={enriched} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={formatAxisValue}
+            />
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              cursor={{ fill: "rgba(0,0,0,0.03)" }}
+              formatter={(value) => [formatCurrency(Number(value))]}
+            />
+            <Legend
+              height={28}
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
+            />
+            <Bar
+              dataKey="expenses"
+              name="Chi phí"
+              fill="#b42318"
+              fillOpacity={0.7}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={32}
+            />
+            <Line
+              dataKey="expenses"
+              name="Xu hướng"
+              type="monotone"
+              stroke="#b42318"
+              strokeWidth={2}
+              dot={{ r: 3, fill: "#b42318" }}
+              activeDot={{ r: 5 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-function DonutChart({
-  data,
-  title,
-  t,
-  formatValue,
-}: {
-  data: CostCenterBreakdown[];
+// ─────────────────────────────────────────────
+// Revenue vs Expense — ComposedChart (Line + Bar + Area)
+// "Line Bar Area Composed Chart" from recharts
+// ─────────────────────────────────────────────
+
+function RevenueExpenseChart({ data, title, t }: {
+  data: { month: string; revenue: number; expenses: number; net: number }[];
   title: string;
-  t: Record<string, string>;
-  formatValue: (v: number) => string;
+  t: ReturnType<typeof useTranslation>["t"];
 }) {
-  let cumulativePct = 0;
-  const stops = data.map((segment) => {
-    const start = cumulativePct;
-    cumulativePct += segment.percentage;
-    return `${segment.color} ${start}% ${cumulativePct}%`;
-  });
-  const gradient = `conic-gradient(${stops.join(", ")})`;
-  const total = data.reduce((sum, segment) => sum + segment.amount, 0);
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 lg:w-[360px]">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {title}
-        </h3>
-        <span className="text-xxs font-bold tabular-nums text-text-primary">
-          {formatValue(total)}
+    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+      <h3 className="mb-4 shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+        {title}
+      </h3>
+      <div className="min-h-[260px] flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={formatAxisValue}
+            />
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              cursor={{ fill: "rgba(0,0,0,0.03)" }}
+              formatter={(value) => [formatCurrency(Number(value))]}
+            />
+            <Legend
+              height={28}
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
+            />
+            <Area
+              dataKey="net"
+              name="Lợi nhuận"
+              type="monotone"
+              fill="#257a3e"
+              fillOpacity={0.15}
+              stroke="none"
+            />
+            <Bar
+              dataKey="revenue"
+              name="Doanh thu"
+              fill="#0066cc"
+              fillOpacity={0.8}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={28}
+            />
+            <Bar
+              dataKey="expenses"
+              name="Chi phí"
+              fill="#b42318"
+              fillOpacity={0.7}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={28}
+            />
+            <Line
+              dataKey="net"
+              name="Lợi nhuận ròng"
+              type="monotone"
+              stroke="#257a3e"
+              strokeWidth={2}
+              dot={{ r: 3, fill: "#257a3e" }}
+              activeDot={{ r: 5 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Donut Chart — PieChart with gap & rounded corners
+// ─────────────────────────────────────────────
+
+function AllocationDonutChart({ data, title, costCenterLabels, t }: {
+  data: { costCenter: string; amount: number; percentage: number; color: string }[];
+  title: string;
+  costCenterLabels: Record<string, string>;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const total = data.reduce((sum, s) => sum + s.amount, 0);
+
+  const chartData = data.map((item, i) => ({
+    name: costCenterLabels[item.costCenter] || item.costCenter,
+    value: item.amount,
+    fill: PIE_COLORS[i % PIE_COLORS.length],
+  }));
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <span className="text-xxs font-bold tabular-nums text-[var(--color-text-primary)]">
+          {formatCurrency(total)}
         </span>
       </div>
-
-      <div className="grid min-h-[260px] grid-cols-[112px_minmax(0,1fr)] items-center gap-4">
-        <div className="relative h-28 w-28 shrink-0">
-          <div
-            className="h-full w-full rounded-full"
-            style={{ background: gradient }}
-          />
-          <div className="absolute inset-3 flex items-center justify-center rounded-full bg-surface-elevated">
-            <span className="text-sm font-bold tabular-nums text-text-primary">
-              {data[0]?.percentage ?? 0}%
-            </span>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-2">
-          {data.map((segment) => {
-            const label = t[segment.costCenter] || segment.costCenter;
-            return (
-              <div key={segment.costCenter} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-radius-xs"
-                  style={{ backgroundColor: segment.color }}
-                />
-                <span className="truncate text-xxs font-medium text-text-secondary">{label}</span>
-                <span className="text-xxs font-bold tabular-nums text-text-primary">
-                  {segment.percentage}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="min-h-[300px] flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={65}
+              outerRadius={105}
+              paddingAngle={4}
+              cornerRadius={6}
+              dataKey="value"
+              nameKey="name"
+              stroke="none"
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              formatter={(value) => [formatCurrency(Number(value))]}
+            />
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: "13px" }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-function OverBudgetAlerts({
-  stores,
-  title,
-  emptyText,
-  formatValue,
-}: {
+// ─────────────────────────────────────────────
+// Top Expenses Table
+// ─────────────────────────────────────────────
+
+function TopExpensesTable({ items, t }: {
+  items: TopExpenseItem[];
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const [mode, setMode] = useState<TopExpenseMode>("highest");
+
+  const sorted = [...items].sort((a, b) => {
+    if (mode === "highest") return b.amount - a.amount;
+    if (mode === "increased") return b.changePercent - a.changePercent;
+    return a.amount - b.amount;
+  }).slice(0, 10);
+
+  const modes: { key: TopExpenseMode; label: string }[] = [
+    { key: "highest", label: t.expenses.dashboard.topHighest },
+    { key: "increased", label: t.expenses.dashboard.topIncreased },
+    { key: "lowest", label: t.expenses.dashboard.topLowest },
+  ];
+
+  return (
+    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          {t.expenses.dashboard.topExpenses}
+        </h3>
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-0.5">
+          {modes.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMode(m.key)}
+              className={`h-6 rounded-md px-2.5 text-xxs font-semibold transition-all ${
+                mode === m.key
+                  ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-0.5 overflow-y-auto">
+        {sorted.map((item, i) => {
+          const isPositiveChange = item.changePercent > 0;
+          return (
+            <div key={item.category} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2 transition-colors hover:bg-[var(--color-surface-card)]">
+              <span className="w-5 text-center text-xxs font-bold tabular-nums text-[var(--color-text-muted)]">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-[var(--color-text-primary)]">{item.label}</p>
+                <p className="text-micro text-[var(--color-text-muted)]">
+                  {t.expenses.costCenter[item.costCenter as keyof typeof t.expenses.costCenter] || item.costCenter}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold tabular-nums text-[var(--color-text-primary)]">
+                  {formatCurrency(item.amount)}
+                </p>
+                {item.changePercent !== 0 && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-micro font-bold tabular-nums"
+                    style={{ color: isPositiveChange ? "#b42318" : "#257a3e" }}
+                  >
+                    {isPositiveChange ? <ArrowUp size={8} /> : <ArrowDown size={8} />}
+                    {Math.abs(item.changePercent).toFixed(1)}%
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {sorted.length === 0 && (
+          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">{t.common.noData}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Over Budget Alerts
+// ─────────────────────────────────────────────
+
+function OverBudgetAlerts({ stores, title, emptyText }: {
   stores: { warehouseName: string; budgetUsed: number; totalBudget: number; totalActual: number }[];
   title: string;
   emptyText: string;
-  formatValue: (v: number) => string;
 }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {title}
-        </h3>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
         {stores.length > 0 && (
-          <span className="inline-flex h-5 items-center gap-1 rounded-radius-pill bg-accent-error/10 px-2 text-micro font-bold text-accent-error">
+          <span className="inline-flex h-5 items-center gap-1 rounded-full px-2 text-micro font-bold" style={{ color: "#b42318", backgroundColor: "#b423181a" }}>
             <AlertTriangle size={10} />
             {stores.length}
           </span>
         )}
       </div>
-
       {stores.length === 0 ? (
-        <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">{emptyText}</p>
+        <p className="py-3 text-center text-xs text-[var(--color-text-muted)]">{emptyText}</p>
       ) : (
         <div className="grid gap-2 lg:grid-cols-2">
           {stores.map((store) => {
@@ -224,24 +673,23 @@ function OverBudgetAlerts({
             return (
               <div key={store.warehouseName} className="rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-semibold text-text-primary">
-                    {store.warehouseName}
-                  </span>
-                  <span className={`text-xxs font-bold tabular-nums ${isOver ? "text-accent-error" : "text-accent-success"}`}>
+                  <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{store.warehouseName}</span>
+                  <span className="text-xxs font-bold tabular-nums" style={{ color: isOver ? "#b42318" : "#257a3e" }}>
                     {store.budgetUsed}%
                   </span>
                 </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-radius-pill bg-surface-base">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-base)]">
                   <div
-                    className={`h-full rounded-radius-pill transition-all duration-500 ${
-                      isOver ? "bg-accent-error" : "bg-accent-success"
-                    }`}
-                    style={{ width: `${Math.min(store.budgetUsed, 100)}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(store.budgetUsed, 100)}%`,
+                      backgroundColor: isOver ? "#b42318" : "#257a3e",
+                    }}
                   />
                 </div>
-                <div className="mt-2 flex justify-between gap-2 text-micro tabular-nums text-text-muted">
-                  <span>{formatValue(store.totalBudget)}</span>
-                  <span>{formatValue(store.totalActual)}</span>
+                <div className="mt-1.5 flex justify-between text-micro tabular-nums text-[var(--color-text-muted)]">
+                  <span>{formatCurrency(store.totalBudget)}</span>
+                  <span>{formatCurrency(store.totalActual)}</span>
                 </div>
               </div>
             );
@@ -251,6 +699,51 @@ function OverBudgetAlerts({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────
+// Dashboard Skeleton (matches main dashboard)
+// ─────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-4">
+      <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <div className="mb-3 flex items-center gap-3">
+              <Skeleton className="h-8 w-10" variant="rect" />
+              <Skeleton className="h-4 w-24" variant="text" />
+            </div>
+            <Skeleton className="h-8 w-28" variant="text" />
+          </div>
+        ))}
+      </div>
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+            <Skeleton className="mb-2 h-5 w-24" variant="text" />
+            <Skeleton className="h-6 w-32" variant="text" />
+            <Skeleton className="mt-2 h-1.5 w-full" variant="rect" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+          <Skeleton className="mb-4 h-5 w-40" variant="text" />
+          <Skeleton className="h-[260px] w-full" variant="rect" />
+        </div>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
+          <Skeleton className="mb-4 h-5 w-40" variant="text" />
+          <Skeleton className="mx-auto h-[200px] w-[200px]" variant="circle" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────
 
 export default function ExpenseDashboard({
   warehouseId,
@@ -261,94 +754,96 @@ export default function ExpenseDashboard({
 }) {
   const { t } = useTranslation();
   const { metrics, loading, error } = useExpenseDashboardMetrics(warehouseId, period);
+  const [selectedCostCenter, setSelectedCostCenter] = useState<ExpenseCostCenter | null>(null);
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)} tr`;
-    return value.toLocaleString("vi-VN");
-  };
+  const selectedStat = selectedCostCenter
+    ? metrics.costCenterStats?.find((s) => s.costCenter === selectedCostCenter) ?? null
+    : null;
 
   if (error) {
     return (
-      <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border border-accent-error/20 bg-accent-error/5 p-4">
-        <AlertTriangle size={16} className="shrink-0 text-accent-error" />
-        <span className="text-xs text-accent-error">{error}</span>
+      <div className="flex w-full items-center gap-3 rounded-[var(--radius-lg)] border p-4" style={{ borderColor: "#b4231833", backgroundColor: "#b4231808" }}>
+        <AlertTriangle size={16} style={{ color: "#b42318" }} />
+        <span className="text-xs" style={{ color: "#b42318" }}>{error}</span>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex w-full flex-col gap-4">
-        <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[100px] animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="h-[340px] animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]" />
-          <div className="h-[340px] animate-pulse rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="flex w-full flex-col gap-4">
+      {/* ── KPI Cards ── */}
       <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
-        <KPICard
-          title={t.expenses.dashboard.grossRevenue}
-          kpi={metrics.grossRevenue}
-          suffix=" đ"
-          formatValue={formatCurrency}
-          index={0}
-        />
-        <KPICard
-          title={t.expenses.dashboard.totalExpenses}
-          kpi={metrics.totalExpenses}
-          suffix=" đ"
-          formatValue={formatCurrency}
-          index={1}
-        />
-        <KPICard
-          title={t.expenses.dashboard.netProfit}
-          kpi={metrics.netProfit}
-          suffix=" đ"
-          formatValue={formatCurrency}
-          index={2}
-        />
-        <KPICard
-          title={t.expenses.dashboard.profitMargin}
-          kpi={metrics.profitMargin}
-          suffix="%"
-          index={3}
-        />
+        <KPICard title={t.expenses.dashboard.grossRevenue} kpi={metrics.grossRevenue ?? EMPTY_KPI} suffix="đ" index={0} />
+        <KPICard title={t.expenses.dashboard.totalExpenses} kpi={metrics.totalExpenses ?? EMPTY_KPI} suffix="đ" index={1} />
+        <KPICard title={t.expenses.dashboard.netProfit} kpi={metrics.netProfit ?? EMPTY_KPI} suffix="đ" index={2} />
+        <KPICard title={t.expenses.dashboard.profitMargin} kpi={metrics.profitMargin ?? EMPTY_KPI} suffix="%" index={3} />
       </div>
 
+      {/* ── Cost Center Stats ── */}
+      {metrics.costCenterStats?.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {t.expenses.dashboard.costCenterStats}
+          </h3>
+          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            {metrics.costCenterStats.map((stat) => (
+              <CostCenterStatCard
+                key={stat.costCenter}
+                stat={stat}
+                label={t.expenses.costCenter[stat.costCenter] || stat.costCenter}
+                onClick={() => setSelectedCostCenter(stat.costCenter)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Charts Row 1: Trend + Donut ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <TrendChart
-          data={metrics.trendData}
-          title={t.expenses.dashboard.revenueVsExpenses}
-          legendRevenue={t.expenses.dashboard.grossRevenue}
-          legendExpenses={t.expenses.dashboard.totalExpenses}
+        <ExpenseTrendChart
+          data={metrics.trendData ?? []}
+          title={t.expenses.dashboard.expenseTrend}
+          subtitle={t.expenses.dashboard.expenseTrendDesc}
+          t={t}
         />
-        <DonutChart
-          data={metrics.costCenterBreakdown}
+        <AllocationDonutChart
+          data={metrics.costCenterBreakdown ?? []}
           title={t.expenses.dashboard.expenseBreakdown}
-          t={t.expenses.costCenter}
-          formatValue={formatCurrency}
+          costCenterLabels={t.expenses.costCenter}
+          t={t}
         />
       </div>
 
+      {/* ── Charts Row 2: Revenue vs Expense + Top Expenses ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <RevenueExpenseChart
+          data={metrics.revenueExpenseMonthly ?? []}
+          title={t.expenses.dashboard.revenueVsExpenseMonthly}
+          t={t}
+        />
+        <TopExpensesTable items={metrics.topExpenses ?? []} t={t} />
+      </div>
+
+      {/* ── Over Budget (only ALL mode) ── */}
       {warehouseId === "ALL" && (
         <OverBudgetAlerts
-          stores={metrics.overBudgetStores}
+          stores={metrics.overBudgetStores ?? []}
           title={t.expenses.dashboard.overBudgetStores}
           emptyText={t.expenses.dashboard.noOverBudget}
-          formatValue={formatCurrency}
+        />
+      )}
+
+      {/* ── Cost Center Detail Modal ── */}
+      {selectedStat && (
+        <CostCenterDetailModal
+          stat={selectedStat}
+          label={t.expenses.costCenter[selectedStat.costCenter] || selectedStat.costCenter}
+          onClose={() => setSelectedCostCenter(null)}
+          t={t}
         />
       )}
     </div>
   );
 }
-

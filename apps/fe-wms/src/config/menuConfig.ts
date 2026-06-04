@@ -14,6 +14,7 @@ import {
     Package,
     PackagePlus,
     PackageMinus,
+    PenLine,
     Users,
     Warehouse,
     LucideIcon,
@@ -113,6 +114,13 @@ export const menuItems: MenuItem[] = [
         labelKey: "expenses",
         icon: CircleDollarSign,
         href: "/expenses",
+        permission: "expenses.read",
+    },
+    {
+        id: "expenseEntry",
+        labelKey: "expenseEntry",
+        icon: PenLine,
+        href: "/expenses/entry",
         permission: "expenses.read",
     },
     {

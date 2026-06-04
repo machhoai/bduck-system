@@ -42,6 +42,7 @@ const SEGMENT_NAV_KEY: Record<string, string> = {
     "roles": "roles",
     "audit-logs": "auditLogs",
     "expenses": "expenses",
+    "entry": "expenseEntry",
     "process-configs": "processConfigs",
     "workflows": "workflows",
     "inventory": "inventory",

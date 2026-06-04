@@ -454,10 +454,19 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
   {
     key: "expenses.marketing.write",
     group: "expenses",
-    label: { vi: "Nhập liệu marketing", zh: "录入营销费用" },
+    label: { vi: "Nhập liệu Marketing", zh: "录入营销费用" },
     description: {
-      vi: "Nhập liệu nhóm Marketing & Hàng bán",
-      zh: "营销及销售团队的数据录入",
+      vi: "Nhập liệu nhóm Marketing (quảng cáo, chiến dịch)",
+      zh: "营销团队数据录入（广告、活动）",
+    },
+  },
+  {
+    key: "expenses.merchandise.write",
+    group: "expenses",
+    label: { vi: "Nhập liệu hàng hóa", zh: "录入商品费用" },
+    description: {
+      vi: "Nhập liệu nhóm Hàng hóa (COGS, quà tặng)",
+      zh: "商品团队数据录入（销售成本、礼品）",
     },
   },
   {
@@ -476,6 +485,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Quyền chốt kỳ kế toán",
       zh: "结账权限",
+    },
+  },
+  {
+    key: "expenses.reopen_period",
+    group: "expenses",
+    label: { vi: "Mở lại kỳ kế toán", zh: "重新开放会计期间" },
+    description: {
+      vi: "Quyền mở lại kỳ kế toán đã chốt",
+      zh: "重新开放已结账的会计期间",
     },
   },
 ];
