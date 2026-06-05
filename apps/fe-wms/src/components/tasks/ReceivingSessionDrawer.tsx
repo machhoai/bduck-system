@@ -201,7 +201,9 @@ export default function ReceivingSessionDrawer({
     };
 
     try {
-      await gooeyToast.promise(submitAction(), {
+      const promise = submitAction();
+      
+      gooeyToast.promise(promise, {
         loading: "Đang gửi kết quả kiểm đếm...",
         success: "Phiên kiểm đếm hoàn tất",
         error: "Đã xảy ra lỗi",
@@ -216,6 +218,8 @@ export default function ReceivingSessionDrawer({
           },
         },
       });
+
+      await promise;
       clearSession();
       onClose();
     } finally {

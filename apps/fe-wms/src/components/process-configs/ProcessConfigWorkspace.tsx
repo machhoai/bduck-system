@@ -355,12 +355,22 @@ function ConfigDetailPanel({
     const handleSave = async () => {
         if (!validate()) return;
 
+        const sanitizedStepOptions: Record<string, StepOption> = {};
+        for (const step of steps) {
+            const current = stepOptions[step.key] || {};
+            sanitizedStepOptions[step.key] = {
+                assignment_mode: current.assignment_mode || "CREATOR",
+                assigned_role_id: current.assigned_role_id || null,
+                label: current.label || null,
+            };
+        }
+
         await onSave(config.id, {
             approval_chain: chain,
             auto_approve: autoApprove,
             require_evidence: requireEvidence,
             require_otp: requireOtp,
-            step_options: stepOptions,
+            step_options: sanitizedStepOptions,
         });
     };
 

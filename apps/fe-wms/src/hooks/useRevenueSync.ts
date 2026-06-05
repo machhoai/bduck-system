@@ -49,9 +49,12 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
   const [syncing, setSyncing] = useState(false);
   const hasSynced = useRef(false);
 
+  const syncingRef = useRef(false);
+
   // Trigger BE sync API (only once per mount/period change)
   const triggerSync = useCallback(async () => {
-    if (!period || syncing) return;
+    if (!period || syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       await fetch(`${API_BASE_URL}/api/revenue/sync/${period}`, {
@@ -61,9 +64,10 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
     } catch (err) {
       console.error("[useRevenueSync] trigger sync error:", err);
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
-  }, [period, syncing]);
+  }, [period]);
 
   useEffect(() => {
     if (!period) {

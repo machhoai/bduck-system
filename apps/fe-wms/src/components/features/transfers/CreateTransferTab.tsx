@@ -451,19 +451,23 @@ export default function CreateTransferTab({
             });
         };
 
+        const promise = submitAction();
+        
+        gooeyToast.promise(promise, {
+            loading: isIntra ? copy.intraLoading : copy.interLoading,
+            success: isIntra ? copy.intraSuccess : copy.interSuccess,
+            error: copy.createError,
+            description: {
+                success: isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc,
+                error: copy.errorDesc,
+            },
+            action: {
+                error: { label: copy.retry, onClick: () => void handleSubmit() },
+            },
+        });
+
         try {
-            await gooeyToast.promise(submitAction(), {
-                loading: isIntra ? copy.intraLoading : copy.interLoading,
-                success: isIntra ? copy.intraSuccess : copy.interSuccess,
-                error: copy.createError,
-                description: {
-                    success: isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc,
-                    error: copy.errorDesc,
-                },
-                action: {
-                    error: { label: copy.retry, onClick: () => void handleSubmit() },
-                },
-            });
+            await promise;
             onCreated();
         } catch {
             // Toast handles error.

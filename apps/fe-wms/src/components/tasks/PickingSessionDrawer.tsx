@@ -213,7 +213,9 @@ export default function PickingSessionDrawer({
     };
 
     try {
-      await gooeyToast.promise(submitAction(), {
+      const promise = submitAction();
+      
+      gooeyToast.promise(promise, {
         loading: "Đang hoàn tất soạn hàng & trừ tồn kho...",
         success: "Soạn hàng hoàn tất",
         error: "Lỗi hoàn tất soạn hàng",
@@ -225,6 +227,8 @@ export default function PickingSessionDrawer({
           error: { label: "Thử lại", onClick: () => handleSubmit() },
         },
       });
+
+      await promise;
       onClose();
     } catch {
       // Toast handles — ATP error will show specific product info

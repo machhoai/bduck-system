@@ -45,7 +45,9 @@ export default function ApprovalModal({
     };
 
     try {
-      await gooeyToast.promise(submitAction(), {
+      const promise = submitAction();
+      
+      gooeyToast.promise(promise, {
         loading: isApprove
           ? t.tasks.approval.approving
           : t.tasks.approval.rejecting,
@@ -64,6 +66,8 @@ export default function ApprovalModal({
           },
         },
       });
+
+      await promise;
       onClose();
     } finally {
       setIsSubmitting(false);

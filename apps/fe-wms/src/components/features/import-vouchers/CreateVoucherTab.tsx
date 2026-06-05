@@ -485,7 +485,6 @@ export default function CreateVoucherTab({
 
     const executeSubmit = async (otp?: string) => {
         setIsSubmitting(true);
-        setShowOtpModal(false);
 
         const submitAction = async () => {
             const uploadedUrls: string[] = [];
@@ -531,33 +530,40 @@ export default function CreateVoucherTab({
             });
         };
 
-        try {
-            await gooeyToast.promise(submitAction(), {
-                loading:
-                    (t as any).importVoucher?.toast?.creating ??
-                    "Đang tạo phiếu nhập kho...",
+        const promise = submitAction();
+        
+        gooeyToast.promise(promise, {
+            loading:
+                (t as any).importVoucher?.toast?.creating ??
+                "Đang tạo phiếu nhập kho...",
+            success:
+                (t as any).importVoucher?.toast?.createSuccess ??
+                "Đã tạo phiếu nhập kho",
+            error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createError ?? "Lỗi khi tạo phiếu nhập kho"),
+            description: {
                 success:
-                    (t as any).importVoucher?.toast?.createSuccess ??
-                    "Đã tạo phiếu nhập kho",
-                error:
-                    (t as any).importVoucher?.toast?.createError ??
-                    "Lỗi khi tạo phiếu nhập kho",
-                description: {
-                    success:
-                        (t as any).importVoucher?.toast?.createSuccessDesc ??
-                        "Phiếu đã được gửi vào quy trình duyệt.",
-                    error:
-                        (t as any).importVoucher?.toast?.createErrorDesc ??
-                        "Vui lòng thử lại hoặc liên hệ quản trị viên.",
-                },
-                action: {
-                    error: {
-                        label: (t as any).common?.retry ?? "Thử lại",
-                        onClick: () => void executeSubmit(otp),
+                    (t as any).importVoucher?.toast?.createSuccessDesc ??
+                    "Phiếu đã được gửi vào quy trình duyệt.",
+                error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createErrorDesc ?? "Vui lòng thử lại hoặc liên hệ quản trị viên."),
+            },
+            action: {
+                error: {
+                    label: (t as any).common?.retry ?? "Thử lại",
+                    onClick: () => {
+                        if (processConfig?.require_otp && !showOtpModal) {
+                            setShowOtpModal(true);
+                        } else {
+                            void executeSubmit(otp);
+                        }
                     },
                 },
-            });
+            },
+        });
+
+        try {
+            await promise;
             onCreated();
+            setShowOtpModal(false);
         } catch {
             // goeyToast.promise already presents the error.
         } finally {

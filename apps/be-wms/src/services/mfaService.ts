@@ -1,6 +1,7 @@
 import * as otplib from "otplib";
 
 const authenticator = otplib.authenticator;
+authenticator.options = { window: 1 }; // Allow 1 window of clock skew (30s)
 import qrcode from "qrcode";
 import { getUserById, updateUserRecord } from "../repositories/userRepository.js";
 import { sendBrevoEmail } from "./brevoEmailService.js";

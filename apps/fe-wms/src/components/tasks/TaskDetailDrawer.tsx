@@ -165,7 +165,9 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
             };
 
             try {
-                await gooeyToast.promise(submitAction(), {
+                const promise = submitAction();
+                
+                gooeyToast.promise(promise, {
                     loading: approved ? t.tasks.approval.approving : t.tasks.approval.rejecting,
                     success: approved ? t.tasks.approval.approveSuccess : t.tasks.approval.rejectSuccess,
                     error: t.tasks.approval.error,
@@ -180,6 +182,8 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                         },
                     },
                 });
+
+                await promise;
                 onClose();
             } finally {
                 setIsSubmitting(false);
@@ -202,7 +206,9 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
         };
 
         try {
-            await gooeyToast.promise(cancelAction(), {
+            const promise = cancelAction();
+            
+            gooeyToast.promise(promise, {
                 loading: (t.tasks as any).selfApproval?.cancelling ?? "Đang hủy lệnh...",
                 success: (t.tasks as any).selfApproval?.cancelSuccess ?? "Đã hủy lệnh thành công",
                 error: (t.tasks as any).selfApproval?.cancelError ?? "Không thể hủy lệnh",
@@ -217,6 +223,8 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                     },
                 },
             });
+
+            await promise;
             onClose();
         } finally {
             setIsSubmitting(false);

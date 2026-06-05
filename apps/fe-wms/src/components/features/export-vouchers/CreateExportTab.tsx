@@ -389,19 +389,23 @@ export default function CreateExportTab({
             });
         };
 
+        const promise = submitAction();
+        
+        gooeyToast.promise(promise, {
+            loading: exportText.toast.creating,
+            success: exportText.toast.createSuccess,
+            error: exportText.toast.createError,
+            description: {
+                success: exportText.toast.createSuccessDesc,
+                error: exportText.toast.createErrorDesc,
+            },
+            action: {
+                error: { label: t.common.retry, onClick: () => void handleSubmit() },
+            },
+        });
+
         try {
-            await gooeyToast.promise(submitAction(), {
-                loading: exportText.toast.creating,
-                success: exportText.toast.createSuccess,
-                error: exportText.toast.createError,
-                description: {
-                    success: exportText.toast.createSuccessDesc,
-                    error: exportText.toast.createErrorDesc,
-                },
-                action: {
-                    error: { label: t.common.retry, onClick: () => void handleSubmit() },
-                },
-            });
+            await promise;
             onCreated();
         } catch {
             // Toast handles error.

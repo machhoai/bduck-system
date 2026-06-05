@@ -180,7 +180,9 @@ export default function ReceiveTransferPanel({
     };
 
     try {
-      await gooeyToast.promise(submitAction(), {
+      const promise = submitAction();
+      
+      gooeyToast.promise(promise, {
         loading: COPY.completing,
         success: COPY.completed,
         error: COPY.completeError,
@@ -195,6 +197,8 @@ export default function ReceiveTransferPanel({
           },
         },
       });
+
+      await promise;
       onCompleted?.();
     } catch {
       // Toast handles error.
