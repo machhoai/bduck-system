@@ -76,7 +76,7 @@ export default function TopBar() {
                 <DeviceStatusIndicator />
             </div>
             <div className="flex h-full gap-2">
-                <div className="overflow-hidden">
+                <div className="overflow-hidden z-50">
                     <button
                         onClick={() => {
                             gooeyToast.promise(triggerExport(), {
