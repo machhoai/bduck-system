@@ -1,17 +1,13 @@
-import {
-  File,
-  FileSpreadsheet,
-  FileText,
-  type LucideIcon,
-} from "lucide-react";
+import { IconType } from "react-icons";
+import { FaFilePdf, FaFileWord, FaFileExcel, FaFileCsv, FaFileAlt } from "react-icons/fa";
 import type { FileLibraryFormat } from "@/utils/fileLibrary";
 
-const formatIconMap: Record<FileLibraryFormat, LucideIcon> = {
-  pdf: FileText,
-  docx: FileText,
-  xlsx: FileSpreadsheet,
-  csv: FileSpreadsheet,
-  other: File,
+const formatIconMap: Record<FileLibraryFormat, IconType> = {
+  pdf: FaFilePdf,
+  docx: FaFileWord,
+  xlsx: FaFileExcel,
+  csv: FaFileCsv,
+  other: FaFileAlt,
 };
 
 const formatClassMap: Record<FileLibraryFormat, string> = {
@@ -33,9 +29,9 @@ export function FileLibraryFileIcon({
 
   return (
     <div
-      className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${formatClassMap[format]}`}
+      className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${formatClassMap[format]}`}
     >
-      <Icon size={18} />
+      <Icon size={20} />
       <span className="absolute -bottom-1 -right-1 rounded-[var(--radius-xs)] bg-[var(--color-surface-elevated)] px-1 text-micro font-bold uppercase text-[var(--color-text-muted)] shadow-sm">
         {extension || "file"}
       </span>

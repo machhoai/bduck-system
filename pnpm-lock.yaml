@@ -150,6 +150,9 @@ importers:
       react-hook-form:
         specifier: ^7.76.1
         version: 7.76.1(react@19.2.6)
+      react-icons:
+        specifier: ^5.6.0
+        version: 5.6.0(react@19.2.6)
       react-map-gl:
         specifier: ^8.1.1
         version: 8.1.1(mapbox-gl@3.24.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -3540,6 +3543,11 @@ packages:
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
+
+  react-icons@5.6.0:
+    resolution: {integrity: sha512-RH93p5ki6LfOiIt0UtDyNg/cee+HLVR6cHHtW3wALfo+eOHTp8RnU2kRkI6E+H19zMIs03DyxUG/GfZMOGvmiA==}
+    peerDependencies:
+      react: '*'
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -7824,6 +7832,10 @@ snapshots:
       scheduler: 0.27.0
 
   react-hook-form@7.76.1(react@19.2.6):
+    dependencies:
+      react: 19.2.6
+
+  react-icons@5.6.0(react@19.2.6):
     dependencies:
       react: 19.2.6
 
