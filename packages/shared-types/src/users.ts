@@ -17,6 +17,12 @@ export interface User {
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;
+
+    // MFA & 2FA Fields
+    mfa_enabled?: boolean;
+    mfa_secret?: string | null;
+    email_otp?: string | null;
+    email_otp_expires_at?: Date | null;
 }
 
 export interface Role {

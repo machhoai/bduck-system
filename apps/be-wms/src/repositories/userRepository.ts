@@ -54,7 +54,7 @@ export const createUserRecord = async (
 export const updateUserRecord = async (
   userId: string,
   data: Partial<
-    Pick<User, "username" | "email" | "full_name" | "employee_id" | "status">
+    Pick<User, "username" | "email" | "full_name" | "employee_id" | "status" | "mfa_enabled" | "mfa_secret" | "email_otp" | "email_otp_expires_at">
   >,
 ): Promise<void> => {
   await db

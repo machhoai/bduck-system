@@ -1,7 +1,4 @@
-interface BrevoRecipient {
-  email: string;
-  name?: string;
-}
+import nodemailer from "nodemailer";
 
 interface SendBrevoEmailInput {
   to: string[];
@@ -16,22 +13,8 @@ interface BrevoEmailResult {
   messageId: string | null;
 }
 
-interface BrevoApiResponse {
-  message?: string;
-  error?: string;
-  messageId?: string;
-  messageIds?: string[];
-}
-
-const BREVO_SMTP_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
-
-function toRecipients(emails: string[] | undefined): BrevoRecipient[] | undefined {
-  if (!emails || emails.length === 0) return undefined;
-  return emails.map((email) => ({ email }));
-}
-
 function getBrevoConfig() {
-  const apiKey = process.env.BREVO_API_KEY;
+  const apiKey = process.env.BREVO_API_KEY; // This is used as the SMTP password
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
   const senderName = process.env.BREVO_SENDER_NAME || "Joy World Cityfuns WMS";
 
@@ -53,47 +36,36 @@ export async function sendBrevoEmail(
 ): Promise<BrevoEmailResult> {
   const { apiKey, senderEmail, senderName } = getBrevoConfig();
 
-  const payload = {
-    sender: { email: senderEmail, name: senderName },
-    to: toRecipients(input.to),
-    cc: toRecipients(input.cc),
-    bcc: toRecipients(input.bcc),
-    subject: input.subject,
-    htmlContent: input.htmlContent,
-    textContent: input.textContent,
-  };
-
-  const response = await fetch(BREVO_SMTP_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "xsib-api-key": apiKey,
+  const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: "a82c67001@smtp-brevo.com",
+      pass: apiKey,
     },
-    body: JSON.stringify(payload),
   });
 
-  const body = (await response.json().catch(() => null)) as BrevoApiResponse | null;
+  try {
+    const info = await transporter.sendMail({
+      from: `"${senderName}" <${senderEmail}>`,
+      to: input.to.join(", "),
+      cc: input.cc ? input.cc.join(", ") : undefined,
+      bcc: input.bcc ? input.bcc.join(", ") : undefined,
+      subject: input.subject,
+      text: input.textContent,
+      html: input.htmlContent,
+    });
 
-  if (!response.ok) {
-    const message =
-      body?.message ||
-      body?.error ||
-      `Brevo responded with status ${response.status}`;
+    return { messageId: info.messageId };
+  } catch (error: any) {
+    console.error("Nodemailer SMTP Error:", error);
     throw {
       statusCode: 502,
       messages: {
-        vi: `Brevo gửi email thất bại: ${message}`,
-        zh: `Brevo 邮件发送失败：${message}`,
+        vi: `Brevo SMTP gửi email thất bại: ${error.message || "Unknown error"}`,
+        zh: `Brevo SMTP 邮件发送失败：${error.message || "Unknown error"}`,
       },
     };
   }
-
-  return {
-    messageId:
-      typeof body?.messageId === "string"
-        ? body.messageId
-        : typeof body?.messageIds?.[0] === "string"
-          ? body.messageIds[0]
-          : null,
-  };
 }

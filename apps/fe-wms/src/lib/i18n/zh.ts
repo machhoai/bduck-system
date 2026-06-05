@@ -50,6 +50,21 @@ const zh: Dictionary = {
     globalScope: "全系统",
   },
 
+  profile: {
+    generalInfo: "基本信息",
+    active: "活跃",
+    inactive: "未激活",
+    employeeId: "员工号",
+    email: "邮箱",
+    joinDate: "加入日期",
+    changePassword: "修改密码",
+    managementScope: "管理范围",
+    roles: "角色",
+    noRoles: "尚未分配任何角色。",
+    globalScope: "全系统",
+    warehouseScope: "仓库范围",
+  },
+
   roles: {
     ADMIN: "管理员",
     DIRECTOR: "总监",
@@ -1343,6 +1358,25 @@ Object.assign(zh.transfer, {
   actions: {
     viewDetail: "详情",
     delete: "删除",
+  },
+});
+
+Object.assign(zh, {
+  profile: {
+    title: "我的个人资料",
+    generalInfo: "基本信息",
+    employeeId: "员工编号",
+    email: "电子邮件",
+    status: "状态",
+    joinDate: "加入日期",
+    managementScope: "管理范围",
+    roles: "角色",
+    globalScope: "全系统范围",
+    warehouseScope: "特定仓库",
+    noRoles: "尚未分配任何角色",
+    active: "活跃",
+    inactive: "不活跃",
+    changePassword: "更改密码",
   },
 });
 

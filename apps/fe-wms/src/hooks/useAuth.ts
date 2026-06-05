@@ -1,11 +1,13 @@
 import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { gooeyToast } from "goey-toast";
 import { useState } from "react";
 import { auth } from "../lib/firebase";
 import { useUserStore } from "../stores/useUserStore";
+import { useMfaStore } from "../stores/useMfaStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -48,6 +50,9 @@ export const useAuth = () => {
         .map((r: any) => r.role_id)
         .filter((id: string, i: number, arr: string[]) => arr.indexOf(id) === i);
       setAuthData(data.user, data.permissions, roleIds);
+
+      // Lock screen on login
+      useMfaStore.getState().lockScreen();
 
       return messages;
     };
@@ -117,5 +122,26 @@ export const useAuth = () => {
     }
   };
 
-  return { login, logout, isLoading };
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    const resetAction = async () => {
+      await sendPasswordResetEmail(auth, email);
+    };
+
+    try {
+      await gooeyToast.promise(resetAction(), {
+        loading: "Đang gửi email khôi phục...",
+        success: "Đã gửi email khôi phục",
+        error: "Lỗi gửi email",
+        description: {
+          success: "Vui lòng kiểm tra hộp thư đến của bạn để đặt lại mật khẩu.",
+          error: "Không thể gửi email. Vui lòng kiểm tra lại địa chỉ email.",
+        },
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { login, logout, resetPassword, isLoading };
 };

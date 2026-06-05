@@ -2,6 +2,7 @@
 
 import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
+import Link from "next/link";
 
 interface SidebarUserPanelProps {
   isCollapsed: boolean;
@@ -33,8 +34,10 @@ export default function SidebarUserPanel({
       : "";
 
   return (
-    <div
-      className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}
+    <Link
+      href="/profile"
+      className={`flex items-center gap-3 rounded-[var(--radius-sm)] p-1 transition-colors hover:bg-white/10 ${isCollapsed ? "justify-center" : ""}`}
+      title={t.profile?.title || "Hồ sơ cá nhân"}
     >
       <div
         className="
@@ -58,6 +61,6 @@ export default function SidebarUserPanel({
           )}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

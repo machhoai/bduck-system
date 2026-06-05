@@ -49,6 +49,21 @@ const vi = {
         globalScope: "Toàn hệ thống",
     },
 
+    profile: {
+        generalInfo: "Thông tin chung",
+        active: "Hoạt động",
+        inactive: "Ngừng hoạt động",
+        employeeId: "Mã nhân viên",
+        email: "Email",
+        joinDate: "Ngày tham gia",
+        changePassword: "Đổi mật khẩu",
+        managementScope: "Phạm vi quản lý",
+        roles: "Vai trò",
+        noRoles: "Chưa có vai trò nào được phân công.",
+        globalScope: "Toàn hệ thống",
+        warehouseScope: "Phạm vi kho",
+    },
+
     roles: {
         ADMIN: "Quản trị viên",
         DIRECTOR: "Giám đốc",
@@ -1289,6 +1304,25 @@ Object.assign(vi.transfer, {
     actions: {
         viewDetail: "Chi tiết",
         delete: "Xóa",
+    },
+});
+
+Object.assign(vi, {
+    profile: {
+        title: "Hồ sơ của tôi",
+        generalInfo: "Thông tin chung",
+        employeeId: "Mã nhân viên",
+        email: "Email",
+        status: "Trạng thái",
+        joinDate: "Ngày tham gia",
+        managementScope: "Phạm vi quản lý",
+        roles: "Vai trò",
+        globalScope: "Toàn hệ thống",
+        warehouseScope: "Kho cụ thể",
+        noRoles: "Chưa có vai trò nào được gán",
+        active: "Hoạt động",
+        inactive: "Ngừng hoạt động",
+        changePassword: "Đổi mật khẩu",
     },
 });
 

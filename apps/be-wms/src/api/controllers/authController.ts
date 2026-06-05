@@ -5,6 +5,12 @@ import {
   logoutSession,
 } from "../../services/authService.js";
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
+import {
+  generateMfaSetup,
+  verifyMfaSetup,
+  sendMfaEmailOtp,
+  verifyMfa,
+} from "../../services/mfaService.js";
 
 const sessionLoginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
@@ -97,5 +103,83 @@ export const logout = async (req: Request, res: Response) => {
         zh: "登出时发生系统错误。",
       },
     });
+  }
+};
+
+export const setupMfa = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ success: false, messages: { vi: "Unauthorized", zh: "未经授权" } });
+
+    const result = await generateMfaSetup(user.id, email || user.email);
+    
+    return res.status(200).json({
+      success: true,
+      data: result,
+      messages: { vi: "Lấy QR code thành công.", zh: "获取 QR 码成功。" },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, messages: { vi: "Lỗi hệ thống.", zh: "系统错误。" } });
+  }
+};
+
+export const verifySetupMfa = async (req: Request, res: Response) => {
+  try {
+    const { token, secret } = req.body;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ success: false, messages: { vi: "Unauthorized", zh: "未经授权" } });
+
+    const isValid = await verifyMfaSetup(user.id, token, secret);
+    
+    if (isValid) {
+      return res.status(200).json({ success: true, data: null, messages: { vi: "Xác thực thành công.", zh: "验证成功。" } });
+    } else {
+      return res.status(400).json({ success: false, data: null, messages: { vi: "Mã OTP không hợp lệ.", zh: "无效的 OTP 码。" } });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, messages: { vi: "Lỗi hệ thống.", zh: "系统错误。" } });
+  }
+};
+
+export const sendEmailOtp = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ success: false, messages: { vi: "Unauthorized", zh: "未经授权" } });
+
+    await sendMfaEmailOtp(user.id, user.email);
+
+    return res.status(200).json({
+      success: true,
+      data: null,
+      messages: { vi: "Đã gửi mã xác thực qua email.", zh: "已通过电子邮件发送验证码。" },
+    });
+  } catch (error: any) {
+    console.error(error);
+    if (error.statusCode && error.messages) {
+      return res.status(error.statusCode).json({ success: false, messages: error.messages });
+    }
+    return res.status(500).json({ success: false, messages: { vi: "Lỗi hệ thống.", zh: "系统错误。" } });
+  }
+};
+
+export const checkMfa = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ success: false, messages: { vi: "Unauthorized", zh: "未经授权" } });
+
+    const isValid = await verifyMfa(user.id, token);
+    
+    if (isValid) {
+      return res.status(200).json({ success: true, data: null, messages: { vi: "Xác thực thành công.", zh: "验证成功。" } });
+    } else {
+      return res.status(400).json({ success: false, data: null, messages: { vi: "Mã OTP không hợp lệ.", zh: "无效的 OTP 码。" } });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, messages: { vi: "Lỗi hệ thống.", zh: "系统错误。" } });
   }
 };

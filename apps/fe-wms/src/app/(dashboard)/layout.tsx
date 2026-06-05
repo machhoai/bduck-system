@@ -8,6 +8,8 @@ import DashboardLayout from "../../components/layouts/DashboardLayout";
 import DashboardSkeleton from "../../components/layouts/DashboardSkeleton";
 import { usePagePermission } from "../../hooks/usePagePermission";
 import Forbidden403 from "../../components/shared/Forbidden403";
+import { MFALockScreen } from "../../components/auth/MFALockScreen";
+import { useMFA } from "../../hooks/useMFA";
 
 /**
  * Dashboard Group Layout — Auth Guard + RBAC Guard + Layout wrapper
@@ -28,6 +30,7 @@ export default function DashboardGroupLayout({
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
   const [isMounted, setIsMounted] = useState(false);
   const hasAccess = usePagePermission(pathname);
+  const { isLocked } = useMFA();
 
   useEffect(() => {
     setIsMounted(true);
@@ -46,9 +49,12 @@ export default function DashboardGroupLayout({
 
   return (
     <I18nProvider>
-      <DashboardLayout>
-        {hasAccess ? children : <Forbidden403 />}
-      </DashboardLayout>
+      <MFALockScreen />
+      <div className={`h-full w-full transition-all duration-300 ${isLocked ? 'blur-md pointer-events-none select-none' : ''}`}>
+        <DashboardLayout>
+          {hasAccess ? children : <Forbidden403 />}
+        </DashboardLayout>
+      </div>
     </I18nProvider>
   );
 }

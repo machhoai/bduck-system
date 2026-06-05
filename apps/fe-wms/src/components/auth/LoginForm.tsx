@@ -16,7 +16,7 @@ export default function LoginForm() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const { login, isLoading } = useAuth();
+    const { login, resetPassword, isLoading } = useAuth();
 
     const isAuthenticated = useUserStore(state => state.isAuthenticated);
     const permissions = useUserStore(state => state.permissions);
@@ -41,6 +41,18 @@ export default function LoginForm() {
         e.preventDefault();
         if (!email || !password) return;
         await login(email, password);
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            import("goey-toast").then(({ gooeyToast }) => {
+                gooeyToast.error("Vui lòng nhập email", {
+                    description: "Bạn cần nhập email vào ô trên để nhận liên kết khôi phục mật khẩu.",
+                });
+            });
+            return;
+        }
+        await resetPassword(email);
     };
 
     return (
@@ -163,12 +175,22 @@ export default function LoginForm() {
 
                         {/* Password field */}
                         <div>
-                            <label
-                                htmlFor="login-password"
-                                className="block text-xs font-medium uppercase tracking-wider mb-1 text-[var(--color-text-muted)]"
-                            >
-                                Mật khẩu
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label
+                                    htmlFor="login-password"
+                                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]"
+                                >
+                                    Mật khẩu
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    disabled={isLoading}
+                                    className="text-xs font-medium text-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary-hover)] transition-colors"
+                                >
+                                    Quên mật khẩu?
+                                </button>
+                            </div>
                             <div className="relative">
                                 <input
                                     id="login-password"
