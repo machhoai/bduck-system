@@ -2,19 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
 import NotificationBell from "../ui/NotificationBell";
 import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 import { BreadcrumbNav } from "../ui/BreadcrumbNav";
+import { useExportStore } from "../../stores/useExportStore";
+import { gooeyToast } from "goey-toast";
+import IonIcon from "../ui/IonIcon";
+import { folder, save } from "ionicons/icons";
+import { size } from "zod";
 
 export default function TopBar() {
-    const { lang } = useTranslation();
+    const { lang, t } = useTranslation();
     const router = useRouter();
     const pathname = usePathname();
     const [isAtDashboard, setIsAtDashboard] = useState(pathname === "/dashboard");
     const [scrolled, setScrolled] = useState(false);
+    const { exportConfig, isExporting, triggerExport } = useExportStore();
 
     useEffect(() => {
         const container = document.querySelector<HTMLElement>(
@@ -69,7 +75,31 @@ export default function TopBar() {
                 <ClockWeatherWidget locale={(lang || "vi") as "vi" | "zh"} />
                 <DeviceStatusIndicator />
             </div>
-            <NotificationBell />
+            <div className="flex h-full gap-2">
+                <div className="overflow-hidden">
+                    <button
+                        onClick={() => {
+                            gooeyToast.promise(triggerExport(), {
+                                loading: t.common.exporting,
+                                success: t.common.exportSuccess,
+                                error: t.common.exportError,
+                                preset: 'snappy',
+                                description: {
+                                    success: t.common.exportSuccessDescription,
+                                    error: t.common.exportErrorDescription
+                                }
+                            });
+                        }}
+                        disabled={isExporting}
+                        className={`flex h-8 px-3 items-center gap-1.5 justify-center rounded-full bg-green-600 text-[var(--color-text-on-dark)] shadow-sm hover:bg-green-700 text-[var(--color-text-on-dark)] disabled:opacity-50 transition-all duration-300 ${exportConfig ? "" : "translate-x-[120px]"}`}
+                        title={t.common.exportExcel}
+                    >
+                        <IonIcon icon={folder} size={18} />
+                        <span className="text-sm font-medium">{t.common.exportExcel}</span>
+                    </button>
+                </div>
+                <NotificationBell />
+            </div>
         </div>
     );
 }

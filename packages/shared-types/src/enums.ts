@@ -293,6 +293,7 @@ export enum AuditAction {
     QUARANTINE = 'QUARANTINE',
     RELEASE = 'RELEASE',
     TRANSFER = 'TRANSFER',
+    EXPORT = 'EXPORT',
 }
 
 /** Attachment file type */

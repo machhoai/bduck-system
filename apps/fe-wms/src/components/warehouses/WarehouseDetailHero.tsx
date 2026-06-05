@@ -34,7 +34,7 @@ export function WarehouseDetailHero({
     return (
         <header className="overflow-hidden ">
             <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-5 p-4 sm:p-4 rounded-[var(--radius-lg)]  border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+                <div className="flex flex-col gap-5 p-4 sm:p-4 rounded-4xl  border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
                     <div className="flex flex-1 h-full gap-4 w-full min-h-0">
                         <div className="h-56 aspect-square  flex overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
                             {warehouse.warehouse_image_url ? (

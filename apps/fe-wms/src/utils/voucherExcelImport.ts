@@ -13,6 +13,11 @@
 import ExcelJS from "exceljs";
 import type { Product } from "@bduck/shared-types";
 
+export interface ExcelSheetInfo {
+  index: number;
+  name: string;
+}
+
 // ─────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────
@@ -161,17 +166,19 @@ function parseLocaleNumber(raw: string): number {
 /**
  * Đọc sheet đầu tiên, lấy danh sách cột và giá trị mẫu tại startRow.
  * @param file    File XLSX
+ * @param sheetIndex Index của sheet cần đọc (0-indexed, default 0)
  * @param startRow Hàng bắt đầu có dữ liệu (1-indexed, default 2)
  */
 export async function readSheetPreview(
   file: File,
+  sheetIndex = 0,
   startRow = 2,
 ): Promise<SheetPreview> {
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
-  const sheet = workbook.worksheets[0];
+  const sheet = workbook.worksheets[sheetIndex];
   if (!sheet) throw new Error("File Excel không có sheet dữ liệu.");
 
   // Xác định số cột thực tế từ dòng mẫu
@@ -209,10 +216,25 @@ export async function readSheetPreview(
 // ─────────────────────────────────────────────
 
 /**
+ * Lấy danh sách các sheet có trong file Excel.
+ */
+export async function getExcelSheets(file: File): Promise<ExcelSheetInfo[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  
+  return workbook.worksheets.map((sheet, index) => ({
+    index,
+    name: sheet.name,
+  }));
+}
+
+/**
  * Parse toàn bộ sheet theo mapping đã xác định, match với products catalog.
  */
 export async function parseVoucherRows(
   file: File,
+  sheetIndex: number,
   mapping: VoucherColumnMapping,
   startRow: number,
   products: Product[],
@@ -220,7 +242,7 @@ export async function parseVoucherRows(
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
-  const sheet = workbook.worksheets[0];
+  const sheet = workbook.worksheets[sheetIndex];
   if (!sheet) throw new Error("File Excel không có sheet dữ liệu.");
 
   // Build lookup maps cho products

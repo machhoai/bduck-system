@@ -29,7 +29,8 @@ import {
   type SheetColumnInfo,
   type SheetPreview,
   type VoucherColumnMapping,
-  type VoucherItemParseResult,
+  type ExcelSheetInfo,
+  getExcelSheets,
   parseVoucherRows,
   readSheetPreview,
   summarizeVoucherResults,
@@ -302,6 +303,8 @@ export function VoucherExcelImportPanel({
   const [phase, setPhase] = useState<PanelPhase>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [startRow, setStartRow] = useState(2);
+  const [availableSheets, setAvailableSheets] = useState<ExcelSheetInfo[]>([]);
+  const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
   const [preview, setPreview] = useState<SheetPreview | null>(null);
   const [mapping, setMapping] = useState<VoucherColumnMapping>(EMPTY_MAPPING);
   const [dragCol, setDragCol] = useState<string | null>(null);
@@ -335,13 +338,27 @@ export function VoucherExcelImportPanel({
     setSelectedFile(file);
     setMapping(EMPTY_MAPPING);
     setParseResults([]);
+    
+    setIsLoading(true);
+    try {
+      const sheets = await getExcelSheets(file);
+      setAvailableSheets(sheets);
+      setSelectedSheetIndex(0);
+    } catch (err) {
+      console.error("[VoucherExcelImportPanel] getExcelSheets:", err);
+      gooeyToast.error("Không thể đọc danh sách sheet", {
+        description: "Vui lòng kiểm tra lại file Excel.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const handleReadColumns = useCallback(async () => {
     if (!selectedFile) return;
     setIsLoading(true);
     try {
-      const p = await readSheetPreview(selectedFile, startRow);
+      const p = await readSheetPreview(selectedFile, selectedSheetIndex, startRow);
       setPreview(p);
       setPhase("mapping");
       setMapping(EMPTY_MAPPING);
@@ -354,7 +371,7 @@ export function VoucherExcelImportPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile, startRow]);
+  }, [selectedFile, selectedSheetIndex, startRow]);
 
   // ─── Bước 2: Kéo thả map cột ───
 
@@ -381,6 +398,7 @@ export function VoucherExcelImportPanel({
     try {
       const results = await parseVoucherRows(
         selectedFile,
+        selectedSheetIndex,
         mapping,
         startRow,
         products
@@ -396,7 +414,7 @@ export function VoucherExcelImportPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile, mapping, startRow, products, canParse]);
+  }, [selectedFile, selectedSheetIndex, mapping, startRow, products, canParse]);
 
   // ─── Bước 3: Import ───
 
@@ -425,6 +443,8 @@ export function VoucherExcelImportPanel({
     // Reset về phase upload
     setPhase("upload");
     setSelectedFile(null);
+    setAvailableSheets([]);
+    setSelectedSheetIndex(0);
     setPreview(null);
     setMapping(EMPTY_MAPPING);
     setParseResults([]);
@@ -433,6 +453,8 @@ export function VoucherExcelImportPanel({
   const handleReset = useCallback(() => {
     setPhase("upload");
     setSelectedFile(null);
+    setAvailableSheets([]);
+    setSelectedSheetIndex(0);
     setPreview(null);
     setMapping(EMPTY_MAPPING);
     setParseResults([]);
@@ -554,35 +576,54 @@ export function VoucherExcelImportPanel({
               }}
             />
 
-            {/* Hàng bắt đầu */}
+            {/* Sheet & Hàng bắt đầu */}
             {selectedFile && (
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
-                  Dữ liệu bắt đầu từ hàng số:
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={startRow}
-                    onChange={(e) =>
-                      setStartRow(Math.max(1, Number(e.target.value)))
-                    }
-                    className="h-8 w-16 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-white px-2 text-center text-sm outline-none focus:border-[var(--color-border-focus)]"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => void handleReadColumns()}
-                  disabled={isLoading}
-                  className="flex h-8 items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:opacity-60"
-                >
-                  {isLoading ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                  Đọc cột
-                </button>
+              <div className="flex flex-col gap-3">
+                {availableSheets.length > 0 && (
+                  <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
+                    Chọn Sheet cần đọc:
+                    <select
+                      value={selectedSheetIndex}
+                      onChange={(e) => setSelectedSheetIndex(Number(e.target.value))}
+                      className="h-8 flex-1 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-white px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                    >
+                      {availableSheets.map((s) => (
+                        <option key={s.index} value={s.index}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
+                    Dữ liệu bắt đầu từ hàng số:
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={startRow}
+                      onChange={(e) =>
+                        setStartRow(Math.max(1, Number(e.target.value)))
+                      }
+                      className="h-8 w-16 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-white px-2 text-center text-sm outline-none focus:border-[var(--color-border-focus)]"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handleReadColumns()}
+                    disabled={isLoading}
+                    className="flex h-8 items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isLoading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ChevronRight size={14} />
+                    )}
+                    Đọc file
+                  </button>
+                </div>
               </div>
             )}
           </div>

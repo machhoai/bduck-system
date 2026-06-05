@@ -12,6 +12,8 @@ import {
 import { ProductCard } from "./ProductCard";
 import { ProductFilterBar } from "./ProductFilterBar";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
+import { useExportRegistration } from "@/hooks/useExportRegistration";
+import { formatExportDate } from "@/utils/exportExcel";
 
 interface ProductCatalogProps {
     products: Product[];
@@ -40,6 +42,35 @@ export function ProductCatalog({
         () => filterProducts(products, categories, filters),
         [products, categories, filters],
     );
+
+    const exportConfig = useMemo(() => {
+        if (!filteredProducts.length) return null;
+        return {
+            filename: "products",
+            entityType: "products",
+            filters,
+            data: filteredProducts,
+            columns: [
+                { header: t.products.exportColumns.id, key: "id", width: 35 },
+                { header: t.products.exportColumns.category, key: "category_id", width: 35, format: (val: string) => categoryById.get(val)?.name || val },
+                { header: t.products.exportColumns.name, key: "name", width: 30 },
+                { header: t.products.exportColumns.code, key: "code", width: 20 },
+                { header: t.products.exportColumns.barcode, key: "barcode", width: 20 },
+                { header: t.products.exportColumns.type, key: "product_type", width: 20 },
+                { header: t.products.exportColumns.origin, key: "product_origin", width: 20 },
+                { header: t.products.exportColumns.material, key: "product_material", width: 20 },
+                { header: t.products.exportColumns.unit, key: "unit", width: 15 },
+                { header: t.products.exportColumns.price, key: "unit_price", width: 15 },
+                { header: t.products.exportColumns.isSerialized, key: "is_serialized", width: 20, format: (val: boolean) => val ? t.products.exportColumns.yes : t.products.exportColumns.no },
+                { header: t.products.exportColumns.description, key: "description", width: 30 },
+                { header: t.products.exportColumns.isDeleted, key: "is_deleted", width: 15, format: (val: boolean) => val ? t.products.exportColumns.deleted : t.products.exportColumns.active },
+                { header: t.products.exportColumns.createdAt, key: "created_at", width: 25, format: formatExportDate },
+                { header: t.products.exportColumns.updatedAt, key: "updated_at", width: 25, format: formatExportDate },
+            ],
+        };
+    }, [filteredProducts, filters, t, categoryById]);
+
+    useExportRegistration(exportConfig);
 
     return (
         <section className="space-y-4">

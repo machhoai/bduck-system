@@ -11,6 +11,7 @@ import {
     CircleDollarSign,
     ClipboardCheck,
     FileClock,
+    Files,
     Home,
     Package,
     PackagePlus,
@@ -115,6 +116,13 @@ export const menuItems: MenuItem[] = [
         href: "/transfers",
         permission: "transfers.read",
         badgeKey: "transfers",
+    },
+    {
+        id: "fileLibrary",
+        labelKey: "fileLibrary",
+        icon: Files,
+        href: "/file-library",
+        permissionsAny: ["vouchers.read", "transfers.read"],
     },
     {
         id: "products",

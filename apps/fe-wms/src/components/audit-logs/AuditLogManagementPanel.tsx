@@ -9,6 +9,7 @@ import { AuditLogSkeleton } from "@/components/audit-logs/AuditLogSkeleton";
 import { AuditLogStats } from "@/components/audit-logs/AuditLogStats";
 import { useAuditLogs } from "@/hooks/useAuditLogs";
 import { useAuditNameResolver } from "@/hooks/useAuditNameResolver";
+import { useExportRegistration } from "@/hooks/useExportRegistration";
 import { useTranslation } from "@/lib/i18n";
 import {
     defaultAuditLogFilters,
@@ -16,6 +17,7 @@ import {
     getUniqueActions,
     getUniqueEntityTypes,
 } from "@/utils/auditLogFilters";
+import { formatExportDate } from "@/utils/exportExcel";
 
 export function AuditLogManagementPanel() {
     const { t } = useTranslation();
@@ -40,6 +42,38 @@ export function AuditLogManagementPanel() {
         () => ({ resolveUser, resolveWarehouse, resolveEntity }),
         [resolveUser, resolveWarehouse, resolveEntity],
     );
+
+
+
+    const exportConfig = useMemo(() => {
+        if (!filteredLogs.length) return null;
+        return {
+            filename: "audit_logs",
+            entityType: "audit_logs",
+            filters,
+            data: filteredLogs,
+            columns: [
+                { header: "ID", key: "id", width: 35 },
+                { header: "Entity Type", key: "entity_type", width: 25 },
+                { header: "Entity ID", key: "entity_id", width: 35 },
+                { header: "Warehouse ID", key: "warehouse_id", width: 35, format: (val: string) => resolveWarehouse(val)?.name || val },
+                { header: "Action", key: "action", width: 15 },
+                { header: "User ID", key: "user_id", width: 35, format: (val: string) => resolveUser(val)?.name || val },
+                { header: "User Name", key: "user_name", width: 25 },
+                { header: "Entity Name", key: "entity_name", width: 25 },
+                { header: "Action Time", key: "action_time", width: 25, format: formatExportDate },
+                { header: "Sync Time", key: "sync_time", width: 25, format: formatExportDate },
+                { header: "Old Value", key: "old_value", width: 50, format: (val: any) => val ? JSON.stringify(val) : "" },
+                { header: "New Value", key: "new_value", width: 50, format: (val: any) => val ? JSON.stringify(val) : "" },
+                { header: "IP Address", key: "ip_address", width: 20 },
+                { header: "Device ID", key: "device_id", width: 20 },
+                { header: "Session Token", key: "session_token", width: 35 },
+                { header: "Notes", key: "notes", width: 30 },
+            ],
+        };
+    }, [filteredLogs, filters, resolveUser, resolveWarehouse]);
+
+    useExportRegistration(exportConfig);
 
     return (
         <div className="flex flex-col gap-4">

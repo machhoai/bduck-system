@@ -167,14 +167,6 @@ export default function WarehouseDetailPage() {
     return (
         <div className="flex h-full w-full flex-col gap-5 pb-8 sm:gap-4">
             <div className="flex flex-col gap-3">
-                <Link
-                    href="/warehouses"
-                    className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-brand-primary)] shadow-sm transition-colors hover:text-[var(--color-brand-primary-hover)]"
-                >
-                    <ArrowLeft size={16} />
-                    {t.warehouses.backToList}
-                </Link>
-
                 <WarehouseDetailHero
                     warehouse={warehouse}
                     warehouseId={warehouseId}
@@ -212,8 +204,8 @@ export default function WarehouseDetailPage() {
                             type="button"
                             onClick={() => setActiveTab("products")}
                             className={`flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${activeTab === "products"
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
                                 }`}
                         >
                             <Boxes size={18} />
@@ -223,16 +215,16 @@ export default function WarehouseDetailPage() {
                             type="button"
                             onClick={() => setActiveTab("locations")}
                             className={`flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${activeTab === "locations"
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
                                 }`}
                         >
                             <MapPinned size={18} />
                             {t.warehouses.tabLocations}
                             <span
                                 className={`flex h-5 items-center justify-center rounded-full px-2 text-xxs font-bold ${activeTab === "locations"
-                                        ? "bg-white/20 text-white"
-                                        : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                                    ? "bg-white/20 text-white"
+                                    : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
                                     }`}
                             >
                                 {locations.length}

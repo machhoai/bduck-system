@@ -13,6 +13,8 @@ import { InventoryToolbar } from "./inventory/InventoryToolbar";
 import { InventoryTableView } from "./inventory/InventoryTableView";
 import { InventoryListView } from "./inventory/InventoryListView";
 import { InventoryCardGrid } from "./inventory/InventoryCardGrid";
+import { useExportRegistration } from "@/hooks/useExportRegistration";
+import { useMemo } from "react";
 
 interface WarehouseInventoryViewProps {
     inventory: Inventory[];
@@ -67,6 +69,35 @@ export function WarehouseInventoryView({
         resetFilters,
         hasActiveFilters,
     } = useInventoryFilter(inventory, products, warehouseId);
+
+
+
+    const exportConfig = useMemo(() => {
+        if (!filteredRows.length) return null;
+        return {
+            filename: `inventory_warehouse_${warehouseId}`,
+            entityType: "inventory",
+            warehouseId,
+            filters,
+            data: filteredRows,
+            columns: [
+                { header: "Mã SP", key: "product_code", width: 20, format: (_v: any, row: any) => row.product.code },
+                { header: "Tên sản phẩm", key: "product_name", width: 30, format: (_v: any, row: any) => row.product.name },
+                { header: "Loại SP", key: "product_type", width: 20, format: (_v: any, row: any) => row.product.product_type },
+                { header: "Mã vạch", key: "product_barcode", width: 20, format: (_v: any, row: any) => row.product.barcode || "" },
+                { header: "Warehouse ID", key: "warehouse_id", width: 35, format: () => warehouseId },
+                { header: "Product ID", key: "product_id", width: 35, format: (_v: any, row: any) => row.productId },
+                { header: "Tổng số lượng", key: "total_quantity", width: 15, format: (_v: any, row: any) => row.total },
+                { header: "Khả dụng (ATP)", key: "atp_quantity", width: 15, format: (_v: any, row: any) => row.atp },
+                { header: "Tạm giữ", key: "on_hold_quantity", width: 15, format: (_v: any, row: any) => row.onHold },
+                { header: "Chờ xuất", key: "in_transit_quantity", width: 15, format: (_v: any, row: any) => row.inTransit },
+                { header: "Cách ly (Lỗi)", key: "quarantine_quantity", width: 15, format: (_v: any, row: any) => row.quarantine },
+                { header: "Đơn vị", key: "unit", width: 15, format: (_v: any, row: any) => row.product.unit },
+            ],
+        };
+    }, [filteredRows, filters, warehouseId]);
+
+    useExportRegistration(exportConfig);
 
     if (loading) {
         return <InventoryViewSkeleton />;
