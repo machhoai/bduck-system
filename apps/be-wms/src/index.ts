@@ -19,6 +19,7 @@ import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 import expenseRoutes from "./api/routes/expenseRoutes.js";
 import revenueSyncRoutes from "./api/routes/revenueSyncRoutes.js";
+import notificationRoutes from "./api/routes/notificationRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -59,6 +60,7 @@ app.use("/api/process-configs", processConfigRoutes);
 app.use("/api/transfer-orders", transferOrderRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/revenue", revenueSyncRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // ---------------------------------------------------------------------------
 // Health Check

@@ -525,6 +525,34 @@ export async function onApprovalRejected(
   });
 }
 
+/**
+ * Called when the creator cancels their own transfer order.
+ * Advances order from PENDING_APPROVAL → CANCELLED.
+ */
+export async function onApprovalCancelled(
+  orderId: string,
+  userId: string,
+  reason?: string | null,
+): Promise<void> {
+  const now = new Date();
+  await transferRepo.update(orderId, {
+    status: TransferOrderStatus.CANCELLED,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  const order = await transferRepo.findById(orderId);
+  await logAudit({
+    entity_type: "TRANSFER_ORDER",
+    entity_id: orderId,
+    warehouse_id: order?.source_warehouse_id ?? null,
+    action: AuditAction.CANCEL,
+    user_id: userId,
+    old_value: { status: TransferOrderStatus.PENDING_APPROVAL },
+    new_value: { status: TransferOrderStatus.CANCELLED, reason: reason || null },
+  });
+}
+
 // ─────────────────────────────────────────────
 // CREATE EXPORT FROM TRANSFER (1-click)
 // ─────────────────────────────────────────────

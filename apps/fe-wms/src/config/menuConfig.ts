@@ -7,6 +7,7 @@
  */
 import {
     ArrowRightLeft,
+    Bell,
     CircleDollarSign,
     ClipboardCheck,
     FileClock,
@@ -43,6 +44,12 @@ const userAccessReadPermissions = PERMISSION_REGISTRY.filter(
         permission.key.endsWith(".read"),
 ).map((permission) => permission.key);
 
+const notificationPermissions = [
+    "notifications.read",
+    "notifications.send_in_app",
+    "notifications.send_email",
+];
+
 /**
  * Danh sách menu items
  * ► labelKey tương ứng với key trong `t.nav.*`
@@ -56,21 +63,6 @@ export const menuItems: MenuItem[] = [
         showInBottomNav: true,
     },
     {
-        id: "tasks",
-        labelKey: "tasks",
-        icon: ClipboardCheck,
-        href: "/tasks",
-        showInBottomNav: true,
-        badgeKey: "tasks",
-    },
-    {
-        id: "products",
-        labelKey: "products",
-        icon: Package,
-        href: "/products",
-        permission: "products.read",
-    },
-    {
         id: "warehouses",
         labelKey: "warehouses",
         icon: Warehouse,
@@ -79,11 +71,26 @@ export const menuItems: MenuItem[] = [
         showInBottomNav: true,
     },
     {
-        id: "processConfigs",
-        labelKey: "processConfigs",
-        icon: FolderSymlink,
-        href: "/process-configs",
-        permission: "workflow.read",
+        id: "expenses",
+        labelKey: "expenses",
+        icon: CircleDollarSign,
+        href: "/expenses",
+        permission: "expenses.read",
+    },
+    {
+        id: "notification",
+        labelKey: "notification",
+        icon: Bell,
+        href: "/notification",
+        permissionsAny: notificationPermissions,
+    },
+    {
+        id: "tasks",
+        labelKey: "tasks",
+        icon: ClipboardCheck,
+        href: "/tasks",
+        showInBottomNav: true,
+        badgeKey: "tasks",
     },
     {
         id: "importVouchers",
@@ -110,11 +117,18 @@ export const menuItems: MenuItem[] = [
         badgeKey: "transfers",
     },
     {
-        id: "expenses",
-        labelKey: "expenses",
-        icon: CircleDollarSign,
-        href: "/expenses",
-        permission: "expenses.read",
+        id: "products",
+        labelKey: "products",
+        icon: Package,
+        href: "/products",
+        permission: "products.read",
+    },
+    {
+        id: "processConfigs",
+        labelKey: "processConfigs",
+        icon: FolderSymlink,
+        href: "/process-configs",
+        permission: "workflow.read",
     },
     {
         id: "expenseEntry",

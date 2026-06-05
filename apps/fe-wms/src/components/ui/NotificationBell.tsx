@@ -18,9 +18,11 @@ import {
     useNotifications,
     resolveTemplate,
 } from "@/hooks/useNotifications";
-import type { InAppNotification } from "@/hooks/useNotifications";
+import type { InAppNotification } from "@bduck/shared-types";
+import { useTranslation } from "@/lib/i18n";
 
 export default function NotificationBell() {
+    const { lang } = useTranslation();
     const { notifications, unreadCount, markAsRead, markAllAsRead, loading } =
         useNotifications();
     const [isOpen, setIsOpen] = useState(false);
@@ -160,8 +162,17 @@ export default function NotificationBell() {
                                                 : "text-gray-600"
                                                 }`}
                                         >
-                                            {resolveTemplate(notif.template_key)}
+                                            {resolveTemplate(
+                                                notif.template_key,
+                                                lang,
+                                                notif.template_params,
+                                            )}
                                         </p>
+                                        {notif.body && (
+                                            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-500">
+                                                {notif.body}
+                                            </p>
+                                        )}
                                         <div className="mt-1 flex items-center gap-2 text-xxs text-gray-400">
                                             <Clock className="h-3 w-3" />
                                             <span>{formatTime(notif.created_at)}</span>

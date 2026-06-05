@@ -219,6 +219,33 @@ export async function onApprovalRejected(
   });
 }
 
+/**
+ * Called when the creator cancels their own voucher.
+ * Advances voucher from PENDING_APPROVAL → CANCELLED.
+ */
+export async function onApprovalCancelled(
+  voucherId: string,
+  userId: string,
+  reason?: string | null,
+): Promise<void> {
+  const now = new Date();
+  await db.collection("export_vouchers").doc(voucherId).update({
+    status: ExportVoucherStatus.CANCELLED,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  await logAudit({
+    entity_type: "EXPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: null,
+    action: AuditAction.CANCEL,
+    user_id: userId,
+    old_value: { status: ExportVoucherStatus.PENDING_APPROVAL },
+    new_value: { status: ExportVoucherStatus.CANCELLED, reason: reason || null },
+  });
+}
+
 /** APPROVED → PICKING (thủ kho bắt đầu soạn hàng) */
 export async function startPicking(voucherId: string): Promise<void> {
   const now = new Date();

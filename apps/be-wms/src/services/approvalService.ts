@@ -21,6 +21,7 @@
  */
 
 import { randomUUID } from "crypto";
+import { db } from "../config/firebase.js";
 import { AuditAction } from "@bduck/shared-types";
 import type {
   ProcessEntityType,
@@ -552,3 +553,161 @@ async function advanceEntityOnRejection(
   }
 }
 
+// ─────────────────────────────────────────────
+// CANCEL BY CREATOR
+// ─────────────────────────────────────────────
+
+/**
+ * Allows the CREATOR of a voucher/entity to cancel all pending approvals.
+ *
+ * RULES:
+ * 1. Only the creator (creator_id) can cancel.
+ * 2. Only PENDING records can be cancelled — if any record is already
+ *    APPROVED, cancellation is blocked (the process has advanced).
+ * 3. All PENDING records are batch-updated to CANCELLED.
+ * 4. Entity-specific callback reverts voucher to CANCELLED.
+ * 5. Full audit trail recorded.
+ */
+export async function cancelByCreator(
+  entityType: ProcessEntityType,
+  entityId: string,
+  creatorId: string,
+  reason?: string | null,
+): Promise<void> {
+  const allRecords = await approvalRepo.findByEntity(entityType, entityId);
+
+  if (allRecords.length === 0) {
+    throw createError(
+      404,
+      "Không tìm thấy bản ghi phê duyệt cho lệnh này.",
+      "未找到该单据的审批记录。",
+    );
+  }
+
+  // ── Verify caller is the creator ──
+  const firstRecord = allRecords[0];
+  if (firstRecord.creator_id !== creatorId) {
+    throw createError(
+      403,
+      "Chỉ người tạo lệnh mới có quyền hủy.",
+      "只有创建人才能撤销单据。",
+    );
+  }
+
+  // ── Check no records have been APPROVED already ──
+  const hasApproved = allRecords.some((r) => r.status === "APPROVED");
+  if (hasApproved) {
+    throw createError(
+      400,
+      "Không thể hủy — lệnh đã được phê duyệt ở một hoặc nhiều cấp.",
+      "无法撤销 — 单据已在一个或多个级别获批。",
+    );
+  }
+
+  // ── Batch cancel all PENDING records ──
+  const pendingRecords = allRecords.filter((r) => r.status === "PENDING");
+  if (pendingRecords.length === 0) {
+    throw createError(
+      400,
+      "Không có bản ghi chờ duyệt nào để hủy.",
+      "没有待审批记录可撤销。",
+    );
+  }
+
+  const now = new Date();
+  const batch = db.batch();
+
+  for (const record of pendingRecords) {
+    batch.update(db.collection("pending_approvals").doc(record.id), {
+      status: "CANCELLED",
+      approver_id: creatorId,
+      approved_at: now,
+      rejected_reason: reason || "Người tạo tự hủy lệnh",
+      sync_time: now,
+    });
+  }
+
+  await batch.commit();
+
+  // ── Entity callback: revert voucher → CANCELLED ──
+  await cancelEntityOnCancel(entityType, entityId, creatorId, reason);
+
+  // ── Audit trail (ISO 9001) ──
+  await logAudit({
+    entity_type: entityType,
+    entity_id: entityId,
+    warehouse_id: firstRecord.warehouse_id,
+    action: AuditAction.CANCEL,
+    user_id: creatorId,
+    old_value: {
+      status: "PENDING",
+      pending_count: pendingRecords.length,
+    },
+    new_value: {
+      status: "CANCELLED",
+      reason: reason || "Người tạo tự hủy lệnh",
+      cancelled_records: pendingRecords.map((r) => r.id),
+    },
+  });
+
+  console.log(
+    `[approvalService] Creator ${creatorId} cancelled ${pendingRecords.length} approval(s) for ${entityType}/${entityId}`,
+  );
+}
+
+/**
+ * Revert the source entity status to CANCELLED.
+ * Uses dynamic import to avoid circular dependency.
+ */
+async function cancelEntityOnCancel(
+  entityType: ProcessEntityType,
+  entityId: string,
+  userId: string,
+  reason?: string | null,
+): Promise<void> {
+  try {
+    switch (entityType) {
+      case "IMPORT_VOUCHER": {
+        const { onApprovalCancelled } = await import(
+          "./importVoucherService.js"
+        );
+        await onApprovalCancelled(entityId, userId, reason);
+        console.log(
+          `[approvalService] Cancelled IMPORT_VOUCHER/${entityId}`,
+        );
+        break;
+      }
+      case "EXPORT_VOUCHER": {
+        const { onApprovalCancelled: onExportCancelled } = await import(
+          "./exportVoucherService.js"
+        );
+        await onExportCancelled(entityId, userId, reason);
+        console.log(
+          `[approvalService] Cancelled EXPORT_VOUCHER/${entityId}`,
+        );
+        break;
+      }
+      case "TRANSFER_ORDER":
+      case "TRANSFER_INTRA": {
+        const { onApprovalCancelled: onTransferCancelled } = await import(
+          "./transferOrderService.js"
+        );
+        await onTransferCancelled(entityId, userId, reason);
+        console.log(
+          `[approvalService] Cancelled ${entityType}/${entityId}`,
+        );
+        break;
+      }
+      default:
+        console.warn(
+          `[approvalService] No cancel callback for entity type: ${entityType}`,
+        );
+    }
+  } catch (error) {
+    console.error(
+      `[approvalService] Failed to cancel entity ${entityType}/${entityId}:`,
+      error,
+    );
+    throw error;
+  }
+}

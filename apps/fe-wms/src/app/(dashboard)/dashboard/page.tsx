@@ -18,12 +18,12 @@ import { useInventory } from "../../../hooks/useInventory";
 import { useWarehouses, useWarehouseLocations } from "../../../hooks/useWarehouses";
 import { useProducts } from "../../../hooks/useProducts";
 import {
-  computeKPIs,
-  computeWarehouseBreakdown,
-  computeLowStockProducts,
-  computeTopProducts,
-  computeProductTypeDistribution,
-  computeStockComparison,
+    computeKPIs,
+    computeWarehouseBreakdown,
+    computeLowStockProducts,
+    computeTopProducts,
+    computeProductTypeDistribution,
+    computeStockComparison,
 } from "../../../utils/inventoryAggregation";
 
 import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
@@ -35,153 +35,178 @@ import StockTrendChart from "../../../components/inventory/StockTrendChart";
 import LowStockTable from "../../../components/inventory/LowStockTable";
 import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
 import InventoryDashboardSkeleton from "../../../components/inventory/InventoryDashboardSkeleton";
+import ExpenseDashboardWidgets from "../../../components/features/expenses/ExpenseDashboardWidgets";
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
-  const d = t.inventoryDashboard;
-  const user = useUserStore((s) => s.user);
-  const displayName = user?.full_name?.split(" ").pop() || "";
+    const { t } = useTranslation();
+    const d = t.inventoryDashboard;
+    const user = useUserStore((s) => s.user);
+    const hasPermission = useUserStore((s) => s.hasPermission);
+    const displayName = user?.full_name?.split(" ").pop() || "";
 
-  // ── Data hooks (real-time) ──
-  const { inventory, loading: invLoading } = useInventory();
-  const { warehouses, loading: whLoading } = useWarehouses();
-  const { products, loading: prodLoading } = useProducts();
-  const isLoading = invLoading || whLoading || prodLoading;
+    // ── Data hooks (real-time) ──
+    const { inventory, loading: invLoading } = useInventory();
+    const { warehouses, loading: whLoading } = useWarehouses();
+    const { products, loading: prodLoading } = useProducts();
+    const isLoading = invLoading || whLoading || prodLoading;
 
-  // ── Warehouse filter ──
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<
-    string | undefined
-  >(undefined);
-  const isAllWarehouses = !selectedWarehouseId;
+    // ── Warehouse filter ──
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<
+        string | undefined
+    >(undefined);
+    const isAllWarehouses = !selectedWarehouseId;
 
-  // ── Locations for specific warehouse ──
-  const { locations } = useWarehouseLocations(selectedWarehouseId);
+    // ── Locations for specific warehouse ──
+    const { locations } = useWarehouseLocations(selectedWarehouseId);
 
-  // ── Popup state ──
-  const [popupMetric, setPopupMetric] = useState<string | null>(null);
+    // ── Popup state ──
+    const [popupMetric, setPopupMetric] = useState<string | null>(null);
 
-  // ── Computed KPIs (memoized) ──
-  const kpis = useMemo(
-    () => computeKPIs(inventory, warehouses, selectedWarehouseId),
-    [inventory, warehouses, selectedWarehouseId],
-  );
-
-  const breakdown = useMemo(
-    () => computeWarehouseBreakdown(inventory, warehouses),
-    [inventory, warehouses],
-  );
-
-  const lowStockProducts = useMemo(
-    () => computeLowStockProducts(inventory, products, selectedWarehouseId),
-    [inventory, products, selectedWarehouseId],
-  );
-
-  const topMost = useMemo(
-    () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "most"),
-    [inventory, products, selectedWarehouseId],
-  );
-
-  const topLeast = useMemo(
-    () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "least"),
-    [inventory, products, selectedWarehouseId],
-  );
-
-  const typeDistribution = useMemo(
-    () => computeProductTypeDistribution(inventory, products, selectedWarehouseId),
-    [inventory, products, selectedWarehouseId],
-  );
-
-  const stockComparison = useMemo(
-    () => computeStockComparison(inventory, warehouses),
-    [inventory, warehouses],
-  );
-
-  // ── Full skeleton while loading ──
-  if (isLoading) {
-    return <InventoryDashboardSkeleton />;
-  }
-
-  // ── No access state ──
-  if (warehouses.length === 0 && !isLoading) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
-          <ShieldOff
-            size={28}
-            strokeWidth={1.5}
-            className="text-[var(--color-text-muted)]"
-          />
-        </div>
-        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-          {d.noAccess}
-        </h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {d.noAccessDescription}
-        </p>
-      </div>
+    // ── Computed KPIs (memoized) ──
+    const kpis = useMemo(
+        () => computeKPIs(inventory, warehouses, selectedWarehouseId),
+        [inventory, warehouses, selectedWarehouseId],
     );
-  }
 
-  return (
-    <div className="space-y-4">
-      {/* ── Header ── */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-normal text-[var(--color-text-muted)]">
-            {t.dashboard.welcome}
-            {displayName ? `, ${displayName}` : ""}
-          </p>
-          <h1 className="font-[var(--font-display)] text-lg font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] lg:text-lg">
-            {d.title}
-          </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
-            {d.subtitle}
-          </p>
+    const breakdown = useMemo(
+        () => computeWarehouseBreakdown(inventory, warehouses),
+        [inventory, warehouses],
+    );
+
+    const lowStockProducts = useMemo(
+        () => computeLowStockProducts(inventory, products, selectedWarehouseId),
+        [inventory, products, selectedWarehouseId],
+    );
+
+    const topMost = useMemo(
+        () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "most"),
+        [inventory, products, selectedWarehouseId],
+    );
+
+    const topLeast = useMemo(
+        () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "least"),
+        [inventory, products, selectedWarehouseId],
+    );
+
+    const typeDistribution = useMemo(
+        () => computeProductTypeDistribution(inventory, products, selectedWarehouseId),
+        [inventory, products, selectedWarehouseId],
+    );
+
+    const stockComparison = useMemo(
+        () => computeStockComparison(inventory, warehouses),
+        [inventory, warehouses],
+    );
+
+    // ── Permissions ──
+    const hasExpenseAccess = hasPermission("expenses.read", selectedWarehouseId) || hasPermission("expenses.consolidated.view");
+
+    // ── Full skeleton while loading ──
+    if (isLoading) {
+        return <InventoryDashboardSkeleton />;
+    }
+
+    // ── No access state ──
+    if (warehouses.length === 0 && !isLoading) {
+        return (
+            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
+                    <ShieldOff
+                        size={28}
+                        strokeWidth={1.5}
+                        className="text-[var(--color-text-muted)]"
+                    />
+                </div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                    {d.noAccess}
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                    {d.noAccessDescription}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-2">
+            {/* ── Header ── */}
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-sm font-normal text-[var(--color-text-muted)]">
+                        {t.dashboard.welcome}
+                        {displayName ? `, ${displayName}` : ""}
+                    </p>
+                    <h1 className="font-[var(--font-display)] text-lg font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] lg:text-lg">
+                        {d.title}
+                    </h1>
+                    <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
+                        {d.subtitle}
+                    </p>
+                </div>
+
+                <WarehouseSelector
+                    warehouses={warehouses}
+                    selectedId={selectedWarehouseId}
+                    onSelect={setSelectedWarehouseId}
+                />
+            </header>
+
+            {/* ── Expense Dashboard Widgets ── */}
+            {hasExpenseAccess && (
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-[var(--font-display)] leading-0 text-xxs font-semibold leading-tight tracking-normal text-[var(--color-text-muted)]">
+                            {t.expenses?.title || "Quản lý Chi phí"}
+                        </h2>
+                    </div>
+                    <ExpenseDashboardWidgets warehouseId={selectedWarehouseId || "ALL"} />
+                </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                    <h2 className="font-[var(--font-display)] leading-0 text-xxs font-semibold leading-tight tracking-normal text-[var(--color-text-muted)]">
+                        {t.warehouses?.tabWarehouses || "Quản lý Chi phí"}
+                    </h2>
+                </div>
+
+                {/* ── Stat Cards ── */}
+                <StatCardGrid
+                    kpis={kpis}
+                    loading={false}
+                    isAllWarehouses={isAllWarehouses}
+                    locationCount={locations.length}
+                    onCardClick={(metric) => setPopupMetric(metric)}
+                />
+
+                {/* ── Charts Row ── */}
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    <StockDistributionChart data={typeDistribution} loading={false} />
+                    {isAllWarehouses ? (
+                        <StockComparisonChart data={stockComparison} loading={false} />
+                    ) : (
+                        <StockTrendChart loading={false} />
+                    )}
+                </div>
+
+                {/* ── Tables Row ── */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <LowStockTable products={lowStockProducts} loading={false} />
+                    <TopProductsRanking
+                        mostStocked={topMost}
+                        leastStocked={topLeast}
+                        loading={false}
+                    />
+                </div>
+
+                {/* ── Warehouse Detail Popup ── */}
+                <WarehouseDetailPopup
+                    isOpen={popupMetric !== null && isAllWarehouses}
+                    onClose={() => setPopupMetric(null)}
+                    metric={popupMetric || "totalQuantity"}
+                    breakdown={breakdown}
+                />
+            </div>
         </div>
-
-        <WarehouseSelector
-          warehouses={warehouses}
-          selectedId={selectedWarehouseId}
-          onSelect={setSelectedWarehouseId}
-        />
-      </header>
-
-      {/* ── Stat Cards ── */}
-      <StatCardGrid
-        kpis={kpis}
-        loading={false}
-        isAllWarehouses={isAllWarehouses}
-        locationCount={locations.length}
-        onCardClick={(metric) => setPopupMetric(metric)}
-      />
-
-      {/* ── Charts Row ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <StockDistributionChart data={typeDistribution} loading={false} />
-        {isAllWarehouses ? (
-          <StockComparisonChart data={stockComparison} loading={false} />
-        ) : (
-          <StockTrendChart loading={false} />
-        )}
-      </div>
-
-      {/* ── Tables Row ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <LowStockTable products={lowStockProducts} loading={false} />
-        <TopProductsRanking
-          mostStocked={topMost}
-          leastStocked={topLeast}
-          loading={false}
-        />
-      </div>
-
-      {/* ── Warehouse Detail Popup ── */}
-      <WarehouseDetailPopup
-        isOpen={popupMetric !== null && isAllWarehouses}
-        onClose={() => setPopupMetric(null)}
-        metric={popupMetric || "totalQuantity"}
-        breakdown={breakdown}
-      />
-    </div>
-  );
+    );
 }

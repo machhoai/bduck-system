@@ -1,4 +1,5 @@
 import "./globals.css";
+import "quill/dist/quill.snow.css";
 import ToastProvider from "../components/providers/ToastProvider";
 import VersionLogger from "../components/ui/VersionLogger";
 

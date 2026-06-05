@@ -5,6 +5,8 @@ export type DataInvalidationKey =
   | "audit_logs"
   | "import_vouchers"
   | "inventory"
+  | "in_app_notifications"
+  | "notification_dispatches"
   | "organizations"
   | "pending_approvals"
   | "process_configs"

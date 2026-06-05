@@ -182,6 +182,57 @@ export const auditLogQuerySchema = z.object({
   sort_dir: z.enum(["asc", "desc"]).default("desc"),
 });
 
+const noNoSqlOperators = (value: string) =>
+  !/\$(where|ne|gt|gte|lt|lte|regex|or|and)\b/i.test(value);
+
+const notificationTextSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(5000)
+  .refine(noNoSqlOperators, { message: "Text contains forbidden operators" });
+
+const notificationUserIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine(noNoSqlOperators, { message: "User ID contains forbidden operators" });
+
+const notificationUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
+    message: "URL must be internal path or http(s) URL",
+  });
+
+const emailListSchema = z
+  .array(z.string().trim().email().max(254))
+  .max(100);
+
+export const sendInAppNotificationSchema = z.object({
+  recipient_user_ids: z.array(notificationUserIdSchema).max(500).default([]),
+  recipient_role_ids: z.array(z.string().uuid()).max(50).default([]),
+  title: notificationTextSchema.max(180),
+  message: notificationTextSchema.max(3000),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
+  action_url: notificationUrlSchema.nullable().optional(),
+});
+
+export const sendEmailNotificationSchema = z.object({
+  to: emailListSchema.min(1),
+  cc: emailListSchema.default([]),
+  bcc: emailListSchema.default([]),
+  subject: notificationTextSchema.max(180),
+  html_content: z.string().trim().min(1).max(200000),
+  text_content: z.string().trim().max(20000).optional(),
+});
+
+export const notificationDispatchQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
 // ============================================================
 // INVENTORY SCHEMAS (Phase 2)
 // ============================================================

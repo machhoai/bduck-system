@@ -97,28 +97,34 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 9,
   },
   {
+    id: "notifications",
+    label: { vi: "Thông báo", zh: "通知" },
+    icon: "Bell",
+    order: 10,
+  },
+  {
     id: "users",
     label: { vi: "Người dùng", zh: "用户" },
     icon: "Users",
-    order: 9,
+    order: 11,
   },
   {
     id: "roles",
     label: { vi: "Phân quyền", zh: "角色权限" },
     icon: "ShieldCheck",
-    order: 10,
+    order: 12,
   },
   {
     id: "expenses",
     label: { vi: "Quản lý chi phí", zh: "费用管理" },
     icon: "Receipt",
-    order: 9,
+    order: 13,
   },
   {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
-    order: 11,
+    order: 14,
   },
 ];
 
@@ -360,6 +366,35 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Khởi chạy quy trình và hoàn thành các task phê duyệt.",
       zh: "启动流程并完成审批任务。",
+    },
+  },
+
+  // ── Notifications ──
+  {
+    key: "notifications.read",
+    group: "notifications",
+    label: { vi: "Xem lịch sử thông báo", zh: "查看通知历史" },
+    description: {
+      vi: "Xem lịch sử các lượt gửi thông báo in-app và email.",
+      zh: "查看应用内通知和邮件发送历史。",
+    },
+  },
+  {
+    key: "notifications.send_in_app",
+    group: "notifications",
+    label: { vi: "Gửi thông báo in-app", zh: "发送应用内通知" },
+    description: {
+      vi: "Gửi thông báo realtime trong hệ thống cho người dùng hoặc vai trò.",
+      zh: "向用户或角色发送系统内实时通知。",
+    },
+  },
+  {
+    key: "notifications.send_email",
+    group: "notifications",
+    label: { vi: "Gửi email", zh: "发送邮件" },
+    description: {
+      vi: "Soạn và gửi email qua dịch vụ Brevo.",
+      zh: "通过 Brevo 服务编写并发送电子邮件。",
     },
   },
 

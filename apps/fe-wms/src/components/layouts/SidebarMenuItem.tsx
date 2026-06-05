@@ -79,7 +79,7 @@ export default function SidebarMenuItem({
             )}
 
             {/* Icon + dot badge (collapsed mode) */}
-            <span className={`shrink-0 ${(isCollapsed && showBadge) ? "pl-2" : ""}`}>
+            <span className={`shrink-0 ${(isCollapsed && showBadge && isActive) ? "translate-x-[9px]" : ""} ${(isCollapsed && showBadge && !isActive) ? "translate-x-[5px]" : ""} duration-300 ease-in-out`}>
                 <Icon size={19} strokeWidth={1.8} />
             </span>
 

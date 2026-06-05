@@ -4,6 +4,7 @@
  * All routes require authentication.
  * GET  /pending              — Pending approvals for current user
  * GET  /:entityType/:entityId — Approval timeline
+ * POST /:entityType/:entityId/cancel — Cancel (creator only)
  * POST /:id/approve          — Approve
  * POST /:id/reject           — Reject
  */
@@ -14,6 +15,7 @@ import {
   getApprovalTimeline,
   approveHandler,
   rejectHandler,
+  cancelHandler,
 } from "../controllers/approvalController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 
@@ -22,6 +24,7 @@ const router: ExpressRouter = Router();
 router.use(requireAuth);
 
 router.get("/pending", getPendingApprovals);
+router.post("/:entityType/:entityId/cancel", cancelHandler);
 router.get("/:entityType/:entityId", getApprovalTimeline);
 router.post("/:id/approve", approveHandler);
 router.post("/:id/reject", rejectHandler);

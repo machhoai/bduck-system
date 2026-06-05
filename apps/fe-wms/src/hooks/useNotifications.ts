@@ -27,25 +27,11 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
+import type { InAppNotification } from "@bduck/shared-types";
 
 // ─────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────
-
-export interface InAppNotification {
-  id: string;
-  target_user_id: string | null;
-  target_role_id: string | null;
-  template_key: string;
-  template_params: Record<string, unknown>;
-  channel: string;
-  source_instance_id: string | null;
-  source_entity_id: string | null;
-  source_entity_type: string | null;
-  is_read: boolean;
-  is_deleted: boolean;
-  created_at: Date;
-}
 
 // ─────────────────────────────────────────────
 // i18n TEMPLATE RESOLVER
@@ -81,7 +67,12 @@ const TEMPLATE_LABELS: Record<string, { vi: string; zh: string }> = {
 export function resolveTemplate(
   templateKey: string,
   lang: "vi" | "zh" = "vi",
+  params: Record<string, unknown> = {},
 ): string {
+  if (templateKey === "notification.manual" && typeof params.title === "string") {
+    return params.title;
+  }
+
   return (
     TEMPLATE_LABELS[templateKey]?.[lang] ??
     TEMPLATE_LABELS["notification.workflow_update"]![lang]
@@ -135,12 +126,22 @@ export function useNotifications(): UseNotificationsReturn {
             template_key: data.template_key,
             template_params: data.template_params || {},
             channel: data.channel,
+            title: data.title || data.template_params?.title || data.template_key,
+            body: data.body || data.template_params?.body || "",
+            action_url: data.action_url || null,
+            priority: data.priority || "NORMAL",
             source_instance_id: data.source_instance_id,
             source_entity_id: data.source_entity_id,
             source_entity_type: data.source_entity_type,
+            created_by: data.created_by || null,
             is_read: data.is_read ?? false,
+            read_at: data.read_at?.toDate?.() ?? null,
             is_deleted: data.is_deleted ?? false,
             created_at: data.created_at?.toDate?.() ?? new Date(data.created_at),
+            updated_at:
+              data.updated_at?.toDate?.() ??
+              data.created_at?.toDate?.() ??
+              new Date(data.created_at),
           } as InAppNotification);
         });
         setRawNotifications(notifs);

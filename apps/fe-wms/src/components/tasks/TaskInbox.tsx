@@ -293,6 +293,12 @@ export default function TaskInbox() {
                                                 {taskStats.exportCount}
                                             </span>
                                         </div>
+                                        {/* <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--color-text-muted)]">{t.tasks.summary.transfers}</span>
+                                            <span className="text-sm font-bold text-[var(--color-status-pending-text)]">
+                                                {taskStats.transferCount}
+                                            </span>
+                                        </div> */}
                                     </div>
                                 </div>
                                 <div className="rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] p-4">

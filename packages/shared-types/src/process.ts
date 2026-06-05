@@ -160,7 +160,7 @@ export interface ProcessConfig {
 // APPROVAL RECORD STATUS
 // ─────────────────────────────────────────────
 
-export type ApprovalRecordStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ApprovalRecordStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 // ─────────────────────────────────────────────
 // APPROVAL RECORD (Firestore: pending_approvals)

@@ -184,3 +184,60 @@ export async function rejectHandler(
     next(error);
   }
 }
+
+/**
+ * POST /api/approvals/:entityType/:entityId/cancel
+ * Cancel all pending approvals for an entity (creator only).
+ *
+ * Body: { reason?: string }
+ */
+export async function cancelHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const entityType = req.params.entityType as string;
+    const entityId = req.params.entityId as string;
+    const userId = (req as any).user?.id;
+    const { reason } = req.body ?? {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Không xác định được người dùng.",
+          zh: "无法识别用户。",
+        },
+      });
+      return;
+    }
+
+    await approvalService.cancelByCreator(
+      entityType as any,
+      entityId,
+      userId,
+      reason,
+    );
+
+    res.json({
+      success: true,
+      data: null,
+      messages: {
+        vi: "Đã hủy lệnh thành công.",
+        zh: "已成功撤销单据。",
+      },
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        messages: error.messages || { vi: error.message, zh: error.message },
+      });
+      return;
+    }
+    next(error);
+  }
+}

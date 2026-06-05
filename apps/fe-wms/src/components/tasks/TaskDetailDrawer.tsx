@@ -20,6 +20,7 @@ import {
     X,
     CheckCircle,
     XCircle,
+    Ban,
     Package,
     PackagePlus,
     PackageMinus,
@@ -37,7 +38,7 @@ import { gooeyToast } from "goey-toast";
 import type { ApprovalRecord } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
-import { approveRecord, rejectRecord } from "@/hooks/useApprovalApi";
+import { approveRecord, rejectRecord, cancelApproval } from "@/hooks/useApprovalApi";
 import AttachmentSection from "./AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
 
@@ -118,6 +119,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
     const { voucher, items, creatorName, warehouseName, loadingVoucher, loadingItems } = useTaskDetailData(approval);
 
     const [comment, setComment] = useState("");
+    const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isLoading = loadingVoucher;
@@ -185,6 +187,41 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
         },
         [isSubmitting, comment, approval, onClose, t],
     );
+
+    // ── Cancel by creator ──
+    const handleCancel = useCallback(async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
+        const cancelAction = async () => {
+            await cancelApproval(
+                approval.entity_type,
+                approval.entity_id,
+                cancelReason || undefined,
+            );
+        };
+
+        try {
+            await gooeyToast.promise(cancelAction(), {
+                loading: (t.tasks as any).selfApproval?.cancelling ?? "Đang hủy lệnh...",
+                success: (t.tasks as any).selfApproval?.cancelSuccess ?? "Đã hủy lệnh thành công",
+                error: (t.tasks as any).selfApproval?.cancelError ?? "Không thể hủy lệnh",
+                description: {
+                    success: (t.tasks as any).selfApproval?.cancelSuccessDesc ?? "Lệnh đã được hủy và ghi nhận vào lịch sử.",
+                    error: (t.tasks as any).selfApproval?.cancelErrorDesc ?? "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+                },
+                action: {
+                    error: {
+                        label: t.tasks.approval.retry,
+                        onClick: () => handleCancel(),
+                    },
+                },
+            });
+            onClose();
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [isSubmitting, cancelReason, approval, onClose, t]);
 
     const attachmentUrls = voucher?.attachment_urls || [];
 
@@ -340,17 +377,35 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 {!isLoading && voucher && (
                     <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
                         {isSelfCreated ? (
-                            /* Self-Approval Block Banner */
-                            <div className="flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-4">
-                                <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-status-pending-icon)]" />
-                                <div>
-                                    <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
-                                        {(t.tasks as any).selfApproval?.title ?? "Kh\u00f4ng th\u1ec3 t\u1ef1 ph\u00ea duy\u1ec7t"}
-                                    </p>
-                                    <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-status-pending-text)]">
-                                        {(t.tasks as any).selfApproval?.description ?? "Theo quy \u0111\u1ecbnh ISO 9001 (Segregation of Duties), ng\u01b0\u1eddi t\u1ea1o l\u1ec7nh kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p t\u1ef1 ph\u00ea duy\u1ec7t l\u1ec7nh c\u1ee7a m\u00ecnh. Vui l\u00f2ng ch\u1edd ng\u01b0\u1eddi kh\u00e1c duy\u1ec7t."}
-                                    </p>
+                            /* Self-Approval Block Banner + Cancel */
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-3">
+                                    <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-status-pending-icon)]" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
+                                            {(t.tasks as any).selfApproval?.title ?? "Không thể tự phê duyệt"}
+                                        </p>
+                                        <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-status-pending-text)]">
+                                            {(t.tasks as any).selfApproval?.description ?? "Theo quy định ISO 9001 (Segregation of Duties), người tạo lệnh không được phép tự phê duyệt lệnh của mình. Vui lòng chờ người khác duyệt."}
+                                        </p>
+                                    </div>
                                 </div>
+                                <textarea
+                                    value={cancelReason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    rows={2}
+                                    placeholder={(t.tasks as any).selfApproval?.cancelReason ?? "Lý do hủy (không bắt buộc)"}
+                                    className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleCancel}
+                                    disabled={isSubmitting}
+                                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                                    {(t.tasks as any).selfApproval?.cancelButton ?? "Hủy lệnh"}
+                                </button>
                             </div>
                         ) : (
                             /* Normal approval actions */

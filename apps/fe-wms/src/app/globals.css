@@ -60,7 +60,7 @@
     --font-body: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont,
         "Inter", sans-serif;
 
-    --sidebar-width-expanded: 180px;
+    --sidebar-width-expanded: 220px;
     --sidebar-width-collapsed: 64px;
     --bottomnav-height: 64px;
     --product-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0;
@@ -218,6 +218,29 @@
         font-size: 17px;
         line-height: 1.47;
         letter-spacing: -0.374px;
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(107, 114, 128, 0.55) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background-color: rgba(107, 114, 128, 0.55);
+        border-radius: var(--radius-pill);
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(75, 85, 99, 0.7);
     }
 
     *:focus-visible {

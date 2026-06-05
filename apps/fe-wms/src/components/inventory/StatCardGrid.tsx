@@ -68,8 +68,8 @@ function StatCard({
             onClick={clickable ? onClick : undefined}
             disabled={!clickable}
             className={`group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 text-left transition-all ${clickable
-                    ? "cursor-pointer hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
-                    : "cursor-default"
+                ? "cursor-pointer hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
+                : "cursor-default"
                 }`}
         >
             <div className="mb-3 flex items-center gap-3">
@@ -160,7 +160,7 @@ export default function StatCardGrid({
     ];
 
     return (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
             {cards.map((card) => (
                 <StatCard
                     key={card.key}

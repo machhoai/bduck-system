@@ -13,7 +13,7 @@
  * Currency: always full number, e.g. 20.000.000đ (never abbreviated)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     ComposedChart,
     Bar,
@@ -116,10 +116,47 @@ const TOOLTIP_STYLE = {
 };
 
 // ─────────────────────────────────────────────
+// Animated Number Component
+// ─────────────────────────────────────────────
+
+function AnimatedNumber({ value, formatFn }: { value: number; formatFn?: (v: number) => string }) {
+    const [displayValue, setDisplayValue] = useState(0);
+
+    useEffect(() => {
+        let start = displayValue;
+        const end = value;
+        if (start === end) return;
+        
+        const duration = 1000; // 1s animation
+        const startTime = performance.now();
+        
+        const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // easeOutQuart
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            
+            setDisplayValue(start + (end - start) * easeProgress);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                setDisplayValue(end);
+            }
+        };
+        
+        requestAnimationFrame(animate);
+    }, [value]);
+
+    return <>{formatFn ? formatFn(displayValue) : displayValue.toFixed(0)}</>;
+}
+
+// ─────────────────────────────────────────────
 // KPI Card (matches StatCard from main dashboard)
 // ─────────────────────────────────────────────
 
-function KPICard({ title, kpi, suffix, index }: {
+export function KPICard({ title, kpi, suffix, index }: {
     title: string;
     kpi: DashboardKPI;
     suffix?: string;
@@ -147,7 +184,10 @@ function KPICard({ title, kpi, suffix, index }: {
             </div>
             <div className="flex items-end justify-between gap-2">
                 <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
-                    {index === 3 ? `${kpi.value.toFixed(1)}${suffix}` : `${formatCurrency(kpi.value)}`}
+                    <AnimatedNumber 
+                        value={kpi.value} 
+                        formatFn={(val) => index === 3 ? `${val.toFixed(1)}${suffix}` : `${formatCurrency(val)}`} 
+                    />
                 </p>
                 {kpi.trend !== 0 && (
                     <span
@@ -155,7 +195,7 @@ function KPICard({ title, kpi, suffix, index }: {
                         style={{ color: trendColor, backgroundColor: `${trendColor}14` }}
                     >
                         <TrendIcon size={10} strokeWidth={2.5} />
-                        {Math.abs(kpi.trend).toFixed(1)}%
+                        <AnimatedNumber value={Math.abs(kpi.trend)} formatFn={(val) => `${val.toFixed(1)}%`} />
                     </span>
                 )}
             </div>
@@ -309,7 +349,7 @@ function CostCenterDetailModal({ stat, label, onClose, t }: {
 // "Same Data Composed Chart" from recharts
 // ─────────────────────────────────────────────
 
-function ExpenseTrendChart({ data, title, subtitle, t }: {
+export function ExpenseTrendChart({ data, title, subtitle, t }: {
     data: { month: string; revenue: number; expenses: number }[];
     title: string;
     subtitle: string;
@@ -491,7 +531,7 @@ function RevenueExpenseChart({ data, title, t }: {
 // Donut Chart — PieChart with gap & rounded corners
 // ─────────────────────────────────────────────
 
-function AllocationDonutChart({ data, title, costCenterLabels, t }: {
+export function AllocationDonutChart({ data, title, costCenterLabels, t }: {
     data: { costCenter: string; amount: number; percentage: number; color: string }[];
     title: string;
     costCenterLabels: Record<string, string>;
@@ -596,8 +636,8 @@ function TopExpensesTable({ items, t }: {
                             type="button"
                             onClick={() => setMode(m.key)}
                             className={`h-6 rounded-md px-2.5 text-xxs font-semibold transition-all ${mode === m.key
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                                 }`}
                         >
                             {m.label}

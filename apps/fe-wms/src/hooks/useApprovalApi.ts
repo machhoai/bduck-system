@@ -101,6 +101,14 @@ export async function rejectRecord(
   return approvalApi(`/${approvalId}/reject`, "POST", { reason });
 }
 
+export async function cancelApproval(
+  entityType: string,
+  entityId: string,
+  reason?: string,
+): Promise<void> {
+  return approvalApi(`/${entityType}/${entityId}/cancel`, "POST", { reason });
+}
+
 // ─────────────────────────────────────────────
 // PROCESS CONFIG
 // ─────────────────────────────────────────────

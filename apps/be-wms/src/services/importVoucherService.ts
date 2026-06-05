@@ -251,6 +251,33 @@ export async function onApprovalRejected(
 }
 
 /**
+ * Called when the creator cancels their own voucher.
+ * Advances voucher from PENDING_APPROVAL → CANCELLED.
+ */
+export async function onApprovalCancelled(
+  voucherId: string,
+  userId: string,
+  reason?: string | null,
+): Promise<void> {
+  const now = new Date();
+  await db.collection("import_vouchers").doc(voucherId).update({
+    status: ImportVoucherStatus.CANCELLED,
+    updated_at: now,
+    sync_time: now,
+  });
+
+  await logAudit({
+    entity_type: "IMPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: null,
+    action: AuditAction.CANCEL,
+    user_id: userId,
+    old_value: { status: ImportVoucherStatus.PENDING_APPROVAL },
+    new_value: { status: ImportVoucherStatus.CANCELLED, reason: reason || null },
+  });
+}
+
+/**
  * Called when receiving session data is saved and user completes receiving.
  * Advances voucher from APPROVED → RECEIVING.
  */

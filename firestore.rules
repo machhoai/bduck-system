@@ -159,6 +159,12 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // ── Notification Dispatches: Authenticated read, write only via BE ──
+    match /notification_dispatches/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Nonconformity Reports: Authenticated read ──
     match /nonconformity_reports/{docId} {
       allow read: if isAuthenticated();
