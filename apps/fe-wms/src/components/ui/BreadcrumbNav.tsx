@@ -149,7 +149,7 @@ export function BreadcrumbNav() {
 
                 {/* Parent segments — slide in when expanded */}
                 <div
-                    className="grid transition-all duration-500 ease-in-out"
+                    className="grid transition-all duration-300 ease-in-out"
                     style={{
                         // 2. SỬ DỤNG minmax(0, ...) để ép trình duyệt cho phép track này thu nhỏ về đúng số 0 mà không bị cản trở bởi nội dung
                         gridTemplateColumns: hovered ? "minmax(0, 1fr)" : "minmax(0, 0fr)",
