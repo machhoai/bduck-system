@@ -40,6 +40,7 @@ interface ReceivingState {
   lastSavedAt: Date | null;
   isDirty: boolean;
   isSubmitting: boolean;
+  isConfirmed: boolean;
 
   // Actions
   initSession: (
@@ -53,6 +54,7 @@ interface ReceivingState {
   updateItemNotes: (itemId: string, notes: string) => void;
   markSaved: () => void;
   setSubmitting: (v: boolean) => void;
+  setConfirmed: (v: boolean) => void;
   clearSession: () => void;
 }
 
@@ -151,6 +153,7 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
   lastSavedAt: null,
   isDirty: false,
   isSubmitting: false,
+  isConfirmed: false,
 
   initSession: async (voucherId, voucherNumber, supplierName, items) => {
     // Try to restore draft from IndexedDB
@@ -224,6 +227,7 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
   },
 
   setSubmitting: (v) => set({ isSubmitting: v }),
+  setConfirmed: (v) => set({ isConfirmed: v }),
 
   clearSession: () => {
     const { voucherId } = get();
@@ -236,6 +240,7 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
       lastSavedAt: null,
       isDirty: false,
       isSubmitting: false,
+      isConfirmed: false,
     });
   },
 }));

@@ -903,6 +903,15 @@ const vi = {
         dataInput: {
             openSession: "Mở phiên kiểm đếm",
         },
+        receiving: {
+            confirmTitle: "Xác nhận số liệu kiểm đếm",
+            confirmDescription: "Tôi đã kiểm đếm kỹ lưỡng từng sản phẩm và chịu mọi trách nhiệm về tính chính xác của số liệu thực nhận.",
+        },
+        selfApproval: {
+            blocked: "Không thể tự duyệt",
+            title: "Không thể tự phê duyệt",
+            description: "Theo quy định ISO 9001 (Segregation of Duties), người tạo lệnh không được phép tự phê duyệt lệnh của mình. Vui lòng chờ người khác duyệt.",
+        },
     },
 
     forbidden: {

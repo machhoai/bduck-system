@@ -26,6 +26,7 @@ import {
   Clock,
   Package,
   CheckCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { WorkflowTask } from "@bduck/shared-types";
@@ -54,11 +55,13 @@ export default function ReceivingSessionDrawer({
     lastSavedAt,
     isDirty,
     isSubmitting,
+    isConfirmed,
     initSession,
     updateItemQuantity,
     incrementByBarcode,
     updateItemNotes,
     setSubmitting,
+    setConfirmed,
     clearSession,
   } = useReceivingStore();
 
@@ -124,7 +127,7 @@ export default function ReceivingSessionDrawer({
           warehouse_location_id: item.warehouse_location_id,
           location_name: item.location_name || item.warehouse_location_id,
           expected_quantity: item.expected_quantity,
-          actual_quantity: item.actual_quantity || 0,
+          actual_quantity: item.actual_quantity || item.expected_quantity,
           notes: item.notes || "",
         }));
 
@@ -335,8 +338,39 @@ export default function ReceivingSessionDrawer({
         )}
       </div>
 
-      {/* ═══ Footer actions ═══ */}
+      {/* ═══ Footer: Confirmation + Actions ═══ */}
       <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+        {/* Confirmation checkbox */}
+        <label
+          className={`mb-3 flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-all
+            ${isConfirmed
+              ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)]/40"
+              : "border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]"}
+          `}
+        >
+          <input
+            type="checkbox"
+            checked={isConfirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-[var(--color-border-subtle)] accent-[var(--color-brand-primary)] cursor-pointer"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className={`h-4 w-4 flex-shrink-0 ${
+                isConfirmed
+                  ? "text-[var(--color-success-icon)]"
+                  : "text-[var(--color-text-muted)]"
+              }`} />
+              <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+                Xác nhận số liệu kiểm đếm
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)] leading-relaxed">
+              Tôi đã kiểm đếm kỹ lưỡng từng sản phẩm và chịu mọi trách nhiệm về tính chính xác của số liệu thực nhận.
+            </p>
+          </div>
+        </label>
+
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -351,11 +385,14 @@ export default function ReceivingSessionDrawer({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || completedItems === 0}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-brand-primary)] 
-              px-4 py-2.5 text-sm font-semibold text-[var(--color-text-on-dark)] transition-colors 
-              hover:bg-[var(--color-brand-primary-dark)] active:opacity-90 
-              disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSubmitting || completedItems === 0 || !isConfirmed}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl 
+              px-4 py-2.5 text-sm font-semibold transition-colors 
+              disabled:cursor-not-allowed disabled:opacity-50
+              ${isConfirmed
+                ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)] hover:bg-[var(--color-brand-primary-dark)] active:opacity-90"
+                : "bg-[var(--color-neutral-200)] text-[var(--color-text-muted)] cursor-not-allowed"}
+            `}
           >
             {isSubmitting ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />

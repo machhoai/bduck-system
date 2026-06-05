@@ -892,6 +892,15 @@ const zh: Dictionary = {
     dataInput: {
       openSession: "开始清点",
     },
+    receiving: {
+      confirmTitle: "确认清点数据",
+      confirmDescription: "我已仔细清点每件商品，并对实收数据的准确性承担全部责任。",
+    },
+    selfApproval: {
+      blocked: "无法自批",
+      title: "无法自行审批",
+      description: "根据 ISO 9001（职责分离）规定，创建人不得自行审批自己的单据。请等待其他人审批。",
+    },
   },
 
   forbidden: {

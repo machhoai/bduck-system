@@ -129,11 +129,24 @@ export const createExportVoucher = async (
 
   // Trigger approval chain
   try {
+    // Resolve creator name for denormalization
+    let creatorName: string | undefined;
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        creatorName = u?.full_name || u?.email || undefined;
+      }
+    } catch {
+      // Non-critical
+    }
+
     const approvals = await approvalService.createApprovalsForEntity(
       "EXPORT_VOUCHER",
       voucherId,
       voucher.warehouse_id,
       userId,
+      { voucher_number: voucherNumber, creator_name: creatorName },
     );
 
     if (approvals.length === 0) {

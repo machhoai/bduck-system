@@ -140,7 +140,7 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
 
 export default function TaskInbox() {
     const { t } = useTranslation();
-    const { myTasks, loading } = useApprovalTasks();
+    const { myTasks, selfCreatedIds, loading } = useApprovalTasks();
     const [selectedTask, setSelectedTask] = useState<ApprovalRecord | null>(null);
     const [activeFilter, setActiveFilter] = useState<EntityFilter>("ALL");
 
@@ -255,11 +255,12 @@ export default function TaskInbox() {
                         ) : visibleTasks.length === 0 ? (
                             <EmptyState title={t.tasks.empty} hint={t.tasks.emptyHint} />
                         ) : (
-                            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3 flex-1">
+                            <div className="flex flex-col gap-3 flex-1">
                                 {visibleTasks.map((task) => (
                                     <TaskCard
                                         key={task.id}
                                         approval={task}
+                                        isSelfCreated={selfCreatedIds.has(task.id)}
                                         onOpenDetail={handleOpenDetail}
                                         t={t}
                                     />
@@ -309,7 +310,11 @@ export default function TaskInbox() {
             </div>
 
             {selectedTask && (
-                <TaskDetailDrawer approval={selectedTask} onClose={handleCloseDetail} />
+                <TaskDetailDrawer
+                    approval={selectedTask}
+                    isSelfCreated={selfCreatedIds.has(selectedTask.id)}
+                    onClose={handleCloseDetail}
+                />
             )}
         </div>
     );

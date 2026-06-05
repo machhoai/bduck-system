@@ -67,6 +67,7 @@ export async function createApprovalsForEntity(
   entityId: string,
   warehouseId: string,
   creatorId: string,
+  displayInfo?: { voucher_number?: string; creator_name?: string },
 ): Promise<ApprovalRecord[]> {
   // ── Check auto_approve flag in ProcessConfig ──
   const config = await configRepo.findByEntityType(entityType, warehouseId);
@@ -139,6 +140,9 @@ export async function createApprovalsForEntity(
         action_time: now,
         sync_time: now,
         created_at: now,
+        // Denormalized display fields
+        voucher_number: displayInfo?.voucher_number ?? undefined,
+        creator_name: displayInfo?.creator_name ?? undefined,
       });
     }
   }

@@ -26,6 +26,7 @@ import type { ApprovalRecord } from "@bduck/shared-types";
 
 interface UseApprovalTasksReturn {
   myTasks: ApprovalRecord[];
+  selfCreatedIds: Set<string>;
   loading: boolean;
   taskCount: number;
 }
@@ -119,15 +120,21 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
     return () => unsubscribe();
   }, [user?.id, userRoleIds]);
 
-  // Self-Approval Block: filter out tasks where current user is the creator
-  const myTasks = useMemo(() => {
-    if (!user?.id) return [];
-    return allRecords.filter((record) => record.creator_id !== user.id);
+  // Self-Approval Block: identify tasks where current user is the creator
+  // These tasks are still VISIBLE but approval actions are DISABLED
+  const selfCreatedIds = useMemo(() => {
+    if (!user?.id) return new Set<string>();
+    return new Set(
+      allRecords
+        .filter((record) => record.creator_id === user.id)
+        .map((record) => record.id),
+    );
   }, [allRecords, user?.id]);
 
   return {
-    myTasks,
+    myTasks: allRecords,
+    selfCreatedIds,
     loading,
-    taskCount: myTasks.length,
+    taskCount: allRecords.length,
   };
 }

@@ -13,11 +13,12 @@ import {
     CheckCircle,
     ChevronRight,
     Clock,
-    Hash,
     Layers,
     PackageMinus,
     PackagePlus,
+    ShieldAlert,
     ShoppingCart,
+    User,
     type LucideIcon,
 } from "lucide-react";
 import type { ApprovalRecord } from "@bduck/shared-types";
@@ -25,6 +26,7 @@ import type { Dictionary } from "@/lib/i18n";
 
 interface TaskCardProps {
     approval: ApprovalRecord;
+    isSelfCreated?: boolean;
     onOpenDetail: (approval: ApprovalRecord) => void;
     t: Dictionary;
 }
@@ -108,7 +110,7 @@ function toDate(value: unknown): Date | null {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
+export default function TaskCard({ approval, isSelfCreated, onOpenDetail, t }: TaskCardProps) {
     const meta = useMemo(() => getEntityMeta(approval.entity_type, t), [approval.entity_type, t]);
 
     const timeAgo = useMemo(() => {
@@ -129,25 +131,37 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
     }, [approval.created_at, t]);
 
     const Icon = meta.icon;
-    const entityCode = approval.entity_id ? `${approval.entity_id.slice(0, 10)}...` : t.common.noData;
+    const displayName = approval.voucher_number || (approval.entity_id ? `${approval.entity_id.slice(0, 10)}...` : t.common.noData);
+    const creatorLabel = approval.creator_name || approval.creator_id?.slice(0, 10) || t.common.noData;
 
     return (
         <button
             type="button"
             onClick={() => onOpenDetail(approval)}
-            className="group relative w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-brand-primary-muted)] hover:shadow-md active:scale-[0.99]"
+            className={`group relative w-full rounded-lg border bg-[var(--color-surface-elevated)] flex flex-col p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${isSelfCreated
+                ? "border-[var(--color-status-pending-border)] opacity-75"
+                : "border-[var(--color-border-subtle)] hover:border-[var(--color-brand-primary-muted)]"
+                }`}
         >
             <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                    <div className={`flex h-8 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${meta.iconWrap}`}>
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className={`flex h-12 aspect-square shrink-0 items-center justify-center rounded-lg ring-1 ${meta.iconWrap}`}>
                         <Icon className="h-5 w-5" />
                     </div>
-                    <div className="min-w-0">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xxs font-bold ${meta.badge}`}>
-                            {meta.label}
-                        </span>
-                        <p className="mt-2 truncate text-base font-bold text-gray-950">
-                            {entityCode}
+                    <div className="flex flex-col w-full">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xxs font-bold ${meta.badge}`}>
+                                {meta.label}
+                            </span>
+                            {isSelfCreated && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-pending-text)]">
+                                    <ShieldAlert className="h-3 w-3" />
+                                    {(t.tasks as any).selfApproval?.blocked ?? "Không thể tự duyệt"}
+                                </span>
+                            )}
+                        </div>
+                        <p className="mt-1 truncate text-base font-bold text-gray-950">
+                            {displayName}
                         </p>
                     </div>
                 </div>
@@ -189,8 +203,8 @@ export default function TaskCard({ approval, onOpenDetail, t }: TaskCardProps) {
 
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border-soft)] pt-3">
                 <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
-                    <Hash className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{approval.id}</span>
+                    <User className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{creatorLabel}</span>
                 </div>
                 <span className="shrink-0 text-xs font-bold text-[var(--color-brand-primary)]">
                     {t.tasks.tapToView}

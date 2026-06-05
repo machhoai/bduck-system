@@ -152,11 +152,24 @@ export const createImportVoucher = async (
 
   // ── 5. Create approval records (Fixed Pipeline) ──
   try {
+    // Resolve creator name for denormalization
+    let creatorName: string | undefined;
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        creatorName = u?.full_name || u?.email || undefined;
+      }
+    } catch {
+      // Non-critical: approval still works without name
+    }
+
     const approvals = await approvalService.createApprovalsForEntity(
       "IMPORT_VOUCHER",
       voucherId,
       voucher.warehouse_id,
       userId,
+      { voucher_number: voucherNumber, creator_name: creatorName },
     );
 
     // If no approval chain configured → auto-advance to APPROVED

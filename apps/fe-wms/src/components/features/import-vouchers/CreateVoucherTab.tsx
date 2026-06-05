@@ -617,7 +617,7 @@ export default function CreateVoucherTab({
                         type="button"
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-xs font-semibold text-white transition-all disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg px-5 bg-[var(--color-brand-primary)] py-2 text-xs font-semibold text-white transition-all disabled:opacity-50"
                     >
                         {isSubmitting
                             ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")

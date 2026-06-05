@@ -31,6 +31,7 @@ import {
     Loader2,
     Barcode,
     Ruler,
+    ShieldAlert,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { ApprovalRecord } from "@bduck/shared-types";
@@ -42,6 +43,7 @@ import { getStatusStyle } from "@/components/ui/StatusBadge";
 
 interface TaskDetailDrawerProps {
     approval: ApprovalRecord;
+    isSelfCreated?: boolean;
     onClose: () => void;
 }
 
@@ -111,7 +113,7 @@ function DetailSkeleton() {
 
 // ── Main Component ──
 
-export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawerProps) {
+export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: TaskDetailDrawerProps) {
     const { t } = useTranslation();
     const { voucher, items, creatorName, warehouseName, loadingVoucher, loadingItems } = useTaskDetailData(approval);
 
@@ -197,15 +199,13 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
             {/* Drawer */}
             <div className="fixed top-0 right-0 z-50 flex h-[calc(100vh-68px)] md:h-full w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
                 {/* Header — color-coded by entity type */}
-                <div className={`flex items-center justify-between border-b px-4 py-4 ${
-                    isExport ? "border-[var(--color-status-export-border)] bg-[var(--color-status-export-bg)]" : "border-[var(--color-border-soft)]"
-                }`}>
+                <div className={`flex items-center justify-between border-b px-4 py-4 ${isExport ? "border-[var(--color-status-export-border)] bg-[var(--color-status-export-bg)]" : "border-[var(--color-border-soft)]"
+                    }`}>
                     <div className="flex items-center gap-3">
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                            isExport
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isExport
                                 ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
                                 : "bg-[var(--color-success-bg-muted)] text-[var(--color-success-text)]"
-                        }`}>
+                            }`}>
                             {isExport ? <PackageMinus className="h-4.5 w-4.5" /> : <PackagePlus className="h-4.5 w-4.5" />}
                         </div>
                         <div>
@@ -336,36 +336,54 @@ export default function TaskDetailDrawer({ approval, onClose }: TaskDetailDrawer
                     )}
                 </div>
 
-                {/* Footer: Approval actions (always show — all tasks are approvals) */}
+                {/* Footer: Approval actions */}
                 {!isLoading && voucher && (
                     <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
-                        <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            rows={2}
-                            placeholder={t.tasks.approval.commentPlaceholder}
-                            className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
-                        />
-                        <div className="mt-3 flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => handleDecision(false)}
-                                disabled={isSubmitting}
-                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                                {t.tasks.approval.reject}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleDecision(true)}
-                                disabled={isSubmitting}
-                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-accent-success)] px-4 py-3 text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition-all hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                                {t.tasks.approval.approve}
-                            </button>
-                        </div>
+                        {isSelfCreated ? (
+                            /* Self-Approval Block Banner */
+                            <div className="flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-4">
+                                <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-status-pending-icon)]" />
+                                <div>
+                                    <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
+                                        {(t.tasks as any).selfApproval?.title ?? "Kh\u00f4ng th\u1ec3 t\u1ef1 ph\u00ea duy\u1ec7t"}
+                                    </p>
+                                    <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-status-pending-text)]">
+                                        {(t.tasks as any).selfApproval?.description ?? "Theo quy \u0111\u1ecbnh ISO 9001 (Segregation of Duties), ng\u01b0\u1eddi t\u1ea1o l\u1ec7nh kh\u00f4ng \u0111\u01b0\u1ee3c ph\u00e9p t\u1ef1 ph\u00ea duy\u1ec7t l\u1ec7nh c\u1ee7a m\u00ecnh. Vui l\u00f2ng ch\u1edd ng\u01b0\u1eddi kh\u00e1c duy\u1ec7t."}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Normal approval actions */
+                            <>
+                                <textarea
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    rows={2}
+                                    placeholder={t.tasks.approval.commentPlaceholder}
+                                    className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                                />
+                                <div className="mt-3 flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDecision(false)}
+                                        disabled={isSubmitting}
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                                        {t.tasks.approval.reject}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDecision(true)}
+                                        disabled={isSubmitting}
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--color-accent-success)] px-4 py-3 text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition-all hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                                        {t.tasks.approval.approve}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

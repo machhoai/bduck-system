@@ -208,4 +208,10 @@ export interface ApprovalRecord {
   /** ISO — server receive time */
   sync_time: Date;
   created_at: Date;
+
+  // ── Denormalized display fields (for TaskCard) ──
+  /** Voucher/order number for display (e.g. "NK-250605-001") */
+  voucher_number?: string;
+  /** Creator's display name (denormalized from users collection) */
+  creator_name?: string;
 }
