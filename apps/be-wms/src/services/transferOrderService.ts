@@ -45,6 +45,7 @@ import * as transferRepo from "../repositories/transferOrderRepository.js";
 import * as approvalService from "./approvalService.js";
 import * as configRepo from "../repositories/processConfigRepository.js";
 import { logAudit } from "./auditService.js";
+import { verifyMfa } from "./mfaService.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMAS — Input validation (LUẬT THÉP)
@@ -66,6 +67,7 @@ export const createTransferOrderSchema = z.object({
   notes: z.string().max(1000).nullable().optional(),
   attachment_urls: z.array(z.string().url()).max(10).optional().default([]),
   action_time: z.string().datetime().optional(),
+  otp: z.string().optional(),
 });
 
 export type CreateTransferOrderInput = z.infer<
@@ -161,6 +163,35 @@ export async function createTransferOrder(
   };
 
   const orderNumber = generateOrderNumber(isIntra);
+
+  if (config?.require_evidence && (!input.attachment_urls || input.attachment_urls.length === 0)) {
+    const err = createError(
+      400,
+      "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu điều chuyển.",
+      "创建调拨单时必须上传凭证 (evidence)。",
+    );
+    throw err;
+  }
+
+  if (config?.require_otp) {
+    if (!input.otp) {
+      const err = createError(
+        400,
+        "Mã xác thực (OTP) là bắt buộc.",
+        "验证码 (OTP) 是必需的。",
+      );
+      throw err;
+    }
+    const isOtpValid = await verifyMfa(userId, input.otp);
+    if (!isOtpValid) {
+      const err = createError(
+        400,
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        "验证码 (OTP) 无效或已过期。",
+      );
+      throw err;
+    }
+  }
 
   // ── INTRA + auto_approve: execute in transaction ──
   if (isIntra && configSnapshot.auto_approve) {

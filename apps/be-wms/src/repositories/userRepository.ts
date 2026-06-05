@@ -7,7 +7,9 @@ const USER_ROLES_COLLECTION = "user_warehouse_roles";
 export const getUserById = async (uid: string): Promise<User | null> => {
   const userSnap = await db.collection(USERS_COLLECTION).doc(uid).get();
   if (!userSnap.exists) return null;
-  return userSnap.data() as User;
+  const data = userSnap.data() as User;
+  if (!data.id) data.id = uid;
+  return data;
 };
 
 export const findUsers = async (): Promise<User[]> => {

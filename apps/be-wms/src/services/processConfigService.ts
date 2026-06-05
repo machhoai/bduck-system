@@ -32,8 +32,6 @@ const approvalLevelSchema = z.object({
 });
 
 const stepOptionSchema = z.object({
-  require_evidence: z.boolean(),
-  require_barcode_scan: z.boolean(),
   assignment_mode: z.enum(["CREATOR", "ROLE"]),
   assigned_role_id: z.string().nullable(),
   label: z
@@ -56,6 +54,8 @@ const stepOptionSchema = z.object({
 export const updateConfigSchema = z.object({
   approval_chain: z.array(approvalLevelSchema).optional(),
   auto_approve: z.boolean().optional(),
+  require_evidence: z.boolean().optional(),
+  require_otp: z.boolean().optional(),
   step_options: z.record(z.string(), stepOptionSchema).optional(),
 });
 
@@ -75,8 +75,6 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
 > = {
   IMPORT_VOUCHER: {
     receiving: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
@@ -84,8 +82,6 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
   },
   EXPORT_VOUCHER: {
     picking: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
@@ -93,22 +89,16 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
   },
   TRANSFER_ORDER: {
     create_export: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
     },
     picking: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
     },
     receiving: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
@@ -116,8 +106,6 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
   },
   TRANSFER_INTRA: {
     location_move: {
-      require_evidence: false,
-      require_barcode_scan: false,
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
@@ -128,8 +116,6 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
 /** Fallback for entity types without specific step options */
 const DEFAULT_STEP_OPTIONS: Record<string, StepOption> = {
   receiving: {
-    require_evidence: false,
-    require_barcode_scan: false,
     assignment_mode: "CREATOR",
     assigned_role_id: null,
     label: null,
@@ -235,6 +221,8 @@ export async function getConfigForEntity(
     warehouse_id: null,
     approval_chain: DEFAULT_CHAINS[entityType] ?? [],
     auto_approve: false,
+    require_evidence: false,
+    require_otp: false,
     step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: new Date(),
@@ -269,7 +257,7 @@ export async function updateConfig(
   }
 
   const updateData: Partial<
-    Pick<ProcessConfig, "approval_chain" | "auto_approve" | "step_options" | "updated_at">
+    Pick<ProcessConfig, "approval_chain" | "auto_approve" | "require_evidence" | "require_otp" | "step_options" | "updated_at">
   > = { updated_at: now };
 
   if (input.approval_chain) {
@@ -277,6 +265,12 @@ export async function updateConfig(
   }
   if (typeof input.auto_approve === "boolean") {
     updateData.auto_approve = input.auto_approve;
+  }
+  if (typeof input.require_evidence === "boolean") {
+    updateData.require_evidence = input.require_evidence;
+  }
+  if (typeof input.require_otp === "boolean") {
+    updateData.require_otp = input.require_otp;
   }
   if (input.step_options) {
     updateData.step_options = input.step_options;
@@ -326,6 +320,8 @@ export async function seedConfigIfMissing(
     warehouse_id: null,
     approval_chain: resolvedChain,
     auto_approve: false,
+    require_evidence: false,
+    require_otp: false,
     step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: now,
@@ -386,6 +382,8 @@ export async function reseedConfig(
     warehouse_id: null,
     approval_chain: resolvedChain,
     auto_approve: false,
+    require_evidence: false,
+    require_otp: false,
     step_options: getDefaultStepOptions(entityType),
     is_deleted: false,
     created_at: now,

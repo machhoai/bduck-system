@@ -160,8 +160,6 @@ export const ENTITY_STEPS: Partial<
 };
 
 export const DEFAULT_STEP_OPTION: StepOption = {
-  require_evidence: false,
-  require_barcode_scan: false,
   assignment_mode: "CREATOR",
   assigned_role_id: null,
   label: null,
@@ -208,8 +206,8 @@ export const TEXT = {
     assignee: "Người xử lý",
     creator: "Người tạo chứng từ",
     selectedRole: "Role chỉ định",
-    requireEvidence: "Bắt buộc bằng chứng",
-    requireBarcode: "Bắt buộc quét barcode",
+    requireEvidence: "Bắt buộc tải lên chứng từ",
+    requireOtp: "Bắt buộc OTP",
     invalidRole: "Vui lòng chọn role cho tất cả cấp duyệt đang áp dụng.",
     invalidLabel: "Vui lòng nhập đủ tên tiếng Việt và tiếng Trung.",
     invalidStepRole: "Vui lòng chọn role cho bước thao tác này.",
@@ -262,7 +260,7 @@ export const TEXT = {
     creator: "单据创建人",
     selectedRole: "指定角色",
     requireEvidence: "必须上传凭证",
-    requireBarcode: "必须扫描条码",
+    requireOtp: "必须 OTP",
     invalidRole: "请为所有启用的审批级别选择角色。",
     invalidLabel: "请填写越南语和中文名称。",
     invalidStepRole: "请为此操作步骤选择角色。",

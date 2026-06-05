@@ -101,10 +101,6 @@ export type StepAssignmentMode = 'CREATOR' | 'ROLE';
  * Key = step identifier (e.g. "receiving", "picking", "qc", "handover")
  */
 export interface StepOption {
-  /** Bắt buộc upload evidence (ảnh/file) ở bước này? */
-  require_evidence: boolean;
-  /** Bắt buộc scan barcode trước khi xác nhận? */
-  require_barcode_scan: boolean;
   /**
    * Who is assigned to perform this step.
    * CREATOR = the voucher creator; ROLE = specific role via assigned_role_id.
@@ -148,6 +144,14 @@ export interface ProcessConfig {
    * The approval_chain data is PRESERVED (non-destructive toggle).
    */
   auto_approve: boolean;
+  /**
+   * Bắt buộc upload chứng từ (evidence) khi khởi tạo chứng từ này.
+   */
+  require_evidence: boolean;
+  /**
+   * Bắt buộc xác thực OTP khi khởi tạo và khi phê duyệt chứng từ này.
+   */
+  require_otp: boolean;
   /** Per-step options (key = step name like "receiving", "picking") */
   step_options: Record<string, StepOption>;
   /** Soft delete (ISO 9001 — no hard deletes) */

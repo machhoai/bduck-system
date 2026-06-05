@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     AlertTriangle,
+    Camera,
     CheckCircle2,
     ChevronRight,
     Clock3,
     GitBranch,
     Save,
+    ScanLine,
     ShieldAlert,
     Sparkles,
     Zap,
@@ -110,15 +112,15 @@ function EntitySelector({
                             type="button"
                             onClick={() => onSelect(key)}
                             className={`min-w-40 snap-start rounded-lg border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] lg:min-w-0 lg:w-full ${active
-                                    ? "border-[var(--color-brand-primary)] ring-2 ring-[var(--color-brand-primary-muted)]"
-                                    : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                                ? "border-[var(--color-brand-primary)] ring-2 ring-[var(--color-brand-primary-muted)]"
+                                : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                                 }`}
                         >
                             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
                                 <div
                                     className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${config
-                                            ? "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
-                                            : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
+                                        ? "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
+                                        : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
                                         }`}
                                 >
                                     <Icon className="h-5 w-5" />
@@ -139,8 +141,8 @@ function EntitySelector({
                                     <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:mt-3 lg:gap-2">
                                         <span
                                             className={`rounded-full px-2 py-1 text-xxs font-semibold ${config
-                                                    ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
-                                                    : "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
+                                                ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
+                                                : "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
                                                 }`}
                                         >
                                             {config ? copy.configured : copy.missing}
@@ -205,8 +207,8 @@ function PipelinePreview({
                     >
                         <span
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xxs ${index === 1 && autoApprove
-                                    ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)]"
-                                    : "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
+                                ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)]"
+                                : "bg-[var(--color-status-approved-bg-muted)] text-[var(--color-status-approved-text)]"
                                 }`}
                         >
                             {index + 1}
@@ -287,6 +289,8 @@ function ConfigDetailPanel({
         payload: {
             approval_chain: ApprovalLevel[];
             auto_approve: boolean;
+            require_evidence: boolean;
+            require_otp: boolean;
             step_options: Record<string, StepOption>;
         },
     ) => Promise<void>;
@@ -296,6 +300,8 @@ function ConfigDetailPanel({
     const Icon = meta.icon;
     const [chain, setChain] = useState<ApprovalLevel[]>(config.approval_chain);
     const [autoApprove, setAutoApprove] = useState(config.auto_approve);
+    const [requireEvidence, setRequireEvidence] = useState(config.require_evidence ?? false);
+    const [requireOtp, setRequireOtp] = useState(config.require_otp ?? false);
     const [stepOptions, setStepOptions] = useState<Record<string, StepOption>>(
         config.step_options,
     );
@@ -303,6 +309,8 @@ function ConfigDetailPanel({
     useEffect(() => {
         setChain(config.approval_chain);
         setAutoApprove(config.auto_approve);
+        setRequireEvidence(config.require_evidence ?? false);
+        setRequireOtp(config.require_otp ?? false);
         setStepOptions(config.step_options);
     }, [config]);
 
@@ -350,12 +358,14 @@ function ConfigDetailPanel({
         await onSave(config.id, {
             approval_chain: chain,
             auto_approve: autoApprove,
+            require_evidence: requireEvidence,
+            require_otp: requireOtp,
             step_options: stepOptions,
         });
     };
 
     return (
-        <div className="rounded-lg border border-gray-100 bg-white shadow-sm max-lg:rounded-none max-lg:border-0 max-lg:bg-gray-50 max-lg:shadow-none">
+        <div className="rounded-lg border border-gray-100 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 bg-white p-4 max-lg:mx-4 max-lg:mt-4 max-lg:rounded-lg max-lg:border max-lg:shadow-sm sm:p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="flex items-start gap-3">
@@ -411,10 +421,10 @@ function ConfigDetailPanel({
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-3">
                             <div
-                                    className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${autoApprove
-                                            ? "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
-                                            : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
-                                        }`}
+                                className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${autoApprove
+                                    ? "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
+                                    : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
+                                    }`}
                             >
                                 <Zap className="h-5 w-5" />
                             </div>
@@ -431,7 +441,7 @@ function ConfigDetailPanel({
                             type="button"
                             onClick={() => setAutoApprove((value) => !value)}
                             className={`flex h-8 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-8 ${autoApprove
-                                    ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)] hover:bg-[var(--color-status-pending-border)]"
+                                ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)] hover:bg-[var(--color-status-pending-border)]"
                                 : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] hover:bg-[var(--color-neutral-200)]"
                                 }`}
                         >
@@ -449,6 +459,64 @@ function ConfigDetailPanel({
                             {copy.autoApproveWarning}
                         </div>
                     )}
+                </section>
+
+                <section className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${requireEvidence ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]" : "bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"}`}>
+                                <Camera className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-950">
+                                    {copy.requireEvidence}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setRequireEvidence((value) => !value)}
+                            className={`flex h-8 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-8 ${requireEvidence
+                                ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)] hover:bg-[var(--color-status-pending-border)]"
+                                : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] hover:bg-[var(--color-neutral-200)]"
+                                }`}
+                        >
+                            {requireEvidence ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                                <ShieldAlert className="h-4 w-4" />
+                            )}
+                            {requireEvidence ? copy.enabled : copy.disabled}
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-gray-100">
+                        <div className="flex items-start gap-3">
+                            <div className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${requireOtp ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]" : "bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"}`}>
+                                <ScanLine className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-950">
+                                    {copy.requireOtp}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setRequireOtp((value) => !value)}
+                            className={`flex h-8 min-w-28 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition sm:h-8 ${requireOtp
+                                ? "bg-[var(--color-status-pending-bg-muted)] text-[var(--color-status-pending-text)] hover:bg-[var(--color-status-pending-border)]"
+                                : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] hover:bg-[var(--color-neutral-200)]"
+                                }`}
+                        >
+                            {requireOtp ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                                <ShieldAlert className="h-4 w-4" />
+                            )}
+                            {requireOtp ? copy.enabled : copy.disabled}
+                        </button>
+                    </div>
                 </section>
 
                 <ApprovalChainEditor
@@ -626,6 +694,8 @@ export function ProcessConfigWorkspace() {
             payload: {
                 approval_chain: ApprovalLevel[];
                 auto_approve: boolean;
+                require_evidence: boolean;
+                require_otp: boolean;
                 step_options: Record<string, StepOption>;
             },
         ) => {

@@ -33,6 +33,8 @@ import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 import { VoucherExcelImportPanel } from "./VoucherExcelImportPanel";
 import { QuickLocationAssign } from "./QuickLocationAssign";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
 
 type Locale = "vi" | "zh";
 
@@ -233,6 +235,9 @@ export default function CreateVoucherTab({
         }
     }, [prefillWarehouseId]);
 
+    const { config: processConfig } = useProcessConfig("IMPORT_VOUCHER", formData.warehouse_id || undefined);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+
     const { locations, loading: locationsLoading } = useWarehouseLocations(
         formData.warehouse_id || undefined,
     );
@@ -312,7 +317,7 @@ export default function CreateVoucherTab({
             case 0:
                 return !!formData.warehouse_id && !!formData.supplier_name.trim();
             case 1:
-                return true; // Upload is optional
+                return processConfig?.require_evidence ? files.length > 0 : true;
             case 2:
                 return (
                     formData.items.length > 0 &&
@@ -464,7 +469,23 @@ export default function CreateVoucherTab({
 
     const handleSubmit = async () => {
         if (isSubmitting) return;
+        
+        if (processConfig?.require_evidence && files.length === 0) {
+            gooeyToast.error((t as any).importVoucher?.form?.requireEvidence ?? "Bắt buộc phải tải lên chứng từ đính kèm");
+            return;
+        }
+
+        if (processConfig?.require_otp) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        executeSubmit();
+    };
+
+    const executeSubmit = async (otp?: string) => {
         setIsSubmitting(true);
+        setShowOtpModal(false);
 
         const submitAction = async () => {
             const uploadedUrls: string[] = [];
@@ -506,6 +527,7 @@ export default function CreateVoucherTab({
                     notes: item.notes || undefined,
                 })),
                 action_time: new Date().toISOString(),
+                otp,
             });
         };
 
@@ -531,7 +553,7 @@ export default function CreateVoucherTab({
                 action: {
                     error: {
                         label: (t as any).common?.retry ?? "Thử lại",
-                        onClick: () => void handleSubmit(),
+                        onClick: () => void executeSubmit(otp),
                     },
                 },
             });
@@ -708,7 +730,9 @@ export default function CreateVoucherTab({
                         disabled={isSubmitting}
                         maxFiles={5}
                         label={
-                            (t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm (tuỳ chọn)"
+                            processConfig?.require_evidence 
+                                ? ((t as any).importVoucher?.steps?.uploadRequired ?? "Tải chứng từ đính kèm (Bắt buộc)")
+                                : ((t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm (tuỳ chọn)")
                         }
                         hint={copy.uploadHint}
                     />
@@ -1094,6 +1118,16 @@ export default function CreateVoucherTab({
                         </div>
                     </aside>
                 </section>
+            )}
+
+            {showOtpModal && (
+                <ActionOtpModal
+                    onConfirm={executeSubmit}
+                    onCancel={() => setShowOtpModal(false)}
+                    isSubmitting={isSubmitting}
+                    title="Xác thực gửi duyệt phiếu nhập"
+                    description="Quá trình gửi duyệt phiếu nhập này yêu cầu xác thực OTP."
+                />
             )}
         </div>
     );

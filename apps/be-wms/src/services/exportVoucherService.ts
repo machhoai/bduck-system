@@ -26,6 +26,8 @@ import {
 import type { ExportVoucher, ExportVoucherItem } from "@bduck/shared-types";
 import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
+import { getConfigForEntity } from "./processConfigService.js";
+import { verifyMfa } from "./mfaService.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMAS — Input validation (LUẬT THÉP)
@@ -50,6 +52,7 @@ export const createExportVoucherSchema = z.object({
   notes: z.string().max(1000).nullable().optional(),
   attachment_urls: z.array(z.string().url()).max(10).optional().default([]),
   action_time: z.string().datetime().optional(),
+  otp: z.string().optional(),
 });
 
 export type CreateExportVoucherInput = z.infer<
@@ -64,6 +67,31 @@ export const createExportVoucher = async (
   input: CreateExportVoucherInput,
   userId: string,
 ): Promise<ExportVoucher> => {
+  const config = await getConfigForEntity("EXPORT_VOUCHER", input.warehouse_id);
+
+  if (config.require_evidence && (!input.attachment_urls || input.attachment_urls.length === 0)) {
+    const err = new Error("Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.") as Error & { statusCode: number; messages: Record<string, string> };
+    err.statusCode = 400;
+    err.messages = { vi: "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.", zh: "创建出库单时必须上传凭证 (evidence)。" };
+    throw err;
+  }
+
+  if (config.require_otp) {
+    if (!input.otp) {
+      const err = new Error("Mã xác thực (OTP) là bắt buộc.") as Error & { statusCode: number; messages: Record<string, string> };
+      err.statusCode = 400;
+      err.messages = { vi: "Mã xác thực (OTP) là bắt buộc.", zh: "验证码 (OTP) 是必需的。" };
+      throw err;
+    }
+    const isOtpValid = await verifyMfa(userId, input.otp);
+    if (!isOtpValid) {
+      const err = new Error("Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.") as Error & { statusCode: number; messages: Record<string, string> };
+      err.statusCode = 400;
+      err.messages = { vi: "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.", zh: "验证码 (OTP) 无效或已过期。" };
+      throw err;
+    }
+  }
+
   const now = new Date();
   const actionTime = input.action_time ? new Date(input.action_time) : now;
   const voucherId = randomUUID();

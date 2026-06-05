@@ -1,4 +1,6 @@
-import { authenticator } from "otplib";
+import * as otplib from "otplib";
+
+const authenticator = otplib.authenticator;
 import qrcode from "qrcode";
 import { getUserById, updateUserRecord } from "../repositories/userRepository.js";
 import { sendBrevoEmail } from "./brevoEmailService.js";

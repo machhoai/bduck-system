@@ -115,6 +115,7 @@ export interface CreateImportVoucherPayload {
   notes?: string | null;
   attachment_urls?: string[];
   action_time?: string;
+  otp?: string;
 }
 
 export async function createImportVoucher(data: CreateImportVoucherPayload) {

@@ -31,6 +31,7 @@ import type {
 import * as approvalRepo from "../repositories/approvalRepository.js";
 import * as configRepo from "../repositories/processConfigRepository.js";
 import { logAudit } from "./auditService.js";
+import { verifyMfa } from "./mfaService.js";
 
 // ─────────────────────────────────────────────
 // ERROR HELPERS
@@ -185,6 +186,7 @@ export async function approveLevel(
   approvalId: string,
   approverId: string,
   comments?: string | null,
+  otp?: string | null,
 ): Promise<ApprovalResult> {
   const record = await approvalRepo.findById(approvalId);
 
@@ -211,6 +213,29 @@ export async function approveLevel(
       "Không được phép tự phê duyệt lệnh do chính mình tạo (Segregation of Duties).",
       "不允许自行审批自己创建的单据（职责分离）。",
     );
+  }
+
+  // ── OTP VERIFICATION (If required by config) ──
+  const config = await configRepo.findByEntityType(
+    record.entity_type,
+    record.warehouse_id,
+  );
+  if (config?.require_otp) {
+    if (!otp) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) là bắt buộc cho thao tác này.",
+        "此操作需要验证码 (OTP)。",
+      );
+    }
+    const isOtpValid = await verifyMfa(approverId, otp);
+    if (!isOtpValid) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        "验证码 (OTP) 无效或已过期。",
+      );
+    }
   }
 
   // ── Check this is the correct level to approve ──

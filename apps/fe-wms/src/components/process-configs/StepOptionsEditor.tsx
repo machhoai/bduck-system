@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Camera, ScanLine, UserRoundCog } from "lucide-react";
+import { BadgeCheck, UserRoundCog } from "lucide-react";
 import type { Role, StepOption } from "@bduck/shared-types";
 import type { StepAssignmentMode } from "@bduck/shared-types";
 import type { EntityStepMeta, Locale, TEXT } from "./processConfigMeta";
@@ -17,39 +17,7 @@ type Props = {
   onChange: (stepOptions: Record<string, StepOption>) => void;
 };
 
-function SwitchRow({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: typeof Camera;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex h-8 items-center justify-between gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition sm:h-8 sm:text-xs ${
-        active
-          ? "border-[var(--color-status-completed-border)] bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
-          : "border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
-      }`}
-    >
-      <span className="flex min-w-0 items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{label}</span>
-      </span>
-      <span
-        className={`h-2.5 w-2.5 rounded-full ${
-          active ? "bg-[var(--color-success-icon)]" : "bg-[var(--color-neutral-300)]"
-        }`}
-      />
-    </button>
-  );
-}
+
 
 export function StepOptionsEditor({
   steps,
@@ -151,29 +119,6 @@ export function StepOptionsEditor({
                         </select>
                       </label>
                     )}
-
-                    <SwitchRow
-                      icon={Camera}
-                      label={copy.requireEvidence}
-                      active={option.require_evidence}
-                      onClick={() =>
-                        updateStep(step.key, {
-                          ...option,
-                          require_evidence: !option.require_evidence,
-                        })
-                      }
-                    />
-                    <SwitchRow
-                      icon={ScanLine}
-                      label={copy.requireBarcode}
-                      active={option.require_barcode_scan}
-                      onClick={() =>
-                        updateStep(step.key, {
-                          ...option,
-                          require_barcode_scan: !option.require_barcode_scan,
-                        })
-                      }
-                    />
                   </div>
                 </div>
               </div>

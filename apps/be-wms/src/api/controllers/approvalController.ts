@@ -86,7 +86,7 @@ export async function approveHandler(
   try {
     const approvalId = req.params.id as string;
     const userId = (req as any).user?.id;
-    const { comments } = req.body ?? {};
+    const { comments, otp } = req.body ?? {};
 
     if (!userId) {
       res.status(401).json({
@@ -104,6 +104,7 @@ export async function approveHandler(
       approvalId,
       userId,
       comments,
+      otp,
     );
 
     res.json({
