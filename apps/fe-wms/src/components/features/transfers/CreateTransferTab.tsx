@@ -31,6 +31,7 @@ import {
     FileUploadField,
     type SelectedFile,
 } from "../../shared/FileUploadField";
+import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
 
 type Locale = "vi" | "zh";
 type StepId = 0 | 1 | 2 | 3;
@@ -340,6 +341,61 @@ export default function CreateTransferTab({
     const removeItem = (id: string) => {
         setItems((prev) => prev.filter((item) => item.id !== id));
     };
+
+    const bulkAddItems = useCallback(
+        (
+            importedItems: {
+                productId: string;
+                quantity: number;
+                unitPrice: number;
+                notes: string;
+                locationCode: string;
+            }[]
+        ) => {
+            setItems((prev) => {
+                const existingIds = new Set(prev.map((i) => i.product_id));
+                const newItems = importedItems
+                    .filter((item) => !existingIds.has(item.productId))
+                    .map((item) => {
+                        const product = products.find((p) => p.id === item.productId);
+
+                        // Try to resolve source location from Excel locationCode
+                        let resolvedSourceLocationId = "";
+                        if (item.locationCode) {
+                            const code = item.locationCode.trim().toLowerCase();
+                            const matched = srcLocations.find(
+                                (loc) =>
+                                    loc.code.toLowerCase() === code ||
+                                    loc.name.toLowerCase() === code,
+                            );
+                            if (matched) resolvedSourceLocationId = matched.id;
+                        }
+
+                        // Fallback: auto-assign from existing inventory
+                        if (!resolvedSourceLocationId) {
+                            const invLocs = getLocationsForProduct(item.productId);
+                            if (invLocs.length > 0) {
+                                const best = invLocs.reduce((a, b) =>
+                                    b.atpQty > a.atpQty ? b : a,
+                                );
+                                resolvedSourceLocationId = best.locationId;
+                            }
+                        }
+
+                        return {
+                            id: crypto.randomUUID(),
+                            product_id: item.productId,
+                            product_name: product?.name ?? item.productId,
+                            source_location_id: resolvedSourceLocationId,
+                            destination_location_id: "",
+                            quantity: item.quantity,
+                        };
+                    });
+                return [...prev, ...newItems];
+            });
+        },
+        [products, srcLocations, getLocationsForProduct],
+    );
 
     const handleSwap = () => {
         if (isIntra) return;
@@ -675,6 +731,12 @@ export default function CreateTransferTab({
 
                 {step === 2 && (
                     <div className="space-y-4">
+                        {/* Excel import panel */}
+                        <VoucherExcelImportPanel
+                            uploadedFiles={files}
+                            products={products}
+                            onImport={bulkAddItems}
+                        />
                         {/* Search */}
                         <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <p className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
