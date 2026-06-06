@@ -29,6 +29,8 @@ import {
     type SelectedFile,
 } from "../../shared/FileUploadField";
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
 
 type Locale = "vi" | "zh";
 type StepId = 0 | 1 | 2 | 3;
@@ -178,6 +180,9 @@ export default function CreateExportTab({
     const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<ExportItemData[]>([]);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+
+    const { config: processConfig } = useProcessConfig("EXPORT_VOUCHER", warehouseId || undefined);
 
     useEffect(() => {
         if (prefillWarehouseId) {
@@ -343,6 +348,22 @@ export default function CreateExportTab({
 
     const handleSubmit = async () => {
         if (isSubmitting) return;
+
+        if (processConfig?.require_evidence && files.length === 0) {
+            gooeyToast.error(exportText?.form?.requireEvidence ?? "Bắt buộc phải tải lên chứng từ đính kèm");
+            return;
+        }
+
+        if (processConfig?.require_otp) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        executeSubmit();
+    };
+
+    const executeSubmit = async (otp?: string) => {
+        if (isSubmitting) return;
         setIsSubmitting(true);
 
         const submitAction = async () => {
@@ -378,6 +399,7 @@ export default function CreateExportTab({
                     exportType === "TRANSFER" ? destinationWarehouseId : undefined,
                 notes: notes || undefined,
                 attachment_urls: uploadedUrls,
+                otp,
                 items: items.map((item) => ({
                     product_id: item.product_id,
                     warehouse_location_id: item.warehouse_location_id,
@@ -935,6 +957,14 @@ export default function CreateExportTab({
                     </button>
                 )}
             </div>
+            {showOtpModal && (
+                <ActionOtpModal
+                    onCancel={() => setShowOtpModal(false)}
+                    onConfirm={(otp: string) => {
+                        executeSubmit(otp);
+                    }}
+                />
+            )}
         </div>
     );
 }

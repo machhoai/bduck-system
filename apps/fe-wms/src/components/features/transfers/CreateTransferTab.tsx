@@ -32,6 +32,8 @@ import {
     type SelectedFile,
 } from "../../shared/FileUploadField";
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
 
 type Locale = "vi" | "zh";
 type StepId = 0 | 1 | 2 | 3;
@@ -232,8 +234,14 @@ export default function CreateTransferTab({
     const [destWarehouseId, setDestWarehouseId] = useState("");
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<TransferItemData[]>([]);
+    const [showOtpModal, setShowOtpModal] = useState(false);
 
     const isIntra = transferType === "INTRA_WAREHOUSE";
+
+    const { config: processConfig } = useProcessConfig(
+        isIntra ? "TRANSFER_INTRA" : "TRANSFER_ORDER",
+        sourceWarehouseId || undefined
+    );
 
     const sourceWarehouse = useMemo(
         () => warehouses.find((wh) => wh.id === sourceWarehouseId) ?? null,
@@ -407,6 +415,22 @@ export default function CreateTransferTab({
 
     const handleSubmit = async () => {
         if (isSubmitting) return;
+
+        if (processConfig?.require_evidence && files.length === 0) {
+            gooeyToast.error(copy.requireEvidence ?? "Bắt buộc phải tải lên chứng từ đính kèm");
+            return;
+        }
+
+        if (processConfig?.require_otp) {
+            setShowOtpModal(true);
+            return;
+        }
+
+        executeSubmit();
+    };
+
+    const executeSubmit = async (otp?: string) => {
+        if (isSubmitting) return;
         setShowConfirm(false);
         setIsSubmitting(true);
 
@@ -439,6 +463,7 @@ export default function CreateTransferTab({
                     : destWarehouseId,
                 notes: notes || undefined,
                 attachment_urls: uploadedUrls,
+                otp,
                 items: items.map((item) => ({
                     product_id: item.product_id,
                     source_location_id: item.source_location_id,
@@ -1172,6 +1197,14 @@ export default function CreateTransferTab({
                         </div>
                     </div>
                 </div>
+            )}
+            {showOtpModal && (
+                <ActionOtpModal
+                    onCancel={() => setShowOtpModal(false)}
+                    onConfirm={(otp: string) => {
+                        executeSubmit(otp);
+                    }}
+                />
             )}
         </div>
     );
