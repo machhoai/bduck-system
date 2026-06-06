@@ -14,6 +14,7 @@ import {
     Upload,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
+import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 import { createExportVoucher } from "../../../hooks/useExportVoucherApi";
 import { useProducts } from "../../../hooks/useProducts";
@@ -77,6 +78,9 @@ const COPY = {
         uploadLabel: "Tải chứng từ xuất kho đính kèm (tuỳ chọn)",
         uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
         searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
+        chooseFromCatalog: "Chọn từ danh mục",
+        added: "Đã thêm",
+        addProduct: "Thêm vào phiếu",
         noProducts: "Không tìm thấy",
         selectedProducts: "Sản phẩm xuất kho",
         emptyProducts: "Chọn sản phẩm để thêm vào phiếu xuất.",
@@ -124,6 +128,9 @@ const COPY = {
         uploadLabel: "上传出库凭证（可选）",
         uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
         searchProduct: "按名称、SKU 或条码搜索产品...",
+        chooseFromCatalog: "从目录中选择",
+        added: "已添加",
+        addProduct: "添加",
         noProducts: "未找到",
         selectedProducts: "出库产品",
         emptyProducts: "选择产品以添加到出库单。",
@@ -160,13 +167,64 @@ const STEPS = [
     { id: 3 as StepId, icon: CheckCircle2, labelKey: "confirm" },
 ] as const;
 
+
+function ProductPickerCard({
+    product,
+    isAdded,
+    onAdd,
+    copy,
+}: {
+    product: any;
+    isAdded: boolean;
+    onAdd: () => void;
+    copy: Record<string, string>;
+}) {
+    return (
+        <div
+            className={`rounded-[var(--radius-sm)] border p-3 transition-all ${isAdded
+                ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
+                : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
+                }`}
+        >
+            <div className="flex gap-3">
+                <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+                    <Package size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                        {product.name}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                        SKU: {product.code} / {product.unit}
+                    </p>
+                    {product.barcode && (
+                        <p className="mt-0.5 truncate text-xxs text-[var(--color-text-muted)]">
+                            {product.barcode}
+                        </p>
+                    )}
+                </div>
+            </div>
+            <button
+                type="button"
+                disabled={isAdded}
+                onClick={onAdd}
+                className="mt-3 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--radius-xs)] bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
+            >
+                {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                {isAdded ? copy.added : copy.addProduct}
+            </button>
+        </div>
+    );
+}
+
 export default function CreateExportTab({
     cloneData,
     prefillWarehouseId,
     onCreated,
 }: Props) {
     const { t, lang } = useTranslation();
-    const copy = COPY[(lang || "vi") as Locale];
+    const locale = (lang || "vi") as Locale;
+    const copy = COPY[locale];
     const exportText = t.exportVoucher as any;
     const user = useUserStore((s) => s.user);
     const { warehouses, loading: warehousesLoading } = useWarehouses();
@@ -201,6 +259,7 @@ export default function CreateExportTab({
         setStep(0);
     }, [cloneData]);
 
+    const { locations: allLocations } = useWarehouseLocations();
     const { locations, loading: locationsLoading } = useWarehouseLocations(
         warehouseId || undefined,
     );
@@ -240,7 +299,7 @@ export default function CreateExportTab({
                 return baseValid;
             }
             case 1:
-                return true;
+                return processConfig?.require_evidence ? files.length > 0 : true;
             case 2:
                 return (
                     items.length > 0 &&
@@ -254,7 +313,7 @@ export default function CreateExportTab({
             default:
                 return true;
         }
-    }, [step, warehouseId, exportType, destinationWarehouseId, notes, items]);
+    }, [step, warehouseId, exportType, destinationWarehouseId, notes, items, files, processConfig]);
 
     const addProduct = useCallback(
         (productId: string) => {
@@ -416,7 +475,7 @@ export default function CreateExportTab({
         gooeyToast.promise(promise, {
             loading: exportText.toast.creating,
             success: exportText.toast.createSuccess,
-            error: exportText.toast.createError,
+            error: (err: any) => err?.message || exportText.toast.createError,
             description: {
                 success: exportText.toast.createSuccessDesc,
                 error: exportText.toast.createErrorDesc,
@@ -436,50 +495,92 @@ export default function CreateExportTab({
         }
     };
 
+    const goNext = () => {
+        if (step < 3 && canGoNext()) setStep((step + 1) as StepId);
+    };
+
+    const goPrev = () => {
+        if (step > 0) setStep((step - 1) as StepId);
+    };
+
     return (
-        <div className="flex flex-col gap-3">
-            <div className=" mx-auto flex items-center gap-1 overflow-x-auto py-1">
-                {STEPS.map((s, index) => {
-                    const Icon = s.icon;
-                    const isActive = step === s.id;
-                    const isCompleted = step > s.id;
-                    return (
-                        <div key={s.id} className="flex items-center gap-1">
-                            {index > 0 && (
-                                <div
-                                    className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-[var(--color-status-export-icon)]" : "bg-[var(--color-neutral-200)]"
+        <div className="flex flex-1 h-full flex-col gap-4">
+            <div className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
+                <button
+                    type="button"
+                    onClick={goPrev}
+                    disabled={step === 0}
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--color-neutral-200)] px-4 py-2 text-xs font-medium text-[var(--color-neutral-600)] transition-all hover:bg-[var(--color-neutral-50)] disabled:opacity-30"
+                >
+                    <ChevronLeft size={16} />
+                    {copy.back}
+                </button>
+
+                <div className="flex">
+                    {STEPS.map((s, idx) => {
+                        const Icon = s.icon;
+                        const isActive = step === s.id;
+                        const isCompleted = step > s.id;
+                        return (
+                            <div key={s.id} className="flex items-center gap-1">
+                                {idx > 0 && (
+                                    <div
+                                        className={`h-px w-6 shrink-0 lg:w-10 ${isCompleted ? "bg-[var(--color-brand-primary)]" : "bg-[var(--color-neutral-200)]"
+                                            }`}
+                                    />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isCompleted || isActive) setStep(s.id);
+                                    }}
+                                    disabled={!isCompleted && !isActive}
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isActive
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : isCompleted
+                                            ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                            : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
                                         }`}
-                                />
-                            )}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (isCompleted || isActive) setStep(s.id);
-                                }}
-                                disabled={!isCompleted && !isActive}
-                                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isActive
-                                    ? "bg-[var(--color-status-export-icon)] text-white shadow-sm"
-                                    : isCompleted
-                                        ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
-                                        : "bg-[var(--color-neutral-100)] text-[var(--color-neutral-400)]"
-                                    }`}
-                            >
-                                <Icon size={14} />
-                                <span className="hidden sm:inline">{copy[s.labelKey]}</span>
-                            </button>
-                        </div>
-                    );
-                })}
+                                >
+                                    <Icon size={14} />
+                                    <span className="hidden sm:inline">{copy[s.labelKey]}</span>
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {step < STEPS.length - 1 ? (
+                    <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={!canGoNext()}
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-brand-primary)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
+                    >
+                        {copy.next}
+                        <ChevronRight size={16} />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-brand-primary)] px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
+                    >
+                        {isSubmitting ? copy.submitting : copy.submit}
+                    </button>
+                )}
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-4">
+            <div className="flex-1 flex flex-col rounded-xl">
                 {step === 0 && (
                     <div className="space-y-4">
+                        {/* Export type selector */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-600">
+                            <label className="mb-1.5 block text-sm font-semibold text-[var(--color-text-secondary)]">
                                 {copy.exportType} *
                             </label>
-                            <div className="flex gap-2">
+                            <div className="grid gap-2 sm:grid-cols-2">
                                 {EXPORT_TYPES.map((et) => (
                                     <button
                                         key={et.value}
@@ -488,127 +589,101 @@ export default function CreateExportTab({
                                             setExportType(et.value);
                                             setDestinationWarehouseId("");
                                         }}
-                                        className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${exportType === et.value
-                                            ? "border-[var(--color-status-export-icon)] bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]"
-                                            : "border-[var(--color-neutral-200)] bg-white text-[var(--color-neutral-600)] hover:border-[var(--color-neutral-300)]"
+                                        className={`flex items-center gap-3 rounded-[var(--radius-sm)] border-2 p-3.5 text-left transition-all ${exportType === et.value
+                                            ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] shadow-sm"
+                                            : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
                                             }`}
                                     >
-                                        {copy[et.labelKey]}
+                                        <p className={`text-sm font-semibold ${exportType === et.value
+                                            ? "text-[var(--color-brand-primary)]"
+                                            : "text-[var(--color-text-primary)]"
+                                            }`}>
+                                            {copy[et.labelKey]}
+                                        </p>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {exportType === "TRANSFER" && (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-600">
-                                        {copy.sourceWarehouse} *
-                                    </label>
-                                    <select
-                                        value={warehouseId}
-                                        onChange={(e) => setWarehouseId(e.target.value)}
-                                        disabled={warehousesLoading}
-                                        className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
-                                    >
-                                        <option value="">
-                                            {warehousesLoading ? copy.loading : copy.chooseSource}
-                                        </option>
-                                        {warehouses.map((wh) => (
-                                            <option
-                                                key={wh.id}
-                                                value={wh.id}
-                                                disabled={wh.id === destinationWarehouseId}
-                                            >
-                                                {wh.name}
+                        {exportType === "ADJUSTMENT" ? (
+                            /* Adjustment: Single warehouse selection with map */
+                            <WarehouseSelectionPanel
+                                warehouses={warehouses}
+                                locations={allLocations}
+                                selectedWarehouseId={warehouseId}
+                                loading={warehousesLoading}
+                                locale={locale}
+                                onSelect={(id) => setWarehouseId(id)}
+                            />
+                        ) : (
+                            /* Transfer: Source warehouse with map + destination selector */
+                            <div className="space-y-3">
+                                <WarehouseSelectionPanel
+                                    warehouses={warehouses}
+                                    locations={allLocations}
+                                    selectedWarehouseId={warehouseId}
+                                    loading={warehousesLoading}
+                                    locale={locale}
+                                    onSelect={(id) => setWarehouseId(id)}
+                                />
+
+                                <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                                    <label className="block">
+                                        <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
+                                            {copy.destinationWarehouse} *
+                                        </span>
+                                        <select
+                                            value={destinationWarehouseId}
+                                            onChange={(e) => setDestinationWarehouseId(e.target.value)}
+                                            disabled={warehousesLoading}
+                                            className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm disabled:opacity-50"
+                                        >
+                                            <option value="">
+                                                {warehousesLoading ? copy.loading : copy.chooseDestination}
                                             </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-600">
-                                        {copy.destinationWarehouse} *
+                                            {warehouses
+                                                .filter((wh) => wh.id !== warehouseId)
+                                                .map((wh) => (
+                                                    <option key={wh.id} value={wh.id}>
+                                                        {wh.name} ({wh.code})
+                                                    </option>
+                                                ))}
+                                        </select>
                                     </label>
-                                    <select
-                                        value={destinationWarehouseId}
-                                        onChange={(e) => setDestinationWarehouseId(e.target.value)}
-                                        disabled={warehousesLoading}
-                                        className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
-                                    >
-                                        <option value="">
-                                            {warehousesLoading
-                                                ? copy.loading
-                                                : copy.chooseDestination}
-                                        </option>
-                                        {warehouses
-                                            .filter((wh) => wh.id !== warehouseId)
-                                            .map((wh) => (
-                                                <option key={wh.id} value={wh.id}>
-                                                    {wh.name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
-                                {warehouseId &&
-                                    destinationWarehouseId &&
-                                    warehouseId === destinationWarehouseId && (
-                                        <div className="col-span-full flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
+                                    {warehouseId && destinationWarehouseId && warehouseId === destinationWarehouseId && (
+                                        <div className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
                                             <AlertTriangle size={14} />
                                             <span>{copy.sameWarehouse}</span>
                                         </div>
                                     )}
+                                </section>
                             </div>
                         )}
 
-                        {exportType === "ADJUSTMENT" && (
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-600">
-                                    {copy.executionWarehouse} *
-                                </label>
-                                <select
-                                    value={warehouseId}
-                                    onChange={(e) => setWarehouseId(e.target.value)}
-                                    disabled={warehousesLoading}
-                                    className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {warehousesLoading ? copy.loading : copy.chooseWarehouse}
-                                    </option>
-                                    {warehouses.map((wh) => (
-                                        <option key={wh.id} value={wh.id}>
-                                            {wh.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-600">
-                                {exportType === "ADJUSTMENT"
-                                    ? `${copy.adjustmentReason} *`
-                                    : copy.notes}
-                            </label>
-                            <textarea
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                rows={3}
-                                placeholder={
-                                    exportType === "ADJUSTMENT"
-                                        ? copy.reasonPlaceholder
-                                        : copy.notesPlaceholder
-                                }
-                                className={`w-full resize-none rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] ${exportType === "ADJUSTMENT" && notes.trim().length === 0
-                                    ? "border-[var(--color-error-border)]"
-                                    : "border-[var(--color-border-subtle)]"
+                        {/* Notes / Adjustment reason */}
+                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <label className="block">
+                                <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
+                                    {exportType === "ADJUSTMENT" ? `${copy.adjustmentReason} *` : copy.notes}
+                                </span>
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder={exportType === "ADJUSTMENT" ? copy.reasonPlaceholder : copy.notesPlaceholder}
+                                    className={`w-full resize-none rounded-[var(--radius-sm)] border bg-[var(--color-surface-input)] px-3 py-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:text-sm ${
+                                        exportType === "ADJUSTMENT" && notes.trim().length === 0
+                                            ? "border-[var(--color-error-border)]"
+                                            : "border-[var(--color-border-subtle)]"
                                     }`}
-                            />
-                            {exportType === "ADJUSTMENT" && notes.trim().length === 0 && (
-                                <p className="mt-1 text-xs text-[var(--color-error-text)]">
-                                    {copy.reasonRequired}
-                                </p>
-                            )}
-                        </div>
+                                />
+                                {exportType === "ADJUSTMENT" && notes.trim().length === 0 && (
+                                    <p className="mt-1 text-xs text-[var(--color-error-text)]">
+                                        {copy.reasonRequired}
+                                    </p>
+                                )}
+                            </label>
+                        </section>
                     </div>
                 )}
 
@@ -624,83 +699,90 @@ export default function CreateExportTab({
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-4">
-                        {/* Excel import panel */}
-                        <VoucherExcelImportPanel
-                            uploadedFiles={files}
-                            products={products}
-                            onImport={bulkAddItems}
-                        />
-                        <div className="relative">
-                            <Search
-                                size={16}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    <div className="flex-1 flex gap-3">
+                        {/* Left column: Excel import + Product catalog */}
+                        <section className="h-full flex-1 flex flex-col gap-2">
+                            <VoucherExcelImportPanel
+                                uploadedFiles={files}
+                                products={products}
+                                onImport={bulkAddItems}
                             />
-                            <input
-                                type="text"
-                                value={productSearch}
-                                onChange={(e) => setProductSearch(e.target.value)}
-                                placeholder={copy.searchProduct}
-                                className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)]"
-                            />
-                        </div>
-
-                        <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-                            {productsLoading ? (
-                                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
-                                    {copy.loading}
+                            <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                            {copy.chooseFromCatalog}
+                                        </h2>
+                                        <p className="text-xs text-[var(--color-text-muted)]">
+                                            {products.length} {copy?.products?.toLowerCase() ?? ""}
+                                        </p>
+                                    </div>
+                                    <div className="relative sm:w-80">
+                                        <Search
+                                            size={16}
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+                                        />
+                                        <input
+                                            value={productSearch}
+                                            onChange={(e) => setProductSearch(e.target.value)}
+                                            placeholder={copy.searchProduct}
+                                            className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-base outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm"
+                                        />
+                                    </div>
                                 </div>
-                            ) : filteredProducts.length === 0 ? (
-                                <div className="flex items-center justify-center py-4 text-xs text-gray-400">
-                                    {copy.noProducts}
-                                </div>
-                            ) : (
-                                filteredProducts.map((p) => {
-                                    const isAdded = addedProductIds.has(p.id);
-                                    return (
-                                        <div
-                                            key={p.id}
-                                            className={`flex items-center gap-3 border-b border-[var(--color-border-soft)] px-3 py-2 last:border-b-0 ${isAdded ? "bg-[var(--color-status-export-bg)] opacity-60" : "hover:bg-white"
-                                                }`}
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-gray-900">
-                                                    {p.name}
-                                                </p>
-                                                <div className="flex gap-2 text-xs text-gray-500">
-                                                    <span>SKU: {p.code}</span>
-                                                    <span>/ {p.unit}</span>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                disabled={isAdded}
-                                                onClick={() => addProduct(p.id)}
-                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-status-export-icon)] text-white transition-all hover:bg-[var(--color-status-export-text)] disabled:cursor-not-allowed disabled:opacity-30"
-                                            >
-                                                <Plus size={14} />
-                                            </button>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
 
-                        <div>
-                            <p className="mb-2 text-sm font-medium text-gray-600">
-                                {copy.selectedProducts}{" "}
-                                {items.length > 0 && (
-                                    <span className="text-xs text-gray-400">
-                                        ({items.length})
-                                    </span>
+                                {productsLoading ? (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {Array.from({ length: 6 }).map((_, index) => (
+                                            <div
+                                                key={index}
+                                                className="h-36 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]"
+                                            />
+                                        ))}
+                                    </div>
+                                ) : filteredProducts.length === 0 ? (
+                                    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-12 text-center text-sm text-[var(--color-text-muted)]">
+                                        {copy.noProducts}
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                                        {filteredProducts.map((product) => (
+                                            <ProductPickerCard
+                                                key={product.id}
+                                                product={product}
+                                                isAdded={addedProductIds.has(product.id)}
+                                                copy={copy}
+                                                onAdd={() => addProduct(product.id)}
+                                            />
+                                        ))}
+                                    </div>
                                 )}
-                            </p>
+                            </div>
+                        </section>
+
+                        {/* Right column: Selected products */}
+                        <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <div className="mb-3 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                        {copy.selectedProducts}
+                                    </h2>
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        {items.length} {copy.products.toLowerCase()}
+                                    </p>
+                                </div>
+                                <Package
+                                    size={18}
+                                    className="text-[var(--color-brand-primary)]"
+                                />
+                            </div>
+
                             {items.length === 0 ? (
-                                <p className="rounded-lg border border-dashed border-gray-200 py-4 text-center text-sm text-gray-400">
+                                <div className="flex flex-1 items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
                                     {copy.emptyProducts}
-                                </p>
+                                </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="flex-1 h-full space-y-2 overflow-y-auto pr-1">
                                     {items.map((item, index) => {
                                         const product = products.find(
                                             (p) => p.id === item.product_id,
@@ -708,156 +790,160 @@ export default function CreateExportTab({
                                         return (
                                             <div
                                                 key={item.id}
-                                                className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                                                className="group rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white transition-shadow hover:shadow-sm"
                                             >
-                                                <div className="mb-2 flex items-center justify-between">
-                                                    <div className="flex min-w-0 items-center gap-2">
-                                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-status-export-bg-muted)] text-xxs font-semibold text-[var(--color-status-export-text)]">
-                                                            {index + 1}
-                                                        </span>
-                                                        <span className="truncate text-sm font-medium text-gray-900">
+                                                {/* Card Header */}
+                                                <div className="flex items-center gap-2.5 border-b border-[var(--color-border-soft)] px-3 py-2">
+                                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-brand-primary)] text-xxs font-bold text-white">
+                                                        {index + 1}
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                                             {item.product_name}
-                                                        </span>
-                                                        <span className="text-xs text-gray-400">
-                                                            {product?.code} / {product?.unit}
-                                                        </span>
+                                                        </p>
+                                                        <p className="text-xxs text-[var(--color-text-muted)]">
+                                                            {product?.code} · {product?.unit}
+                                                        </p>
                                                     </div>
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItem(item.id)}
-                                                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-[var(--color-error-text)] hover:bg-[var(--color-error-bg)]"
+                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)] group-hover:opacity-100"
                                                     >
-                                                        <Trash2 size={12} />
-                                                        {copy.delete}
+                                                        <Trash2 size={13} />
                                                     </button>
                                                 </div>
-                                                <div className="grid gap-3 sm:grid-cols-3">
-                                                    <label>
-                                                        <span className="mb-0.5 block text-xxs text-gray-400">
-                                                            {copy.quantity} *
-                                                        </span>
-                                                        <input
-                                                            type="number"
-                                                            value={item.quantity || ""}
-                                                            onChange={(e) =>
-                                                                updateItem(
-                                                                    item.id,
-                                                                    "quantity",
-                                                                    Number(e.target.value),
-                                                                )
-                                                            }
-                                                            min={1}
-                                                            className="w-full rounded border border-[var(--color-border-subtle)] bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)]"
-                                                        />
-                                                    </label>
-                                                    <label>
-                                                        <span className="mb-0.5 block text-xxs text-gray-400">
-                                                            {copy.unitPrice}
-                                                        </span>
-                                                        <input
-                                                            type="number"
-                                                            value={item.unit_price || ""}
-                                                            onChange={(e) =>
-                                                                updateItem(
-                                                                    item.id,
-                                                                    "unit_price",
-                                                                    Number(e.target.value),
-                                                                )
-                                                            }
-                                                            min={0}
-                                                            className="w-full rounded border border-[var(--color-border-subtle)] bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)]"
-                                                        />
-                                                    </label>
-                                                    <label>
-                                                        <span className="mb-0.5 block text-xxs text-gray-400">
-                                                            {copy.location} *
-                                                        </span>
-                                                        {(() => {
-                                                            const productLocations = getLocationsForProduct(
+
+                                                {/* Card Body */}
+                                                <div className="px-3 py-2.5">
+                                                    <div className="grid gap-2 grid-cols-2 lg:grid-cols-3">
+                                                        <label className="block">
+                                                            <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                {copy.quantity} *
+                                                            </span>
+                                                            <input
+                                                                type="number"
+                                                                value={item.quantity || ""}
+                                                                onChange={(e) =>
+                                                                    updateItem(
+                                                                        item.id,
+                                                                        "quantity",
+                                                                        Number(e.target.value),
+                                                                    )
+                                                                }
+                                                                min={1}
+                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                            />
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                {copy.unitPrice}
+                                                            </span>
+                                                            <input
+                                                                type="number"
+                                                                value={item.unit_price || ""}
+                                                                onChange={(e) =>
+                                                                    updateItem(
+                                                                        item.id,
+                                                                        "unit_price",
+                                                                        Number(e.target.value),
+                                                                    )
+                                                                }
+                                                                min={0}
+                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                            />
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                {copy.location} *
+                                                            </span>
+                                                            {(() => {
+                                                                const productLocations = getLocationsForProduct(
+                                                                    item.product_id,
+                                                                );
+                                                                const hasLocations = productLocations.length > 0;
+                                                                const isLoading =
+                                                                    locationsLoading || inventoryLoading;
+                                                                return (
+                                                                    <select
+                                                                        value={item.warehouse_location_id}
+                                                                        onChange={(e) =>
+                                                                            updateItem(
+                                                                                item.id,
+                                                                                "warehouse_location_id",
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            isLoading || !warehouseId || !hasLocations
+                                                                        }
+                                                                        className={`h-8 w-full rounded-[var(--radius-xs)] border bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 ${!hasLocations && !isLoading && warehouseId
+                                                                            ? "border-[var(--color-status-pending-border)]"
+                                                                            : "border-[var(--color-border-subtle)]"
+                                                                            }`}
+                                                                    >
+                                                                        <option value="">
+                                                                            {!warehouseId
+                                                                                ? copy.selectWarehouseFirst
+                                                                                : isLoading
+                                                                                    ? copy.loading
+                                                                                    : !hasLocations
+                                                                                        ? copy.noLocationForProduct
+                                                                                        : copy.selectLocation}
+                                                                        </option>
+                                                                        {productLocations.map((pl) => {
+                                                                            const loc = locations.find(
+                                                                                (l) => l.id === pl.locationId,
+                                                                            );
+                                                                            return (
+                                                                                <option
+                                                                                    key={pl.locationId}
+                                                                                    value={pl.locationId}
+                                                                                >
+                                                                                    {loc
+                                                                                        ? `${loc.name} (${loc.code})`
+                                                                                        : pl.locationId}{" "}
+                                                                                    / {copy.available}: {pl.atpQty}
+                                                                                </option>
+                                                                            );
+                                                                        })}
+                                                                    </select>
+                                                                );
+                                                            })()}
+                                                        </label>
+                                                    </div>
+                                                    {item.warehouse_location_id &&
+                                                        item.quantity > 0 &&
+                                                        (() => {
+                                                            const atp = getAtp(
                                                                 item.product_id,
+                                                                item.warehouse_location_id,
                                                             );
-                                                            const hasLocations = productLocations.length > 0;
-                                                            const isLoading =
-                                                                locationsLoading || inventoryLoading;
+                                                            if (item.quantity <= atp) return null;
                                                             return (
-                                                                <select
-                                                                    value={item.warehouse_location_id}
-                                                                    onChange={(e) =>
-                                                                        updateItem(
-                                                                            item.id,
-                                                                            "warehouse_location_id",
-                                                                            e.target.value,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        isLoading || !warehouseId || !hasLocations
-                                                                    }
-                                                                    className={`w-full rounded border bg-white px-2.5 py-2 text-xs outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50 ${!hasLocations && !isLoading && warehouseId
-                                                                        ? "border-[var(--color-status-pending-border)]"
-                                                                        : "border-[var(--color-border-subtle)]"
-                                                                        }`}
-                                                                >
-                                                                    <option value="">
-                                                                        {!warehouseId
-                                                                            ? copy.selectWarehouseFirst
-                                                                            : isLoading
-                                                                                ? copy.loading
-                                                                                : !hasLocations
-                                                                                    ? copy.noLocationForProduct
-                                                                                    : copy.selectLocation}
-                                                                    </option>
-                                                                    {productLocations.map((pl) => {
-                                                                        const loc = locations.find(
-                                                                            (l) => l.id === pl.locationId,
-                                                                        );
-                                                                        return (
-                                                                            <option
-                                                                                key={pl.locationId}
-                                                                                value={pl.locationId}
-                                                                            >
-                                                                                {loc
-                                                                                    ? `${loc.name} (${loc.code})`
-                                                                                    : pl.locationId}{" "}
-                                                                                / {copy.available}: {pl.atpQty}
-                                                                            </option>
-                                                                        );
-                                                                    })}
-                                                                </select>
+                                                                <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
+                                                                    <AlertTriangle
+                                                                        size={12}
+                                                                        className="shrink-0"
+                                                                    />
+                                                                    <span>
+                                                                        {copy.atpWarning
+                                                                            .replace(
+                                                                                "{quantity}",
+                                                                                String(item.quantity),
+                                                                            )
+                                                                            .replace("{atp}", String(atp))}
+                                                                    </span>
+                                                                </div>
                                                             );
                                                         })()}
-                                                    </label>
                                                 </div>
-                                                {item.warehouse_location_id &&
-                                                    item.quantity > 0 &&
-                                                    (() => {
-                                                        const atp = getAtp(
-                                                            item.product_id,
-                                                            item.warehouse_location_id,
-                                                        );
-                                                        if (item.quantity <= atp) return null;
-                                                        return (
-                                                            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
-                                                                <AlertTriangle
-                                                                    size={12}
-                                                                    className="shrink-0"
-                                                                />
-                                                                <span>
-                                                                    {copy.atpWarning
-                                                                        .replace(
-                                                                            "{quantity}",
-                                                                            String(item.quantity),
-                                                                        )
-                                                                        .replace("{atp}", String(atp))}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })()}
                                             </div>
                                         );
                                     })}
                                 </div>
                             )}
-                        </div>
+                        </section>
                     </div>
                 )}
 
@@ -925,44 +1011,14 @@ export default function CreateExportTab({
                 )}
             </div>
 
-            <div className="flex items-center justify-between">
-                <button
-                    type="button"
-                    onClick={() => step > 0 && setStep((step - 1) as StepId)}
-                    disabled={step === 0}
-                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-30"
-                >
-                    <ChevronLeft size={14} />
-                    {copy.back}
-                </button>
 
-                {step < STEPS.length - 1 ? (
-                    <button
-                        type="button"
-                        onClick={() => canGoNext() && setStep((step + 1) as StepId)}
-                        disabled={!canGoNext()}
-                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-status-export-icon)] px-4 py-2 text-xs font-medium text-white transition-all hover:bg-[var(--color-status-export-text)] disabled:opacity-50"
-                    >
-                        {copy.next}
-                        <ChevronRight size={14} />
-                    </button>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="flex items-center gap-1.5 rounded-lg bg-[var(--color-status-completed-icon)] px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-[var(--color-status-completed-text)] disabled:opacity-50"
-                    >
-                        {isSubmitting ? copy.submitting : copy.submit}
-                    </button>
-                )}
-            </div>
             {showOtpModal && (
                 <ActionOtpModal
                     onCancel={() => setShowOtpModal(false)}
                     onConfirm={(otp: string) => {
                         executeSubmit(otp);
                     }}
+                    isSubmitting={isSubmitting}
                 />
             )}
         </div>

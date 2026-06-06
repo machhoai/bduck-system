@@ -8,7 +8,7 @@ const vi = {
         warehouses: "Kho hàng",
         products: "Sản phẩm",
         categories: "Danh mục",
-        importVoucher: "Lệnh nhập",
+        importVoucher: "Tạo lệnh",
         exportVoucher: "Lệnh xuất",
         transfer: "Lệnh điều chuyển",
         fileLibrary: "Thư viện tệp",
@@ -88,6 +88,43 @@ const vi = {
         title: "Trang chủ",
         welcome: "Xin chào",
         emptyState: "Dashboard đang được xây dựng. Nội dung sẽ được cập nhật sớm.",
+    },
+
+    inProgressTab: {
+        emptyTitle: "Chưa có lệnh nào đang xử lý",
+        emptyHint: "Lệnh nháp hoặc đang chờ duyệt sẽ xuất hiện ở đây.",
+        searchPlaceholder: "Tìm theo mã lệnh, ghi chú...",
+        filterAll: "Tất cả",
+        filterImport: "Nhập kho",
+        filterExport: "Xuất kho",
+        filterTransfer: "Điều chuyển",
+        sortNewest: "Mới nhất trước",
+        sortOldest: "Cũ nhất trước",
+        unknownWarehouse: "Kho không xác định",
+        approver: "Người duyệt: ",
+    },
+    historyTab: {
+        emptyTitle: "Chưa có lịch sử lệnh nào",
+        emptyHint: "Các lệnh đã hoàn thành hoặc bị hủy sẽ xuất hiện ở đây.",
+        advancedFilter: "Lọc nâng cao:",
+        creatorAll: "Người tạo (Tất cả)",
+        approverAll: "Người duyệt (Tất cả)",
+    },
+
+    vouchers: {
+        title: "Quản lý Lệnh / Phiếu",
+        subtitle: "Theo dõi và tạo phiếu Nhập, Xuất, và Điều chuyển",
+        tabs: {
+            create: "Tạo mới",
+            inProgress: "Đang xử lý",
+            history: "Hoàn thành",
+        },
+        createTab: {
+            selectType: "Chọn loại phiếu cần tạo:",
+            import: "Phiếu nhập kho",
+            export: "Phiếu xuất kho",
+            transfer: "Lệnh điều chuyển",
+        },
     },
 
     fileLibrary: {

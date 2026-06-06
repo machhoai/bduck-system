@@ -16,6 +16,7 @@ import {
     Upload,
 } from "lucide-react";
 import TransferRouteMap from "./TransferRouteMap";
+import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
 import { gooeyToast } from "goey-toast";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 import { useProducts } from "../../../hooks/useProducts";
@@ -40,6 +41,7 @@ type StepId = 0 | 1 | 2 | 3;
 type TransferTypeValue = "INTRA_WAREHOUSE" | "INTER_WAREHOUSE";
 
 interface Props {
+    cloneData?: Record<string, unknown> | null;
     prefillWarehouseId?: string;
     onCreated: () => void;
 }
@@ -61,8 +63,7 @@ const COPY = {
         confirm: "Xác nhận",
         intra: "Trong kho",
         inter: "Liên kho",
-        intraDesc:
-            "Di chuyển hàng giữa các vị trí trong cùng 1 kho",
+        intraDesc: "Di chuyển hàng giữa các vị trí trong cùng 1 kho",
         interDesc: "Chuyển hàng từ kho này sang kho khác",
         transferType: "Loại điều chuyển",
         executionWarehouse: "Kho thực hiện",
@@ -78,6 +79,9 @@ const COPY = {
         uploadLabel: "Tải chứng từ điều chuyển đính kèm (tuỳ chọn)",
         uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
         searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
+        chooseFromCatalog: "Chọn từ danh mục",
+        added: "Đã thêm",
+        addProduct: "Thêm vào phiếu",
         noProducts: "Không tìm thấy",
         selectedProducts: "Sản phẩm điều chuyển",
         emptyProducts: "Chọn sản phẩm để thêm vào phiếu điều chuyển.",
@@ -89,23 +93,18 @@ const COPY = {
         noLocation: "Không có vị trí",
         selectLocation: "Chọn vị trí",
         selectDestinationLocation: "Chọn vị trí đích",
-        sameLocation:
-            "Vị trí nguồn và đích không được trùng",
-        atpWarning:
-            "SL chuyển ({quantity}) vượt quá khả dụng ({atp}).",
+        sameLocation: "Vị trí nguồn và đích không được trùng",
+        atpWarning: "SL chuyển ({quantity}) vượt quá khả dụng ({atp}).",
         confirmTitle: "Xác nhận thông tin điều chuyển",
         attachments: "Tệp đính kèm",
         itemCount: "mặt hàng",
         fileCount: "tệp",
         noteTitle: "Lưu ý",
-        intraNotice:
-            "Điều chuyển trong kho sẽ được thực hiện ngay sau khi xác nhận. Hàng hóa sẽ được di chuyển mà không cần phê duyệt.",
+        intraNotice: "Điều chuyển trong kho sẽ được thực hiện ngay sau khi xác nhận. Hàng hóa sẽ được di chuyển mà không cần phê duyệt.",
         confirmIntraTitle: "Xác nhận điều chuyển?",
         confirmInterTitle: "Xác nhận tạo phiếu?",
-        confirmIntraDesc:
-            "Hàng hóa sẽ được di chuyển ngay lập tức. Hành động này không thể hoàn tác.",
-        confirmInterDesc:
-            "Phiếu sẽ được gửi vào quy trình duyệt. Bạn có muốn tiếp tục?",
+        confirmIntraDesc: "Hàng hóa sẽ được di chuyển ngay lập tức. Hành động này không thể hoàn tác.",
+        confirmInterDesc: "Phiếu sẽ được gửi vào quy trình duyệt. Bạn có muốn tiếp tục?",
         cancel: "Hủy",
         back: "Quay lại",
         next: "Tiếp theo",
@@ -146,6 +145,9 @@ const COPY = {
         uploadLabel: "上传调拨凭证（可选）",
         uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
         searchProduct: "按名称、SKU 或条码搜索产品...",
+        chooseFromCatalog: "从目录中选择",
+        added: "已添加",
+        addProduct: "添加",
         noProducts: "未找到",
         selectedProducts: "调拨产品",
         emptyProducts: "选择产品以添加到调拨单。",
@@ -164,8 +166,7 @@ const COPY = {
         itemCount: "项",
         fileCount: "个文件",
         noteTitle: "注意",
-        intraNotice:
-            "库内调拨将在确认后立即执行，无需审批。",
+        intraNotice: "库内调拨将在确认后立即执行，无需审批。",
         confirmIntraTitle: "确认调拨？",
         confirmInterTitle: "确认创建调拨单？",
         confirmIntraDesc: "货品将立即移动，此操作不可撤销。",
@@ -211,7 +212,58 @@ const STEPS = [
     { id: 3 as StepId, icon: CheckCircle2, labelKey: "confirm" },
 ] as const;
 
+
+function ProductPickerCard({
+    product,
+    isAdded,
+    onAdd,
+    copy,
+}: {
+    product: { id: string; name: string; code: string; unit: string; barcode?: string };
+    isAdded: boolean;
+    onAdd: () => void;
+    copy: Record<string, string>;
+}) {
+    return (
+        <div
+            className={`rounded-[var(--radius-sm)] border p-3 transition-all ${isAdded
+                ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
+                : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
+                }`}
+        >
+            <div className="flex gap-3">
+                <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
+                    <Package size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                        {product.name}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                        SKU: {product.code} / {product.unit}
+                    </p>
+                    {product.barcode && (
+                        <p className="mt-0.5 truncate text-xxs text-[var(--color-text-muted)]">
+                            {product.barcode}
+                        </p>
+                    )}
+                </div>
+            </div>
+            <button
+                type="button"
+                disabled={isAdded}
+                onClick={onAdd}
+                className="mt-3 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--radius-xs)] bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] disabled:bg-[var(--color-surface-card)] disabled:text-[var(--color-text-muted)]"
+            >
+                {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                {isAdded ? copy.added : copy.addProduct}
+            </button>
+        </div>
+    );
+}
+
 export default function CreateTransferTab({
+    cloneData,
     prefillWarehouseId,
     onCreated,
 }: Props) {
@@ -266,6 +318,7 @@ export default function CreateTransferTab({
         setItems([]);
     }, [sourceWarehouseId]);
 
+    const { locations: allLocations } = useWarehouseLocations();
     const { locations: srcLocations, loading: srcLocLoading } =
         useWarehouseLocations(sourceWarehouseId || undefined);
     const { getLocationsForProduct, getAtp, loading: invLoading } =
@@ -315,7 +368,7 @@ export default function CreateTransferTab({
             default:
                 return true;
         }
-    }, [step, sourceWarehouseId, destWarehouseId, isIntra, items]);
+    }, [step, sourceWarehouseId, destWarehouseId, isIntra, items, files, processConfig]);
 
     const addProduct = useCallback(
         (productId: string) => {
@@ -477,7 +530,7 @@ export default function CreateTransferTab({
         };
 
         const promise = submitAction();
-        
+
         gooeyToast.promise(promise, {
             loading: isIntra ? copy.intraLoading : copy.interLoading,
             success: isIntra ? copy.intraSuccess : copy.interSuccess,
@@ -502,7 +555,7 @@ export default function CreateTransferTab({
     };
 
     return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-1 h-full flex-col gap-4">
             <div className="flex w-full justify-between items-center mx-auto gap-1 overflow-x-auto py-1">
                 <button
                     type="button"
@@ -575,11 +628,12 @@ export default function CreateTransferTab({
                 )}
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white p-4 lg:p-4">
+            <div className="flex-1 flex flex-col rounded-xl">
                 {step === 0 && (
                     <div className="space-y-4">
+                        {/* Transfer type selector */}
                         <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                            <label className="mb-1.5 block text-sm font-semibold text-[var(--color-text-secondary)]">
                                 {copy.transferType} *
                             </label>
                             <div className="grid gap-2 sm:grid-cols-2">
@@ -594,15 +648,15 @@ export default function CreateTransferTab({
                                                 setDestWarehouseId("");
                                                 setItems([]);
                                             }}
-                                            className={`flex items-start gap-3 rounded-xl border-2 p-3.5 text-left transition-all ${transferType === tt.value
-                                                ? "border-[var(--color-status-export-icon)] bg-[var(--color-status-export-bg)] shadow-sm"
-                                                : "border-[var(--color-neutral-200)] bg-white hover:border-[var(--color-neutral-300)]"
+                                            className={`flex items-start gap-3 rounded-[var(--radius-sm)] border-2 p-3.5 text-left transition-all ${transferType === tt.value
+                                                ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] shadow-sm"
+                                                : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
                                                 }`}
                                         >
                                             <div
-                                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${transferType === tt.value
-                                                    ? "bg-[var(--color-status-export-icon)] text-white"
-                                                    : "bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)]"
+                                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-xs)] ${transferType === tt.value
+                                                    ? "bg-[var(--color-brand-primary)] text-white"
+                                                    : "bg-[var(--color-surface-card)] text-[var(--color-text-muted)]"
                                                     }`}
                                             >
                                                 <TIcon size={18} />
@@ -610,13 +664,13 @@ export default function CreateTransferTab({
                                             <div className="min-w-0">
                                                 <p
                                                     className={`text-sm font-semibold ${transferType === tt.value
-                                                        ? "text-[var(--color-status-export-text)]"
-                                                        : "text-[var(--color-neutral-700)]"
+                                                        ? "text-[var(--color-brand-primary)]"
+                                                        : "text-[var(--color-text-primary)]"
                                                         }`}
                                                 >
                                                     {copy[tt.labelKey]}
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-gray-400">
+                                                <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                                                     {copy[tt.descKey]}
                                                 </p>
                                             </div>
@@ -627,219 +681,232 @@ export default function CreateTransferTab({
                         </div>
 
                         {isIntra ? (
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-600">
-                                    {copy.executionWarehouse} *
-                                </label>
-                                <select
-                                    value={sourceWarehouseId}
-                                    onChange={(e) => setSourceWarehouseId(e.target.value)}
-                                    disabled={warehousesLoading}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {warehousesLoading ? copy.loading : copy.chooseWarehouse}
-                                    </option>
-                                    {warehouses.map((wh) => (
-                                        <option key={wh.id} value={wh.id}>
-                                            {wh.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            /* Intra-warehouse: Use WarehouseSelectionPanel with map */
+                            <WarehouseSelectionPanel
+                                warehouses={warehouses}
+                                locations={allLocations}
+                                selectedWarehouseId={sourceWarehouseId}
+                                loading={warehousesLoading}
+                                locale={locale}
+                                onSelect={(warehouseId) => {
+                                    setSourceWarehouseId(warehouseId);
+                                    setItems([]);
+                                }}
+                            />
                         ) : (
-                            <div className="flex flex-col gap-2">
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <label className="mb-1 block text-sm font-medium text-gray-600">
-                                            {copy.sourceWarehouse} *
-                                        </label>
-                                        <select
-                                            value={sourceWarehouseId}
-                                            onChange={(e) => {
-                                                setSourceWarehouseId(e.target.value);
-                                                setItems([]);
-                                            }}
-                                            disabled={warehousesLoading}
-                                            className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
-                                        >
-                                            <option value="">
-                                                {warehousesLoading ? copy.loading : copy.chooseSource}
-                                            </option>
-                                            {warehouses
-                                                .filter((wh) => wh.id !== destWarehouseId)
-                                                .map((wh) => (
-                                                    <option key={wh.id} value={wh.id}>
-                                                        {wh.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleSwap}
-                                        disabled={!sourceWarehouseId || !destWarehouseId}
-                                        className="self-end rounded-lg border border-gray-200 p-2.5 text-gray-500 transition-all hover:bg-gray-50 disabled:opacity-30"
-                                    >
-                                        <ArrowRightLeft size={18} />
-                                    </button>
-                                    <div className="flex-1">
-                                        <label className="mb-1 block text-sm font-medium text-gray-600">
-                                            {copy.destinationWarehouse} *
-                                        </label>
-                                        <select
-                                            value={destWarehouseId}
-                                            onChange={(e) => setDestWarehouseId(e.target.value)}
-                                            disabled={warehousesLoading}
-                                            className="w-full rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)] disabled:opacity-50"
-                                        >
-                                            <option value="">
-                                                {warehousesLoading
-                                                    ? copy.loading
-                                                    : copy.chooseDestination}
-                                            </option>
-                                            {warehouses
-                                                .filter((wh) => wh.id !== sourceWarehouseId)
-                                                .map((wh) => (
-                                                    <option key={wh.id} value={wh.id}>
-                                                        {wh.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                {sourceWarehouseId &&
-                                    destWarehouseId &&
-                                    sourceWarehouseId === destWarehouseId && (
-                                        <div className="flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
-                                            <AlertTriangle size={14} />
-                                            <span>{copy.sameWarehouse}</span>
+                            /* Inter-warehouse: Source + Destination + Route map */
+                            <div className="flex flex-col gap-3">
+                                <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+                                    <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
+                                        <div className="mb-3">
+                                            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                                {copy.sourceWarehouse} *
+                                            </p>
                                         </div>
-                                    )}
+                                        {warehousesLoading ? (
+                                            <div className="space-y-2">
+                                                {Array.from({ length: 3 }).map((_, i) => (
+                                                    <div key={i} className="h-16 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]" />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-[200px] space-y-2 overflow-y-auto pr-1">
+                                                {warehouses
+                                                    .filter((wh) => wh.id !== destWarehouseId)
+                                                    .map((warehouse) => {
+                                                        const isSelected = warehouse.id === sourceWarehouseId;
+                                                        return (
+                                                            <button
+                                                                key={warehouse.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSourceWarehouseId(warehouse.id);
+                                                                    setItems([]);
+                                                                }}
+                                                                className={`w-full rounded-[var(--radius-sm)] border p-3 text-left transition-all active:scale-[0.99] ${isSelected
+                                                                    ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
+                                                                    : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{warehouse.name}</p>
+                                                                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{warehouse.code}</p>
+                                                                    </div>
+                                                                    {isSelected && <CheckCircle2 size={18} className="shrink-0 text-[var(--color-brand-primary)]" />}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                            </div>
+                                        )}
 
-                                {/* Route map — always visible, waits for warehouse selection */}
-                                <TransferRouteMap
-                                    sourceWarehouse={sourceWarehouse}
-                                    destinationWarehouse={
-                                        destWarehouseId !== sourceWarehouseId ? destWarehouse : null
-                                    }
-                                    locale={locale}
-                                />
+                                        <div className="mt-3 border-t border-[var(--color-border-soft)] pt-3">
+                                            <p className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+                                                {copy.destinationWarehouse} *
+                                            </p>
+                                            <div className="max-h-[200px] space-y-2 overflow-y-auto pr-1">
+                                                {warehouses
+                                                    .filter((wh) => wh.id !== sourceWarehouseId)
+                                                    .map((warehouse) => {
+                                                        const isSelected = warehouse.id === destWarehouseId;
+                                                        return (
+                                                            <button
+                                                                key={warehouse.id}
+                                                                type="button"
+                                                                onClick={() => setDestWarehouseId(warehouse.id)}
+                                                                className={`w-full rounded-[var(--radius-sm)] border p-3 text-left transition-all active:scale-[0.99] ${isSelected
+                                                                    ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
+                                                                    : "border-[var(--color-border-subtle)] bg-white hover:border-[var(--color-border-focus)]"
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{warehouse.name}</p>
+                                                                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{warehouse.code}</p>
+                                                                    </div>
+                                                                    {isSelected && <CheckCircle2 size={18} className="shrink-0 text-[var(--color-brand-primary)]" />}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+
+                                        {sourceWarehouseId && destWarehouseId && sourceWarehouseId === destWarehouseId && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-error-text)]">
+                                                <AlertTriangle size={14} />
+                                                <span>{copy.sameWarehouse}</span>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    {/* Route map */}
+                                    <TransferRouteMap
+                                        sourceWarehouse={sourceWarehouse}
+                                        destinationWarehouse={destWarehouseId !== sourceWarehouseId ? destWarehouse : null}
+                                        locale={locale}
+                                    />
+                                </div>
                             </div>
                         )}
 
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-600">
-                                {copy.notes}
+                        {/* Notes */}
+                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <label className="block">
+                                <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
+                                    {copy.notes}
+                                </span>
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder={copy.notesPlaceholder}
+                                    className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 py-3 text-base text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] lg:text-sm"
+                                />
                             </label>
-                            <textarea
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                rows={3}
-                                placeholder={copy.notesPlaceholder}
-                                className="w-full resize-none rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-status-export-icon)] focus:ring-2 focus:ring-[var(--color-status-export-bg-muted)]"
-                            />
-                        </div>
+                        </section>
                     </div>
                 )}
 
                 {step === 1 && (
-                    <div className="space-y-4">
-                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-                            <FileUploadField
-                                files={files}
-                                onFilesChange={setFiles}
-                                disabled={isSubmitting}
-                                maxFiles={5}
-                                label={copy.uploadLabel}
-                                hint={copy.uploadHint}
-                            />
-                        </section>
-                    </div>
+                    <section className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
+                        <FileUploadField
+                            files={files}
+                            onFilesChange={setFiles}
+                            disabled={isSubmitting}
+                            maxFiles={5}
+                            label={copy.uploadLabel}
+                            hint={copy.uploadHint}
+                        />
+                    </section>
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-4">
-                        {/* Excel import panel */}
-                        <VoucherExcelImportPanel
-                            uploadedFiles={files}
-                            products={products}
-                            onImport={bulkAddItems}
-                        />
-                        {/* Search */}
-                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-                            <p className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                                {copy.searchProduct.split("...")[0]}
-                            </p>
-                            <div className="relative">
-                                <Search
-                                    size={16}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
-                                />
-                                <input
-                                    type="text"
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    placeholder={copy.searchProduct}
-                                    className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-sm outline-none focus:border-orange-400"
-                                />
-                            </div>
+                    <div className="flex-1 flex gap-3">
+                        {/* Left column: Excel import + Product catalog */}
+                        <section className="h-full flex-1 flex flex-col gap-2">
+                            <VoucherExcelImportPanel
+                                uploadedFiles={files}
+                                products={products}
+                                onImport={bulkAddItems}
+                            />
+                            <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                            {copy.chooseFromCatalog}
+                                        </h2>
+                                        <p className="text-xs text-[var(--color-text-muted)]">
+                                            {products.length} {copy?.products?.toLowerCase() ?? ""}
+                                        </p>
+                                    </div>
+                                    <div className="relative sm:w-80">
+                                        <Search
+                                            size={16}
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+                                        />
+                                        <input
+                                            value={productSearch}
+                                            onChange={(e) => setProductSearch(e.target.value)}
+                                            placeholder={copy.searchProduct}
+                                            className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-base outline-none transition-colors focus:border-[var(--color-border-focus)] lg:h-8 lg:text-sm"
+                                        />
+                                    </div>
+                                </div>
 
-                            <div className="mt-3 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]">
                                 {productsLoading ? (
-                                    <div className="flex items-center justify-center py-4 text-xs text-[var(--color-text-muted)]">
-                                        {copy.loading}
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {Array.from({ length: 6 }).map((_, index) => (
+                                            <div
+                                                key={index}
+                                                className="h-36 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]"
+                                            />
+                                        ))}
                                     </div>
                                 ) : filteredProducts.length === 0 ? (
-                                    <div className="flex items-center justify-center py-4 text-xs text-[var(--color-text-muted)]">
+                                    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-12 text-center text-sm text-[var(--color-text-muted)]">
                                         {copy.noProducts}
                                     </div>
                                 ) : (
-                                    filteredProducts.map((product) => (
-                                        <div
-                                            key={product.id}
-                                            className="flex items-center gap-3 border-b border-[var(--color-border-soft)] px-3 py-2 last:border-b-0 hover:bg-[var(--color-surface-subtle)]"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                                                    {product.name}
-                                                </p>
-                                                <p className="text-xxs text-[var(--color-text-muted)]">
-                                                    {product.code} · {product.unit}
-                                                </p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => addProduct(product.id)}
-                                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-status-export-icon)] text-white transition-all hover:bg-[var(--color-status-export-text)]"
-                                            >
-                                                <Plus size={14} />
-                                            </button>
-                                        </div>
-                                    ))
+                                    <div className="grid gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                                        {filteredProducts.map((product) => (
+                                            <ProductPickerCard
+                                                key={product.id}
+                                                product={product}
+                                                isAdded={items.some((i) => i.product_id === product.id)}
+                                                copy={copy}
+                                                onAdd={() => addProduct(product.id)}
+                                            />
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </section>
 
-                        {/* Selected Products */}
-                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-                            <div className="mb-3 flex items-center gap-2">
-                                <Package size={16} className="text-[var(--color-status-export-icon)]" />
-                                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                                    {copy.selectedProducts}
-                                </p>
-                                {items.length > 0 && (
-                                    <span className="rounded-full bg-[var(--color-status-export-bg-muted)] px-2 py-0.5 text-xxs font-bold text-[var(--color-status-export-text)]">
-                                        {items.length}
-                                    </span>
-                                )}
+                        {/* Right column: Selected products */}
+                        <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <div className="mb-3 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                        {copy.selectedProducts}
+                                    </h2>
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        {items.length} {copy.products.toLowerCase()}
+                                    </p>
+                                </div>
+                                <Package
+                                    size={18}
+                                    className="text-[var(--color-brand-primary)]"
+                                />
                             </div>
+
                             {items.length === 0 ? (
-                                <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                <div className="flex flex-1 items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
                                     {copy.emptyProducts}
-                                </p>
+                                </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="flex-1 h-full space-y-2 overflow-y-auto pr-1">
                                     {items.map((item, index) => {
                                         const product = products.find(
                                             (p) => p.id === item.product_id,
@@ -853,23 +920,25 @@ export default function CreateTransferTab({
                                         return (
                                             <div
                                                 key={item.id}
-                                                className="group overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)]"
+                                                className="group rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white transition-shadow hover:shadow-sm"
                                             >
                                                 {/* Card Header */}
-                                                <div className="flex items-center gap-2 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] px-3 py-2">
-                                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-status-export-bg-muted)] text-xxs font-semibold text-[var(--color-status-export-text)]">
+                                                <div className="flex items-center gap-2.5 border-b border-[var(--color-border-soft)] px-3 py-2">
+                                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-brand-primary)] text-xxs font-bold text-white">
                                                         {index + 1}
                                                     </span>
-                                                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
-                                                        {item.product_name}
-                                                    </span>
-                                                    <p className="text-xxs text-[var(--color-text-muted)]">
-                                                        {product?.code} · {product?.unit}
-                                                    </p>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                                            {item.product_name}
+                                                        </p>
+                                                        <p className="text-xxs text-[var(--color-text-muted)]">
+                                                            {product?.code} · {product?.unit}
+                                                        </p>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItem(item.id)}
-                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-error-icon)] group-hover:opacity-100"
+                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)] group-hover:opacity-100"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
@@ -896,7 +965,7 @@ export default function CreateTransferTab({
                                                                     )
                                                                 }
                                                                 min={1}
-                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)]"
+                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
                                                             />
                                                         </label>
 
@@ -918,7 +987,7 @@ export default function CreateTransferTab({
                                                                     !sourceWarehouseId ||
                                                                     !hasLocations
                                                                 }
-                                                                className={`h-8 w-full rounded-[var(--radius-xs)] border bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50 ${!hasLocations &&
+                                                                className={`h-8 w-full rounded-[var(--radius-xs)] border bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50 ${!hasLocations &&
                                                                     !isLocLoading &&
                                                                     sourceWarehouseId
                                                                     ? "border-[var(--color-status-pending-border)]"
@@ -968,7 +1037,7 @@ export default function CreateTransferTab({
                                                                         )
                                                                     }
                                                                     disabled={dstLocLoading || !sourceWarehouseId}
-                                                                    className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-status-export-icon)] disabled:opacity-50"
+                                                                    className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
                                                                 >
                                                                     <option value="">
                                                                         {copy.selectDestinationLocation}

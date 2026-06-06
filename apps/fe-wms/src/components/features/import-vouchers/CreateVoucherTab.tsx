@@ -544,7 +544,7 @@ export default function CreateVoucherTab({
                 success:
                     (t as any).importVoucher?.toast?.createSuccessDesc ??
                     "Phiếu đã được gửi vào quy trình duyệt.",
-                error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createErrorDesc ?? "Vui lòng thử lại hoặc liên hệ quản trị viên."),
+                error: (t as any).importVoucher?.toast?.createErrorDesc ?? "Vui lòng thử lại hoặc liên hệ quản trị viên.",
             },
             action: {
                 error: {

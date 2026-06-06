@@ -94,28 +94,12 @@ export const menuItems: MenuItem[] = [
         badgeKey: "tasks",
     },
     {
-        id: "importVouchers",
-        labelKey: "importVoucher",
+        id: "vouchers",
+        labelKey: "importVoucher", // Reusing this key temporarily or we can create 'vouchers'
         icon: PackagePlus,
-        href: "/import-vouchers",
-        permission: "vouchers.read",
-        badgeKey: "importVouchers",
-    },
-    {
-        id: "exportVouchers",
-        labelKey: "exportVoucher",
-        icon: PackageMinus,
-        href: "/export-vouchers",
-        permission: "vouchers.read",
-        badgeKey: "exportVouchers",
-    },
-    {
-        id: "transfers",
-        labelKey: "transfer",
-        icon: ArrowRightLeft,
-        href: "/transfers",
-        permission: "transfers.read",
-        badgeKey: "transfers",
+        href: "/vouchers",
+        permissionsAny: ["vouchers.read", "transfers.read"],
+        badgeKey: "vouchers",
     },
     {
         id: "fileLibrary",
