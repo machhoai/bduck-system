@@ -9,16 +9,14 @@
  */
 
 import { useMemo, useState } from "react";
+import type { ChartData, ChartOptions } from "chart.js";
+import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-} from "recharts";
+    chartAxisColor,
+    chartGridColor,
+    chartTooltipOptions,
+    responsiveChartOptions,
+} from "@/components/charts/chartjs";
 import { useImportVouchers } from "@/hooks/useImportVouchers";
 import { useExportVouchers } from "@/hooks/useExportVouchers";
 import { ImportVoucherStatus, ExportVoucherStatus } from "@bduck/shared-types";
@@ -164,6 +162,72 @@ export default function ImportExportChart({ warehouseId }: ImportExportChartProp
         { value: "12m", label: d.rangeOptions["12m"] },
     ];
 
+    const barChartData: ChartData<"bar", number[], string> = {
+        labels: chartData.map((item) => item.label),
+        datasets: [
+            {
+                label: d.import,
+                data: chartData.map((item) => item.import),
+                backgroundColor: "#0066cc",
+                borderRadius: 4,
+                borderSkipped: "bottom",
+                maxBarThickness: 32,
+            },
+            {
+                label: d.export,
+                data: chartData.map((item) => item.export),
+                backgroundColor: "#16a34a",
+                borderRadius: 4,
+                borderSkipped: "bottom",
+                maxBarThickness: 32,
+            },
+        ],
+    };
+
+    const barChartOptions: ChartOptions<"bar"> = {
+        ...responsiveChartOptions,
+        layout: {
+            padding: { top: 4, right: 4, bottom: 0, left: 0 },
+        },
+        datasets: {
+            bar: {
+                barPercentage: 0.72,
+                categoryPercentage: 0.72,
+            },
+        },
+        plugins: {
+            tooltip: chartTooltipOptions,
+            legend: {
+                position: "bottom",
+                labels: {
+                    boxHeight: 8,
+                    boxWidth: 8,
+                    font: { size: 12 },
+                    padding: 12,
+                    pointStyle: "circle",
+                    usePointStyle: true,
+                },
+            },
+        },
+        scales: {
+            x: {
+                border: { display: false },
+                grid: { display: false },
+                ticks: { color: chartAxisColor, font: { size: 10 } },
+            },
+            y: {
+                beginAtZero: true,
+                border: { display: false },
+                grid: { color: chartGridColor },
+                ticks: {
+                    color: chartAxisColor,
+                    font: { size: 10 },
+                    precision: 0,
+                },
+            },
+        },
+    };
+
     return (
         <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
             {/* Header */}
@@ -208,65 +272,8 @@ export default function ImportExportChart({ warehouseId }: ImportExportChartProp
                     <p className="text-sm text-[var(--color-text-muted)]">{d.empty}</p>
                 </div>
             ) : (
-                <div className="min-h-[260px] flex-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={chartData}
-                            barCategoryGap="28%"
-                            barGap={4}
-                            margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
-                        >
-                            <CartesianGrid
-                                strokeDasharray="3 3"
-                                vertical={false}
-                                stroke="var(--color-border-subtle)"
-                            />
-                            <XAxis
-                                dataKey="label"
-                                tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                                axisLine={false}
-                                tickLine={false}
-                            />
-                            <YAxis
-                                allowDecimals={false}
-                                tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                                axisLine={false}
-                                tickLine={false}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    borderRadius: "var(--radius-sm)",
-                                    border: "1px solid var(--color-border-subtle)",
-                                    boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-                                    fontSize: "13px",
-                                }}
-                                cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                            />
-                            <Legend
-                                height={28}
-                                iconType="circle"
-                                iconSize={8}
-                                wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
-                                formatter={(value) =>
-                                    value === "import" ? d.import : d.export
-                                }
-                            />
-                            <Bar
-                                dataKey="import"
-                                name="import"
-                                fill="#0066cc"
-                                radius={[4, 4, 0, 0]}
-                                maxBarSize={32}
-                            />
-                            <Bar
-                                dataKey="export"
-                                name="export"
-                                fill="#16a34a"
-                                radius={[4, 4, 0, 0]}
-                                maxBarSize={32}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="relative min-h-[260px] flex-1">
+                    <ChartCanvas type="bar" data={barChartData} options={barChartOptions} />
                 </div>
             )}
         </div>

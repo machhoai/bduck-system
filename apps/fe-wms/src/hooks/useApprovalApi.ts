@@ -109,6 +109,14 @@ export async function cancelApproval(
   return approvalApi(`/${entityType}/${entityId}/cancel`, "POST", { reason });
 }
 
+export async function forceCancelApproval(
+  entityType: string,
+  entityId: string,
+  reason: string,
+): Promise<void> {
+  return approvalApi(`/${entityType}/${entityId}/force-cancel`, "POST", { reason });
+}
+
 // ─────────────────────────────────────────────
 // PROCESS CONFIG
 // ─────────────────────────────────────────────

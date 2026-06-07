@@ -4,14 +4,12 @@
  * StockDistributionChart — Donut chart: phân bổ tồn kho theo ProductType
  */
 
+import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
+import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
+  chartTooltipOptions,
+  responsiveChartOptions,
+} from "@/components/charts/chartjs";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useTranslation } from "@/lib/i18n";
 import type { ProductTypeDistribution } from "@/utils/inventoryAggregation";
@@ -45,6 +43,44 @@ export default function StockDistributionChart({
     name: typeLabels[item.type] || item.type,
   }));
 
+  const doughnutData: ChartData<"doughnut", number[], string> = {
+    labels: chartData.map((item) => item.name),
+    datasets: [
+      {
+        data: chartData.map((item) => item.quantity),
+        backgroundColor: chartData.map((_, index) => COLORS[index % COLORS.length]),
+        borderWidth: 0,
+        borderRadius: 4,
+        spacing: 3,
+      },
+    ],
+  };
+
+  const doughnutOptions: ChartOptions<"doughnut"> = {
+    ...responsiveChartOptions,
+    cutout: "64%",
+    plugins: {
+      tooltip: {
+        ...chartTooltipOptions,
+        callbacks: {
+          label: (ctx: TooltipItem<"doughnut">) =>
+            `${ctx.label}: ${Number(ctx.raw).toLocaleString()} ${d.quantity}`,
+        },
+      },
+      legend: {
+        position: "bottom",
+        labels: {
+          boxHeight: 8,
+          boxWidth: 8,
+          font: { size: 13 },
+          padding: 14,
+          pointStyle: "circle",
+          usePointStyle: true,
+        },
+      },
+    },
+  };
+
   return (
     <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
       <h3 className="mb-4 shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
@@ -56,54 +92,8 @@ export default function StockDistributionChart({
           {t.common.noData}
         </p>
       ) : (
-        /*
-         * ResponsiveContainer height="100%" yêu cầu parent có chiều cao cụ thể.
-         * flex-1 fill toàn bộ chiều cao còn lại trong card (flex-col).
-         * min-h-[320px] đảm bảo chart không bị quá nhỏ khi card thấp.
-         */
-        <div className="min-h-[320px] flex-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={110}
-                paddingAngle={3}
-                dataKey="quantity"
-                nameKey="name"
-                stroke="none"
-              >
-                {chartData.map((_, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--color-border-subtle)",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-                  fontSize: "14px",
-                }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(value: any) => [
-                  Number(value).toLocaleString(),
-                  d.quantity,
-                ]}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: "13px" }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="relative min-h-[320px] flex-1">
+          <ChartCanvas type="doughnut" data={doughnutData} options={doughnutOptions} />
         </div>
       )}
     </div>

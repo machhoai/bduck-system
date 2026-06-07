@@ -4,16 +4,14 @@
  * StockComparisonChart — Bar chart: ATP vs Quarantine vs In-Transit theo kho
  */
 
+import type { ChartData, ChartOptions } from "chart.js";
+import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+  chartAxisColor,
+  chartGridColor,
+  chartTooltipOptions,
+  responsiveChartOptions,
+} from "@/components/charts/chartjs";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useTranslation } from "@/lib/i18n";
 import type { WarehouseStockComparison } from "@/utils/inventoryAggregation";
@@ -39,6 +37,74 @@ export default function StockComparisonChart({
     );
   }
 
+  const chartData: ChartData<"bar", number[], string> = {
+    labels: data.map((item) => item.warehouseName),
+    datasets: [
+      {
+        label: d.atpQuantity,
+        data: data.map((item) => item.atp),
+        backgroundColor: "#257a3e",
+        borderRadius: 4,
+        borderSkipped: "bottom",
+        maxBarThickness: 32,
+      },
+      {
+        label: d.quarantineQuantity,
+        data: data.map((item) => item.quarantine),
+        backgroundColor: "#b42318",
+        borderRadius: 4,
+        borderSkipped: "bottom",
+        maxBarThickness: 32,
+      },
+      {
+        label: d.inTransitQuantity,
+        data: data.map((item) => item.inTransit),
+        backgroundColor: "#936000",
+        borderRadius: 4,
+        borderSkipped: "bottom",
+        maxBarThickness: 32,
+      },
+    ],
+  };
+
+  const chartOptions: ChartOptions<"bar"> = {
+    ...responsiveChartOptions,
+    datasets: {
+      bar: {
+        barPercentage: 0.75,
+        categoryPercentage: 0.72,
+      },
+    },
+    plugins: {
+      tooltip: chartTooltipOptions,
+      legend: {
+        position: "bottom",
+        labels: {
+          boxHeight: 10,
+          boxWidth: 10,
+          font: { size: 13 },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        border: { color: chartGridColor },
+        ticks: { color: chartAxisColor, font: { size: 12 } },
+      },
+      y: {
+        beginAtZero: true,
+        border: { color: chartGridColor },
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartAxisColor,
+          font: { size: 12 },
+          precision: 0,
+        },
+      },
+    },
+  };
+
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
       <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
@@ -50,57 +116,9 @@ export default function StockComparisonChart({
           {t.common.noData}
         </p>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart
-            data={data}
-            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--color-border-soft)"
-            />
-            <XAxis
-              dataKey="warehouseName"
-              tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
-              axisLine={{ stroke: "var(--color-border-subtle)" }}
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
-              axisLine={{ stroke: "var(--color-border-subtle)" }}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--color-border-subtle)",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-                fontSize: "14px",
-              }}
-            />
-            <Legend
-              iconType="rect"
-              iconSize={10}
-              wrapperStyle={{ fontSize: "13px" }}
-            />
-            <Bar
-              dataKey="atp"
-              name={d.atpQuantity}
-              fill="#257a3e"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="quarantine"
-              name={d.quarantineQuantity}
-              fill="#b42318"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="inTransit"
-              name={d.inTransitQuantity}
-              fill="#936000"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="relative h-[260px]">
+          <ChartCanvas type="bar" data={chartData} options={chartOptions} />
+        </div>
       )}
     </div>
   );

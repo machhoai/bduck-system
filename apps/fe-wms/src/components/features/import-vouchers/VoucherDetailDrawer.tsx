@@ -1,15 +1,18 @@
 "use client";
 
 /**
- * VoucherDetailDrawer — Slide-over drawer showing import voucher detail
+ * VoucherDetailDrawer — Slide-over drawer showing voucher detail + cancel actions
  *
- * Used in: InProgressTab, HistoryTab (import-vouchers page)
- * Loads items + resolves product/warehouse/creator names via Firestore.
- * Displays attachments with PdfViewer integration.
+ * Used in: UnifiedInProgressTab (all voucher types)
+ * Supports:
+ * - Creator cancel (PENDING_APPROVAL only, creator_id match)
+ * - Force cancel (any status, requires vouchers.force_cancel permission)
  *
  * LUẬT THÉP:
  * - i18n (vi + zh), skeleton loading, realtime onSnapshot
- * - Code < 300 lines — data logic in custom hook
+ * - gooeyToast.promise for API calls
+ * - Anti-double-click
+ * - Code < 300 lines — data logic inline (simple enough)
  */
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -23,6 +26,9 @@ import {
     FileText,
     Barcode,
     Ruler,
+    Ban,
+    ShieldAlert,
+    Loader2,
 } from "lucide-react";
 import {
     doc,
@@ -32,7 +38,10 @@ import {
     getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { gooeyToast } from "goey-toast";
 import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
+import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
 import type { ImportVoucher } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
@@ -55,6 +64,8 @@ interface EnrichedItem {
     condition: string;
     notes: string | null;
 }
+
+// ── Helpers ──
 
 function formatDate(val: unknown): string {
     if (!val) return "—";
@@ -107,15 +118,47 @@ function Field({
     );
 }
 
+// ── Determine entity type from voucher ──
+function getEntityType(voucher: ImportVoucher): string {
+    if ("export_type" in voucher || "recipient_name" in voucher) return "EXPORT_VOUCHER";
+    if ("transfer_type" in voucher || "source_warehouse_id" in voucher) return "TRANSFER_ORDER";
+    return "IMPORT_VOUCHER";
+}
+
+// ── Determine Firestore collection from entity type ──
+function getCollectionName(entityType: string): string {
+    switch (entityType) {
+        case "EXPORT_VOUCHER": return "export_vouchers";
+        case "TRANSFER_ORDER": return "transfer_orders";
+        default: return "import_vouchers";
+    }
+}
+
+/** Statuses that are terminal — cannot be cancelled */
+const TERMINAL_STATUSES = new Set(["CANCELLED", "COMPLETED"]);
+
 export default function VoucherDetailDrawer({
     voucher,
     onClose,
 }: VoucherDetailDrawerProps) {
     const { t } = useTranslation();
+    const currentUser = useUserStore((s) => s.user);
+    const hasPermission = useUserStore((s) => s.hasPermission);
+
     const [items, setItems] = useState<EnrichedItem[]>([]);
     const [loadingItems, setLoadingItems] = useState(true);
     const [creatorName, setCreatorName] = useState("");
     const [warehouseName, setWarehouseName] = useState("");
+    const [cancelReason, setCancelReason] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const entityType = useMemo(() => getEntityType(voucher), [voucher]);
+    const collectionName = useMemo(() => getCollectionName(entityType), [entityType]);
+
+    const isCreator = currentUser?.id === voucher.creator_id;
+    const isPendingApproval = voucher.status === "PENDING_APPROVAL";
+    const canCreatorCancel = isCreator && isPendingApproval;
+    const canForceCancel = hasPermission("vouchers.force_cancel") && !TERMINAL_STATUSES.has(voucher.status);
 
     // ── Resolve creator + warehouse names ──
     useEffect(() => {
@@ -143,7 +186,7 @@ export default function VoucherDetailDrawer({
     // ── Load items + resolve products ──
     useEffect(() => {
         const itemsQuery = fsQuery(
-            collection(db, "import_vouchers", voucher.id, "items"),
+            collection(db, collectionName, voucher.id, "items"),
         );
         const unsub = onSnapshot(itemsQuery, async (snap) => {
             const rawItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -183,7 +226,75 @@ export default function VoucherDetailDrawer({
             setLoadingItems(false);
         });
         return () => unsub();
-    }, [voucher.id]);
+    }, [voucher.id, collectionName]);
+
+    // ── Cancel by creator ──
+    const handleCreatorCancel = useCallback(async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
+        const action = async () => {
+            await cancelApproval(entityType, voucher.id, cancelReason || undefined);
+        };
+
+        try {
+            const promise = action();
+            gooeyToast.promise(promise, {
+                loading: t.tasks.selfApproval.cancelling,
+                success: t.tasks.selfApproval.cancelSuccess,
+                error: t.tasks.selfApproval.cancelError,
+                description: {
+                    success: t.tasks.selfApproval.cancelSuccessDesc,
+                    error: t.tasks.selfApproval.cancelErrorDesc,
+                },
+                action: {
+                    error: { label: t.tasks.approval.retry, onClick: () => handleCreatorCancel() },
+                },
+            });
+            await promise;
+            onClose();
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [isSubmitting, cancelReason, entityType, voucher.id, onClose, t]);
+
+    // ── Force cancel ──
+    const handleForceCancel = useCallback(async () => {
+        if (isSubmitting) return;
+        if (!cancelReason.trim()) {
+            gooeyToast.error(t.tasks.selfApproval.cancelError, {
+                description: "Vui lòng nhập lý do hủy trước khi tiếp tục.",
+                preset: "snappy",
+                timing: { displayDuration: 4000 },
+            });
+            return;
+        }
+        setIsSubmitting(true);
+
+        const action = async () => {
+            await forceCancelApproval(entityType, voucher.id, cancelReason);
+        };
+
+        try {
+            const promise = action();
+            gooeyToast.promise(promise, {
+                loading: t.tasks.selfApproval.cancelling,
+                success: t.tasks.selfApproval.cancelSuccess,
+                error: t.tasks.selfApproval.cancelError,
+                description: {
+                    success: t.tasks.selfApproval.cancelSuccessDesc,
+                    error: t.tasks.selfApproval.cancelErrorDesc,
+                },
+                action: {
+                    error: { label: t.tasks.approval.retry, onClick: () => handleForceCancel() },
+                },
+            });
+            await promise;
+            onClose();
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [isSubmitting, cancelReason, entityType, voucher.id, onClose, t]);
 
     const statusKey = voucher.status as keyof typeof t.importVoucher.status;
     const statusLabel = t.importVoucher.status[statusKey] || voucher.status;
@@ -195,6 +306,7 @@ export default function VoucherDetailDrawer({
     );
 
     const attachmentUrls = voucher.attachment_urls || [];
+    const showCancelSection = canCreatorCancel || canForceCancel;
 
     return (
         <>
@@ -236,7 +348,11 @@ export default function VoucherDetailDrawer({
                     <div className="px-4 pt-2">
                         <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                         <Field icon={Warehouse} label={t.tasks.detail.warehouse} value={warehouseName || voucher.warehouse_id} />
-                        <Field icon={Package} label={t.tasks.detail.supplier} value={voucher.supplier_name} />
+                        {entityType === "EXPORT_VOUCHER" ? (
+                            <Field icon={User} label={t.tasks.detail.recipient || "Người nhận"} value={(voucher as any).recipient_name} />
+                        ) : entityType === "IMPORT_VOUCHER" ? (
+                            <Field icon={Package} label={t.tasks.detail.supplier} value={voucher.supplier_name} />
+                        ) : null}
                         <Field icon={User} label={t.tasks.detail.creator} value={creatorName || voucher.creator_id} />
                         <Field icon={Calendar} label={t.tasks.detail.createdAt} value={formatDate(voucher.created_at)} />
                         {voucher.notes && <Field icon={FileText} label={t.tasks.detail.notes} value={voucher.notes} />}
@@ -312,6 +428,82 @@ export default function VoucherDetailDrawer({
                     {/* Bottom spacing */}
                     <div className="h-6" />
                 </div>
+
+                {/* Footer: Cancel actions */}
+                {showCancelSection && (
+                    <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
+                        <div className="space-y-3">
+                            {/* Info banner for creator cancel */}
+                            {canCreatorCancel && !canForceCancel && (
+                                <div className="flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-3">
+                                    <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-status-pending-icon)]" />
+                                    <p className="text-xs leading-relaxed text-[var(--color-status-pending-text)]">
+                                        {t.tasks.selfApproval.description}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Info banner for force cancel */}
+                            {canForceCancel && !canCreatorCancel && (
+                                <div className="flex items-start gap-3 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] p-3">
+                                    <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-error-text)]" />
+                                    <p className="text-xs leading-relaxed text-[var(--color-error-text)]">
+                                        Bạn có quyền hủy lệnh đặc biệt. Lệnh sẽ bị hủy bất kể trạng thái hiện tại.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Reason textarea */}
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                rows={2}
+                                placeholder={canForceCancel && !canCreatorCancel
+                                    ? "Lý do hủy (bắt buộc)"
+                                    : t.tasks.selfApproval.cancelReason
+                                }
+                                className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                            />
+
+                            {/* Cancel buttons */}
+                            <div className="flex items-center gap-2">
+                                {canCreatorCancel && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCreatorCancel}
+                                        disabled={isSubmitting}
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                                        {t.tasks.selfApproval.cancelButton}
+                                    </button>
+                                )}
+                                {canForceCancel && !canCreatorCancel && (
+                                    <button
+                                        type="button"
+                                        onClick={handleForceCancel}
+                                        disabled={isSubmitting || !cancelReason.trim()}
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                                        Hủy lệnh (Đặc biệt)
+                                    </button>
+                                )}
+                                {canForceCancel && canCreatorCancel && (
+                                    <button
+                                        type="button"
+                                        onClick={handleForceCancel}
+                                        disabled={isSubmitting || !cancelReason.trim()}
+                                        className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--color-neutral-300)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-neutral-50)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                                        Hủy (Đặc biệt)
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );

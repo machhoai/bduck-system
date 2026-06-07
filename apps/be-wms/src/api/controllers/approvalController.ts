@@ -242,3 +242,100 @@ export async function cancelHandler(
     next(error);
   }
 }
+
+/**
+ * POST /api/approvals/:entityType/:entityId/force-cancel
+ * Force-cancel a voucher at any status (privileged users only).
+ *
+ * Requires permission: vouchers.force_cancel
+ * Body: { reason: string } (mandatory)
+ */
+export async function forceCancelHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const entityType = req.params.entityType as string;
+    const entityId = req.params.entityId as string;
+    const userId = (req as any).user?.id;
+    const userPermissions = (req as any).user?.permissions ?? {};
+    const { reason } = req.body ?? {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Không xác định được người dùng.",
+          zh: "无法识别用户。",
+        },
+      });
+      return;
+    }
+
+    // ── Permission check: vouchers.force_cancel ──
+    const hasForceCancel = (() => {
+      const globalPerms = userPermissions["global"] || {};
+      if (globalPerms["*"] === true) return true;
+      if (globalPerms["vouchers.force_cancel"] === true) return true;
+      // Check warehouse-scoped permissions
+      return Object.entries(userPermissions).some(
+        ([scope, perms]: [string, any]) => {
+          if (scope === "global") return false;
+          return perms["*"] === true || perms["vouchers.force_cancel"] === true;
+        },
+      );
+    })();
+
+    if (!hasForceCancel) {
+      res.status(403).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Bạn không có quyền hủy lệnh đặc biệt.",
+          zh: "您没有强制撤销权限。",
+        },
+      });
+      return;
+    }
+
+    if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Lý do hủy là bắt buộc.",
+          zh: "撤销原因为必填项。",
+        },
+      });
+      return;
+    }
+
+    await approvalService.forceCancel(
+      entityType as any,
+      entityId,
+      userId,
+      reason,
+    );
+
+    res.json({
+      success: true,
+      data: null,
+      messages: {
+        vi: "Đã hủy lệnh thành công (quyền đặc biệt).",
+        zh: "已成功强制撤销单据。",
+      },
+    });
+  } catch (error: any) {
+    if (error.statusCode) {
+      res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        messages: error.messages || { vi: error.message, zh: error.message },
+      });
+      return;
+    }
+    next(error);
+  }
+}

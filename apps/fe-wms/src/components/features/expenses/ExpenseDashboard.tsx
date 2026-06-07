@@ -4,31 +4,24 @@
  * ExpenseDashboard — Full analytics dashboard for expenses
  *
  * Style: Mirrors main inventory dashboard (rounded-lg cards, var() colors)
- * Charts: recharts library
- *  - Expense Trend: ComposedChart (Bar + Line — Same Data Composed Chart)
- *  - Revenue vs Expense: ComposedChart (Line + Bar + Area — Line Bar Area Composed Chart)
- *  - Expense Allocation: PieChart with paddingAngle + cornerRadius (gap & rounded corners)
+ * Charts: Chart.js
+ *  - Expense Trend: mixed bar + line chart
+ *  - Revenue vs Expense: mixed bar + filled line chart
+ *  - Expense Allocation: doughnut chart with segment spacing
  *  - Top Expenses: table with mode switcher
  *
  * Currency: always full number, e.g. 20.000.000đ (never abbreviated)
  */
 
 import { useState, useEffect } from "react";
+import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
+import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
-    ComposedChart,
-    Bar,
-    Line,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-} from "recharts";
+    chartAxisColor,
+    chartGridColor,
+    chartTooltipOptions,
+    responsiveChartOptions,
+} from "@/components/charts/chartjs";
 import { useTranslation } from "@/lib/i18n";
 import {
     useExpenseDashboardMetrics,
@@ -104,16 +97,11 @@ function formatAxisValue(value: number): string {
     return String(value);
 }
 
-// ─────────────────────────────────────────────
-// Shared tooltip style (matches main dashboard)
-// ─────────────────────────────────────────────
+type MixedExpenseChartType = "bar" | "line";
 
-const TOOLTIP_STYLE = {
-    borderRadius: "var(--radius-sm)",
-    border: "1px solid var(--color-border-subtle)",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-    fontSize: "13px",
-};
+function formatCurrencyTooltip(ctx: TooltipItem<MixedExpenseChartType>): string {
+    return `${ctx.dataset.label}: ${formatCurrency(Number(ctx.raw))}`;
+}
 
 // ─────────────────────────────────────────────
 // Animated Number Component
@@ -345,8 +333,7 @@ function CostCenterDetailModal({ stat, label, onClose, t }: {
 }
 
 // ─────────────────────────────────────────────
-// Expense Trend — ComposedChart (Bar + Line)
-// "Same Data Composed Chart" from recharts
+// Expense Trend — mixed bar + line chart
 // ─────────────────────────────────────────────
 
 export function ExpenseTrendChart({ data, title, subtitle, t }: {
@@ -375,67 +362,100 @@ export function ExpenseTrendChart({ data, title, subtitle, t }: {
             : 0,
     }));
 
+    const chartData: ChartData<MixedExpenseChartType, number[], string> = {
+        labels: enriched.map((item) => item.month),
+        datasets: [
+            {
+                type: "bar",
+                label: "Chi phí",
+                data: enriched.map((item) => item.expenses),
+                backgroundColor: "rgba(180, 35, 24, 0.7)",
+                borderRadius: 4,
+                borderSkipped: "bottom",
+                maxBarThickness: 32,
+                order: 2,
+            },
+            {
+                type: "line",
+                label: "Xu hướng",
+                data: enriched.map((item) => item.expenses),
+                borderColor: "#b42318",
+                borderWidth: 2,
+                fill: false,
+                pointBackgroundColor: "#b42318",
+                pointHoverRadius: 5,
+                pointRadius: 3,
+                tension: 0.35,
+                order: 1,
+            },
+        ],
+    };
+
+    const chartOptions: ChartOptions<MixedExpenseChartType> = {
+        ...responsiveChartOptions,
+        layout: {
+            padding: { top: 4, right: 4, bottom: 0, left: 0 },
+        },
+        datasets: {
+            bar: {
+                barPercentage: 0.7,
+                categoryPercentage: 0.72,
+            },
+        },
+        plugins: {
+            tooltip: {
+                ...chartTooltipOptions,
+                callbacks: {
+                    label: formatCurrencyTooltip,
+                },
+            },
+            legend: {
+                position: "bottom",
+                labels: {
+                    boxHeight: 8,
+                    boxWidth: 8,
+                    font: { size: 12 },
+                    padding: 12,
+                    pointStyle: "circle",
+                    usePointStyle: true,
+                },
+            },
+        },
+        scales: {
+            x: {
+                border: { display: false },
+                grid: { display: false },
+                ticks: { color: chartAxisColor, font: { size: 10 } },
+            },
+            y: {
+                beginAtZero: true,
+                border: { display: false },
+                grid: { color: chartGridColor },
+                ticks: {
+                    callback: (value) => formatAxisValue(Number(value)),
+                    color: chartAxisColor,
+                    font: { size: 10 },
+                    precision: 0,
+                },
+            },
+        },
+    };
+
     return (
         <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
             <div className="mb-4 shrink-0">
                 <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
                 <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
             </div>
-            <div className="min-h-[260px] flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={enriched} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
-                        <XAxis
-                            dataKey="month"
-                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            allowDecimals={false}
-                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={formatAxisValue}
-                        />
-                        <Tooltip
-                            contentStyle={TOOLTIP_STYLE}
-                            cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                            formatter={(value) => [formatCurrency(Number(value))]}
-                        />
-                        <Legend
-                            height={28}
-                            iconType="circle"
-                            iconSize={8}
-                            wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
-                        />
-                        <Bar
-                            dataKey="expenses"
-                            name="Chi phí"
-                            fill="#b42318"
-                            fillOpacity={0.7}
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={32}
-                        />
-                        <Line
-                            dataKey="expenses"
-                            name="Xu hướng"
-                            type="monotone"
-                            stroke="#b42318"
-                            strokeWidth={2}
-                            dot={{ r: 3, fill: "#b42318" }}
-                            activeDot={{ r: 5 }}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+            <div className="relative min-h-[260px] flex-1">
+                <ChartCanvas type="bar" data={chartData} options={chartOptions} />
             </div>
         </div>
     );
 }
 
 // ─────────────────────────────────────────────
-// Revenue vs Expense — ComposedChart (Line + Bar + Area)
-// "Line Bar Area Composed Chart" from recharts
+// Revenue vs Expense — mixed bar + filled line chart
 // ─────────────────────────────────────────────
 
 function RevenueExpenseChart({ data, title, t }: {
@@ -454,81 +474,121 @@ function RevenueExpenseChart({ data, title, t }: {
         );
     }
 
+    const chartData: ChartData<MixedExpenseChartType, number[], string> = {
+        labels: data.map((item) => item.month),
+        datasets: [
+            {
+                type: "line",
+                label: "Lợi nhuận",
+                data: data.map((item) => item.net),
+                backgroundColor: "rgba(37, 122, 62, 0.15)",
+                borderColor: "rgba(37, 122, 62, 0)",
+                borderWidth: 0,
+                fill: "origin",
+                pointRadius: 0,
+                tension: 0.35,
+                order: 4,
+            },
+            {
+                type: "bar",
+                label: "Doanh thu",
+                data: data.map((item) => item.revenue),
+                backgroundColor: "rgba(0, 102, 204, 0.8)",
+                borderRadius: 4,
+                borderSkipped: "bottom",
+                maxBarThickness: 28,
+                order: 3,
+            },
+            {
+                type: "bar",
+                label: "Chi phí",
+                data: data.map((item) => item.expenses),
+                backgroundColor: "rgba(180, 35, 24, 0.7)",
+                borderRadius: 4,
+                borderSkipped: "bottom",
+                maxBarThickness: 28,
+                order: 3,
+            },
+            {
+                type: "line",
+                label: "Lợi nhuận ròng",
+                data: data.map((item) => item.net),
+                borderColor: "#257a3e",
+                borderWidth: 2,
+                fill: false,
+                pointBackgroundColor: "#257a3e",
+                pointHoverRadius: 5,
+                pointRadius: 3,
+                tension: 0.35,
+                order: 1,
+            },
+        ],
+    };
+
+    const chartOptions: ChartOptions<MixedExpenseChartType> = {
+        ...responsiveChartOptions,
+        layout: {
+            padding: { top: 4, right: 4, bottom: 0, left: 0 },
+        },
+        datasets: {
+            bar: {
+                barPercentage: 0.72,
+                categoryPercentage: 0.72,
+            },
+        },
+        plugins: {
+            tooltip: {
+                ...chartTooltipOptions,
+                callbacks: {
+                    label: formatCurrencyTooltip,
+                },
+            },
+            legend: {
+                position: "bottom",
+                labels: {
+                    boxHeight: 8,
+                    boxWidth: 8,
+                    font: { size: 12 },
+                    padding: 12,
+                    pointStyle: "circle",
+                    usePointStyle: true,
+                },
+            },
+        },
+        scales: {
+            x: {
+                border: { display: false },
+                grid: { display: false },
+                ticks: { color: chartAxisColor, font: { size: 10 } },
+            },
+            y: {
+                beginAtZero: true,
+                border: { display: false },
+                grid: { color: chartGridColor },
+                ticks: {
+                    callback: (value) => formatAxisValue(Number(value)),
+                    color: chartAxisColor,
+                    font: { size: 10 },
+                    precision: 0,
+                },
+            },
+        },
+    };
+
     return (
         <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5">
             <h3 className="mb-4 shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
                 {title}
             </h3>
-            <div className="min-h-[260px] flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
-                        <XAxis
-                            dataKey="month"
-                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            allowDecimals={false}
-                            tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={formatAxisValue}
-                        />
-                        <Tooltip
-                            contentStyle={TOOLTIP_STYLE}
-                            cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                            formatter={(value) => [formatCurrency(Number(value))]}
-                        />
-                        <Legend
-                            height={28}
-                            iconType="circle"
-                            iconSize={8}
-                            wrapperStyle={{ fontSize: "12px", paddingTop: "4px" }}
-                        />
-                        <Area
-                            dataKey="net"
-                            name="Lợi nhuận"
-                            type="monotone"
-                            fill="#257a3e"
-                            fillOpacity={0.15}
-                            stroke="none"
-                        />
-                        <Bar
-                            dataKey="revenue"
-                            name="Doanh thu"
-                            fill="#0066cc"
-                            fillOpacity={0.8}
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={28}
-                        />
-                        <Bar
-                            dataKey="expenses"
-                            name="Chi phí"
-                            fill="#b42318"
-                            fillOpacity={0.7}
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={28}
-                        />
-                        <Line
-                            dataKey="net"
-                            name="Lợi nhuận ròng"
-                            type="monotone"
-                            stroke="#257a3e"
-                            strokeWidth={2}
-                            dot={{ r: 3, fill: "#257a3e" }}
-                            activeDot={{ r: 5 }}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+            <div className="relative min-h-[260px] flex-1">
+                <ChartCanvas type="bar" data={chartData} options={chartOptions} />
             </div>
         </div>
     );
 }
 
 // ─────────────────────────────────────────────
-// Donut Chart — PieChart with gap & rounded corners
+// Donut Chart — doughnut with gap & rounded corners
 // ─────────────────────────────────────────────
 
 export function AllocationDonutChart({ data, title, costCenterLabels, t }: {
@@ -544,6 +604,44 @@ export function AllocationDonutChart({ data, title, costCenterLabels, t }: {
         value: item.amount,
         fill: PIE_COLORS[i % PIE_COLORS.length],
     }));
+
+    const doughnutData: ChartData<"doughnut", number[], string> = {
+        labels: chartData.map((item) => item.name),
+        datasets: [
+            {
+                data: chartData.map((item) => item.value),
+                backgroundColor: chartData.map((item) => item.fill),
+                borderRadius: 6,
+                borderWidth: 0,
+                spacing: 4,
+            },
+        ],
+    };
+
+    const doughnutOptions: ChartOptions<"doughnut"> = {
+        ...responsiveChartOptions,
+        cutout: "62%",
+        plugins: {
+            tooltip: {
+                ...chartTooltipOptions,
+                callbacks: {
+                    label: (ctx: TooltipItem<"doughnut">) =>
+                        `${ctx.label}: ${formatCurrency(Number(ctx.raw))}`,
+                },
+            },
+            legend: {
+                position: "bottom",
+                labels: {
+                    boxHeight: 8,
+                    boxWidth: 8,
+                    font: { size: 13 },
+                    padding: 14,
+                    pointStyle: "circle",
+                    usePointStyle: true,
+                },
+            },
+        },
+    };
 
     if (!data || data.length === 0) {
         return (
@@ -564,38 +662,8 @@ export function AllocationDonutChart({ data, title, costCenterLabels, t }: {
                     {formatCurrency(total)}
                 </span>
             </div>
-            <div className="min-h-[300px] flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={65}
-                            outerRadius={105}
-                            paddingAngle={4}
-                            cornerRadius={6}
-                            dataKey="value"
-                            nameKey="name"
-                            stroke="none"
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={TOOLTIP_STYLE}
-                            formatter={(value) => [formatCurrency(Number(value))]}
-                        />
-                        <Legend
-                            verticalAlign="bottom"
-                            height={36}
-                            iconType="circle"
-                            iconSize={8}
-                            wrapperStyle={{ fontSize: "13px" }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
+            <div className="relative min-h-[300px] flex-1">
+                <ChartCanvas type="doughnut" data={doughnutData} options={doughnutOptions} />
             </div>
         </div>
     );

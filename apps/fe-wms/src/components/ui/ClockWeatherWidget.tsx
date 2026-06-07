@@ -55,7 +55,7 @@ function weatherColor(code: number): string {
 }
 
 /* ── Day labels ── */
-const DAYS_VI = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"] as const;
+const DAYS_VI = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"] as const;
 const DAYS_ZH = ["\u65e5", "\u4e00", "\u4e8c", "\u4e09", "\u56db", "\u4e94", "\u516d"] as const;
 
 const MONTHS_VI = [
@@ -162,7 +162,7 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
                     <span className="text-xs font-semibold text-gray-500">
                         {dayLabel},
                     </span>
-                    <span className="text-xs font-semibold text-gray-500">
+                    <span className={`text-xs font-semibold text-gray-500 ease-in-out duration-300 ${hovered ? "block" : `hidden`}`}>
                         {fullDate}
                     </span>
                 </div>

@@ -736,3 +736,87 @@ async function cancelEntityOnCancel(
     throw error;
   }
 }
+
+// ─────────────────────────────────────────────
+// FORCE CANCEL (by privileged user)
+// ─────────────────────────────────────────────
+
+/**
+ * Force-cancel a voucher/entity at ANY status by a privileged user.
+ *
+ * Unlike cancelByCreator:
+ * - Does NOT require the caller to be the creator
+ * - Does NOT block when records are already APPROVED
+ * - Cancels ALL non-CANCELLED records (PENDING + APPROVED)
+ * - Requires a mandatory reason (audit trail)
+ *
+ * Permission: vouchers.force_cancel (checked in controller)
+ */
+export async function forceCancel(
+  entityType: ProcessEntityType,
+  entityId: string,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  if (!reason || reason.trim().length === 0) {
+    throw createError(
+      400,
+      "Lý do hủy là bắt buộc khi sử dụng quyền hủy đặc biệt.",
+      "使用强制撤销权限时，撤销原因为必填项。",
+    );
+  }
+
+  const allRecords = await approvalRepo.findByEntity(entityType, entityId);
+
+  // ── Batch cancel all non-cancelled records ──
+  const activeRecords = allRecords.filter((r) => r.status !== "CANCELLED");
+  if (activeRecords.length === 0) {
+    throw createError(
+      400,
+      "Không có bản ghi nào để hủy. Lệnh có thể đã bị hủy trước đó.",
+      "没有可撤销的记录。该单据可能已被撤销。",
+    );
+  }
+
+  const now = new Date();
+  const batch = db.batch();
+
+  for (const record of activeRecords) {
+    batch.update(db.collection("pending_approvals").doc(record.id), {
+      status: "CANCELLED",
+      approver_id: userId,
+      approved_at: now,
+      rejected_reason: `[FORCE_CANCEL] ${reason}`,
+      sync_time: now,
+    });
+  }
+
+  await batch.commit();
+
+  // ── Entity callback: revert voucher → CANCELLED ──
+  await cancelEntityOnCancel(entityType, entityId, userId, reason);
+
+  // ── Audit trail (ISO 9001) ──
+  const warehouseId = allRecords[0]?.warehouse_id || "";
+  await logAudit({
+    entity_type: entityType,
+    entity_id: entityId,
+    warehouse_id: warehouseId,
+    action: AuditAction.CANCEL,
+    user_id: userId,
+    old_value: {
+      status: activeRecords.map((r) => r.status),
+      record_count: activeRecords.length,
+    },
+    new_value: {
+      status: "CANCELLED",
+      reason,
+      force_cancel: true,
+      cancelled_records: activeRecords.map((r) => r.id),
+    },
+  });
+
+  console.log(
+    `[approvalService] User ${userId} FORCE CANCELLED ${activeRecords.length} record(s) for ${entityType}/${entityId}. Reason: ${reason}`,
+  );
+}

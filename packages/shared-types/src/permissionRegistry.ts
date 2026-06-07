@@ -319,6 +319,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "创建新入库/出库单，更新盘点会话。",
     },
   },
+  {
+    key: "vouchers.force_cancel",
+    group: "vouchers",
+    label: { vi: "Hủy lệnh bất kỳ lúc nào", zh: "随时撤销单据" },
+    description: {
+      vi: "Hủy lệnh/phiếu ở bất kỳ trạng thái nào, kể cả đã được phê duyệt. Chỉ nên cấp cho quản lý cấp cao.",
+      zh: "在任何状态下撤销单据，包括已审批的。仅应授予高级管理人员。",
+    },
+  },
 
   // ── Transfers ──
   {

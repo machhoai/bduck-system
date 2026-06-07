@@ -232,18 +232,11 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
                 })}
             </div>
 
-            {selectedVoucher && selectedVoucher.type === "IMPORT" && (
+            {selectedVoucher && (
                 <VoucherDetailDrawer
-                    voucherId={selectedVoucher.id}
-                    isOpen={!!selectedVoucher}
+                    voucher={selectedVoucher as any}
                     onClose={() => setSelectedVoucher(null)}
                 />
-            )}
-            {selectedVoucher && selectedVoucher.type !== "IMPORT" && (
-                // Temporarily just close, we need unified drawer handling
-                // Or we can use ExportVoucherDetailDrawer / TransferDetailDrawer depending on type
-                // But for now, we leave it since we have to merge them or branch.
-                <div />
             )}
         </div>
     );
