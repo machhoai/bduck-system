@@ -118,6 +118,58 @@ export const createLocationSchema = z.object({
     .default("ACTIVE"),
 });
 
+export const slotQuerySchema = z.object({
+  warehouse_id: z.string().uuid().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+});
+
+export const createLocationSlotSchema = z.object({
+  warehouse_id: z.string().uuid(),
+  warehouse_location_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  code: z.string().trim().min(1).max(80),
+  sort_order: z.number().int().min(0).default(0),
+  description: z.string().trim().max(500).nullable().optional(),
+  is_active: z.boolean().default(true),
+});
+
+export const updateLocationSlotSchema = createLocationSlotSchema.partial();
+
+export const slotProductQuerySchema = z.object({
+  warehouse_id: z.string().uuid().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+});
+
+export const upsertLocationSlotProductSchema = z.object({
+  warehouse_id: z.string().uuid(),
+  warehouse_location_id: z.string().uuid(),
+  warehouse_location_slot_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  display_order: z.number().int().min(0).nullable().optional(),
+  is_active: z.boolean().default(true),
+});
+
+export const stockPolicyQuerySchema = z.object({
+  warehouse_id: z.string().uuid().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+  warehouse_location_slot_id: z.string().uuid().optional(),
+  product_id: z.string().uuid().optional(),
+  scope: z.enum(["WAREHOUSE", "LOCATION", "SLOT"]).optional(),
+});
+
+export const upsertStockPolicySchema = z.object({
+  scope: z.enum(["WAREHOUSE", "LOCATION", "SLOT"]),
+  warehouse_id: z.string().uuid(),
+  warehouse_location_id: z.string().uuid().nullable().optional(),
+  warehouse_location_slot_id: z.string().uuid().nullable().optional(),
+  product_id: z.string().uuid(),
+  min_stock_quantity: z.number().int().min(0),
+  max_stock_quantity: z.number().int().min(0).nullable().optional(),
+  reorder_point_quantity: z.number().int().min(0).nullable().optional(),
+  reorder_quantity: z.number().int().min(0).nullable().optional(),
+  is_active: z.boolean().default(true),
+});
+
 // Roles
 export const roleBoardPositionSchema = z
   .object({

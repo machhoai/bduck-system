@@ -18,7 +18,11 @@ import {
   Package,
   Trash2,
 } from "lucide-react";
-import type { Product, ProductCategory } from "@bduck/shared-types";
+import type {
+  InventoryStockPolicy,
+  Product,
+  ProductCategory,
+} from "@bduck/shared-types";
 import { ProductType } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useProductPermissions } from "@/hooks/useProductPermissions";
@@ -54,6 +58,7 @@ interface InventoryVariantProps {
   category?: ProductCategory;
   stockInfo: ProductStockInfo;
   stockLocations?: ProductStockLocationInfo[];
+  stockPolicy?: InventoryStockPolicy | null;
   onEdit?: never;
   onDelete?: never;
 }
@@ -124,6 +129,7 @@ export function ProductCard(props: ProductCardProps) {
   // Inventory variant
   if (props.variant === "inventory") {
     const s = props.stockInfo;
+    const policy = props.stockPolicy ?? null;
     const stockLocations = props.stockLocations ?? [];
     const visibleLocations = stockLocations.slice(0, 3);
     const isLowAtp = s.atp <= 0;
@@ -203,6 +209,20 @@ export function ProductCard(props: ProductCardProps) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+          {policy && (
+            <div
+              className={`rounded-lg border px-2 py-1.5 text-xxs ${
+                s.atp < policy.min_stock_quantity
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-[var(--color-border-soft)] bg-[var(--color-surface-pearl)] text-[var(--color-text-secondary)]"
+              }`}
+            >
+              Min kho:{" "}
+              <span className="font-bold">
+                {policy.min_stock_quantity.toLocaleString()}
+              </span>
             </div>
           )}
           <div className="mt-auto grid grid-cols-2 gap-1 rounded-lg bg-[var(--color-surface-card)] p-2">

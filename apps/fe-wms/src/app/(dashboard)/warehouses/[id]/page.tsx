@@ -32,6 +32,7 @@ import {
 } from "@/utils/inventoryAggregation";
 
 type PageTab = "overview" | "products" | "locations";
+type InventoryTab = "products" | "locations";
 
 export default function WarehouseDetailPage() {
     const { t } = useTranslation();

@@ -8,13 +8,18 @@
  */
 
 import type { InventoryRow } from "@/hooks/useInventoryFilter";
+import type { InventoryStockPolicy } from "@bduck/shared-types";
 import { ProductCard } from "@/components/products/ProductCard";
 
 interface InventoryProductCardProps {
   row: InventoryRow;
+  warehousePolicy?: InventoryStockPolicy | null;
 }
 
-export function InventoryProductCard({ row }: InventoryProductCardProps) {
+export function InventoryProductCard({
+  row,
+  warehousePolicy,
+}: InventoryProductCardProps) {
   return (
     <ProductCard
       product={row.product}
@@ -27,6 +32,7 @@ export function InventoryProductCard({ row }: InventoryProductCardProps) {
         total: row.total,
       }}
       stockLocations={row.locations}
+      stockPolicy={warehousePolicy}
     />
   );
 }

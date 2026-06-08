@@ -7,6 +7,7 @@ import authRoutes from "./api/routes/authRoutes.js";
 import categoryRoutes from "./api/routes/categoryRoutes.js";
 import inventoryRoutes from "./api/routes/inventoryRoutes.js";
 import locationRoutes from "./api/routes/locationRoutes.js";
+import locationSlotRoutes from "./api/routes/locationSlotRoutes.js";
 import organizationRoutes from "./api/routes/organizationRoutes.js";
 import productRoutes from "./api/routes/productRoutes.js";
 import roleRoutes from "./api/routes/roleRoutes.js";
@@ -20,6 +21,7 @@ import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 import expenseRoutes from "./api/routes/expenseRoutes.js";
 import revenueSyncRoutes from "./api/routes/revenueSyncRoutes.js";
 import notificationRoutes from "./api/routes/notificationRoutes.js";
+import stockPolicyRoutes from "./api/routes/stockPolicyRoutes.js";
 import externalRoutes from "./api/routes/externalRoutes.js";
 import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
 const app = express();
@@ -54,6 +56,7 @@ app.use("/api/roles", roleRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/locations", locationRoutes);
+app.use("/api/location-slots", locationSlotRoutes);
 app.use("/api/import-vouchers", importVoucherRoutes);
 app.use("/api/export-vouchers", exportVoucherRoutes);
 app.use("/api/approvals", approvalRoutes);
@@ -62,6 +65,7 @@ app.use("/api/transfer-orders", transferOrderRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/revenue", revenueSyncRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/stock-policies", stockPolicyRoutes);
 app.use("/api/external/v1", externalRoutes);
 app.use("/api/external-queue", externalQueueRoutes);
 // ---------------------------------------------------------------------------
@@ -82,17 +86,23 @@ app.get("/", (_req, res) => {
 function getBuildVersion(): string {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(2);
-  const m  = String(now.getMonth() + 1);
-  const d  = String(now.getDate());
+  const m = String(now.getMonth() + 1);
+  const d = String(now.getDate());
   const buildId = process.env.BUILD_NUMBER ?? "dev";
   return `${yy}${m}${d}.${buildId}`;
 }
 
 app.listen(PORT, () => {
   const version = getBuildVersion();
-  console.info("\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510");
+  console.info(
+    "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+  );
   console.info(`\u2502  be-wms  v${version.padEnd(27)}\u2502`);
   console.info(`\u2502  Port    ${String(PORT).padEnd(28)}\u2502`);
-  console.info(`\u2502  Env     ${(process.env.NODE_ENV ?? "development").padEnd(28)}\u2502`);
-  console.info("\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518");
+  console.info(
+    `\u2502  Env     ${(process.env.NODE_ENV ?? "development").padEnd(28)}\u2502`,
+  );
+  console.info(
+    "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+  );
 });

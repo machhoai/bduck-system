@@ -12,7 +12,9 @@ import type {
   Product,
   WarehouseLocation,
 } from "@bduck/shared-types";
+import { StockPolicyScope } from "@bduck/shared-types";
 import { useInventoryFilter } from "@/hooks/useInventoryFilter";
+import { useStockPolicies } from "@/hooks/useStockPolicies";
 import { InventoryToolbar } from "./inventory/InventoryToolbar";
 import { InventoryTableView } from "./inventory/InventoryTableView";
 import { InventoryListView } from "./inventory/InventoryListView";
@@ -82,6 +84,14 @@ export function WarehouseInventoryView({
     resetFilters,
     hasActiveFilters,
   } = useInventoryFilter(inventory, products, warehouseId, locations);
+  const { policies } = useStockPolicies({
+    warehouseId,
+    scope: StockPolicyScope.WAREHOUSE,
+  });
+  const policyByProductId = useMemo(
+    () => new Map(policies.map((policy) => [policy.product_id, policy])),
+    [policies],
+  );
 
   const exportConfig = useMemo(() => {
     if (!filteredRows.length) return null;
@@ -189,7 +199,12 @@ export function WarehouseInventoryView({
         <InventoryTableView rows={filteredRows} />
       )}
       {filters.viewMode === "list" && <InventoryListView rows={filteredRows} />}
-      {filters.viewMode === "card" && <InventoryCardGrid rows={filteredRows} />}
+      {filters.viewMode === "card" && (
+        <InventoryCardGrid
+          rows={filteredRows}
+          policyByProductId={policyByProductId}
+        />
+      )}
     </div>
   );
 }

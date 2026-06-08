@@ -17,7 +17,10 @@ export type DataInvalidationKey =
   | "user_warehouse_roles"
   | "users"
   | "warehouse_locations"
+  | "warehouse_location_slots"
+  | "warehouse_location_slot_products"
   | "warehouses"
+  | "inventory_stock_policies"
   | "workflow_definitions"
   | "workflow_tasks";
 

@@ -5,12 +5,14 @@
  */
 
 import type { InventoryRow } from "@/hooks/useInventoryFilter";
+import type { InventoryStockPolicy } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { InventoryProductCard } from "./InventoryProductCard";
 import { Package } from "lucide-react";
 
 interface InventoryCardGridProps {
   rows: InventoryRow[];
+  policyByProductId?: Map<string, InventoryStockPolicy>;
 }
 
 function CardSkeleton() {
@@ -27,7 +29,10 @@ function CardSkeleton() {
   );
 }
 
-export function InventoryCardGrid({ rows }: InventoryCardGridProps) {
+export function InventoryCardGrid({
+  rows,
+  policyByProductId,
+}: InventoryCardGridProps) {
   const { t } = useTranslation();
   const d = t.warehouses.inventoryView as Record<string, string>;
 
@@ -44,7 +49,11 @@ export function InventoryCardGrid({ rows }: InventoryCardGridProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {rows.map((row) => (
-        <InventoryProductCard key={row.productId} row={row} />
+        <InventoryProductCard
+          key={row.productId}
+          row={row}
+          warehousePolicy={policyByProductId?.get(row.productId) ?? null}
+        />
       ))}
     </div>
   );
