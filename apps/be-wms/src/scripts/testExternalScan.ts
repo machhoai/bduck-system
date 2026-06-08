@@ -1,6 +1,5 @@
 import * as admin from "firebase-admin";
 import crypto from "crypto";
-import axios from "axios";
 
 // 1. Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -71,25 +70,30 @@ async function sendTestRequest() {
     const signature = generateSignature(method, path, timestamp, body);
     
     try {
-        const response = await axios.post(`http://localhost:5000${path}`, body, {
+        const response = await fetch(`http://localhost:5000${path}`, {
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "x-api-key": TEST_API_KEY,
                 "x-timestamp": timestamp,
                 "x-signature": signature
-            }
+            },
+            body: JSON.stringify(body)
         });
         
-        console.log("✅ Request Successful!");
-        console.log("Response:", response.data);
+        const data: any = await response.json();
+        
+        if (response.ok) {
+            console.log("✅ Request Successful!");
+            console.log("Response:", data);
+        } else {
+            console.log("❌ Request Failed!");
+            console.log("Status:", response.status);
+            console.log("Data:", data);
+        }
     } catch (error: any) {
         console.error("❌ Request Failed!");
-        if (error.response) {
-            console.error("Status:", error.response.status);
-            console.error("Data:", error.response.data);
-        } else {
-            console.error(error.message);
-        }
+        console.error(error.message);
     }
 }
 

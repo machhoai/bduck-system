@@ -3,11 +3,6 @@ import crypto from "crypto";
 import { db } from "../../config/firebase.js";
 import { IntegrationClient } from "@bduck/shared-types";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    integrationClient?: IntegrationClient;
-  }
-}
 
 /**
  * Middleware xác thực API Key cho hệ thống bên ngoài (Scanner/POS).
@@ -125,7 +120,7 @@ export const requireApiKey = (requiredScopes: string[]) => {
       }
 
       // Inject client into request
-      req.integrationClient = client;
+      (req as any).integrationClient = client;
 
       // Update last_used_at (không cần đợi)
       snapshot.docs[0].ref.update({
