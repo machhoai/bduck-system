@@ -3,6 +3,33 @@ import * as externalScanService from "../../services/externalScanService.js";
 import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
 import { z } from "zod";
+import { warehouseRepository } from "../../repositories/warehouseRepository.js";
+
+const getWarehouses = async (req: Request, res: Response) => {
+  try {
+    const client = (req as any).integrationClient!;
+    const warehouses = await warehouseRepository.findWarehouses({
+      accessibleWarehouseIds: client.allowed_warehouse_ids,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: warehouses.map((w) => ({
+        id: w.id,
+        name: w.name,
+        code: w.code,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: "Lỗi server", zh: "服务器错误" },
+    });
+  }
+};
+
 
 const getLocations = async (req: Request, res: Response) => {
   try {
@@ -184,10 +211,41 @@ const submitBatch = async (req: Request, res: Response) => {
   }
 };
 
+const getMyScans = async (req: Request, res: Response) => {
+  try {
+    const client = (req as any).integrationClient!;
+    const operatorIdExternal = req.query.operator_id_external as string;
+
+    if (!operatorIdExternal) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        messages: { vi: "Thiếu operator_id_external", zh: "缺少 operator_id_external" },
+      });
+    }
+
+    const scans = await externalScanService.getMyScans(client, operatorIdExternal);
+
+    return res.status(200).json({
+      success: true,
+      data: scans,
+    });
+  } catch (error: any) {
+    console.error("[getMyScans]", error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: "Không thể lấy danh sách quét.", zh: "无法获取扫描列表。" },
+    });
+  }
+};
+
 export default {
   getLocations,
   getProducts,
   scan,
   cancelScan,
+  getMyScans,
   submitBatch,
+  getWarehouses,
 };

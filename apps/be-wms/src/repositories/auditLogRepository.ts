@@ -19,7 +19,14 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   workflow_instances: "workflow_instances",
   workflow_tasks: "workflow_tasks",
   IMPORT_VOUCHER: "import_vouchers",
+  EXPORT_VOUCHER: "export_vouchers",
+  TRANSFER_ORDER: "transfer_orders",
+  TRANSFER_INTRA: "transfer_orders",
+  EXTERNAL_SCAN: "external_scan_queue",
   NONCONFORMITY_REPORT: "nonconformity_reports",
+  expenses: "expenses",
+  notification_dispatches: "notification_dispatches",
+  account_invitations: "account_invitations",
 };
 
 /** Fields to try (in order) when resolving an entity's display name */
@@ -29,9 +36,12 @@ const ENTITY_NAME_FIELDS = [
   "voucher_number",
   "title",
   "sku",
+  "batch_id",
+  "period",
   "full_name",
   "username",
   "email",
+  "employee_id",
 ];
 
 export interface AuditLogSearchParams {
@@ -51,7 +61,10 @@ export interface AuditLogSearchParams {
 
 class AuditLogRepository {
   async findAuditLogs(params: AuditLogSearchParams): Promise<AuditLog[]> {
-    if (params.allowed_warehouse_ids && params.allowed_warehouse_ids.length === 0) {
+    if (
+      params.allowed_warehouse_ids &&
+      params.allowed_warehouse_ids.length === 0
+    ) {
       return [];
     }
 
@@ -125,8 +138,10 @@ class AuditLogRepository {
     allLogs.sort((a, b) => {
       const aVal = (a as any)[params.sort_by];
       const bVal = (b as any)[params.sort_by];
-      const aTime = aVal instanceof Date ? aVal.getTime() : new Date(aVal).getTime();
-      const bTime = bVal instanceof Date ? bVal.getTime() : new Date(bVal).getTime();
+      const aTime =
+        aVal instanceof Date ? aVal.getTime() : new Date(aVal).getTime();
+      const bTime =
+        bVal instanceof Date ? bVal.getTime() : new Date(bVal).getTime();
       return params.sort_dir === "desc" ? bTime - aTime : aTime - bTime;
     });
 
@@ -177,7 +192,10 @@ class AuditLogRepository {
     return logs.map((log) => ({
       ...log,
       user_name: userNameMap.get(log.user_id) || log.user_name || null,
-      entity_name: entityNameMap.get(`${log.entity_type}::${log.entity_id}`) || null,
+      entity_name:
+        log.entity_name ||
+        entityNameMap.get(`${log.entity_type}::${log.entity_id}`) ||
+        null,
     }));
   }
 
@@ -220,7 +238,10 @@ class AuditLogRepository {
       const collectionName = ENTITY_COLLECTION_MAP[log.entity_type];
       if (!collectionName) continue;
 
-      refsByKey.set(compositeKey, db.collection(collectionName).doc(log.entity_id));
+      refsByKey.set(
+        compositeKey,
+        db.collection(collectionName).doc(log.entity_id),
+      );
     }
 
     if (refsByKey.size === 0) return new Map();
@@ -247,6 +268,14 @@ class AuditLogRepository {
       const value = data[field];
       if (typeof value === "string" && value.trim()) return value.trim();
       if (typeof value === "number") return String(value);
+    }
+    if (
+      typeof data.warehouse_id === "string" &&
+      data.warehouse_id.trim() &&
+      typeof data.period === "string" &&
+      data.period.trim()
+    ) {
+      return `${data.warehouse_id.trim()} ${data.period.trim()}`;
     }
     return null;
   }

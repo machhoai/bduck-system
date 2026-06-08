@@ -39,7 +39,6 @@ interface ExpenseExcelImportPanelProps {
       note?: string | null;
     },
   ) => Promise<void>;
-  onImported: () => Promise<void>;
 }
 
 export default function ExpenseExcelImportPanel({
@@ -47,7 +46,6 @@ export default function ExpenseExcelImportPanel({
   isClosed,
   onSaveItem,
   onSaveCustomItem,
-  onImported,
 }: ExpenseExcelImportPanelProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +122,6 @@ export default function ExpenseExcelImportPanel({
           });
         }
 
-        await onImported();
         return importableRows.length;
       } finally {
         setIsImporting(false);

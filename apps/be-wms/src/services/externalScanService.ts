@@ -235,6 +235,20 @@ export const submitBatch = async (
 };
 
 // -------------------------------------------------------------------------
+// EXTERNAL VIEW
+// -------------------------------------------------------------------------
+
+export const getMyScans = async (
+  client: IntegrationClient,
+  operatorIdExternal: string
+) => {
+  return await externalScanRepo.findQueuedByExternalOperator(
+    client.id,
+    operatorIdExternal
+  );
+};
+
+// -------------------------------------------------------------------------
 // MANAGER ACTIONS (WMS Internal)
 // -------------------------------------------------------------------------
 

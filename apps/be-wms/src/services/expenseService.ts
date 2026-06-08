@@ -14,12 +14,16 @@
  */
 
 import {
+  AuditAction,
   ExpenseCategory,
+  ExpenseCostCenter,
   ExpenseStatus,
+  type ExpenseCustomItem,
   type ExpenseDocument,
   type ExpenseItem,
 } from "@bduck/shared-types";
 import * as expenseRepo from "../repositories/expenseRepository.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import { calculateAutoExpenses } from "./expenseCalculationService.js";
 
 // ─────────────────────────────────────────────
@@ -63,6 +67,56 @@ function createDefaultDocument(
     created_at: now,
     updated_at: now,
   };
+}
+
+function closedPeriodError() {
+  return {
+    statusCode: 400,
+    messages: {
+      vi: "Kỳ kế toán đã chốt. Không thể cập nhật chi phí.",
+      zh: "会计期间已结账，无法更新费用。",
+    },
+  };
+}
+
+async function getWritableExpenseDocument(
+  warehouseId: string,
+  period: string,
+  userId: string,
+): Promise<ExpenseDocument> {
+  const docId = buildDocId(warehouseId, period);
+  const doc =
+    (await expenseRepo.getById(docId)) ??
+    createDefaultDocument(warehouseId, period, userId);
+
+  if (doc.status === ExpenseStatus.CLOSED) {
+    throw closedPeriodError();
+  }
+
+  return doc;
+}
+
+async function writeExpenseAudit(params: {
+  action: AuditAction;
+  warehouseId: string;
+  period: string;
+  userId: string;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  notes: string;
+  auditMetadata?: AuditMetadata;
+}) {
+  await logAudit({
+    entity_type: "expenses",
+    entity_id: buildDocId(params.warehouseId, params.period),
+    warehouse_id: params.warehouseId,
+    action: params.action,
+    user_id: params.userId,
+    old_value: params.oldValue,
+    new_value: params.newValue,
+    notes: params.notes,
+    ...params.auditMetadata,
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -161,25 +215,10 @@ export async function updateExpenseItem(
   category: ExpenseCategory,
   itemData: Partial<ExpenseItem>,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<ExpenseDocument> {
   const docId = buildDocId(warehouseId, period);
-  let doc = await expenseRepo.getById(docId);
-
-  // Lazy init if doesn't exist
-  if (!doc) {
-    doc = createDefaultDocument(warehouseId, period, userId);
-  }
-
-  // Rule 2: Immutable CLOSED state
-  if (doc.status === ExpenseStatus.CLOSED) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Kỳ kế toán đã chốt. Không thể cập nhật chi phí.",
-        zh: "会计期间已结账，无法更新费用。",
-      },
-    };
-  }
+  const doc = await getWritableExpenseDocument(warehouseId, period, userId);
 
   // Merge item data
   const existing = doc.items[category] || createDefaultItems()[category];
@@ -193,6 +232,124 @@ export async function updateExpenseItem(
   doc.updated_at = new Date();
 
   await expenseRepo.upsert(docId, doc);
+  await writeExpenseAudit({
+    action: AuditAction.UPDATE,
+    warehouseId,
+    period,
+    userId,
+    oldValue: { category, item: existing },
+    newValue: { category, item: doc.items[category] },
+    notes: `Update standard expense item ${category}`,
+    auditMetadata,
+  });
+  return doc;
+}
+
+export async function getExpenseCustomItem(
+  warehouseId: string,
+  period: string,
+  itemId: string,
+): Promise<ExpenseCustomItem | null> {
+  const doc = await expenseRepo.getById(buildDocId(warehouseId, period));
+  const item = doc?.custom_items?.[itemId];
+  if (!item || item.is_deleted) return null;
+  return item;
+}
+
+export async function saveCustomExpenseItem(
+  warehouseId: string,
+  period: string,
+  itemId: string,
+  itemData: {
+    label: string;
+    cost_center: ExpenseCostCenter;
+    actual_amount: number;
+    budget_amount: number | null;
+    note?: string | null;
+  },
+  userId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<ExpenseDocument> {
+  const docId = buildDocId(warehouseId, period);
+  const doc = await getWritableExpenseDocument(warehouseId, period, userId);
+  const existing = doc.custom_items?.[itemId] ?? null;
+  const customItem: ExpenseCustomItem = {
+    id: itemId,
+    label: itemData.label,
+    cost_center: itemData.cost_center,
+    actual_amount: itemData.actual_amount,
+    budget_amount: itemData.budget_amount,
+    suggested_amount: existing?.suggested_amount ?? null,
+    attachments: existing?.attachments ?? [],
+    note: itemData.note ?? existing?.note ?? null,
+    is_deleted: false,
+  };
+
+  doc.custom_items = {
+    ...(doc.custom_items ?? {}),
+    [itemId]: customItem,
+  };
+  doc.updated_by = userId;
+  doc.updated_at = new Date();
+
+  await expenseRepo.upsert(docId, doc);
+  await writeExpenseAudit({
+    action: existing ? AuditAction.UPDATE : AuditAction.CREATE,
+    warehouseId,
+    period,
+    userId,
+    oldValue: existing ? { custom_item_id: itemId, item: existing } : null,
+    newValue: { custom_item_id: itemId, item: customItem },
+    notes: existing
+      ? `Update custom expense item ${itemId}`
+      : `Create custom expense item ${itemId}`,
+    auditMetadata,
+  });
+
+  return doc;
+}
+
+export async function deleteCustomExpenseItem(
+  warehouseId: string,
+  period: string,
+  itemId: string,
+  userId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<ExpenseDocument> {
+  const docId = buildDocId(warehouseId, period);
+  const doc = await getWritableExpenseDocument(warehouseId, period, userId);
+  const existing = doc.custom_items?.[itemId];
+
+  if (!existing || existing.is_deleted) {
+    throw {
+      statusCode: 404,
+      messages: {
+        vi: "Không tìm thấy mục chi phí tùy chỉnh.",
+        zh: "未找到自定义费用项。",
+      },
+    };
+  }
+
+  const deletedItem = { ...existing, is_deleted: true };
+  doc.custom_items = {
+    ...(doc.custom_items ?? {}),
+    [itemId]: deletedItem,
+  };
+  doc.updated_by = userId;
+  doc.updated_at = new Date();
+
+  await expenseRepo.upsert(docId, doc);
+  await writeExpenseAudit({
+    action: AuditAction.SOFT_DELETE,
+    warehouseId,
+    period,
+    userId,
+    oldValue: { custom_item_id: itemId, item: existing },
+    newValue: { custom_item_id: itemId, item: deletedItem },
+    notes: `Soft delete custom expense item ${itemId}`,
+    auditMetadata,
+  });
+
   return doc;
 }
 
@@ -200,6 +357,7 @@ export async function closePeriod(
   warehouseId: string,
   period: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<ExpenseDocument> {
   const docId = buildDocId(warehouseId, period);
   let doc = await expenseRepo.getById(docId);
@@ -223,6 +381,16 @@ export async function closePeriod(
   doc.updated_at = new Date();
 
   await expenseRepo.upsert(docId, doc);
+  await writeExpenseAudit({
+    action: AuditAction.UPDATE,
+    warehouseId,
+    period,
+    userId,
+    oldValue: { status: ExpenseStatus.OPEN },
+    newValue: { status: ExpenseStatus.CLOSED },
+    notes: "Close expense accounting period",
+    auditMetadata,
+  });
   return doc;
 }
 
@@ -230,6 +398,7 @@ export async function reopenPeriod(
   warehouseId: string,
   period: string,
   userId: string,
+  auditMetadata?: AuditMetadata,
 ): Promise<ExpenseDocument> {
   const docId = buildDocId(warehouseId, period);
   const doc = await expenseRepo.getById(docId);
@@ -259,5 +428,15 @@ export async function reopenPeriod(
   doc.updated_at = new Date();
 
   await expenseRepo.upsert(docId, doc);
+  await writeExpenseAudit({
+    action: AuditAction.UPDATE,
+    warehouseId,
+    period,
+    userId,
+    oldValue: { status: ExpenseStatus.CLOSED },
+    newValue: { status: ExpenseStatus.OPEN },
+    notes: "Reopen expense accounting period",
+    auditMetadata,
+  });
   return doc;
 }

@@ -2,8 +2,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}/api/external-queue${path}`;
+  
   const response = await fetch(url, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,

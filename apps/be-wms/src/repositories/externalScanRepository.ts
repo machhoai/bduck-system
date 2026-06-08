@@ -42,6 +42,23 @@ export async function findQueuedByLocationAndDate(
   return snap.docs.map((d) => d.data() as ExternalScanQueue);
 }
 
+export async function findQueuedByExternalOperator(
+  clientId: string,
+  operatorIdExternal: string
+): Promise<ExternalScanQueue[]> {
+  const snap = await db
+    .collection(COLLECTION)
+    .where("client_id", "==", clientId)
+    .where("operator_id_external", "==", operatorIdExternal)
+    .where("status", "==", "QUEUED")
+    .where("is_deleted", "==", false)
+    .orderBy("scan_time", "desc")
+    .limit(100)
+    .get();
+
+  return snap.docs.map((d) => d.data() as ExternalScanQueue);
+}
+
 export async function create(
   data: ExternalScanQueue,
   txn?: FirebaseFirestore.Transaction

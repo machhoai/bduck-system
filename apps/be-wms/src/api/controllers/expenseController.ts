@@ -24,10 +24,14 @@ import {
 import {
   getExpenseData,
   updateExpenseItem,
+  getExpenseCustomItem,
+  saveCustomExpenseItem,
+  deleteCustomExpenseItem,
   closePeriod,
   reopenPeriod,
 } from "../../services/expenseService.js";
 import { getDashboardMetrics } from "../../services/expenseDashboardService.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 
 // ─────────────────────────────────────────────
@@ -43,8 +47,20 @@ const categoryParamSchema = periodParamSchema.extend({
   category: z.nativeEnum(ExpenseCategory),
 });
 
+const customItemParamSchema = periodParamSchema.extend({
+  itemId: z.string().min(1),
+});
+
 const updateItemBodySchema = ExpenseItemSchema.partial().omit({
   suggested_amount: true,
+});
+
+const saveCustomItemBodySchema = z.object({
+  label: z.string().trim().min(1).max(100),
+  cost_center: z.nativeEnum(ExpenseCostCenter),
+  actual_amount: z.number().min(0),
+  budget_amount: z.number().min(0).nullable(),
+  note: z.string().nullable().optional(),
 });
 
 // ─────────────────────────────────────────────
@@ -77,6 +93,10 @@ const COST_CENTER_PERMISSION: Record<ExpenseCostCenter, string> = {
 
 function getRequiredPermission(category: ExpenseCategory): string {
   const costCenter = CATEGORY_TO_COST_CENTER[category];
+  return COST_CENTER_PERMISSION[costCenter];
+}
+
+function getCostCenterPermission(costCenter: ExpenseCostCenter): string {
   return COST_CENTER_PERMISSION[costCenter];
 }
 
@@ -202,11 +222,96 @@ export const updateItemHandler = async (req: Request, res: Response) => {
       category,
       itemData,
       getRequestUserId(req),
+      getAuditRequestMetadata(req),
     );
 
     return sendSuccess(res, data, {
       vi: "Cập nhật chi phí thành công.",
       zh: "成功更新费用。",
+    });
+  } catch (error) {
+    return handleExpenseError(res, error);
+  }
+};
+
+export const saveCustomItemHandler = async (req: Request, res: Response) => {
+  try {
+    const { warehouseId, period, itemId } = customItemParamSchema.parse(
+      req.params,
+    );
+    const itemData = saveCustomItemBodySchema.parse(req.body);
+
+    const requiredPerm = getCostCenterPermission(itemData.cost_center);
+    if (!hasPermission(req, requiredPerm, warehouseId)) {
+      return sendError(
+        res,
+        {
+          vi: "Bạn không có quyền nhập liệu nhóm chi phí này.",
+          zh: "您没有录入此费用组的权限。",
+        },
+        403,
+      );
+    }
+
+    const data = await saveCustomExpenseItem(
+      warehouseId,
+      period,
+      itemId,
+      itemData,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
+
+    return sendSuccess(res, data, {
+      vi: "Lưu mục chi phí tùy chỉnh thành công.",
+      zh: "成功保存自定义费用项。",
+    });
+  } catch (error) {
+    return handleExpenseError(res, error);
+  }
+};
+
+export const deleteCustomItemHandler = async (req: Request, res: Response) => {
+  try {
+    const { warehouseId, period, itemId } = customItemParamSchema.parse(
+      req.params,
+    );
+    const existing = await getExpenseCustomItem(warehouseId, period, itemId);
+
+    if (!existing) {
+      return sendError(
+        res,
+        {
+          vi: "Không tìm thấy mục chi phí tùy chỉnh.",
+          zh: "未找到自定义费用项。",
+        },
+        404,
+      );
+    }
+
+    const requiredPerm = getCostCenterPermission(existing.cost_center);
+    if (!hasPermission(req, requiredPerm, warehouseId)) {
+      return sendError(
+        res,
+        {
+          vi: "Bạn không có quyền xóa mục trong nhóm chi phí này.",
+          zh: "您没有删除此费用组项目的权限。",
+        },
+        403,
+      );
+    }
+
+    const data = await deleteCustomExpenseItem(
+      warehouseId,
+      period,
+      itemId,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
+
+    return sendSuccess(res, data, {
+      vi: "Xóa mềm mục chi phí tùy chỉnh thành công.",
+      zh: "成功软删除自定义费用项。",
     });
   } catch (error) {
     return handleExpenseError(res, error);
@@ -229,7 +334,12 @@ export const closePeriodHandler = async (req: Request, res: Response) => {
       );
     }
 
-    const data = await closePeriod(warehouseId, period, getRequestUserId(req));
+    const data = await closePeriod(
+      warehouseId,
+      period,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
     return sendSuccess(res, data, {
       vi: "Chốt kỳ kế toán thành công.",
       zh: "成功结账。",
@@ -294,7 +404,12 @@ export const reopenPeriodHandler = async (req: Request, res: Response) => {
       );
     }
 
-    const data = await reopenPeriod(warehouseId, period, getRequestUserId(req));
+    const data = await reopenPeriod(
+      warehouseId,
+      period,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
     return sendSuccess(res, data, {
       vi: "Đã mở lại kỳ kế toán thành công.",
       zh: "成功重新开放会计期间。",

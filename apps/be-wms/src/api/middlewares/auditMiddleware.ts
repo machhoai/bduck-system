@@ -22,7 +22,8 @@ export const auditMiddleware = (action: AuditAction, entityType: string) => {
         body?.success !== false
       ) {
         // We log async without awaiting to not block the response
-        const userId = (req as any).user?.id || "system";
+        const user = (req as any).user;
+        const userId = user?.id || "system";
 
         // Entity ID could be in params or body depending on the request type
         // Usually, the newly created ID is in body.data.id, or updated ID in req.params.id
@@ -38,6 +39,7 @@ export const auditMiddleware = (action: AuditAction, entityType: string) => {
           entity_id: entityId,
           action: action,
           user_id: userId,
+          user_name: user?.full_name || user?.username || user?.email || null,
           old_value: auditContext.old_value || null,
           new_value: auditContext.new_value || req.body || null,
           ...getAuditRequestMetadata(req),

@@ -4,6 +4,9 @@ import { requireApiKey } from "../middlewares/apiKeyMiddleware.js";
 
 const router: Router = Router();
 
+// /api/external/v1/warehouses
+router.get("/warehouses", requireApiKey(["locations.read"]), externalScanController.getWarehouses);
+
 // /api/external/v1/locations
 router.get("/locations", requireApiKey(["locations.read"]), externalScanController.getLocations);
 
@@ -12,6 +15,7 @@ router.get("/products", requireApiKey(["products.read"]), externalScanController
 
 // /api/external/v1/scan
 router.post("/scan", requireApiKey(["scan"]), externalScanController.scan);
+router.get("/scan", requireApiKey(["scan"]), externalScanController.getMyScans);
 
 // /api/external/v1/scan/:scanId
 router.delete("/scan/:scanId", requireApiKey(["scan"]), externalScanController.cancelScan);

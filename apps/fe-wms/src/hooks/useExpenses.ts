@@ -88,16 +88,19 @@ export function useExpenses(
       // Optimistic update
       const currentItem = prev.items[category as keyof typeof prev.items] as ExpenseItem | undefined;
       const updatedItem = { ...(currentItem ?? { actual_amount: 0, budget_amount: null, suggested_amount: null, attachments: [], note: null }), ...itemData } as ExpenseItem;
-      setData({
+      const nextData = {
         ...prev,
         items: { ...prev.items, [category]: updatedItem },
-      });
+      };
+      dataRef.current = nextData;
+      setData(nextData);
 
       // Fire API (no await refresh)
       try {
         await updateExpenseItemApi(warehouseId, period, category, itemData);
       } catch (err) {
         console.error("[useExpenses] save error, rolling back:", err);
+        dataRef.current = prev;
         setData(prev); // rollback
         throw err; // re-throw for toast
       }
@@ -136,15 +139,18 @@ export function useExpenses(
         is_deleted: false,
       };
 
-      setData({
+      const nextData = {
         ...prev,
         custom_items: { ...prev.custom_items, [itemId]: optimisticItem },
-      });
+      };
+      dataRef.current = nextData;
+      setData(nextData);
 
       try {
         await saveCustomExpenseItem(warehouseId, period, itemId, itemData);
       } catch (err) {
         console.error("[useExpenses] save custom item error, rolling back:", err);
+        dataRef.current = prev;
         setData(prev);
         throw err;
       }
@@ -163,12 +169,15 @@ export function useExpenses(
       // Optimistic: mark deleted
       const updatedCustomItems = { ...prev.custom_items };
       updatedCustomItems[itemId] = { ...updatedCustomItems[itemId], is_deleted: true };
-      setData({ ...prev, custom_items: updatedCustomItems });
+      const nextData = { ...prev, custom_items: updatedCustomItems };
+      dataRef.current = nextData;
+      setData(nextData);
 
       try {
         await deleteCustomExpenseItem(warehouseId, period, itemId);
       } catch (err) {
         console.error("[useExpenses] delete custom item error, rolling back:", err);
+        dataRef.current = prev;
         setData(prev);
         throw err;
       }

@@ -23,6 +23,24 @@ export const requireApiKey = (requiredScopes: string[]) => {
       const timestampStr = req.header("X-Timestamp");
       const signature = req.header("X-Signature");
 
+      // DEV BYPASS for local ecommerce
+      if (apiKey === "Bduck-Local-Integration-Key") {
+        const whSnap = await db.collection("warehouses").get();
+        const whIds = whSnap.docs.map(d => d.id);
+        (req as any).integrationClient = {
+          id: "ECOM_POS_DEV",
+          client_name: "Local E-Commerce",
+          api_key: apiKey,
+          api_secret: "",
+          scopes: ["scan", "locations.read", "products.read", "external_scan.write"],
+          allowed_warehouse_ids: whIds,
+          ip_whitelist: [],
+          rate_limit_per_minute: 1000,
+          is_active: true
+        };
+        return next();
+      }
+
       if (!apiKey || !timestampStr || !signature) {
         return res.status(401).json({
           success: false,

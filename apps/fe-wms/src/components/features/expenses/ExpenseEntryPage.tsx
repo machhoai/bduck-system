@@ -138,7 +138,6 @@ export default function ExpenseEntryPage({
     updateItem,
     saveCustomItem,
     deleteCustomItem,
-    refresh,
     closePeriod,
     reopenPeriod,
   } = useExpenses(warehouseId, period);
@@ -288,7 +287,6 @@ export default function ExpenseEntryPage({
           isClosed={isClosed}
           onSaveItem={handleSaveItem}
           onSaveCustomItem={saveCustomItem}
-          onImported={refresh}
         />
       )}
 
