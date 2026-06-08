@@ -1,5 +1,5 @@
 /**
- * Vietnamese dictionary - WMS Layout
+ * Vietnamese dictionary - ERP WMS Layout
  */
 const vi = {
     nav: {
@@ -26,11 +26,12 @@ const vi = {
         expenses: "Báo cáo chi phí",
         expenseDashboard: "Báo cáo",
         expenseEntry: "Nhập liệu chi phí",
+        externalQueue: "Quét mã ngoài",
         more: "Thêm",
     },
 
     sidebar: {
-        systemName: "Joy World WMS",
+        systemName: "Joy World Cityfuns ERP",
         moduleName: "Quản lý kho",
         collapse: "Thu gọn",
         expand: "Mở rộng",
@@ -494,7 +495,13 @@ const vi = {
         emptyHint: "Tạo người dùng đầu tiên và gán role để bắt đầu phân quyền.",
         saving: "Đang lưu người dùng...",
         saveSuccess: "Đã lưu người dùng.",
+        createSuccessInvitationSent: "Đã tạo người dùng và gửi email khởi tạo.",
+        createSuccessInvitationFailed: "Đã tạo người dùng, nhưng chưa gửi được email khởi tạo.",
         saveError: "Lỗi khi lưu người dùng.",
+        resendInvitation: "Gửi lại email khởi tạo",
+        resendingInvitation: "Đang gửi email khởi tạo...",
+        resendInvitationSuccess: "Đã gửi lại email khởi tạo.",
+        resendInvitationError: "Không thể gửi email khởi tạo.",
         deleting: "Đang xóa mềm người dùng...",
         deleteSuccess: "Đã xóa mềm người dùng.",
         deleteError: "Lỗi khi xóa người dùng.",
@@ -607,7 +614,7 @@ const vi = {
 
     login: {
         title: "Dang nhap",
-        brand: "Joy World Cityfuns WMS",
+        brand: "Joy World Cityfuns ERP",
         subtitle: "He thong quan ly kho",
         version: "Phien ban",
         email: "Email",
@@ -1247,6 +1254,137 @@ const vi = {
             deleted: "Đã xóa mục chi phí",
             deleteFailed: "Xóa mục thất bại",
         },
+        excel: {
+            title: "Nhập bằng Excel",
+            subtitle: "Tải file mẫu, điền số liệu, rồi tải lên để cập nhật dòng cố định hoặc tạo dòng chi phí mới.",
+            closedHint: "Kỳ đã chốt nên không thể import dữ liệu.",
+            dropHint: "Kéo thả file .xlsx vào đây hoặc chọn file từ máy.",
+            actions: {
+                downloadTemplate: "Tải file mẫu",
+                chooseFile: "Chọn file",
+            },
+            summary: {
+                totalRows: "Dòng đọc được",
+                fixedRows: "Dòng cố định",
+                customCreateRows: "Tạo dòng mới",
+                errorRows: "Dòng lỗi",
+                readyRows: "dòng đã sẵn sàng import.",
+                row: "Dòng",
+            },
+            toast: {
+                invalidFileTitle: "Tệp không hợp lệ",
+                invalidFileDescription: "Chỉ hỗ trợ tệp Excel định dạng .xlsx.",
+                fileTooLargeTitle: "Tệp vượt quá 10MB",
+                fileTooLargeDescription: "Vui lòng chọn tệp Excel có dung lượng nhỏ hơn 10MB.",
+                parseFailedTitle: "Không thể đọc tệp Excel",
+                parseFailedDescription: "Vui lòng kiểm tra lại định dạng tệp.",
+                parseHasErrorsTitle: "Tệp Excel có dòng lỗi",
+                parseHasErrorsSuffix: "dòng cần kiểm tra lại trước khi import.",
+                noRowsTitle: "Chưa có dữ liệu import",
+                noRowsDescription: "Điền ngân sách, thực chi hoặc ghi chú vào ít nhất một dòng.",
+                importing: "Đang import chi phí từ Excel...",
+                imported: "Đã import chi phí từ Excel",
+                importedRowsSuffix: "dòng đã được cập nhật.",
+                importFailed: "Import chi phí thất bại",
+                importFailedDescription: "Vui lòng kiểm tra quyền nhập liệu và thử lại.",
+                retry: "Thử lại",
+                templateFailedTitle: "Không thể tạo file mẫu",
+                templateFailedDescription: "Vui lòng thử lại sau.",
+            },
+            errors: {
+                noSheet: "Tệp Excel không có sheet dữ liệu.",
+                noRecognizedColumns: "Không nhận diện được các cột trong file Excel.",
+                invalidCostCenter: "Nhóm chi phí không hợp lệ",
+                invalidItemCode: "Mã dòng cố định không hợp lệ",
+                costCenterMismatch: "Nhóm chi phí không khớp dòng cố định",
+                missingItemName: "Thiếu tên chi phí cho dòng tự tạo.",
+                invalidBudget: "Ngân sách phải là số hợp lệ.",
+                invalidActual: "Thực chi phải là số hợp lệ.",
+                negativeAmount: "Số tiền không được âm.",
+            },
+            template: {
+                sheets: {
+                    data: "Nhap_chi_phi",
+                    guide: "Huong_dan",
+                    refs: "Gia_tri_chon",
+                },
+                fileName: "mau-nhap-chi-phi.xlsx",
+                columns: {
+                    costCenter: {
+                        label: "Nhóm chi phí *",
+                        note: "Bắt buộc. Chọn nhóm chi phí từ danh sách.",
+                        width: 30,
+                        required: true,
+                    },
+                    itemCode: {
+                        label: "Mã dòng cố định",
+                        note: "Dùng cho dòng chi phí cố định. Để trống nếu đây là dòng chi phí tự tạo.",
+                        width: 38,
+                    },
+                    itemName: {
+                        label: "Tên chi phí *",
+                        note: "Bắt buộc với dòng tự tạo. Với dòng cố định có thể giữ nguyên tên mẫu.",
+                        width: 34,
+                        required: true,
+                    },
+                    budgetAmount: {
+                        label: "Ngân sách",
+                        note: "Không bắt buộc. Nhập số không âm; để trống nếu không muốn cập nhật ô ngân sách.",
+                        width: 18,
+                    },
+                    actualAmount: {
+                        label: "Thực chi",
+                        note: "Không bắt buộc. Nhập số không âm; để trống nếu không muốn cập nhật ô thực chi.",
+                        width: 18,
+                    },
+                    note: {
+                        label: "Ghi chú",
+                        note: "Không bắt buộc. Ghi chú sẽ được lưu vào dòng chi phí tương ứng.",
+                        width: 38,
+                    },
+                },
+                prompts: {
+                    title: "Joy World Cityfuns ERP",
+                    invalidTitle: "Giá trị không hợp lệ",
+                    invalidList: "Vui lòng chọn một giá trị trong danh sách.",
+                    invalidAmount: "Số tiền phải là số không âm.",
+                    costCenter: "Chọn nhóm chi phí. Hệ thống dùng mã trước dấu '-'.",
+                    itemCode: "Chọn mã dòng cố định nếu muốn cập nhật dòng hệ thống; để trống để tạo dòng mới.",
+                    itemName: "Nhập tên chi phí. Dòng tự tạo sẽ dùng tên này để tạo hoặc cập nhật.",
+                    amount: "Nhập số tiền không âm. Có thể để trống nếu không cập nhật ô này.",
+                },
+                refs: {
+                    group: "Nhóm",
+                    value: "Giá trị chọn trong file",
+                    meaning: "Ý nghĩa",
+                    costCenter: "Nhóm chi phí",
+                    fixedItem: "Dòng cố định",
+                },
+                guideHeaders: {
+                    section: "Mục",
+                    guide: "Hướng dẫn",
+                },
+                guides: [
+                    {
+                        section: "Cách nhập",
+                        guide: "Điền dữ liệu từ dòng 2 trở xuống. Dòng không có ngân sách, thực chi và ghi chú sẽ được bỏ qua khi import.",
+                    },
+                    {
+                        section: "Dòng cố định",
+                        guide: "Giữ nguyên Mã dòng cố định để cập nhật các dòng hệ thống như tiền thuê, điện, nước, lương hoặc COGS.",
+                    },
+                    {
+                        section: "Dòng tự tạo",
+                        guide: "Để trống Mã dòng cố định, chọn Nhóm chi phí và nhập Tên chi phí. Nếu tên đã tồn tại trong cùng nhóm, hệ thống cập nhật dòng đó; nếu chưa có, hệ thống tạo dòng mới.",
+                    },
+                    {
+                        section: "Số tiền",
+                        guide: "Ngân sách và Thực chi nhận số không âm. Ô để trống sẽ không ghi đè giá trị hiện có.",
+                    },
+                ],
+                sampleCustomName: "Chi phí tự tạo",
+            },
+        },
         selectors: {
             allWarehouses: "Tất cả cửa hàng (Tổng hợp)",
         },
@@ -1375,7 +1513,68 @@ Object.assign(vi, {
         inactive: "Ngừng hoạt động",
         changePassword: "Đổi mật khẩu",
     },
+    externalQueue: {
+        title: "Quét mã ngoài (Máy POS)",
+        subtitle: "Duyệt yêu cầu xuất kho từ thiết bị bên ngoài (như máy POS)",
+        tabs: {
+            pending: "Chờ duyệt",
+            history: "Lịch sử",
+        },
+        pendingTab: {
+            emptyTitle: "Không có yêu cầu chờ duyệt",
+            emptyHint: "Các batch quét mã từ máy POS sẽ hiện ở đây.",
+            approveSuccess: "Duyệt thành công",
+            rejectSuccess: "Từ chối thành công",
+            columns: {
+                batchId: "Mã đợt (Batch)",
+                shiftDate: "Ngày ca",
+                operator: "Nhân viên",
+                location: "Vị trí kho",
+                totalQty: "Tổng SL",
+                totalValue: "Tổng tiền",
+                submittedAt: "Thời gian gửi",
+                actions: "Thao tác",
+            },
+        },
+        historyTab: {
+            emptyTitle: "Không có lịch sử quét mã",
+            emptyHint: "Các đợt quét đã duyệt hoặc từ chối sẽ hiện ở đây.",
+            columns: {
+                batchId: "Mã đợt (Batch)",
+                shiftDate: "Ngày ca",
+                operator: "Nhân viên",
+                status: "Trạng thái",
+                totalQty: "Tổng SL",
+                totalValue: "Tổng tiền",
+                approvedBy: "Người duyệt",
+                exportVoucher: "Mã phiếu xuất",
+            },
+        },
+        detailDrawer: {
+            title: "Chi tiết yêu cầu xuất kho",
+            approve: "Duyệt xuất kho",
+            reject: "Từ chối",
+            rejectReason: "Lý do từ chối",
+            approveNotes: "Ghi chú phê duyệt",
+            columns: {
+                product: "Sản phẩm",
+                barcode: "Mã vạch",
+                requestedQty: "Yêu cầu",
+                approvedQty: "Số lượng duyệt",
+                price: "Đơn giá",
+                total: "Thành tiền",
+            },
+        },
+        statuses: {
+            QUEUED: "Đang quét",
+            SUBMITTED: "Chờ duyệt",
+            APPROVED: "Đã duyệt",
+            REJECTED: "Từ chối",
+            EXPORTED: "Đã xuất kho",
+        },
+    },
 });
 
+export type AppTranslation = typeof vi;
 export type Dictionary = typeof vi;
 export default vi;

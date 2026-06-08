@@ -1,11 +1,22 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { sessionLogin, logout, setupMfa, verifySetupMfa, sendEmailOtp, checkMfa } from "../controllers/authController.js";
+import {
+  checkMfa,
+  completeAccountInvitationHandler,
+  logout,
+  sendEmailOtp,
+  sessionLogin,
+  setupMfa,
+  verifyAccountInvitationHandler,
+  verifySetupMfa,
+} from "../controllers/authController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.post("/sessionLogin", sessionLogin);
 router.post("/logout", logout);
+router.post("/account-invitations/verify", verifyAccountInvitationHandler);
+router.post("/account-invitations/complete", completeAccountInvitationHandler);
 
 router.post("/mfa/setup", requireAuth, setupMfa);
 router.post("/mfa/verify-setup", requireAuth, verifySetupMfa);

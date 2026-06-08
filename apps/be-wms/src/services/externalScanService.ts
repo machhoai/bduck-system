@@ -1,0 +1,420 @@
+import { db } from "../config/firebase.js";
+import { v4 as uuidv4 } from "uuid";
+import type { IntegrationClient, ExternalScanQueue } from "@bduck/shared-types";
+import { ExternalScanQueueStatus } from "@bduck/shared-types";
+import { findByLocationAndProduct } from "../repositories/inventoryRepository.js";
+import * as externalScanRepo from "../repositories/externalScanRepository.js";
+import { productRepository as productRepo } from "../repositories/productRepository.js";
+import * as exportVoucherRepo from "../repositories/exportVoucherRepository.js";
+import { logAudit } from "./auditService.js";
+import { AuditAction, ExportType, ExportVoucherStatus } from "@bduck/shared-types";
+import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
+
+// Lấy sản phẩm dựa trên barcode hoặc productId
+async function resolveProduct(
+  productId: string | null,
+  barcode: string | null
+) {
+  if (productId) {
+    const product = await productRepo.findById(productId);
+    if (!product) throw new Error("PRODUCT_NOT_FOUND");
+    return product;
+  }
+  if (barcode) {
+    const product = await productRepo.findByBarcode(barcode);
+    if (!product) throw new Error("PRODUCT_NOT_FOUND");
+    return product;
+  }
+  throw new Error("MISSING_PRODUCT_INFO");
+}
+
+export const scanProduct = async (
+  client: IntegrationClient,
+  warehouseId: string,
+  data: {
+    warehouse_location_id: string;
+    product_id: string | null;
+    barcode: string | null;
+    quantity: number;
+    operator_name: string;
+    operator_id_external: string | null;
+    device_id: string | null;
+    scan_time: string;
+  },
+  clientIp: string
+): Promise<ExternalScanQueue> => {
+  const product = await resolveProduct(data.product_id, data.barcode);
+  
+  if (!client.allowed_warehouse_ids.includes(warehouseId)) {
+    throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  // Generate ID
+  const scanId = uuidv4();
+  let createdRecord: ExternalScanQueue | null = null;
+  let atpBefore = 0;
+  let atpAfter = 0;
+  let onHoldBefore = 0;
+  let onHoldAfter = 0;
+
+  await db.runTransaction(async (tx) => {
+    // 1. Check Inventory ATP
+    const invSnapshot = await tx.get(
+      db.collection("inventory")
+        .where("warehouse_location_id", "==", data.warehouse_location_id)
+        .where("product_id", "==", product.id)
+        .limit(1)
+    );
+
+    if (invSnapshot.empty) {
+      throw new Error("INSUFFICIENT_ATP");
+    }
+
+    const invDoc = invSnapshot.docs[0];
+    const invData = invDoc.data();
+
+    if (invData.is_deleted || invData.atp_quantity < data.quantity) {
+      throw new Error("INSUFFICIENT_ATP");
+    }
+
+    atpBefore = invData.atp_quantity;
+    onHoldBefore = invData.on_hold_quantity;
+    atpAfter = atpBefore - data.quantity;
+    onHoldAfter = onHoldBefore + data.quantity;
+
+    // 2. Update Inventory (Hold ATP)
+    tx.update(invDoc.ref, {
+      atp_quantity: atpAfter,
+      on_hold_quantity: onHoldAfter,
+      last_updated_at: new Date(),
+    });
+
+    // 3. Create Queue Record (Option A: Always new record)
+    createdRecord = {
+      id: scanId,
+      client_id: client.id,
+      warehouse_id: warehouseId,
+      warehouse_location_id: data.warehouse_location_id,
+      product_id: product.id,
+      barcode_scanned: data.barcode || product.barcode || "",
+      quantity: data.quantity,
+      unit_price: product.unit_price || 0,
+      scan_time: new Date(data.scan_time),
+      sync_time: new Date(),
+      operator_name: data.operator_name,
+      operator_id_external: data.operator_id_external,
+      device_id: data.device_id,
+      batch_id: null,
+      status: ExternalScanQueueStatus.QUEUED,
+      approved_by: null,
+      approved_at: null,
+      export_voucher_id: null,
+      rejection_reason: null,
+      atp_held: true,
+      notes: null,
+      is_deleted: false,
+      created_at: new Date(),
+    };
+
+    tx.set(db.collection("external_scan_queue").doc(scanId), createdRecord);
+  });
+
+  if (!createdRecord) throw new Error("TRANSACTION_FAILED");
+
+  // 4. Audit Log
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: scanId,
+    warehouse_id: warehouseId,
+    action: AuditAction.CREATE,
+    user_id: `EXT:${client.id}`,
+    old_value: null,
+    new_value: {
+      ...(createdRecord as any)!,
+      client_name: client.client_name,
+      atp_before: atpBefore,
+      atp_after: atpAfter,
+      on_hold_before: onHoldBefore,
+      on_hold_after: onHoldAfter,
+    },
+    ip_address: clientIp,
+    device_id: data.device_id || undefined,
+  }).catch(console.error);
+
+  return createdRecord;
+};
+
+export const cancelScan = async (
+  scanId: string,
+  clientId: string
+): Promise<void> => {
+  await db.runTransaction(async (tx) => {
+    const queueDoc = await tx.get(db.collection("external_scan_queue").doc(scanId));
+    if (!queueDoc.exists) throw new Error("NOT_FOUND");
+    
+    const queueData = queueDoc.data() as ExternalScanQueue;
+    if (queueData.client_id !== clientId) throw new Error("UNAUTHORIZED");
+    if (queueData.status !== ExternalScanQueueStatus.QUEUED) throw new Error("INVALID_STATUS");
+    if (queueData.is_deleted) throw new Error("NOT_FOUND");
+
+    // Revert ATP
+    const invSnapshot = await tx.get(
+      db.collection("inventory")
+        .where("warehouse_location_id", "==", queueData.warehouse_location_id)
+        .where("product_id", "==", queueData.product_id)
+        .limit(1)
+    );
+
+    if (!invSnapshot.empty) {
+      const invDoc = invSnapshot.docs[0];
+      const invData = invDoc.data();
+      tx.update(invDoc.ref, {
+        atp_quantity: invData.atp_quantity + queueData.quantity,
+        on_hold_quantity: Math.max(0, invData.on_hold_quantity - queueData.quantity),
+        last_updated_at: new Date(),
+      });
+    }
+
+    tx.update(queueDoc.ref, {
+      is_deleted: true,
+      atp_held: false,
+    });
+  });
+};
+
+export const submitBatch = async (
+  client: IntegrationClient,
+  data: {
+    warehouse_id: string;
+    warehouse_location_id: string;
+    shift_date: string;
+    operator_name: string;
+    operator_id_external: string | null;
+    notes: string | null;
+  }
+) => {
+  if (!client.allowed_warehouse_ids.includes(data.warehouse_id)) {
+    throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  const batchId = `B-${data.shift_date.replace(/-/g, "")}-${uuidv4().substring(0, 8).toUpperCase()}`;
+
+  const scans = await externalScanRepo.findQueuedByLocationAndDate(
+    client.id,
+    data.warehouse_location_id,
+    data.shift_date
+  );
+
+  if (scans.length === 0) {
+    throw new Error("NO_QUEUED_SCANS");
+  }
+
+  const batch = db.batch();
+  let totalQty = 0;
+  let totalValue = 0;
+
+  scans.forEach(scan => {
+    const ref = db.collection("external_scan_queue").doc(scan.id);
+    batch.update(ref, {
+      status: ExternalScanQueueStatus.SUBMITTED,
+      batch_id: batchId,
+      notes: data.notes,
+    });
+    totalQty += scan.quantity;
+    totalValue += scan.quantity * scan.unit_price;
+  });
+
+  await batch.commit();
+
+  return {
+    batch_id: batchId,
+    total_products: scans.length,
+    total_quantity: totalQty,
+    total_value: totalValue,
+  };
+};
+
+// -------------------------------------------------------------------------
+// EXTERNAL VIEW
+// -------------------------------------------------------------------------
+
+export const getMyScans = async (
+  client: IntegrationClient,
+  operatorIdExternal: string
+) => {
+  return await externalScanRepo.findQueuedByExternalOperator(
+    client.id,
+    operatorIdExternal
+  );
+};
+
+// -------------------------------------------------------------------------
+// MANAGER ACTIONS (WMS Internal)
+// -------------------------------------------------------------------------
+
+export const approveBatch = async (
+  batchId: string,
+  managerId: string,
+  approvedItems: { scan_id: string; quantity: number }[],
+  notes: string | null
+) => {
+  const scans = await externalScanRepo.findByBatchId(batchId);
+  if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
+
+  // Check if any scan is not in SUBMITTED status
+  if (scans.some(s => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+    throw new Error("INVALID_BATCH_STATUS");
+  }
+
+  const warehouseId = scans[0].warehouse_id;
+
+  // We need to create an Export Voucher and update inventory + queue
+  let voucherId = uuidv4();
+  let voucherNumber = await generateVoucherNumber("EXP");
+
+  await db.runTransaction(async (tx) => {
+    // 1. Process inventory updates and prepare voucher items
+    const voucherItems = [];
+
+    for (const scan of scans) {
+      const approvedItem = approvedItems.find(i => i.scan_id === scan.id);
+      const approvedQty = approvedItem ? approvedItem.quantity : 0;
+      
+      const invSnapshot = await tx.get(
+        db.collection("inventory")
+          .where("warehouse_location_id", "==", scan.warehouse_location_id)
+          .where("product_id", "==", scan.product_id)
+          .limit(1)
+      );
+
+      if (!invSnapshot.empty) {
+        const invDoc = invSnapshot.docs[0];
+        const invData = invDoc.data();
+        
+        // Release on_hold (we subtract the original requested quantity because that's what was held)
+        const newOnHold = Math.max(0, invData.on_hold_quantity - scan.quantity);
+        // If approved less than requested, refund ATP
+        const refundAtp = scan.quantity - approvedQty;
+        const newAtp = invData.atp_quantity + refundAtp;
+
+        tx.update(invDoc.ref, {
+          on_hold_quantity: newOnHold,
+          atp_quantity: newAtp,
+          last_updated_at: new Date(),
+        });
+      }
+
+      // Update queue record
+      tx.update(db.collection("external_scan_queue").doc(scan.id), {
+        status: ExternalScanQueueStatus.APPROVED,
+        quantity: approvedQty, // Update to approved
+        approved_by: managerId,
+        approved_at: new Date(),
+        export_voucher_id: voucherId,
+        notes: notes
+      });
+
+      if (approvedQty > 0) {
+        voucherItems.push({
+          product_id: scan.product_id,
+          warehouse_location_id: scan.warehouse_location_id,
+          requested_quantity: approvedQty,
+          actual_quantity: 0, // Will be updated when picker picks
+          unit_price: scan.unit_price,
+          total_price: approvedQty * scan.unit_price,
+        });
+      }
+    }
+
+    // 2. Create Export Voucher
+    if (voucherItems.length > 0) {
+      const voucher = {
+        id: voucherId,
+        voucher_number: voucherNumber,
+        warehouse_id: warehouseId,
+        export_type: ExportType.SALE_POS,
+        status: ExportVoucherStatus.DRAFT,
+        creator_id: managerId,
+        created_at: new Date(),
+        updated_at: new Date(),
+        approver_id: managerId,
+        approved_at: new Date(),
+        atp_deducted: true, // We already handled ATP
+        sync_time: new Date(),
+        is_deleted: false,
+        notes: `Tạo từ External Batch: ${batchId}. ${notes || ""}`,
+        items: voucherItems,
+      };
+      
+      tx.set(db.collection("export_vouchers").doc(voucherId), voucher);
+    }
+  });
+
+  // Audit
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: warehouseId,
+    action: AuditAction.APPROVE,
+    user_id: managerId,
+    old_value: { status: "SUBMITTED" },
+    new_value: {
+      status: "APPROVED",
+      export_voucher_id: voucherId,
+      export_voucher_number: voucherNumber,
+      approved_items: approvedItems,
+    },
+  }).catch(console.error);
+
+  return { batch_id: batchId, export_voucher_id: voucherId };
+};
+
+export const rejectBatch = async (
+  batchId: string,
+  managerId: string,
+  reason: string
+) => {
+  const scans = await externalScanRepo.findByBatchId(batchId);
+  if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
+  if (scans.some(s => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+    throw new Error("INVALID_BATCH_STATUS");
+  }
+
+  await db.runTransaction(async (tx) => {
+    for (const scan of scans) {
+      const invSnapshot = await tx.get(
+        db.collection("inventory")
+          .where("warehouse_location_id", "==", scan.warehouse_location_id)
+          .where("product_id", "==", scan.product_id)
+          .limit(1)
+      );
+
+      if (!invSnapshot.empty) {
+        const invDoc = invSnapshot.docs[0];
+        const invData = invDoc.data();
+        tx.update(invDoc.ref, {
+          on_hold_quantity: Math.max(0, invData.on_hold_quantity - scan.quantity),
+          atp_quantity: invData.atp_quantity + scan.quantity,
+          last_updated_at: new Date(),
+        });
+      }
+
+      tx.update(db.collection("external_scan_queue").doc(scan.id), {
+        status: ExternalScanQueueStatus.REJECTED,
+        rejection_reason: reason,
+        approved_by: managerId,
+        approved_at: new Date(),
+      });
+    }
+  });
+
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: scans[0].warehouse_id,
+    action: AuditAction.REJECT,
+    user_id: managerId,
+    old_value: { status: "SUBMITTED" },
+    new_value: { status: "REJECTED", rejection_reason: reason },
+  }).catch(console.error);
+};

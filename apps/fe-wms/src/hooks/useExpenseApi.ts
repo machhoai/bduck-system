@@ -2,33 +2,51 @@
  * Expense API — REST helpers for expense operations
  */
 
+import { emitDataMutation } from "@/lib/dataInvalidation";
+
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+type ApiResponse<T> = {
+  success?: boolean;
+  data?: T;
+  messages?: { vi?: string; zh?: string };
+};
 
 async function apiFetch<T = unknown>(
     path: string,
     options: RequestInit = {},
 ): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}/api/expenses${path}`, {
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-        },
-        credentials: "include",
-        ...options,
-    });
+  const method = (options.method || "GET").toUpperCase();
+  const response = await fetch(`${API_BASE_URL}/api/expenses${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    credentials: "include",
+    ...options,
+  });
 
-    const json = await response.json();
-    if (!response.ok) {
-        const err = new Error(json.messages?.vi || "API Error") as Error & {
-            statusCode: number;
-            messages: Record<string, string>;
-        };
-        err.statusCode = response.status;
-        err.messages = json.messages || {};
-        throw err;
-    }
-    return json.data as T;
+  const json = (await response
+    .json()
+    .catch(() => null)) as ApiResponse<T> | null;
+  if (!response.ok || !json?.success) {
+    const err = new Error(
+      json?.messages?.vi || "Không thể xử lý phản hồi từ máy chủ.",
+    ) as Error & {
+      statusCode: number;
+      messages: Record<string, string>;
+    };
+    err.statusCode = response.status;
+    err.messages = json?.messages || {};
+    throw err;
+  }
+
+  if (method !== "GET") {
+    emitDataMutation(["audit_logs"]);
+  }
+
+  return json.data as T;
 }
 
 /** Fetch expense data for a warehouse + period */

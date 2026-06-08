@@ -18,6 +18,7 @@ import { useExpenseAuth } from "@/hooks/useExpenseAuth";
 import { useTranslation } from "@/lib/i18n";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import ExpenseDataEntry from "./ExpenseDataEntry";
+import ExpenseExcelImportPanel from "./ExpenseExcelImportPanel";
 import { gooeyToast } from "goey-toast";
 import {
   AlertTriangle,
@@ -279,6 +280,15 @@ export default function ExpenseEntryPage({
 
       {/* ── Loading Skeleton ── */}
       {loading && <EntryPageSkeleton />}
+
+      {!loading && data && (
+        <ExpenseExcelImportPanel
+          data={data}
+          isClosed={isClosed}
+          onSaveItem={handleSaveItem}
+          onSaveCustomItem={saveCustomItem}
+        />
+      )}
 
       {/* ── Data Entry Table ── */}
       {!loading && data && (

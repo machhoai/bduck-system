@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Edit3, Plus, Trash2, UserRound } from "lucide-react";
+import { Edit3, Mail, Plus, Trash2, UserRound } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { UserStatus } from "@bduck/shared-types";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -21,8 +21,15 @@ export function UserManagementPanel({
 }: UserManagementPanelProps = {}) {
   const { t } = useTranslation();
   const hasPermission = useUserStore((state) => state.hasPermission);
-  const { users, isLoading, error, createUser, updateUser, deleteUser } =
-    useUsers();
+  const {
+    users,
+    isLoading,
+    error,
+    createUser,
+    updateUser,
+    deleteUser,
+    resendInvitation,
+  } = useUsers();
   const { roles } = useRoles();
   const { warehouses } = useWarehouses();
   const [search, setSearch] = useState("");
@@ -44,13 +51,7 @@ export function UserManagementPanel({
     const q = search.trim().toLowerCase();
     if (!q) return users;
     return users.filter((user) =>
-      [
-        user.full_name,
-        user.username,
-        user.email,
-        user.employee_id,
-        user.status,
-      ]
+      [user.full_name, user.username, user.email, user.employee_id, user.status]
         .join(" ")
         .toLowerCase()
         .includes(q),
@@ -74,7 +75,15 @@ export function UserManagementPanel({
 
     await gooeyToast.promise(action, {
       loading: t.users.saving,
-      success: t.users.saveSuccess,
+      success: (result: unknown) => {
+        if (!editingUser && isInvitationEmailFailed(result)) {
+          return t.users.createSuccessInvitationFailed;
+        }
+        if (!editingUser && isInvitationEmailSent(result)) {
+          return t.users.createSuccessInvitationSent;
+        }
+        return t.users.saveSuccess;
+      },
       error: (saveError: unknown) =>
         saveError instanceof Error ? saveError.message : t.users.saveError,
       description: {
@@ -90,6 +99,23 @@ export function UserManagementPanel({
     });
   };
 
+  const handleResendInvitation = async (user: UserWithAssignments) => {
+    await gooeyToast.promise(resendInvitation(user.id), {
+      loading: t.users.resendingInvitation,
+      success: t.users.resendInvitationSuccess,
+      error: (resendError: unknown) =>
+        resendError instanceof Error
+          ? resendError.message
+          : t.users.resendInvitationError,
+      action: {
+        error: {
+          label: t.common.retry,
+          onClick: () => void handleResendInvitation(user),
+        },
+      },
+    });
+  };
+
   const handleDelete = async (user: UserWithAssignments) => {
     if (!confirm(`${t.users.confirmDelete}\n${user.full_name}`)) return;
 
@@ -97,7 +123,9 @@ export function UserManagementPanel({
       loading: t.users.deleting,
       success: t.users.deleteSuccess,
       error: (deleteError: unknown) =>
-        deleteError instanceof Error ? deleteError.message : t.users.deleteError,
+        deleteError instanceof Error
+          ? deleteError.message
+          : t.users.deleteError,
       action: {
         error: {
           label: t.common.retry,
@@ -166,6 +194,7 @@ export function UserManagementPanel({
               warehouseById={warehouseById}
               onEdit={openEdit}
               onDelete={handleDelete}
+              onResendInvitation={handleResendInvitation}
             />
           ))}
         </section>
@@ -183,6 +212,22 @@ export function UserManagementPanel({
   );
 }
 
+function isInvitationEmailSent(result: unknown) {
+  return getInvitationEmailSent(result) === true;
+}
+
+function isInvitationEmailFailed(result: unknown) {
+  return getInvitationEmailSent(result) === false;
+}
+
+function getInvitationEmailSent(result: unknown) {
+  if (typeof result !== "object" || result === null || !("data" in result)) {
+    return undefined;
+  }
+  return (result as { data?: { invitation_email_sent?: unknown } }).data
+    ?.invitation_email_sent;
+}
+
 function UserRow({
   user,
   canWrite,
@@ -190,6 +235,7 @@ function UserRow({
   warehouseById,
   onEdit,
   onDelete,
+  onResendInvitation,
 }: {
   user: UserWithAssignments;
   canWrite: boolean;
@@ -197,12 +243,13 @@ function UserRow({
   warehouseById: Map<string, { name: string }>;
   onEdit: (user: UserWithAssignments) => void;
   onDelete: (user: UserWithAssignments) => void;
+  onResendInvitation: (user: UserWithAssignments) => void;
 }) {
   const { t } = useTranslation();
   const activeAssignments = user.assignments.filter((item) => item.is_active);
 
   return (
-    <div className="grid gap-3 border-b border-[var(--color-border-soft)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_220px_110px_90px] lg:items-center">
+    <div className="grid gap-3 border-b border-[var(--color-border-soft)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_220px_110px_132px] lg:items-center">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-8 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-brand-primary)]">
           <UserRound size={19} />
@@ -235,6 +282,15 @@ function UserRow({
         <div className="flex items-center gap-2 lg:justify-end">
           <button
             type="button"
+            onClick={() => onResendInvitation(user)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-all active:scale-95"
+            aria-label={t.users.resendInvitation}
+            title={t.users.resendInvitation}
+          >
+            <Mail size={16} />
+          </button>
+          <button
+            type="button"
             onClick={() => onEdit(user)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-all active:scale-95"
             aria-label={t.common.edit}
@@ -265,7 +321,9 @@ function StatusPill({ status }: { status: UserStatus }) {
         : "border-[var(--color-border-subtle)] text-[var(--color-text-muted)]";
 
   return (
-    <span className={`inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold ${tone}`}>
+    <span
+      className={`inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold ${tone}`}
+    >
       {t.users.statuses[status]}
     </span>
   );

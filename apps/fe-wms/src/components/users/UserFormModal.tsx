@@ -170,19 +170,20 @@ export function UserFormModal({
                 className={inputClassName}
               />
             </Field>
-            <Field label={t.users.password}>
-              <input
-                required={!isEdit}
-                type="password"
-                minLength={8}
-                value={formData.password}
-                placeholder={isEdit ? t.users.passwordPlaceholder : ""}
-                onChange={(event) =>
-                  setFormData({ ...formData, password: event.target.value })
-                }
-                className={inputClassName}
-              />
-            </Field>
+            {isEdit && (
+              <Field label={t.users.password}>
+                <input
+                  type="password"
+                  minLength={8}
+                  value={formData.password}
+                  placeholder={t.users.passwordPlaceholder}
+                  onChange={(event) =>
+                    setFormData({ ...formData, password: event.target.value })
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+            )}
             <Field label={t.users.status}>
               <select
                 value={formData.status}

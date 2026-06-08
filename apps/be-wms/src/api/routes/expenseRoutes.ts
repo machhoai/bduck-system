@@ -10,6 +10,8 @@ import { Router, type Router as ExpressRouter } from "express";
 import {
   getExpenseHandler,
   updateItemHandler,
+  saveCustomItemHandler,
+  deleteCustomItemHandler,
   closePeriodHandler,
   getDashboardHandler,
   reopenPeriodHandler,
@@ -29,6 +31,12 @@ router.get("/:warehouseId/:period", getExpenseHandler);
 // UPDATE a specific expense item by category
 router.put("/:warehouseId/:period/items/:category", updateItemHandler);
 
+// CREATE/UPDATE a custom expense item
+router.put("/:warehouseId/:period/custom-items/:itemId", saveCustomItemHandler);
+
+// SOFT DELETE a custom expense item
+router.delete("/:warehouseId/:period/custom-items/:itemId", deleteCustomItemHandler);
+
 // CLOSE the accounting period
 router.post("/:warehouseId/:period/close", closePeriodHandler);
 
@@ -36,4 +44,3 @@ router.post("/:warehouseId/:period/close", closePeriodHandler);
 router.post("/:warehouseId/:period/reopen", reopenPeriodHandler);
 
 export default router;
-

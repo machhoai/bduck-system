@@ -153,7 +153,7 @@ const userRoleAssignmentSchema = z.object({
 export const createUserSchema = z.object({
   username: z.string().trim().min(3).max(80),
   email: z.string().trim().email().max(160),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8).max(128).optional(),
   full_name: z.string().trim().min(1).max(160),
   employee_id: z.string().trim().min(1).max(80),
   status: z.nativeEnum(UserStatus).default(UserStatus.ACTIVE),
@@ -197,7 +197,9 @@ const notificationUserIdSchema = z
   .trim()
   .min(1)
   .max(128)
-  .refine(noNoSqlOperators, { message: "User ID contains forbidden operators" });
+  .refine(noNoSqlOperators, {
+    message: "User ID contains forbidden operators",
+  });
 
 const notificationUrlSchema = z
   .string()
@@ -207,9 +209,7 @@ const notificationUrlSchema = z
     message: "URL must be internal path or http(s) URL",
   });
 
-const emailListSchema = z
-  .array(z.string().trim().email().max(254))
-  .max(100);
+const emailListSchema = z.array(z.string().trim().email().max(254)).max(100);
 
 export const sendInAppNotificationSchema = z.object({
   recipient_user_ids: z.array(notificationUserIdSchema).max(500).default([]),
@@ -241,14 +241,22 @@ export const createInventorySchema = z.object({
   warehouse_id: z.string().uuid(),
   warehouse_location_id: z.string().uuid(),
   product_id: z.string().uuid(),
-  atp_quantity: z.number().int().min(0, "Số lượng ATP không được âm").default(0),
+  atp_quantity: z
+    .number()
+    .int()
+    .min(0, "Số lượng ATP không được âm")
+    .default(0),
   on_hold_quantity: z.number().int().min(0).default(0),
   in_transit_quantity: z.number().int().min(0).default(0),
   quarantine_quantity: z.number().int().min(0).default(0),
 });
 
 export const updateInventorySchema = z.object({
-  atp_quantity: z.number().int().min(0, "Số lượng ATP không được âm").optional(),
+  atp_quantity: z
+    .number()
+    .int()
+    .min(0, "Số lượng ATP không được âm")
+    .optional(),
   on_hold_quantity: z.number().int().min(0).optional(),
   in_transit_quantity: z.number().int().min(0).optional(),
   quarantine_quantity: z.number().int().min(0).optional(),

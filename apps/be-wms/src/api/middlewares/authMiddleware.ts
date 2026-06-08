@@ -12,9 +12,18 @@ export const requireAuth = async (
   next: NextFunction,
 ) => {
   try {
-    const sessionCookie = req.cookies?.__session || "";
+    let token = "";
+    let isSessionCookie = false;
 
-    if (!sessionCookie) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split("Bearer ")[1];
+    } else {
+      token = req.cookies?.__session || "";
+      isSessionCookie = true;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         data: null,
@@ -25,8 +34,10 @@ export const requireAuth = async (
       });
     }
 
-    // Verify the session cookie
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    // Verify the token
+    const decodedClaims = isSessionCookie 
+      ? await auth.verifySessionCookie(token, true)
+      : await auth.verifyIdToken(token, true);
 
     // We could re-fetch the user and permissions here to ensure they are fully up-to-date
     // Or we could attach just the UID and rely on the database for permissions.

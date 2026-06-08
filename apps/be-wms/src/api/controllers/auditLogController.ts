@@ -58,7 +58,7 @@ export const logExportActionHandler = async (req: Request, res: Response) => {
           vi: "Thiếu thông tin entity_type.",
           zh: "缺少 entity_type 信息。",
         },
-        400
+        400,
       );
     }
 
@@ -70,18 +70,25 @@ export const logExportActionHandler = async (req: Request, res: Response) => {
       entity_id: "EXPORT",
       warehouse_id: warehouse_id || null,
       action: AuditAction.EXPORT,
-      user_id: user.uid,
+      user_id: user?.id || "system",
+      user_name: user?.full_name || user?.username || user?.email || null,
+      entity_name: entity_type,
       old_value: filters ? { filters } : null,
       new_value: null,
       notes: "Tải file Excel",
       ip_address: req.ip,
       device_id: (req.headers["x-device-id"] as string) || null,
+      session_token: req.cookies?.__session || null,
     });
 
-    return sendSuccess(res, { success: true }, {
-      vi: "Ghi log xuất dữ liệu thành công.",
-      zh: "成功记录导出数据日志。",
-    });
+    return sendSuccess(
+      res,
+      { success: true },
+      {
+        vi: "Ghi log xuất dữ liệu thành công.",
+        zh: "成功记录导出数据日志。",
+      },
+    );
   } catch (error) {
     console.error("[logExportActionHandler] error:", error);
     return sendError(
@@ -90,7 +97,7 @@ export const logExportActionHandler = async (req: Request, res: Response) => {
         vi: "Lỗi khi ghi log xuất dữ liệu.",
         zh: "记录导出数据日志时出错。",
       },
-      500
+      500,
     );
   }
 };
