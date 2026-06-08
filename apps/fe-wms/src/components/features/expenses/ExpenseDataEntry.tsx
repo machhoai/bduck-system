@@ -15,40 +15,15 @@ import {
 import type { ExpenseItem, ExpenseCustomItem } from "@bduck/shared-types";
 import { useExpenseAuth, useExpenseAuthByCostCenter } from "@/hooks/useExpenseAuth";
 import { useTranslation } from "@/lib/i18n";
+import {
+  EXPENSE_CATEGORY_CONFIGS,
+  EXPENSE_COST_CENTER_ORDER,
+  type ExpenseCategoryConfig,
+} from "@/utils/expenseConfig";
 import StandardExpenseCell from "./StandardExpenseCell";
 import SemiAutoExpenseCell from "./SemiAutoExpenseCell";
 import { gooeyToast } from "goey-toast";
 import { Info, Plus, Trash2 } from "lucide-react";
-
-interface CategoryConfig {
-  key: ExpenseCategory;
-  costCenter: ExpenseCostCenter;
-  isSemiAuto: boolean;
-}
-
-const CATEGORY_CONFIGS: CategoryConfig[] = [
-  { key: ExpenseCategory.RENT, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.ELECTRICITY, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.WATER, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.TRASH_COLLECTION, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.DRINKING_WATER, costCenter: ExpenseCostCenter.OPERATIONS, isSemiAuto: false },
-  { key: ExpenseCategory.SOCIAL_INSURANCE, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.SALARY_FULLTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.SALARY_PARTTIME, costCenter: ExpenseCostCenter.HR, isSemiAuto: false },
-  { key: ExpenseCategory.MARKETING, costCenter: ExpenseCostCenter.MARKETING, isSemiAuto: false },
-  { key: ExpenseCategory.GIFT_EXPENSE, costCenter: ExpenseCostCenter.MERCHANDISE, isSemiAuto: true },
-  { key: ExpenseCategory.COGS, costCenter: ExpenseCostCenter.MERCHANDISE, isSemiAuto: true },
-  { key: ExpenseCategory.CONSUMABLE_SUPPLIES, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
-  { key: ExpenseCategory.OTHERS, costCenter: ExpenseCostCenter.OTHERS, isSemiAuto: false },
-];
-
-const COST_CENTER_ORDER: ExpenseCostCenter[] = [
-  ExpenseCostCenter.OPERATIONS,
-  ExpenseCostCenter.HR,
-  ExpenseCostCenter.MARKETING,
-  ExpenseCostCenter.MERCHANDISE,
-  ExpenseCostCenter.OTHERS,
-];
 
 function formatCurrency(value: number): string {
   return `${value.toLocaleString("vi-VN")} đ`;
@@ -73,7 +48,7 @@ function getVarianceDotClass(variance: number): string {
 function ExpenseRow({
   config, item, warehouseId, isClosed, onSave, label,
 }: {
-  config: CategoryConfig;
+  config: ExpenseCategoryConfig;
   item: ExpenseItem | undefined;
   warehouseId: string;
   isClosed: boolean;
@@ -277,8 +252,8 @@ export default function ExpenseDataEntry({
   const [newItemLabels, setNewItemLabels] = useState<Record<string, string>>({});
 
   const grouped = useMemo(() => {
-    const map = new Map<ExpenseCostCenter, CategoryConfig[]>();
-    for (const config of CATEGORY_CONFIGS) {
+    const map = new Map<ExpenseCostCenter, ExpenseCategoryConfig[]>();
+    for (const config of EXPENSE_CATEGORY_CONFIGS) {
       const list = map.get(config.costCenter) || [];
       list.push(config);
       map.set(config.costCenter, list);
@@ -397,7 +372,7 @@ export default function ExpenseDataEntry({
             </tr>
           </thead>
           <tbody>
-            {COST_CENTER_ORDER.map((costCenter) => {
+            {EXPENSE_COST_CENTER_ORDER.map((costCenter) => {
               const configs = grouped.get(costCenter) || [];
               const customItems = customItemsByCostCenter.get(costCenter) || [];
               const centerLabel = t.expenses.costCenter[costCenter] || costCenter;

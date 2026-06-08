@@ -21,6 +21,7 @@ import {
     Warehouse,
     LucideIcon,
     FolderSymlink,
+    ScanBarcode,
 } from "lucide-react";
 import { PERMISSION_REGISTRY } from "@bduck/shared-types";
 
@@ -142,6 +143,13 @@ export const menuItems: MenuItem[] = [
         icon: FileClock,
         href: "/audit-logs",
         permission: "audit.read",
+    },
+    {
+        id: "externalQueue",
+        labelKey: "externalQueue",
+        icon: ScanBarcode,
+        href: "/external-queue",
+        permissionsAny: ["external_scan.view", "external_scan.approve"],
     },
     // ── Thêm module mới vào đây ──
 ];

@@ -126,6 +126,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     icon: "FileClock",
     order: 14,
   },
+  {
+    id: "external",
+    label: { vi: "Tích hợp ngoài", zh: "外部集成" },
+    icon: "ScanBarcode",
+    order: 15,
+  },
 ];
 
 // ─────────────────────────────────────────────
@@ -538,6 +544,26 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Quyền mở lại kỳ kế toán đã chốt",
       zh: "重新开放已结账的会计期间",
+    },
+  },
+
+  // ── External ──
+  {
+    key: "external_scan.approve",
+    group: "external",
+    label: { vi: "Duyệt hàng chờ từ hệ thống ngoài", zh: "审批外部扫描队列" },
+    description: {
+      vi: "Duyệt hoặc từ chối các phiên quét mã từ hệ thống POS/Scanner.",
+      zh: "审批或拒绝来自POS/扫描仪系统的扫描会话。",
+    },
+  },
+  {
+    key: "external_scan.view",
+    group: "external",
+    label: { vi: "Xem hàng chờ từ hệ thống ngoài", zh: "查看外部扫描队列" },
+    description: {
+      vi: "Xem danh sách và lịch sử hàng chờ xuất kho từ hệ thống ngoài.",
+      zh: "查看来自外部系统的出库待处理列表和历史记录。",
     },
   },
 ];

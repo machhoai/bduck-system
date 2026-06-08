@@ -4,6 +4,7 @@ import {
   deleteUserHandler,
   getUserByIdHandler,
   getUsersHandler,
+  resendUserInvitationHandler,
   updateUserHandler,
 } from "../controllers/userController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
@@ -16,6 +17,11 @@ router.use(requireAuth);
 router.get("/", requirePermission("users.read"), getUsersHandler);
 router.get("/:id", requirePermission("users.read"), getUserByIdHandler);
 router.post("/", requirePermission("users.write"), createUserHandler);
+router.post(
+  "/:id/invitation",
+  requirePermission("users.write"),
+  resendUserInvitationHandler,
+);
 router.put("/:id", requirePermission("users.write"), updateUserHandler);
 router.delete("/:id", requirePermission("users.write"), deleteUserHandler);
 

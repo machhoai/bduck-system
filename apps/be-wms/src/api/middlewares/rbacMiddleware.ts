@@ -68,7 +68,7 @@ export const requirePermission = (
   };
 };
 
-export const requireAnyScopedPermission = (action: string) => {
+export const requireAnyScopedPermission = (action: string | string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user;
     if (!user || !user.permissions) {
@@ -80,9 +80,11 @@ export const requireAnyScopedPermission = (action: string) => {
       Record<string, unknown>
     >;
 
+    const actions = Array.isArray(action) ? action : [action];
     const hasPermission = Object.values(permissions).some(
       (scopedPermissions) =>
-        scopedPermissions["*"] === true || scopedPermissions[action] === true,
+        scopedPermissions["*"] === true ||
+        actions.some((item) => scopedPermissions[item] === true),
     );
 
     if (hasPermission) {

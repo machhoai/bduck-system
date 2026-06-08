@@ -5,12 +5,10 @@ import {
   deleteUser,
   fetchUserById,
   fetchUsers,
+  sendUserInvitation,
   updateUser,
 } from "../../services/userService.js";
-import {
-  createUserSchema,
-  updateUserSchema,
-} from "../../utils/zodSchemas.js";
+import { createUserSchema, updateUserSchema } from "../../utils/zodSchemas.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 
@@ -79,17 +77,37 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
     const data = createUserSchema.parse(req.body);
-    const user = await createUser(
+    const result = await createUser(
       data,
       getRequestUserId(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(
       res,
-      user,
+      result,
       { vi: "Tạo người dùng thành công.", zh: "成功创建用户。" },
       201,
     );
+  } catch (error) {
+    return handleUserError(res, error);
+  }
+};
+
+export const resendUserInvitationHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { id } = userIdParamSchema.parse(req.params);
+    const result = await sendUserInvitation(
+      id,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, result, {
+      vi: "Đã gửi lại email khởi tạo tài khoản.",
+      zh: "已重新发送账户初始化邮件。",
+    });
   } catch (error) {
     return handleUserError(res, error);
   }
@@ -99,7 +117,12 @@ export const updateUserHandler = async (req: Request, res: Response) => {
   try {
     const { id } = userIdParamSchema.parse(req.params);
     const data = updateUserSchema.parse(req.body);
-    await updateUser(id, data, getRequestUserId(req), getAuditRequestMetadata(req));
+    await updateUser(
+      id,
+      data,
+      getRequestUserId(req),
+      getAuditRequestMetadata(req),
+    );
     return sendSuccess(res, null, {
       vi: "Cập nhật người dùng thành công.",
       zh: "成功更新用户。",

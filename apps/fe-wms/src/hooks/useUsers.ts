@@ -4,7 +4,10 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type { User, UserWarehouseRole } from "@bduck/shared-types";
-import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
+import {
+  emitDataMutation,
+  subscribeDataMutation,
+} from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL =
@@ -23,7 +26,9 @@ async function fetchUsersFromApi(signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải danh sách người dùng.");
+    throw new Error(
+      body?.messages?.vi || "Không thể tải danh sách người dùng.",
+    );
   }
 
   return (body.data || []) as UserWithAssignments[];
@@ -156,30 +161,34 @@ export function useUsers() {
     };
   }, []);
 
-  const createUser = useCallback(
-    async (payload: unknown) => {
-      const result = await mutateUser("/api/users", "POST", payload);
-      emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const updateUser = useCallback(
-    async (id: string, payload: unknown) => {
-      const result = await mutateUser(`/api/users/${id}`, "PUT", payload);
-      emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const deleteUser = useCallback(
-    async (id: string) => {
-      const result = await mutateUser(`/api/users/${id}`, "DELETE");
-      emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
+  const createUser = useCallback(async (payload: unknown) => {
+    const result = await mutateUser("/api/users", "POST", payload);
+    emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
+    return result;
+  }, []);
+  const updateUser = useCallback(async (id: string, payload: unknown) => {
+    const result = await mutateUser(`/api/users/${id}`, "PUT", payload);
+    emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
+    return result;
+  }, []);
+  const deleteUser = useCallback(async (id: string) => {
+    const result = await mutateUser(`/api/users/${id}`, "DELETE");
+    emitDataMutation(["users", "user_warehouse_roles", "audit_logs"]);
+    return result;
+  }, []);
+  const resendInvitation = useCallback(async (id: string) => {
+    const result = await mutateUser(`/api/users/${id}/invitation`, "POST");
+    emitDataMutation(["audit_logs"]);
+    return result;
+  }, []);
 
-  return { users, isLoading, error, createUser, updateUser, deleteUser };
+  return {
+    users,
+    isLoading,
+    error,
+    createUser,
+    updateUser,
+    deleteUser,
+    resendInvitation,
+  };
 }

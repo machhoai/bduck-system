@@ -19,6 +19,17 @@ interface SemiAutoExpenseCellProps {
   onSave: (value: number) => void;
 }
 
+const formatVNDInput = (val: string): string => {
+  const clean = val.replace(/\D/g, "");
+  if (!clean) return "";
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const parseVNDInput = (val: string): number => {
+  const clean = val.replace(/\./g, "");
+  return parseFloat(clean) || 0;
+};
+
 export default function SemiAutoExpenseCell({
   value,
   suggestedAmount,
@@ -26,16 +37,16 @@ export default function SemiAutoExpenseCell({
   onSave,
 }: SemiAutoExpenseCellProps) {
   const { t } = useTranslation();
-  const [localValue, setLocalValue] = useState(String(value));
+  const [localValue, setLocalValue] = useState(formatVNDInput(String(value)));
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLocalValue(String(value));
+    setLocalValue(formatVNDInput(String(value)));
   }, [value]);
 
   const handleSave = useCallback(async () => {
-    const numericValue = parseFloat(localValue) || 0;
+    const numericValue = parseVNDInput(localValue);
     if (numericValue === value) return;
     setSaving(true);
     try {
@@ -56,7 +67,7 @@ export default function SemiAutoExpenseCell({
 
   const handleApplySuggestion = useCallback(() => {
     if (suggestedAmount == null) return;
-    setLocalValue(String(suggestedAmount));
+    setLocalValue(formatVNDInput(String(suggestedAmount)));
     onSave(suggestedAmount);
   }, [suggestedAmount, onSave]);
 
@@ -80,21 +91,18 @@ export default function SemiAutoExpenseCell({
     <div className="flex flex-col gap-0.5">
       <input
         ref={inputRef}
-        type="number"
+        type="text"
+        inputMode="numeric"
         className={`h-8 w-full rounded-radius-xs border border-border-subtle bg-surface-input
           px-2 text-sm tabular-nums text-text-primary
           focus:border-brand-primary focus:outline-none
-          disabled:opacity-50
-          [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none
-          [&::-webkit-outer-spin-button]:appearance-none`}
+          disabled:opacity-50`}
         value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        onChange={(e) => setLocalValue(formatVNDInput(e.target.value))}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         disabled={saving}
         placeholder="0"
-        min={0}
-        step="any"
       />
       {suggestedAmount != null && suggestedAmount > 0 && (
         <div className="flex items-center gap-1">

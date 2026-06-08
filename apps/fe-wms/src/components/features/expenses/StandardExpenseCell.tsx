@@ -16,23 +16,34 @@ interface StandardExpenseCellProps {
   placeholder?: string;
 }
 
+const formatVNDInput = (val: string): string => {
+  const clean = val.replace(/\D/g, "");
+  if (!clean) return "";
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const parseVNDInput = (val: string): number => {
+  const clean = val.replace(/\./g, "");
+  return parseFloat(clean) || 0;
+};
+
 export default function StandardExpenseCell({
   value,
   canWrite,
   onSave,
   placeholder = "0",
 }: StandardExpenseCellProps) {
-  const [localValue, setLocalValue] = useState(String(value));
+  const [localValue, setLocalValue] = useState(formatVNDInput(String(value)));
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync when external value changes
   useEffect(() => {
-    setLocalValue(String(value));
+    setLocalValue(formatVNDInput(String(value)));
   }, [value]);
 
   const handleSave = useCallback(async () => {
-    const numericValue = parseFloat(localValue) || 0;
+    const numericValue = parseVNDInput(localValue);
     if (numericValue === value) return;
     setSaving(true);
     try {
@@ -62,21 +73,18 @@ export default function StandardExpenseCell({
   return (
     <input
       ref={inputRef}
-      type="number"
+      type="text"
+      inputMode="numeric"
       className={`h-8 w-full rounded-radius-xs border border-border-subtle bg-surface-input
         px-2 text-sm tabular-nums text-text-primary
         focus:border-brand-primary focus:outline-none
-        disabled:opacity-50
-        [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none
-        [&::-webkit-outer-spin-button]:appearance-none`}
+        disabled:opacity-50`}
       value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
+      onChange={(e) => setLocalValue(formatVNDInput(e.target.value))}
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
       disabled={saving}
       placeholder={placeholder}
-      min={0}
-      step="any"
     />
   );
 }

@@ -15,10 +15,8 @@ import {
   softDeleteUserRecord,
   updateUserRecord,
 } from "../repositories/userRepository.js";
-import {
-  createUserSchema,
-  updateUserSchema,
-} from "../utils/zodSchemas.js";
+import { createUserSchema, updateUserSchema } from "../utils/zodSchemas.js";
+import { sendInitialPasswordSetupInvitation } from "./accountInvitationService.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 
 type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -26,6 +24,11 @@ type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export interface UserWithAssignments extends User {
   assignments: UserWarehouseRole[];
+}
+
+export interface CreateUserResult {
+  user: UserWithAssignments;
+  invitation_email_sent: boolean;
 }
 
 const notFoundError = {
@@ -116,7 +119,7 @@ export const createUser = async (
   input: CreateUserInput,
   actorId: string,
   auditMetadata?: AuditMetadata,
-): Promise<UserWithAssignments> => {
+): Promise<CreateUserResult> => {
   await assertUniqueUserFields({
     username: input.username,
     email: input.email,
@@ -125,7 +128,6 @@ export const createUser = async (
 
   const authUser = await auth.createUser({
     email: input.email,
-    password: input.password,
     displayName: input.full_name,
     disabled: input.status !== UserStatus.ACTIVE,
   });
@@ -156,7 +158,21 @@ export const createUser = async (
       ...auditMetadata,
     });
 
-    return created;
+    let invitationEmailSent = false;
+    try {
+      await sendInitialPasswordSetupInvitation(user, actorId, auditMetadata);
+      invitationEmailSent = true;
+    } catch (invitationError) {
+      console.error("[userService] Failed to send account invitation:", {
+        userId: user.id,
+        error: invitationError,
+      });
+    }
+
+    return {
+      user: created,
+      invitation_email_sent: invitationEmailSent,
+    };
   } catch (error) {
     await auth.deleteUser(authUser.uid).catch(() => undefined);
     throw error;
@@ -214,9 +230,21 @@ export const updateUser = async (
     action: AuditAction.UPDATE,
     user_id: actorId,
     old_value: existing as unknown as Record<string, unknown>,
-    new_value: await fetchUserById(userId) as unknown as Record<string, unknown>,
+    new_value: (await fetchUserById(userId)) as unknown as Record<
+      string,
+      unknown
+    >,
     ...auditMetadata,
   });
+};
+
+export const sendUserInvitation = async (
+  userId: string,
+  actorId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<{ expires_at: Date }> => {
+  const user = await fetchUserById(userId);
+  return sendInitialPasswordSetupInvitation(user, actorId, auditMetadata);
 };
 
 export const deleteUser = async (
