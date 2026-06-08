@@ -110,7 +110,9 @@ class NotificationRepository {
     return snapshot.size;
   }
 
-  async createDispatch(input: CreateDispatchInput): Promise<NotificationDispatch> {
+  async createDispatch(
+    input: CreateDispatchInput,
+  ): Promise<NotificationDispatch> {
     const now = new Date();
     const dispatch: NotificationDispatch = {
       ...input,
@@ -137,7 +139,10 @@ class NotificationRepository {
       .filter((dispatch) => !dispatch.is_deleted);
   }
 
-  async findActiveUserIdsByRoleIds(roleIds: string[]): Promise<string[]> {
+  async findActiveUserIdsByRoleIds(
+    roleIds: string[],
+    warehouseId?: string | null,
+  ): Promise<string[]> {
     if (roleIds.length === 0) return [];
 
     const userIds = new Set<string>();
@@ -151,6 +156,14 @@ class NotificationRepository {
 
       snapshot.docs.forEach((docSnap) => {
         const data = docSnap.data();
+        if (
+          warehouseId !== undefined &&
+          data.warehouse_id &&
+          data.warehouse_id !== warehouseId
+        ) {
+          return;
+        }
+
         if (typeof data.user_id === "string" && data.user_id.trim()) {
           userIds.add(data.user_id);
         }

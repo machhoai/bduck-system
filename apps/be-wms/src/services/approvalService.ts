@@ -32,6 +32,11 @@ import * as approvalRepo from "../repositories/approvalRepository.js";
 import * as configRepo from "../repositories/processConfigRepository.js";
 import { logAudit } from "./auditService.js";
 import { verifyMfa } from "./mfaService.js";
+import {
+  notifyApprovalCompleted,
+  notifyInitialApprovalTasks,
+  notifyNextApprovalLevel,
+} from "./workflowNotificationService.js";
 
 // ─────────────────────────────────────────────
 // ERROR HELPERS
@@ -153,6 +158,9 @@ export async function createApprovalsForEntity(
   console.log(
     `[approvalService] Created ${records.length} pending_approval records for ${entityType}/${entityId}`,
   );
+
+  await notifyInitialApprovalTasks(records);
+
   return records;
 }
 
@@ -306,6 +314,15 @@ export async function approveLevel(
     record.entity_id,
   );
 
+  // Update record in memory for return and notifications
+  const updatedRecord: ApprovalRecord = {
+    ...record,
+    status: "APPROVED",
+    approver_id: approverId,
+    approved_at: now,
+    comments: comments ?? null,
+  };
+
   // ── Entity status callback: advance voucher when fully approved ──
   if (allApproved) {
     try {
@@ -314,6 +331,7 @@ export async function approveLevel(
         record.entity_id,
         approverId,
       );
+      await notifyApprovalCompleted(updatedRecord, approverId);
     } catch (callbackError) {
       // ── ROLLBACK: revert approval record to PENDING ──
       // Entity callback failed (e.g. ATP insufficient), so we must not
@@ -331,16 +349,9 @@ export async function approveLevel(
       });
       throw callbackError;
     }
+  } else if (levelCompleted) {
+    await notifyNextApprovalLevel(updatedRecord);
   }
-
-  // Update record in memory for return
-  const updatedRecord: ApprovalRecord = {
-    ...record,
-    status: "APPROVED",
-    approver_id: approverId,
-    approved_at: now,
-    comments: comments ?? null,
-  };
 
   return { allApproved, levelCompleted, record: updatedRecord };
 }
@@ -486,9 +497,7 @@ async function advanceEntityOnApproval(
   // NOTE: Do NOT catch errors here — caller (approveLevel) handles rollback.
   switch (entityType) {
     case "IMPORT_VOUCHER": {
-      const { onApprovalCompleted } = await import(
-        "./importVoucherService.js"
-      );
+      const { onApprovalCompleted } = await import("./importVoucherService.js");
       await onApprovalCompleted(entityId, approverId);
       console.log(
         `[approvalService] Advanced IMPORT_VOUCHER/${entityId} → APPROVED`,
@@ -496,9 +505,8 @@ async function advanceEntityOnApproval(
       break;
     }
     case "EXPORT_VOUCHER": {
-      const { onApprovalCompleted: onExportApproved } = await import(
-        "./exportVoucherService.js"
-      );
+      const { onApprovalCompleted: onExportApproved } =
+        await import("./exportVoucherService.js");
       await onExportApproved(entityId, approverId);
       console.log(
         `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → APPROVED`,
@@ -506,9 +514,8 @@ async function advanceEntityOnApproval(
       break;
     }
     case "TRANSFER_ORDER": {
-      const { onApprovalCompleted: onTransferApproved } = await import(
-        "./transferOrderService.js"
-      );
+      const { onApprovalCompleted: onTransferApproved } =
+        await import("./transferOrderService.js");
       await onTransferApproved(entityId, approverId);
       console.log(
         `[approvalService] Advanced TRANSFER_ORDER/${entityId} → APPROVED`,
@@ -536,9 +543,8 @@ async function advanceEntityOnRejection(
   try {
     switch (entityType) {
       case "IMPORT_VOUCHER": {
-        const { onApprovalRejected } = await import(
-          "./importVoucherService.js"
-        );
+        const { onApprovalRejected } =
+          await import("./importVoucherService.js");
         await onApprovalRejected(entityId, rejectorId, reason);
         console.log(
           `[approvalService] Advanced IMPORT_VOUCHER/${entityId} → REJECTED`,
@@ -546,9 +552,8 @@ async function advanceEntityOnRejection(
         break;
       }
       case "EXPORT_VOUCHER": {
-        const { onApprovalRejected: onExportRejected } = await import(
-          "./exportVoucherService.js"
-        );
+        const { onApprovalRejected: onExportRejected } =
+          await import("./exportVoucherService.js");
         await onExportRejected(entityId, rejectorId, reason);
         console.log(
           `[approvalService] Advanced EXPORT_VOUCHER/${entityId} → REJECTED`,
@@ -556,9 +561,8 @@ async function advanceEntityOnRejection(
         break;
       }
       case "TRANSFER_ORDER": {
-        const { onApprovalRejected: onTransferRejected } = await import(
-          "./transferOrderService.js"
-        );
+        const { onApprovalRejected: onTransferRejected } =
+          await import("./transferOrderService.js");
         await onTransferRejected(entityId, rejectorId, reason);
         console.log(
           `[approvalService] Advanced TRANSFER_ORDER/${entityId} → REJECTED`,
@@ -693,34 +697,25 @@ async function cancelEntityOnCancel(
   try {
     switch (entityType) {
       case "IMPORT_VOUCHER": {
-        const { onApprovalCancelled } = await import(
-          "./importVoucherService.js"
-        );
+        const { onApprovalCancelled } =
+          await import("./importVoucherService.js");
         await onApprovalCancelled(entityId, userId, reason);
-        console.log(
-          `[approvalService] Cancelled IMPORT_VOUCHER/${entityId}`,
-        );
+        console.log(`[approvalService] Cancelled IMPORT_VOUCHER/${entityId}`);
         break;
       }
       case "EXPORT_VOUCHER": {
-        const { onApprovalCancelled: onExportCancelled } = await import(
-          "./exportVoucherService.js"
-        );
+        const { onApprovalCancelled: onExportCancelled } =
+          await import("./exportVoucherService.js");
         await onExportCancelled(entityId, userId, reason);
-        console.log(
-          `[approvalService] Cancelled EXPORT_VOUCHER/${entityId}`,
-        );
+        console.log(`[approvalService] Cancelled EXPORT_VOUCHER/${entityId}`);
         break;
       }
       case "TRANSFER_ORDER":
       case "TRANSFER_INTRA": {
-        const { onApprovalCancelled: onTransferCancelled } = await import(
-          "./transferOrderService.js"
-        );
+        const { onApprovalCancelled: onTransferCancelled } =
+          await import("./transferOrderService.js");
         await onTransferCancelled(entityId, userId, reason);
-        console.log(
-          `[approvalService] Cancelled ${entityType}/${entityId}`,
-        );
+        console.log(`[approvalService] Cancelled ${entityType}/${entityId}`);
         break;
       }
       default:

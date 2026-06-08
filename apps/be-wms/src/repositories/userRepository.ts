@@ -12,6 +12,22 @@ export const getUserById = async (uid: string): Promise<User | null> => {
   return data;
 };
 
+export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
+  if (userIds.length === 0) return [];
+
+  const users: User[] = [];
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+
+  for (const userId of uniqueIds) {
+    const user = await getUserById(userId);
+    if (user && !user.is_deleted && user.status !== "INACTIVE") {
+      users.push(user);
+    }
+  }
+
+  return users;
+};
+
 export const findUsers = async (): Promise<User[]> => {
   const snapshot = await db
     .collection(USERS_COLLECTION)
@@ -56,7 +72,18 @@ export const createUserRecord = async (
 export const updateUserRecord = async (
   userId: string,
   data: Partial<
-    Pick<User, "username" | "email" | "full_name" | "employee_id" | "status" | "mfa_enabled" | "mfa_secret" | "email_otp" | "email_otp_expires_at">
+    Pick<
+      User,
+      | "username"
+      | "email"
+      | "full_name"
+      | "employee_id"
+      | "status"
+      | "mfa_enabled"
+      | "mfa_secret"
+      | "email_otp"
+      | "email_otp_expires_at"
+    >
   >,
 ): Promise<void> => {
   await db
@@ -110,7 +137,10 @@ export const replaceUserWarehouseRoles = async (
   }));
 
   nextAssignments.forEach((assignment) => {
-    batch.set(db.collection(USER_ROLES_COLLECTION).doc(assignment.id), assignment);
+    batch.set(
+      db.collection(USER_ROLES_COLLECTION).doc(assignment.id),
+      assignment,
+    );
   });
 
   await batch.commit();

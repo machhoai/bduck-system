@@ -7,7 +7,13 @@
  */
 
 import { LayoutGrid, List, Table2, X } from "lucide-react";
-import type { InventoryFilterState, SortField, SortDir, StockStatus, ViewMode } from "@/hooks/useInventoryFilter";
+import type {
+    InventoryFilterState,
+    SortField,
+    SortDir,
+    StockStatus,
+    ViewMode,
+} from "@/hooks/useInventoryFilter";
 import { ProductType, ProductOrigin } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 
@@ -16,15 +22,22 @@ interface InventoryToolbarProps {
     totalRows: number;
     filteredCount: number;
     hasActiveFilters: boolean;
-    onUpdate: <K extends keyof InventoryFilterState>(key: K, value: InventoryFilterState[K]) => void;
+    onUpdate: <K extends keyof InventoryFilterState>(
+        key: K,
+        value: InventoryFilterState[K],
+    ) => void;
     onReset: () => void;
 }
 
-const VIEW_MODES: { mode: ViewMode; Icon: typeof Table2; labelKey: "viewTable" | "viewList" | "viewCard" }[] = [
-    { mode: "table", Icon: Table2, labelKey: "viewTable" },
-    { mode: "list", Icon: List, labelKey: "viewList" },
-    { mode: "card", Icon: LayoutGrid, labelKey: "viewCard" },
-];
+const VIEW_MODES: {
+    mode: ViewMode;
+    Icon: typeof Table2;
+    labelKey: "viewTable" | "viewList" | "viewCard";
+}[] = [
+        { mode: "card", Icon: LayoutGrid, labelKey: "viewCard" },
+        { mode: "list", Icon: List, labelKey: "viewList" },
+        { mode: "table", Icon: Table2, labelKey: "viewTable" },
+    ];
 
 export function InventoryToolbar({
     filters,
@@ -39,9 +52,21 @@ export function InventoryToolbar({
 
     const productTypeOptions = [
         { value: "", label: d.allTypes },
-        { value: ProductType.EQUIPMENT, label: (t.inventoryDashboard.productTypes as Record<string, string>).EQUIPMENT },
-        { value: ProductType.SOUVENIR_SALE, label: (t.inventoryDashboard.productTypes as Record<string, string>).SOUVENIR_SALE },
-        { value: ProductType.SOUVENIR_GIFT, label: (t.inventoryDashboard.productTypes as Record<string, string>).SOUVENIR_GIFT },
+        {
+            value: ProductType.EQUIPMENT,
+            label: (t.inventoryDashboard.productTypes as Record<string, string>)
+                .EQUIPMENT,
+        },
+        {
+            value: ProductType.SOUVENIR_SALE,
+            label: (t.inventoryDashboard.productTypes as Record<string, string>)
+                .SOUVENIR_SALE,
+        },
+        {
+            value: ProductType.SOUVENIR_GIFT,
+            label: (t.inventoryDashboard.productTypes as Record<string, string>)
+                .SOUVENIR_GIFT,
+        },
     ];
 
     const originOptions = [
@@ -64,7 +89,8 @@ export function InventoryToolbar({
         { value: "price", label: d.sortPrice },
     ];
 
-    const selectCls = "h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-2 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary)]";
+    const selectCls =
+        "h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-2 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary)]";
 
     return (
         <div className="flex flex-col gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
@@ -98,11 +124,10 @@ export function InventoryToolbar({
                             type="button"
                             title={d[labelKey]}
                             onClick={() => onUpdate("viewMode", mode)}
-                            className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${
-                                filters.viewMode === mode
+                            className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${filters.viewMode === mode
                                     ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
                                     : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                            }`}
+                                }`}
                         >
                             <Icon size={14} />
                         </button>
@@ -115,33 +140,45 @@ export function InventoryToolbar({
                 {/* Product Type */}
                 <select
                     value={filters.productType}
-                    onChange={(e) => onUpdate("productType", e.target.value as ProductType | "")}
+                    onChange={(e) =>
+                        onUpdate("productType", e.target.value as ProductType | "")
+                    }
                     className={selectCls}
                 >
                     {productTypeOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                        <option key={o.value} value={o.value}>
+                            {o.label}
+                        </option>
                     ))}
                 </select>
 
                 {/* Origin */}
                 <select
                     value={filters.productOrigin}
-                    onChange={(e) => onUpdate("productOrigin", e.target.value as ProductOrigin | "")}
+                    onChange={(e) =>
+                        onUpdate("productOrigin", e.target.value as ProductOrigin | "")
+                    }
                     className={selectCls}
                 >
                     {originOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                        <option key={o.value} value={o.value}>
+                            {o.label}
+                        </option>
                     ))}
                 </select>
 
                 {/* Stock status */}
                 <select
                     value={filters.stockStatus}
-                    onChange={(e) => onUpdate("stockStatus", e.target.value as StockStatus)}
+                    onChange={(e) =>
+                        onUpdate("stockStatus", e.target.value as StockStatus)
+                    }
                     className={selectCls}
                 >
                     {stockStatusOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                        <option key={o.value} value={o.value}>
+                            {o.label}
+                        </option>
                     ))}
                 </select>
 
@@ -153,13 +190,17 @@ export function InventoryToolbar({
                         className={selectCls}
                     >
                         {sortOptions.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
                         ))}
                     </select>
                     <button
                         type="button"
                         title={filters.sortDir === "asc" ? d.desc : d.asc}
-                        onClick={() => onUpdate("sortDir", filters.sortDir === "asc" ? "desc" : "asc")}
+                        onClick={() =>
+                            onUpdate("sortDir", filters.sortDir === "asc" ? "desc" : "asc")
+                        }
                         className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)]"
                     >
                         {filters.sortDir === "asc" ? "↑" : "↓"}

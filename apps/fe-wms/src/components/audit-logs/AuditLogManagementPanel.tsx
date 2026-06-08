@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { AuditLog } from "@bduck/shared-types";
 import { AuditLogDetailPanel } from "@/components/audit-logs/AuditLogDetailPanel";
 import { AuditLogFiltersPanel } from "@/components/audit-logs/AuditLogFiltersPanel";
@@ -19,11 +20,15 @@ import {
 } from "@/utils/auditLogFilters";
 import { formatExportDate } from "@/utils/exportExcel";
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500];
+
 export function AuditLogManagementPanel() {
     const { t } = useTranslation();
     const { logs, isLoading, error } = useAuditLogs();
     const [filters, setFilters] = useState(defaultAuditLogFilters);
     const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
     const entityTypes = useMemo(() => getUniqueEntityTypes(logs), [logs]);
     const actions = useMemo(() => getUniqueActions(logs), [logs]);
@@ -31,9 +36,31 @@ export function AuditLogManagementPanel() {
         () => filterAuditLogs(logs, filters),
         [logs, filters],
     );
+    const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+    const paginatedLogs = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredLogs.slice(start, start + pageSize);
+    }, [currentPage, filteredLogs, pageSize]);
+    const pageNumbers = useMemo(() => {
+        const pages = new Set([
+            1,
+            totalPages,
+            currentPage - 1,
+            currentPage,
+            currentPage + 1,
+        ]);
+        return Array.from(pages)
+            .filter((page) => page >= 1 && page <= totalPages)
+            .sort((a, b) => a - b);
+    }, [currentPage, totalPages]);
+    const visibleStart =
+        filteredLogs.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const visibleEnd = Math.min(currentPage * pageSize, filteredLogs.length);
     const activeLog = selectedLog
-        ? filteredLogs.find((log) => log.id === selectedLog.id) || selectedLog
-        : filteredLogs[0] || null;
+        ? paginatedLogs.find((log) => log.id === selectedLog.id) ||
+          paginatedLogs[0] ||
+          null
+        : paginatedLogs[0] || null;
 
     // Resolve raw IDs → human-readable names for all visible logs
     const { resolveUser, resolveWarehouse, resolveEntity } =
@@ -43,7 +70,23 @@ export function AuditLogManagementPanel() {
         [resolveUser, resolveWarehouse, resolveEntity],
     );
 
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
+    const handleFiltersChange = (nextFilters: typeof defaultAuditLogFilters) => {
+        setFilters(nextFilters);
+        setCurrentPage(1);
+        setSelectedLog(null);
+    };
+
+    const handlePageSizeChange = (nextPageSize: number) => {
+        setPageSize(nextPageSize);
+        setCurrentPage(1);
+        setSelectedLog(null);
+    };
 
     const exportConfig = useMemo(() => {
         if (!filteredLogs.length) return null;
@@ -56,9 +99,9 @@ export function AuditLogManagementPanel() {
                 { header: "ID", key: "id", width: 35 },
                 { header: "Entity Type", key: "entity_type", width: 25 },
                 { header: "Entity ID", key: "entity_id", width: 35 },
-                { header: "Warehouse ID", key: "warehouse_id", width: 35, format: (val: string) => resolveWarehouse(val)?.name || val },
+                { header: "Warehouse ID", key: "warehouse_id", width: 35, format: (val: string) => resolveWarehouse(val) || val },
                 { header: "Action", key: "action", width: 15 },
-                { header: "User ID", key: "user_id", width: 35, format: (val: string) => resolveUser(val)?.name || val },
+                { header: "User ID", key: "user_id", width: 35, format: (val: string) => resolveUser(val) || val },
                 { header: "User Name", key: "user_name", width: 25 },
                 { header: "Entity Name", key: "entity_name", width: 25 },
                 { header: "Action Time", key: "action_time", width: 25, format: formatExportDate },
@@ -102,7 +145,7 @@ export function AuditLogManagementPanel() {
                 filters={filters}
                 entityTypes={entityTypes}
                 actions={actions}
-                onChange={setFilters}
+                onChange={handleFiltersChange}
                 labels={{
                     search: t.auditLog.search,
                     entityType: t.auditLog.entityType,
@@ -139,31 +182,116 @@ export function AuditLogManagementPanel() {
                 <AuditLogSkeleton />
             ) : (
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-                    <AuditLogList
-                        logs={filteredLogs}
-                        selectedId={activeLog?.id}
-                        resolver={resolver}
-                        onSelect={setSelectedLog}
-                        labels={{
-                            empty: t.auditLog.empty,
-                            emptyHint: t.auditLog.emptyHint,
-                            changedFields: t.auditLog.changedFields,
-                            actionTime: t.auditLog.actionTime,
-                            syncTime: t.auditLog.syncTime,
-                            operation: t.auditLog.operation,
-                            performedBy: t.auditLog.performedBy,
-                            warehouseId: t.auditLog.warehouseId,
-                            summary: t.auditLog.summary,
-                            page: t.auditLog.page,
-                            record: t.auditLog.record,
-                            unknownPage: t.auditLog.unknownPage,
-                            unknownUser: t.auditLog.unknownUser,
-                            noChangedFields: t.auditLog.noChangedFields,
-                            actionLabels: t.auditLog.actionLabels,
-                            entityLabels: t.auditLog.entityLabels,
-                            pageLabels: t.auditLog.pageLabels,
-                        }}
-                    />
+                    <div className="flex min-w-0 flex-col gap-3">
+                        <AuditLogList
+                            logs={paginatedLogs}
+                            selectedId={activeLog?.id}
+                            resolver={resolver}
+                            onSelect={setSelectedLog}
+                            labels={{
+                                empty: t.auditLog.empty,
+                                emptyHint: t.auditLog.emptyHint,
+                                changedFields: t.auditLog.changedFields,
+                                actionTime: t.auditLog.actionTime,
+                                syncTime: t.auditLog.syncTime,
+                                operation: t.auditLog.operation,
+                                performedBy: t.auditLog.performedBy,
+                                warehouseId: t.auditLog.warehouseId,
+                                summary: t.auditLog.summary,
+                                page: t.auditLog.page,
+                                record: t.auditLog.record,
+                                unknownPage: t.auditLog.unknownPage,
+                                unknownUser: t.auditLog.unknownUser,
+                                noChangedFields: t.auditLog.noChangedFields,
+                                actionLabels: t.auditLog.actionLabels,
+                                entityLabels: t.auditLog.entityLabels,
+                                pageLabels: t.auditLog.pageLabels,
+                            }}
+                        />
+                        {filteredLogs.length > 0 && (
+                            <section className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white px-4 py-3 text-sm text-[var(--color-text-secondary)] md:flex-row md:items-center md:justify-between">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span>
+                                        {t.auditLog.showing} {visibleStart}-{visibleEnd} /{" "}
+                                        {filteredLogs.length}
+                                    </span>
+                                    <label className="flex items-center gap-2">
+                                        <span>{t.auditLog.rowsPerPage}</span>
+                                        <select
+                                            value={pageSize}
+                                            onChange={(event) =>
+                                                handlePageSizeChange(Number(event.target.value))
+                                            }
+                                            className="h-9 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand-primary)]"
+                                        >
+                                            {PAGE_SIZE_OPTIONS.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setCurrentPage((page) => Math.max(1, page - 1))
+                                        }
+                                        disabled={currentPage === 1}
+                                        aria-label={t.auditLog.previousPage}
+                                        title={t.auditLog.previousPage}
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-card)] disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                    {pageNumbers.map((page, index) => {
+                                        const previousPage = pageNumbers[index - 1];
+                                        const showGap =
+                                            previousPage !== undefined && page - previousPage > 1;
+                                        return (
+                                            <span key={page} className="flex items-center gap-2">
+                                                {showGap && (
+                                                    <span className="px-1 text-[var(--color-text-muted)]">
+                                                        ...
+                                                    </span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`inline-flex h-9 min-w-9 items-center justify-center rounded-[var(--radius-md)] border px-3 text-sm font-semibold transition ${
+                                                        currentPage === page
+                                                            ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white"
+                                                            : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)]"
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setCurrentPage((page) =>
+                                                Math.min(totalPages, page + 1),
+                                            )
+                                        }
+                                        disabled={currentPage === totalPages}
+                                        aria-label={t.auditLog.nextPage}
+                                        title={t.auditLog.nextPage}
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-card)] disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                    <span className="ml-1 whitespace-nowrap">
+                                        {t.auditLog.page} {currentPage} {t.auditLog.of}{" "}
+                                        {totalPages}
+                                    </span>
+                                </div>
+                            </section>
+                        )}
+                    </div>
                     <AuditLogDetailPanel
                         log={activeLog}
                         resolver={resolver}

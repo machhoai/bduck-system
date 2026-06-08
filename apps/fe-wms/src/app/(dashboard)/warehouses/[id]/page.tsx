@@ -1,20 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Boxes, MapPinned } from "lucide-react";
+import { BarChart3, Boxes, MapPin, MapPinned, PackageSearch } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { WarehouseLocation } from "@bduck/shared-types";
 
-// Existing Location Components
 import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
 import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
 import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
 import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
 import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
 
-// Dashboard Components
 import StatCardGrid from "@/components/inventory/StatCardGrid";
 import StockDistributionChart from "@/components/inventory/StockDistributionChart";
 import ImportExportChart from "@/components/inventory/ImportExportChart";
@@ -22,28 +19,30 @@ import { InventoryValueChart } from "@/components/inventory/InventoryValueChart"
 import { WarehouseAuditCard } from "@/components/warehouses/WarehouseAuditCard";
 import { WarehouseInventoryView } from "@/components/warehouses/WarehouseInventoryView";
 
-// Hooks
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useInventory } from "@/hooks/useInventory";
 import { useProducts } from "@/hooks/useProducts";
 import { useUsers } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
 
-// Utilities
 import {
+    computeInventoryValue,
     computeKPIs,
     computeProductTypeDistribution,
-    computeInventoryValue,
 } from "@/utils/inventoryAggregation";
+
+type PageTab = "overview" | "products" | "locations";
 
 export default function WarehouseDetailPage() {
     const { t } = useTranslation();
     const params = useParams<{ id: string }>();
     const warehouseId = params.id;
 
-    // ── Data hooks (real-time) ──
-    const { warehouses, loading: warehousesLoading, updateWarehouse } =
-        useWarehouses();
+    const {
+        warehouses,
+        loading: warehousesLoading,
+        updateWarehouse,
+    } = useWarehouses();
     const {
         locations,
         loading: locationsLoading,
@@ -59,18 +58,14 @@ export default function WarehouseDetailPage() {
     const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
     const [editingLocation, setEditingLocation] =
         useState<WarehouseLocation | null>(null);
-
-    // Tabs State
-    const [activeTab, setActiveTab] = useState<"products" | "locations">(
-        "products",
-    );
+    const [activeTab, setActiveTab] = useState<PageTab>("overview");
+    const [inventoryTab, setInventoryTab] = useState<InventoryTab>("products");
 
     const warehouse = useMemo(
         () => warehouses.find((item) => item.id === warehouseId),
         [warehouses, warehouseId],
     );
 
-    // Computed KPIs for THIS warehouse only
     const kpis = useMemo(
         () => computeKPIs(inventory, warehouses, warehouseId),
         [inventory, warehouses, warehouseId],
@@ -98,7 +93,14 @@ export default function WarehouseDetailPage() {
         }
 
         return usersLoading ? t.common.loading : t.warehouses.unknownManager;
-    }, [t.common.loading, t.warehouses.noManager, t.warehouses.unknownManager, users, usersLoading, warehouse]);
+    }, [
+        t.common.loading,
+        t.warehouses.noManager,
+        t.warehouses.unknownManager,
+        users,
+        usersLoading,
+        warehouse,
+    ]);
 
     const handleAdd = () => {
         setEditingLocation(null);
@@ -166,7 +168,7 @@ export default function WarehouseDetailPage() {
 
     return (
         <div className="flex h-full w-full flex-col gap-5 pb-8 sm:gap-4">
-            <div className="flex flex-col gap-3">
+            <div>
                 <WarehouseDetailHero
                     warehouse={warehouse}
                     warehouseId={warehouseId}
@@ -174,76 +176,167 @@ export default function WarehouseDetailPage() {
                     onEdit={() => setIsWarehouseModalOpen(true)}
                 />
             </div>
-
-            {/* ── Stat Cards (Dashboard) ── */}
-            <StatCardGrid
-                kpis={kpis}
-                loading={false}
-                isAllWarehouses={false}
-                locationCount={locations.length}
-                onCardClick={() => { }}
-            />
-
-            {/* ── Charts Row ── */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <StockDistributionChart data={typeDistribution} loading={false} />
-                <ImportExportChart warehouseId={warehouseId} />
-            </div>
-
-            {/* ── Inventory Value Chart (RBAC gated) ── */}
-            <InventoryValueChart data={inventoryValue} loading={invLoading || prodLoading} />
-
-            {/* ── Recent Activity (full width) ── */}
-            <WarehouseAuditCard warehouseId={warehouseId} />
-
-            {/* ── Tabs for Detailed Tables ── */}
-            <div className="mt-1 flex flex-col gap-4">
-                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 shadow-sm">
-                    <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-3">
+                <div className="rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             type="button"
-                            onClick={() => setActiveTab("products")}
-                            className={`flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${activeTab === "products"
+                            onClick={() => setActiveTab("overview")}
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "overview"
                                 ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
                                 : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
                                 }`}
                         >
-                            <Boxes size={18} />
-                            {t.warehouses.tabProducts}
+                            <BarChart3 size={18} />
+                            {t.warehouses.overview}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab("products")}
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "products"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                }`}
+                        >
+                            <PackageSearch size={18} />
+                            {t.warehouses.inventory}
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveTab("locations")}
-                            className={`flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition-colors ${activeTab === "locations"
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "locations"
                                 ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
                                 : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
                                 }`}
                         >
-                            <MapPinned size={18} />
-                            {t.warehouses.tabLocations}
-                            <span
-                                className={`flex h-5 items-center justify-center rounded-full px-2 text-xxs font-bold ${activeTab === "locations"
-                                    ? "bg-white/20 text-white"
-                                    : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
-                                    }`}
-                            >
-                                {locations.length}
-                            </span>
+                            <MapPin size={18} />
+                            {t.warehouses.locations}
                         </button>
                     </div>
                 </div>
 
-                {/* ── Tab Content ── */}
-                <div className="min-h-[400px]">
-                    {activeTab === "products" && (
+                {activeTab === "overview" && (
+                    <div className="flex flex-col gap-4">
+                        <StatCardGrid
+                            kpis={kpis}
+                            loading={false}
+                            isAllWarehouses={false}
+                            locationCount={locations.length}
+                            onCardClick={() => { }}
+                        />
+
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <StockDistributionChart data={typeDistribution} loading={false} />
+                            <ImportExportChart warehouseId={warehouseId} />
+                        </div>
+
+                        <InventoryValueChart
+                            data={inventoryValue}
+                            loading={invLoading || prodLoading}
+                        />
+                        <WarehouseAuditCard warehouseId={warehouseId} />
+                    </div>
+                )}
+
+                {activeTab === "products" && (
+                    <div className="flex min-h-[400px] flex-col gap-4">
+                        {/* <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                                    {t.warehouses.inventoryInWarehouse}
+                                </h2>
+                                <p className="text-sm text-[var(--color-text-muted)]">
+                                    {t.warehouses.inventoryTabDescription}
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setInventoryTab("products")}
+                                    className={`flex min-h-8 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${inventoryTab === "products"
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                        }`}
+                                >
+                                    <Boxes size={16} />
+                                    {t.warehouses.byProduct}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setInventoryTab("locations")}
+                                    className={`flex min-h-8 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${inventoryTab === "locations"
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                        }`}
+                                >
+                                    <MapPinned size={16} />
+                                    {t.warehouses.byLocation}
+                                    <span
+                                        className={`flex h-5 items-center justify-center rounded-full px-2 text-xxs font-bold ${inventoryTab === "locations"
+                                            ? "bg-white/20 text-white"
+                                            : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                                            }`}
+                                    >
+                                        {locations.length}
+                                    </span>
+                                </button>
+                            </div>
+                        </div> */}
+
                         <WarehouseInventoryView
                             inventory={inventory}
                             products={products}
+                            locations={locations}
                             warehouseId={warehouseId}
                             loading={invLoading || prodLoading}
                         />
-                    )}
-                    {activeTab === "locations" && (
+                    </div>
+                )}
+                {activeTab === "locations" && (
+                    <div className="flex min-h-[400px] flex-col gap-4">
+                        {/* <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                                    {t.warehouses.inventoryInWarehouse}
+                                </h2>
+                                <p className="text-sm text-[var(--color-text-muted)]">
+                                    {t.warehouses.inventoryTabDescription}
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setInventoryTab("products")}
+                                    className={`flex min-h-8 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${inventoryTab === "products"
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                        }`}
+                                >
+                                    <Boxes size={16} />
+                                    {t.warehouses.byProduct}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setInventoryTab("locations")}
+                                    className={`flex min-h-8 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${inventoryTab === "locations"
+                                        ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                        }`}
+                                >
+                                    <MapPinned size={16} />
+                                    {t.warehouses.byLocation}
+                                    <span
+                                        className={`flex h-5 items-center justify-center rounded-full px-2 text-xxs font-bold ${inventoryTab === "locations"
+                                            ? "bg-white/20 text-white"
+                                            : "border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                                            }`}
+                                    >
+                                        {locations.length}
+                                    </span>
+                                </button>
+                            </div>
+                        </div> */}
+
                         <LocationCardGrid
                             locations={locations}
                             inventory={inventory}
@@ -253,11 +346,11 @@ export default function WarehouseDetailPage() {
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                         />
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
-            {/* ── Modals ── */}
+
             <LocationFormModal
                 isOpen={isModalOpen}
                 warehouseId={warehouseId}

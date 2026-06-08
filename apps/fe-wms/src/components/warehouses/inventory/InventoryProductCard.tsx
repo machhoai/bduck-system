@@ -11,21 +11,22 @@ import type { InventoryRow } from "@/hooks/useInventoryFilter";
 import { ProductCard } from "@/components/products/ProductCard";
 
 interface InventoryProductCardProps {
-    row: InventoryRow;
+  row: InventoryRow;
 }
 
 export function InventoryProductCard({ row }: InventoryProductCardProps) {
-    return (
-        <ProductCard
-            product={row.product}
-            variant="inventory"
-            stockInfo={{
-                atp: row.atp,
-                onHold: row.onHold,
-                inTransit: row.inTransit,
-                quarantine: row.quarantine,
-                total: row.total,
-            }}
-        />
-    );
+  return (
+    <ProductCard
+      product={row.product}
+      variant="inventory"
+      stockInfo={{
+        atp: row.atp,
+        onHold: row.onHold,
+        inTransit: row.inTransit,
+        quarantine: row.quarantine,
+        total: row.total,
+      }}
+      stockLocations={row.locations}
+    />
+  );
 }
