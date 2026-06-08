@@ -1,5 +1,5 @@
 /**
- * Vietnamese dictionary - WMS Layout
+ * Vietnamese dictionary - ERP WMS Layout
  */
 const vi = {
     nav: {
@@ -31,7 +31,7 @@ const vi = {
     },
 
     sidebar: {
-        systemName: "Joy World WMS",
+        systemName: "Joy World Cityfuns ERP",
         moduleName: "Quản lý kho",
         collapse: "Thu gọn",
         expand: "Mở rộng",
@@ -600,7 +600,7 @@ const vi = {
 
     login: {
         title: "Dang nhap",
-        brand: "Joy World Cityfuns WMS",
+        brand: "Joy World Cityfuns ERP",
         subtitle: "He thong quan ly kho",
         version: "Phien ban",
         email: "Email",
@@ -1330,7 +1330,7 @@ const vi = {
                     },
                 },
                 prompts: {
-                    title: "BDuck WMS",
+                    title: "Joy World Cityfuns ERP",
                     invalidTitle: "Giá trị không hợp lệ",
                     invalidList: "Vui lòng chọn một giá trị trong danh sách.",
                     invalidAmount: "Số tiền phải là số không âm.",

@@ -46,6 +46,12 @@ export async function sendBrevoEmail(
     },
   });
 
+  const signatureHtml = process.env.BREVO_EMAIL_SIGNATURE_HTML || "";
+  const signatureText = process.env.BREVO_EMAIL_SIGNATURE_TEXT || "";
+
+  const finalHtml = signatureHtml ? `${input.htmlContent}${signatureHtml}` : input.htmlContent;
+  const finalText = signatureText ? `${input.textContent}${signatureText}` : input.textContent;
+
   try {
     const info = await transporter.sendMail({
       from: `"${senderName}" <${senderEmail}>`,
@@ -53,8 +59,8 @@ export async function sendBrevoEmail(
       cc: input.cc ? input.cc.join(", ") : undefined,
       bcc: input.bcc ? input.bcc.join(", ") : undefined,
       subject: input.subject,
-      text: input.textContent,
-      html: input.htmlContent,
+      text: finalText,
+      html: finalHtml,
     });
 
     return { messageId: info.messageId };
