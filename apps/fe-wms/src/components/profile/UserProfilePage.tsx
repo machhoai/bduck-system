@@ -10,12 +10,22 @@ import { useState } from "react";
 import { MFASetupModal } from "./MFASetupModal";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 
-function formatDate(date: Date | null, lang: Language) {
-  if (!date) return "-";
-  return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+function formatDate(dateVal: any, lang: Language) {
+  if (!dateVal) return "-";
+  try {
+      let d: Date;
+      if (typeof dateVal.toDate === 'function') d = dateVal.toDate();
+      else if (dateVal._seconds !== undefined) d = new Date(dateVal._seconds * 1000);
+      else d = new Date(dateVal);
+      
+      if (isNaN(d.getTime())) return "N/A";
+      return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "vi-VN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(d);
+  } catch {
+      return "N/A";
+  }
 }
 
 export default function UserProfilePage() {

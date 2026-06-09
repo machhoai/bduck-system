@@ -241,7 +241,15 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                                 <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
                                     <Calendar size={12} className="shrink-0 text-[var(--color-text-muted)]" />
                                     <span>
-                                        {voucher.created_at && !isNaN(new Date(voucher.created_at).getTime()) ? format(new Date(voucher.created_at), "dd/MM/yyyy HH:mm", { locale: vi }) : "N/A"}
+                                        {(() => {
+                                            const dVal = voucher.created_at;
+                                            if (!dVal) return "N/A";
+                                            let d: Date;
+                                            if (typeof (dVal as any).toDate === 'function') d = (dVal as any).toDate();
+                                            else if ((dVal as any)._seconds !== undefined) d = new Date((dVal as any)._seconds * 1000);
+                                            else d = new Date(dVal);
+                                            return isNaN(d.getTime()) ? "N/A" : format(d, "dd/MM/yyyy HH:mm", { locale: vi });
+                                        })()}
                                     </span>
                                 </div>
                                 {voucher.approver_id && (

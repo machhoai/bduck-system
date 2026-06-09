@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, HelpCircle } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
+import { useNextStep } from "nextstepjs";
 import NotificationBell from "../ui/NotificationBell";
 import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
@@ -21,6 +22,7 @@ export default function TopBar() {
     const [isAtDashboard, setIsAtDashboard] = useState(pathname === "/dashboard");
     const [scrolled, setScrolled] = useState(false);
     const { exportConfig, isExporting, triggerExport } = useExportStore();
+    const { startNextStep } = useNextStep();
 
     useEffect(() => {
         const container = document.querySelector<HTMLElement>(
@@ -91,13 +93,24 @@ export default function TopBar() {
                             });
                         }}
                         disabled={isExporting}
-                        className={`flex h-8 px-3 items-center gap-1.5 justify-center rounded-full bg-green-600 text-[var(--color-text-on-dark)] shadow-sm hover:bg-green-700 text-[var(--color-text-on-dark)] disabled:opacity-50 transition-all duration-300 ${exportConfig ? "" : "translate-x-[120px]"}`}
+                        className={`flex h-8 px-3 items-center gap-1.5 justify-center rounded-full bg-green-600 text-[var(--color-text-on-dark)] shadow-sm hover:bg-green-700 disabled:opacity-50 transition-all duration-300 ${exportConfig ? "" : "translate-x-[120px]"}`}
                         title={t.common.exportExcel}
                     >
                         <IonIcon icon={folder} size={18} />
                         <span className="text-sm font-medium">{t.common.exportExcel}</span>
                     </button>
                 </div>
+                <button
+                    onClick={() => {
+                        let tourName = pathname.substring(1).replace(/\//g, "-") + "Tour";
+                        if (tourName === "Tour") tourName = "dashboardTour";
+                        startNextStep(tourName);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-brand-primary)] z-50"
+                    title="Hướng dẫn sử dụng"
+                >
+                    <HelpCircle size={18} strokeWidth={2} />
+                </button>
                 <NotificationBell />
             </div>
         </div>
