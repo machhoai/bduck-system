@@ -144,13 +144,13 @@ export const menuItems: MenuItem[] = [
         href: "/audit-logs",
         permission: "audit.read",
     },
-    {
-        id: "externalQueue",
-        labelKey: "externalQueue",
-        icon: ScanBarcode,
-        href: "/external-queue",
-        permissionsAny: ["external_scan.view", "external_scan.approve"],
-    },
+    // {
+    //     id: "externalQueue",
+    //     labelKey: "externalQueue",
+    //     icon: ScanBarcode,
+    //     href: "/external-queue",
+    //     permissionsAny: ["external_scan.view", "external_scan.approve"],
+    // },
     // ── Thêm module mới vào đây ──
 ];
 
