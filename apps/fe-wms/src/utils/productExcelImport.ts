@@ -138,17 +138,17 @@ const normalizeIdentity = (value: string | null | undefined) =>
 
 const extractCategoryCode = extractOptionCode;
 
-function normalizeRow(
-  row: Record<string, unknown>,
-): Record<(typeof PRODUCT_TEMPLATE_HEADERS)[number], string> {
-  const normalized = Object.fromEntries(
-    PRODUCT_TEMPLATE_HEADERS.map((header) => [header, ""]),
-  ) as Record<(typeof PRODUCT_TEMPLATE_HEADERS)[number], string>;
+function normalizeRow(row: Record<string, unknown>): Record<string, any> {
+  const normalized: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(row)) {
-    const mappedKey = HEADER_ALIASES[normalizeKey(key)];
+    const normalizedKey = normalizeKey(key);
+    const mappedKey =
+      HEADER_ALIASES[normalizedKey] ||
+      HEADER_ALIASES[normalizeKey(key.split("(")[0])];
+
     if (mappedKey) {
-      normalized[mappedKey] = cleanCell(value);
+      normalized[mappedKey] = value;
     }
   }
 
@@ -174,19 +174,22 @@ export async function parseProductImportFile(
     headers[colNumber - 1] = cleanCell(cell.value);
   });
 
-  const rows: Record<string, unknown>[] = [];
+  const rows: { raw: Record<string, string>, rawValues: Record<string, any> }[] = [];
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
-    const rowData: Record<string, unknown> = {};
+    const rowData: Record<string, string> = {};
+    const rawValuesData: Record<string, any> = {};
     headers.forEach((header, index) => {
-      rowData[header] = row.getCell(index + 1).text;
+      const cell = row.getCell(index + 1);
+      rowData[header] = cleanCell(cell.text || cell.value);
+      rawValuesData[header] = cell.type === 4 /* Formula */ ? cell.result : cell.value;
     });
-    rows.push(rowData);
+    rows.push({ raw: rowData, rawValues: rawValuesData });
   });
 
   const normalizedRows = rows
-    .map((row, index) => ({ rowNumber: index + 2, raw: normalizeRow(row) }))
-    .filter(({ raw }) => Object.values(raw).some((value) => value.trim()));
+    .map((row, index) => ({ rowNumber: index + 2, raw: normalizeRow(row.raw) as Record<string, string>, rawValues: normalizeRow(row.rawValues) }))
+    .filter(({ raw }) => Object.values(raw).some((value) => value && String(value).trim()));
 
   const categoryByCode = new Map(
     categories.map((category) => [normalizeIdentity(category.code), category]),
@@ -213,7 +216,7 @@ export async function parseProductImportFile(
     normalizeIdentity(raw.name),
   );
 
-  return normalizedRows.map(({ rowNumber, raw }) => {
+  return normalizedRows.map(({ rowNumber, raw, rawValues }) => {
     const errors: string[] = [];
     const warnings: string[] = [];
     const categoryCode = extractCategoryCode(raw.category_code);
@@ -221,19 +224,19 @@ export async function parseProductImportFile(
     const productType = extractOptionCode(raw.product_type) as ProductType;
     const productOrigin = extractOptionCode(raw.product_origin) as ProductOrigin;
     const parsedSerialized = parseBoolean(raw.is_serialized);
-    const priceText = raw.unit_price.trim();
-    // Handle Vietnamese/EU locale: "20.786,74" or "20786,74"
-    // Step 1: Remove thousand separators (dots before comma)
-    // Step 2: Replace comma decimal separator with dot
-    const priceNormalized = priceText
-      ? priceText.replace(/\./g, "").replace(",", ".")
-      : "";
-    const priceRaw = priceNormalized ? Number(priceNormalized) : null;
-    // Round to nearest integer (Excel may store 20786.74 for "20787")
-    const priceNumber =
-      priceRaw !== null && !isNaN(priceRaw) ? Math.round(priceRaw) : priceRaw;
-
-    // ... existing validations ...
+    
+    let priceNumber: number | null = null;
+    const rawPrice = rawValues.unit_price;
+    if (rawPrice !== undefined && rawPrice !== null && rawPrice !== "") {
+        if (typeof rawPrice === "number") {
+            priceNumber = Math.round(rawPrice);
+        } else {
+            const priceText = String(rawPrice).trim();
+            const priceNormalized = priceText.replace(/\./g, "").replace(",", ".");
+            const parsed = Number(priceNormalized);
+            priceNumber = !isNaN(parsed) ? Math.round(parsed) : null;
+        }
+    }
 
     if (!raw.category_code) errors.push("Thiếu category_code.");
     if (raw.category_code && !category) {
@@ -261,7 +264,7 @@ export async function parseProductImportFile(
       errors.push("is_serialized phải là true/false, yes/no hoặc 1/0.");
     }
     if (
-      priceText &&
+      raw.unit_price &&
       (priceNumber === null ||
         isNaN(priceNumber) ||
         priceNumber < 0)

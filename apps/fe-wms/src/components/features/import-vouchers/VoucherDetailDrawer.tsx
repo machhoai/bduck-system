@@ -63,6 +63,9 @@ interface EnrichedItem {
     unit_price: number;
     condition: string;
     notes: string | null;
+    warehouse_location_name: string | null;
+    source_location_name: string | null;
+    destination_location_name: string | null;
 }
 
 // ── Helpers ──
@@ -208,17 +211,43 @@ export default function VoucherDetailDrawer({
                             }
                         } catch { /* fallback to ID */ }
                     }
+                    let warehouse_location_name = null;
+                    let source_location_name = null;
+                    let destination_location_name = null;
+
+                    if (item.warehouse_location_id) {
+                        try {
+                            const snap = await getDoc(doc(db, "warehouse_locations", item.warehouse_location_id));
+                            if (snap.exists()) warehouse_location_name = snap.data()?.name || item.warehouse_location_id;
+                        } catch {}
+                    }
+                    if (item.source_location_id) {
+                        try {
+                            const snap = await getDoc(doc(db, "warehouse_locations", item.source_location_id));
+                            if (snap.exists()) source_location_name = snap.data()?.name || item.source_location_id;
+                        } catch {}
+                    }
+                    if (item.destination_location_id) {
+                        try {
+                            const snap = await getDoc(doc(db, "warehouse_locations", item.destination_location_id));
+                            if (snap.exists()) destination_location_name = snap.data()?.name || item.destination_location_id;
+                        } catch {}
+                    }
+
                     return {
                         id: item.id,
                         product_name: productName,
                         product_code: productCode,
                         barcode,
                         unit,
-                        expected_quantity: item.expected_quantity || 0,
-                        actual_quantity: item.actual_quantity || 0,
+                        expected_quantity: item.expected_quantity || item.quantity || 0,
+                        actual_quantity: item.actual_quantity || item.picked_quantity || item.received_quantity || 0,
                         unit_price: item.unit_price || 0,
                         condition: item.condition || "",
                         notes: item.notes || null,
+                        warehouse_location_name,
+                        source_location_name,
+                        destination_location_name,
                     };
                 }),
             );
@@ -409,6 +438,24 @@ export default function VoucherDetailDrawer({
                                             {t.tasks.detail.quantity}: {formatCurrency(item.expected_quantity)}
                                             {item.unit_price > 0 && <> × {formatCurrency(item.unit_price)}đ</>}
                                         </div>
+                                        
+                                        {(item.warehouse_location_name || item.source_location_name || item.destination_location_name) && (
+                                            <div className="mt-1 flex flex-col gap-0.5 text-xs text-[var(--color-text-secondary)]">
+                                                {entityType === "IMPORT_VOUCHER" && item.warehouse_location_name && (
+                                                    <span>Vị trí nhập: <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
+                                                )}
+                                                {entityType === "TRANSFER_ORDER" && (item.source_location_name || item.destination_location_name) && (
+                                                    <span>
+                                                        Từ: <span className="font-medium text-[var(--color-text-primary)]">{item.source_location_name || "—"}</span> 
+                                                        {" → "} 
+                                                        Đến: <span className="font-medium text-[var(--color-text-primary)]">{item.destination_location_name || "—"}</span>
+                                                    </span>
+                                                )}
+                                                {entityType === "EXPORT_VOUCHER" && item.warehouse_location_name && (
+                                                    <span>Vị trí xuất: <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

@@ -330,23 +330,26 @@ export async function parseProductMassEditFile(
       PRODUCT_COLUMNS.forEach((key, index) => colToKey.set(index + 1, key));
   }
 
-  const normalizedRows: { rowNumber: number, raw: Record<string, string> }[] = [];
+  const normalizedRows: { rowNumber: number, raw: Record<string, string>, rawValues: Record<string, any> }[] = [];
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const raw: Record<string, string> = {};
+    const rawValues: Record<string, any> = {};
     colToKey.forEach((key, colNumber) => {
-        raw[key] = cleanCell(row.getCell(colNumber).text || row.getCell(colNumber).value);
+        const cell = row.getCell(colNumber);
+        raw[key] = cleanCell(cell.text || cell.value);
+        rawValues[key] = cell.type === 4 /* Formula */ ? cell.result : cell.value;
     });
     
     if (raw.id || raw.code) {
-        normalizedRows.push({ rowNumber, raw });
+        normalizedRows.push({ rowNumber, raw, rawValues });
     }
   });
 
   const productById = new Map(products.map((p) => [p.id, p]));
   const categoryByCode = new Map(categories.map((c) => [normalizeIdentity(c.code), c]));
 
-  return normalizedRows.map(({ rowNumber, raw }) => {
+  return normalizedRows.map(({ rowNumber, raw, rawValues }) => {
     const errors: string[] = [];
     const warnings: string[] = [];
     
@@ -372,9 +375,18 @@ export async function parseProductMassEditFile(
     if (["true", "1", "yes", "co"].includes(ser)) parsedSerialized = true;
     else if (["false", "0", "no", "khong"].includes(ser)) parsedSerialized = false;
 
-    const priceText = (raw.unit_price || "").replace(/\./g, "").replace(",", ".");
-    const priceRaw = priceText ? Number(priceText) : null;
-    const priceNumber = priceRaw !== null && !isNaN(priceRaw) ? Math.round(priceRaw) : priceRaw;
+    let priceNumber: number | null = null;
+    const rawPrice = rawValues.unit_price;
+    if (rawPrice !== undefined && rawPrice !== null && rawPrice !== "") {
+        if (typeof rawPrice === "number") {
+            priceNumber = Math.round(rawPrice);
+        } else {
+            const priceText = String(rawPrice).trim();
+            const priceNormalized = priceText.replace(/\./g, "").replace(",", ".");
+            const parsed = Number(priceNormalized);
+            priceNumber = !isNaN(parsed) ? Math.round(parsed) : null;
+        }
+    }
 
     if (!raw.name) errors.push("Thiếu tên sản phẩm.");
     if (!raw.category_code || !category) errors.push(`Không tìm thấy danh mục hợp lệ.`);
@@ -382,7 +394,7 @@ export async function parseProductMassEditFile(
     if (!Object.values(ProductType).includes(productType)) errors.push(`product_type không hợp lệ.`);
     if (raw.product_origin && !Object.values(ProductOrigin).includes(productOrigin)) errors.push("product_origin không hợp lệ.");
     if (parsedSerialized === null) errors.push("is_serialized không hợp lệ.");
-    if (priceText && (priceNumber === null || isNaN(priceNumber) || priceNumber < 0)) errors.push("unit_price phải là số không âm.");
+    if (raw.unit_price && (priceNumber === null || isNaN(priceNumber) || priceNumber < 0)) errors.push("unit_price phải là số không âm.");
 
     const payload = (errors.length === 0 && category && existingProduct && parsedSerialized !== null) ? {
       id: raw.id,
