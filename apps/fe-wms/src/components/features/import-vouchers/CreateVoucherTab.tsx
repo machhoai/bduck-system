@@ -315,7 +315,7 @@ export default function CreateVoucherTab({
                 }))
                 : [],
         });
-        
+
         if (editData && Array.isArray(editData.attachment_urls)) {
             setFiles(editData.attachment_urls.map((url: string) => {
                 const name = url.split('/').pop() || "attachment";
@@ -492,7 +492,7 @@ export default function CreateVoucherTab({
 
     const handleSubmit = async () => {
         if (isSubmitting) return;
-        
+
         if (processConfig?.require_evidence && files.length === 0) {
             gooeyToast.error((t as any).importVoucher?.form?.requireEvidence ?? "Bắt buộc phải tải lên chứng từ đính kèm");
             return;
@@ -574,7 +574,7 @@ export default function CreateVoucherTab({
         };
 
         const promise = submitAction();
-        
+
         gooeyToast.promise(promise, {
             loading: isEdit ? "Đang cập nhật phiếu nhập kho..." : (
                 (t as any).importVoucher?.toast?.creating ??
@@ -627,7 +627,7 @@ export default function CreateVoucherTab({
 
     return (
         <div className="flex flex-1 h-full flex-col gap-4">
-            <div className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
+            <div className="flex h-10 items-center justify-between w-full gap-1 overflow-hidden py-1">
                 <button
                     type="button"
                     onClick={goPrev}
@@ -782,7 +782,7 @@ export default function CreateVoucherTab({
                         disabled={isSubmitting}
                         maxFiles={5}
                         label={
-                            processConfig?.require_evidence 
+                            processConfig?.require_evidence
                                 ? ((t as any).importVoucher?.steps?.uploadRequired ?? "Tải chứng từ đính kèm (Bắt buộc)")
                                 : ((t as any).importVoucher?.steps?.upload ?? "Tải chứng từ đính kèm (tuỳ chọn)")
                         }
