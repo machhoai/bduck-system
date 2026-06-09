@@ -15,6 +15,8 @@ import { gooeyToast } from "goey-toast";
 import type { ApprovalRecord } from "@bduck/shared-types";
 import { approveRecord, rejectRecord } from "@/hooks/useApprovalApi";
 import { useTranslation } from "@/lib/i18n";
+import { useProcessConfig } from "@/hooks/useProcessConfig";
+import { ActionOtpModal } from "../shared/ActionOtpModal";
 
 interface ApprovalModalProps {
   approval: ApprovalRecord;
@@ -28,18 +30,26 @@ export default function ApprovalModal({
   mode,
 }: ApprovalModalProps) {
   const { t } = useTranslation();
+  const { config: processConfig } = useProcessConfig(approval.entity_type, approval.warehouse_id);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const isApprove = mode === "approve";
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (otp?: string) => {
     if (isSubmitting) return;
 
+    if (isApprove && processConfig?.require_otp && !otp) {
+        setShowOtpModal(true);
+        return;
+    }
+
+    setShowOtpModal(false);
     setIsSubmitting(true);
 
     const submitAction = async () => {
       if (isApprove) {
-        return approveRecord(approval.id, comment || undefined);
+        return approveRecord(approval.id, comment || undefined, otp);
       }
       return rejectRecord(approval.id, comment);
     };
@@ -62,7 +72,7 @@ export default function ApprovalModal({
         action: {
           error: {
             label: t.tasks.approval.retry,
-            onClick: () => handleSubmit(),
+            onClick: () => handleSubmit(otp),
           },
         },
       });
@@ -167,6 +177,14 @@ export default function ApprovalModal({
           </button>
         </div>
       </div>
+
+      {showOtpModal && (
+          <ActionOtpModal
+              onConfirm={(code) => handleSubmit(code)}
+              onCancel={() => setShowOtpModal(false)}
+              isSubmitting={isSubmitting}
+          />
+      )}
     </div>
   );
 }

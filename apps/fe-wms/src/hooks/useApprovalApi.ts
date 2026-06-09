@@ -90,8 +90,9 @@ async function configApi<T>(
 export async function approveRecord(
   approvalId: string,
   comments?: string,
+  otp?: string,
 ): Promise<{ allApproved: boolean; levelCompleted: boolean }> {
-  return approvalApi(`/${approvalId}/approve`, "POST", { comments });
+  return approvalApi(`/${approvalId}/approve`, "POST", { comments, otp });
 }
 
 export async function rejectRecord(

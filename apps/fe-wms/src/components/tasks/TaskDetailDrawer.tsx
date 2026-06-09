@@ -39,8 +39,10 @@ import type { ApprovalRecord } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
 import { approveRecord, rejectRecord, cancelApproval } from "@/hooks/useApprovalApi";
+import { useProcessConfig } from "@/hooks/useProcessConfig";
 import AttachmentSection from "./AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
+import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 
 interface TaskDetailDrawerProps {
     approval: ApprovalRecord;
@@ -118,9 +120,11 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
     const { t } = useTranslation();
     const { voucher, items, creatorName, warehouseName, loadingVoucher, loadingItems } = useTaskDetailData(approval);
 
+    const { config: processConfig } = useProcessConfig(approval.entity_type, approval.warehouse_id);
     const [comment, setComment] = useState("");
     const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
 
     const isLoading = loadingVoucher;
 
@@ -143,7 +147,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
 
     // ── Approve / Reject via new API ──
     const handleDecision = useCallback(
-        async (approved: boolean) => {
+        async (approved: boolean, otp?: string) => {
             if (isSubmitting) return;
             if (!approved && !comment.trim()) {
                 gooeyToast.error(t.tasks.approval.rejectReasonRequired, {
@@ -154,11 +158,17 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 return;
             }
 
+            if (approved && processConfig?.require_otp && !otp) {
+                setShowOtpModal(true);
+                return;
+            }
+
+            setShowOtpModal(false);
             setIsSubmitting(true);
 
             const submitAction = async () => {
                 if (approved) {
-                    return approveRecord(approval.id, comment || undefined);
+                    return approveRecord(approval.id, comment || undefined, otp);
                 } else {
                     return rejectRecord(approval.id, comment);
                 }
@@ -178,7 +188,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                     action: {
                         error: {
                             label: t.tasks.approval.retry,
-                            onClick: () => handleDecision(approved),
+                            onClick: () => handleDecision(approved, otp),
                         },
                     },
                 });
@@ -189,7 +199,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 setIsSubmitting(false);
             }
         },
-        [isSubmitting, comment, approval, onClose, t],
+        [isSubmitting, comment, approval, onClose, t, processConfig],
     );
 
     // ── Cancel by creator ──
@@ -450,6 +460,14 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                     </div>
                 )}
             </div>
+
+            {showOtpModal && (
+                <ActionOtpModal
+                    onConfirm={(code) => handleDecision(true, code)}
+                    onCancel={() => setShowOtpModal(false)}
+                    isSubmitting={isSubmitting}
+                />
+            )}
         </>
     );
 }
