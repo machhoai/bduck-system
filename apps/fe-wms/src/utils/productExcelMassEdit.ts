@@ -291,6 +291,17 @@ const HEADER_ALIASES: Record<string, string> = {
   product_origin: "product_origin", unit_price: "unit_price", is_serialized: "is_serialized", description: "description",
 };
 
+// Populate HEADER_ALIASES with normalized labels from all languages
+for (const lang of Object.values(TEMPLATE_TEXT)) {
+  for (const [key, colDef] of Object.entries(lang.columns)) {
+    const label = colDef.label;
+    const norm1 = normalizeKey(label);
+    const norm2 = normalizeKey(label.split("(")[0]);
+    HEADER_ALIASES[norm1] = key;
+    HEADER_ALIASES[norm2] = key;
+  }
+}
+
 export async function parseProductMassEditFile(
   file: File,
   categories: ProductCategory[],
@@ -303,25 +314,34 @@ export async function parseProductMassEditFile(
 
   if (!sheet) throw new Error("Tệp Excel không có sheet dữ liệu.");
 
-  const headers: string[] = [];
-  sheet.getRow(1).eachCell((cell, colNumber) => { headers[colNumber - 1] = cleanCell(cell.value); });
-
-  const rows: Record<string, unknown>[] = [];
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const rowData: Record<string, unknown> = {};
-    headers.forEach((header, index) => { rowData[header] = row.getCell(index + 1).text; });
-    rows.push(rowData);
+  const colToKey = new Map<number, string>();
+  sheet.getRow(1).eachCell((cell, colNumber) => { 
+    const text = cleanCell(cell.text || cell.value);
+    const norm1 = normalizeKey(text);
+    const norm2 = normalizeKey(text.split("(")[0]);
+    const mappedKey = HEADER_ALIASES[norm1] || HEADER_ALIASES[norm2];
+    if (mappedKey) {
+        colToKey.set(colNumber, mappedKey);
+    }
   });
 
-  const normalizedRows = rows.map((row, index) => {
+  // Fallback to strict index mapping if header mapping fails completely
+  if (colToKey.size < 3) {
+      PRODUCT_COLUMNS.forEach((key, index) => colToKey.set(index + 1, key));
+  }
+
+  const normalizedRows: { rowNumber: number, raw: Record<string, string> }[] = [];
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
     const raw: Record<string, string> = {};
-    for (const [key, value] of Object.entries(row)) {
-      const mappedKey = HEADER_ALIASES[normalizeKey(key)] || HEADER_ALIASES[normalizeKey(key.split("(")[0])];
-      if (mappedKey) raw[mappedKey] = cleanCell(value);
+    colToKey.forEach((key, colNumber) => {
+        raw[key] = cleanCell(row.getCell(colNumber).text || row.getCell(colNumber).value);
+    });
+    
+    if (raw.id || raw.code) {
+        normalizedRows.push({ rowNumber, raw });
     }
-    return { rowNumber: index + 2, raw };
-  }).filter(({ raw }) => raw.id || raw.code);
+  });
 
   const productById = new Map(products.map((p) => [p.id, p]));
   const categoryByCode = new Map(categories.map((c) => [normalizeIdentity(c.code), c]));
