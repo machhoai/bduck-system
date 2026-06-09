@@ -260,6 +260,7 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                 <VoucherDetailDrawer
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
+                    onClone={onClone}
                 />
             )}
         </div>

@@ -263,6 +263,21 @@ export default function CreateExportTab({
             (cloneData.destination_warehouse_id as string) || "",
         );
         setNotes((cloneData.notes as string) || "");
+        
+        if (Array.isArray(cloneData.items)) {
+            setItems(
+                (cloneData.items as any[]).map((item) => ({
+                    id: crypto.randomUUID(),
+                    product_id: item.product_id || "",
+                    product_name: item.product_name || "",
+                    warehouse_location_id: item.warehouse_location_id || item.source_location_id || "",
+                    quantity: item.expected_quantity || item.quantity || 1,
+                    unit_price: item.unit_price || 0,
+                    notes: item.notes || "",
+                }))
+            );
+        }
+        
         setStep(0);
     }, [cloneData]);
 
@@ -355,6 +370,7 @@ export default function CreateExportTab({
                 return baseValid;
             }
             case 1:
+                if (processConfig === null) return false;
                 return processConfig?.require_evidence ? files.length > 0 : true;
             case 2:
                 return (

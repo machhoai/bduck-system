@@ -236,6 +236,7 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
                 <VoucherDetailDrawer
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
+                    onClone={onClone}
                 />
             )}
         </div>

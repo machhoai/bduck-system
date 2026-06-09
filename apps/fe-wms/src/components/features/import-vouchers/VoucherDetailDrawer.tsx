@@ -29,6 +29,7 @@ import {
     Ban,
     ShieldAlert,
     Loader2,
+    Copy,
 } from "lucide-react";
 import {
     doc,
@@ -49,11 +50,13 @@ import { getStatusStyle } from "@/components/ui/StatusBadge";
 interface VoucherDetailDrawerProps {
     voucher: ImportVoucher;
     onClose: () => void;
+    onClone?: (data: Record<string, unknown>) => void;
 }
 
 // ── Enriched item ──
 interface EnrichedItem {
     id: string;
+    product_id: string;
     product_name: string;
     product_code: string;
     barcode: string | null;
@@ -63,6 +66,9 @@ interface EnrichedItem {
     unit_price: number;
     condition: string;
     notes: string | null;
+    warehouse_location_id: string | null;
+    source_location_id: string | null;
+    destination_location_id: string | null;
     warehouse_location_name: string | null;
     source_location_name: string | null;
     destination_location_name: string | null;
@@ -143,6 +149,7 @@ const TERMINAL_STATUSES = new Set(["CANCELLED", "COMPLETED"]);
 export default function VoucherDetailDrawer({
     voucher,
     onClose,
+    onClone,
 }: VoucherDetailDrawerProps) {
     const { t } = useTranslation();
     const currentUser = useUserStore((s) => s.user);
@@ -236,6 +243,7 @@ export default function VoucherDetailDrawer({
 
                     return {
                         id: item.id,
+                        product_id: item.product_id,
                         product_name: productName,
                         product_code: productCode,
                         barcode,
@@ -245,6 +253,9 @@ export default function VoucherDetailDrawer({
                         unit_price: item.unit_price || 0,
                         condition: item.condition || "",
                         notes: item.notes || null,
+                        warehouse_location_id: item.warehouse_location_id || null,
+                        source_location_id: item.source_location_id || null,
+                        destination_location_id: item.destination_location_id || null,
                         warehouse_location_name,
                         source_location_name,
                         destination_location_name,
@@ -355,13 +366,34 @@ export default function VoucherDetailDrawer({
                             {voucher.voucher_number}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {onClone && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const cloneData = {
+                                        ...voucher,
+                                        type: entityType.split('_')[0],
+                                        items: items
+                                    };
+                                    onClone(cloneData);
+                                    onClose();
+                                }}
+                                className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-neutral-100)]"
+                                title="Copy lệnh này"
+                            >
+                                <Copy className="h-4 w-4" />
+                                Copy
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}

@@ -322,6 +322,31 @@ export default function CreateTransferTab({
     }, [prefillWarehouseId]);
 
     useEffect(() => {
+        if (!cloneData) return;
+        setSourceWarehouseId((cloneData.source_warehouse_id as string) || (cloneData.warehouse_id as string) || "");
+        setTransferType(((cloneData.transfer_type as string) || "INTER_WAREHOUSE") as TransferTypeValue);
+        setDestWarehouseId(
+            (cloneData.destination_warehouse_id as string) || "",
+        );
+        setNotes((cloneData.notes as string) || "");
+        
+        if (Array.isArray(cloneData.items)) {
+            setItems(
+                (cloneData.items as any[]).map((item) => ({
+                    id: crypto.randomUUID(),
+                    product_id: item.product_id || "",
+                    product_name: item.product_name || "",
+                    source_location_id: item.source_location_id || item.warehouse_location_id || "",
+                    destination_location_id: item.destination_location_id || "",
+                    quantity: item.expected_quantity || item.quantity || 1,
+                }))
+            );
+        }
+        
+        setStep(0);
+    }, [cloneData]);
+
+    useEffect(() => {
         setItems([]);
     }, [sourceWarehouseId]);
 
@@ -407,7 +432,8 @@ export default function CreateTransferTab({
                 if (isIntra) return true;
                 return destWarehouseId !== "" && destWarehouseId !== sourceWarehouseId;
             case 1:
-                return true;
+                if (processConfig === null) return false;
+                return processConfig?.require_evidence ? files.length > 0 : true;
             case 2:
                 return (
                     items.length > 0 &&

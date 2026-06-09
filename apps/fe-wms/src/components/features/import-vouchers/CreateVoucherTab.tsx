@@ -309,7 +309,7 @@ export default function CreateVoucherTab({
                 }))
                 : [],
         });
-        setStep(1);
+        setStep(0);
     }, [cloneData]);
 
     const canGoNext = useCallback(() => {
@@ -317,6 +317,7 @@ export default function CreateVoucherTab({
             case 0:
                 return !!formData.warehouse_id && !!formData.supplier_name.trim();
             case 1:
+                if (processConfig === null) return false;
                 return processConfig?.require_evidence ? files.length > 0 : true;
             case 2:
                 return (
