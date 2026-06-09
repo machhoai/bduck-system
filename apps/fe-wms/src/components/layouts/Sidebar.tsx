@@ -7,6 +7,7 @@ import { useSidebarStore } from "../../stores/useSidebarStore";
 import { getVisibleMenuItems, menuItems } from "../../config/menuConfig";
 import { useMenuBadges } from "../../hooks/useMenuBadges";
 import SidebarActions from "./SidebarActions";
+import Image from "next/image";
 import SidebarMenuItem from "./SidebarMenuItem";
 import SidebarUserPanel from "./SidebarUserPanel";
 
@@ -23,32 +24,22 @@ export default function Sidebar() {
         fixed left-0 top-0 z-40 hidden h-screen flex-col border-r
         border-[var(--color-border-soft)] bg-[var(--color-surface-nav)]
         text-[var(--color-text-on-dark)]
-        transition-[width] duration-300 ease-in-out lg:flex rounded-r-md pt-3
+        transition-[width] duration-300 ease-in-out lg:flex rounded-r-md
         ${isCollapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width-expanded)]"}
       `}
         >
             <div
-                className={`flex h-8 shrink-0 items-center gap-3 px-3 ${isCollapsed ? "justify-center" : ""}`}
+                className={`flex h-20 w-full ${isCollapsed ? "justify-center" : ""}`}
             >
-                <div
-                    className="
-            flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]
-            bg-[var(--color-text-on-dark)] text-[var(--color-surface-nav)]
-          "
-                >
-                    <Warehouse size={18} strokeWidth={2} />
+                <div className={`relative w-full h-full`}>
+                    <Image
+                        src={isCollapsed ? "/logo/jw.png" : "/logo/jwc-h.png"}
+                        alt="Logo"
+                        fill
+                        className="object-contain"
+                        priority
+                    />
                 </div>
-
-                {!isCollapsed && (
-                    <div className="min-w-0">
-                        <p className="truncate text-xs font-normal tracking-normal text-[var(--color-text-on-dark)]">
-                            {t.sidebar.systemName}
-                        </p>
-                        <p className="truncate text-xxs font-normal uppercase tracking-normal text-white/60">
-                            {t.sidebar.moduleName}
-                        </p>
-                    </div>
-                )}
             </div>
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
