@@ -39,7 +39,7 @@ export default function ApprovalModal({
   const handleSubmit = async (otp?: string) => {
     if (isSubmitting) return;
 
-    if (isApprove && processConfig?.require_otp && !otp) {
+    if (processConfig?.require_otp && !otp) {
         setShowOtpModal(true);
         return;
     }
@@ -51,7 +51,7 @@ export default function ApprovalModal({
       if (isApprove) {
         return approveRecord(approval.id, comment || undefined, otp);
       }
-      return rejectRecord(approval.id, comment);
+      return rejectRecord(approval.id, comment, otp);
     };
 
     try {

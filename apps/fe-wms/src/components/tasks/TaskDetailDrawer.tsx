@@ -124,7 +124,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
     const [comment, setComment] = useState("");
     const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpAction, setOtpAction] = useState<"approve" | "reject" | "cancel" | null>(null);
 
     const isLoading = loadingVoucher;
 
@@ -158,19 +158,19 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 return;
             }
 
-            if (approved && processConfig?.require_otp && !otp) {
-                setShowOtpModal(true);
+            if (processConfig?.require_otp && !otp) {
+                setOtpAction(approved ? "approve" : "reject");
                 return;
             }
 
-            setShowOtpModal(false);
+            setOtpAction(null);
             setIsSubmitting(true);
 
             const submitAction = async () => {
                 if (approved) {
                     return approveRecord(approval.id, comment || undefined, otp);
                 } else {
-                    return rejectRecord(approval.id, comment);
+                    return rejectRecord(approval.id, comment, otp);
                 }
             };
 
@@ -203,43 +203,49 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
     );
 
     // ── Cancel by creator ──
-    const handleCancel = useCallback(async () => {
-        if (isSubmitting) return;
-        setIsSubmitting(true);
-
-        const cancelAction = async () => {
-            await cancelApproval(
-                approval.entity_type,
-                approval.entity_id,
-                cancelReason || undefined,
-            );
-        };
-
-        try {
-            const promise = cancelAction();
+    const handleCancel = useCallback(
+        async (otp?: string) => {
+            if (isSubmitting) return;
             
-            gooeyToast.promise(promise, {
-                loading: (t.tasks as any).selfApproval?.cancelling ?? "Đang hủy lệnh...",
-                success: (t.tasks as any).selfApproval?.cancelSuccess ?? "Đã hủy lệnh thành công",
-                error: (t.tasks as any).selfApproval?.cancelError ?? "Không thể hủy lệnh",
-                description: {
-                    success: (t.tasks as any).selfApproval?.cancelSuccessDesc ?? "Lệnh đã được hủy và ghi nhận vào lịch sử.",
-                    error: (t.tasks as any).selfApproval?.cancelErrorDesc ?? "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
-                },
-                action: {
-                    error: {
-                        label: t.tasks.approval.retry,
-                        onClick: () => handleCancel(),
-                    },
-                },
-            });
+            if (processConfig?.require_otp && !otp) {
+                setOtpAction("cancel");
+                return;
+            }
 
-            await promise;
-            onClose();
-        } finally {
-            setIsSubmitting(false);
-        }
-    }, [isSubmitting, cancelReason, approval, onClose, t]);
+            setOtpAction(null);
+            setIsSubmitting(true);
+
+            const submitAction = async () => {
+                return cancelApproval(approval.entity_type, approval.entity_id, cancelReason, otp);
+            };
+
+            try {
+                const promise = submitAction();
+                
+                gooeyToast.promise(promise, {
+                    loading: (t.tasks as any).selfApproval?.cancelling ?? "Đang hủy lệnh...",
+                    success: (t.tasks as any).selfApproval?.cancelSuccess ?? "Đã hủy lệnh thành công",
+                    error: (t.tasks as any).selfApproval?.cancelError ?? "Không thể hủy lệnh",
+                    description: {
+                        success: (t.tasks as any).selfApproval?.cancelSuccessDesc ?? "Lệnh đã được hủy và ghi nhận vào lịch sử.",
+                        error: (t.tasks as any).selfApproval?.cancelErrorDesc ?? "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+                    },
+                    action: {
+                        error: {
+                            label: t.tasks.approval.retry,
+                            onClick: () => handleCancel(otp),
+                        },
+                    },
+                });
+
+                await promise;
+                onClose();
+            } finally {
+                setIsSubmitting(false);
+            }
+        },
+        [isSubmitting, cancelReason, approval, onClose, t, processConfig],
+    );
 
     const attachmentUrls = voucher?.attachment_urls || [];
 
@@ -461,10 +467,14 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 )}
             </div>
 
-            {showOtpModal && (
+            {!!otpAction && (
                 <ActionOtpModal
-                    onConfirm={(code) => handleDecision(true, code)}
-                    onCancel={() => setShowOtpModal(false)}
+                    onConfirm={(code) => {
+                        if (otpAction === "approve") handleDecision(true, code);
+                        else if (otpAction === "reject") handleDecision(false, code);
+                        else if (otpAction === "cancel") handleCancel(code);
+                    }}
+                    onCancel={() => setOtpAction(null)}
                     isSubmitting={isSubmitting}
                 />
             )}

@@ -98,16 +98,18 @@ export async function approveRecord(
 export async function rejectRecord(
   approvalId: string,
   reason: string,
+  otp?: string,
 ): Promise<void> {
-  return approvalApi(`/${approvalId}/reject`, "POST", { reason });
+  return approvalApi(`/${approvalId}/reject`, "POST", { reason, otp });
 }
 
 export async function cancelApproval(
   entityType: string,
   entityId: string,
   reason?: string,
+  otp?: string,
 ): Promise<void> {
-  return approvalApi(`/${entityType}/${entityId}/cancel`, "POST", { reason });
+  return approvalApi(`/${entityType}/${entityId}/cancel`, "POST", { reason, otp });
 }
 
 export async function forceCancelApproval(

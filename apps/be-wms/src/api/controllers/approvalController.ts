@@ -149,7 +149,7 @@ export async function rejectHandler(
   try {
     const approvalId = req.params.id as string;
     const userId = (req as any).user?.id;
-    const { reason } = req.body ?? {};
+    const { reason, otp } = req.body ?? {};
 
     if (!userId) {
       res.status(401).json({
@@ -163,7 +163,7 @@ export async function rejectHandler(
       return;
     }
 
-    await approvalService.rejectApproval(approvalId, userId, reason);
+    await approvalService.rejectApproval(approvalId, userId, reason, otp);
 
     res.json({
       success: true,
@@ -201,7 +201,7 @@ export async function cancelHandler(
     const entityType = req.params.entityType as string;
     const entityId = req.params.entityId as string;
     const userId = (req as any).user?.id;
-    const { reason } = req.body ?? {};
+    const { reason, otp } = req.body ?? {};
 
     if (!userId) {
       res.status(401).json({
@@ -220,6 +220,7 @@ export async function cancelHandler(
       entityId,
       userId,
       reason,
+      otp,
     );
 
     res.json({

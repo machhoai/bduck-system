@@ -369,6 +369,7 @@ export async function rejectApproval(
   approvalId: string,
   rejectorId: string,
   reason: string,
+  otp?: string | null,
 ): Promise<ApprovalRecord> {
   if (!reason || reason.trim().length === 0) {
     throw createError(
@@ -386,6 +387,29 @@ export async function rejectApproval(
       "Không tìm thấy bản ghi phê duyệt.",
       "未找到审批记录。",
     );
+  }
+
+  // ── OTP VERIFICATION (If required by config) ──
+  const config = await configRepo.findByEntityType(
+    record.entity_type,
+    record.warehouse_id,
+  );
+  if (config?.require_otp) {
+    if (!otp) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) là bắt buộc cho thao tác này.",
+        "此操作需要验证码 (OTP)。",
+      );
+    }
+    const isOtpValid = await verifyMfa(rejectorId, otp);
+    if (!isOtpValid) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        "验证码 (OTP) 无效或已过期。",
+      );
+    }
   }
 
   if (record.status !== "PENDING") {
@@ -602,6 +626,7 @@ export async function cancelByCreator(
   entityId: string,
   creatorId: string,
   reason?: string | null,
+  otp?: string | null,
 ): Promise<void> {
   const allRecords = await approvalRepo.findByEntity(entityType, entityId);
 
@@ -621,6 +646,29 @@ export async function cancelByCreator(
       "Chỉ người tạo lệnh mới có quyền hủy.",
       "只有创建人才能撤销单据。",
     );
+  }
+
+  // ── OTP VERIFICATION (If required by config) ──
+  const cancelConfig = await configRepo.findByEntityType(
+    entityType,
+    firstRecord.warehouse_id,
+  );
+  if (cancelConfig?.require_otp) {
+    if (!otp) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) là bắt buộc cho thao tác này.",
+        "此操作需要验证码 (OTP)。",
+      );
+    }
+    const isOtpValid = await verifyMfa(creatorId, otp);
+    if (!isOtpValid) {
+      throw createError(
+        400,
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        "验证码 (OTP) 无效或已过期。",
+      );
+    }
   }
 
   // ── Check no records have been APPROVED already ──
