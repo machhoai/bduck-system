@@ -256,10 +256,9 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                 })}
             </div>
 
-            {selectedVoucher && selectedVoucher.type === "IMPORT" && (
+            {selectedVoucher && (
                 <VoucherDetailDrawer
-                    voucherId={selectedVoucher.id}
-                    isOpen={!!selectedVoucher}
+                    voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
                 />
             )}
