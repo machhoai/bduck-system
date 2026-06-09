@@ -114,6 +114,15 @@ export const updateLocationSlot = async (
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await fetchLocationSlotById(id);
+  const updateData = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.code !== undefined ? { code: input.code } : {}),
+    ...(input.sort_order !== undefined ? { sort_order: input.sort_order } : {}),
+    ...(input.description !== undefined
+      ? { description: input.description ?? null }
+      : {}),
+    ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
+  };
 
   if (input.code && input.code !== existing.code) {
     const codeOwner = await locationSlotRepository.findByLocationAndCode(
@@ -131,7 +140,7 @@ export const updateLocationSlot = async (
     }
   }
 
-  await locationSlotRepository.update(id, input as any);
+  await locationSlotRepository.update(id, updateData as any);
   await logAudit({
     entity_type: "warehouse_location_slots",
     entity_id: id,
@@ -139,7 +148,7 @@ export const updateLocationSlot = async (
     action: AuditAction.UPDATE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
-    new_value: input as unknown as Record<string, unknown>,
+    new_value: updateData as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
 };

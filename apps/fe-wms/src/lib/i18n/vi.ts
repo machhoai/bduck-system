@@ -88,7 +88,8 @@ const vi = {
     dashboard: {
         title: "Trang chủ",
         welcome: "Xin chào",
-        emptyState: "Dashboard đang được xây dựng. Nội dung sẽ được cập nhật sớm.",
+        emptyState:
+            "Dashboard đang được xây dựng. Nội dung sẽ được cập nhật sớm.",
     },
 
     inProgressTab: {
@@ -133,7 +134,8 @@ const vi = {
         subtitle:
             "Tổng hợp chứng từ đã tải lên storage từ lệnh nhập, lệnh xuất và lệnh điều chuyển.",
         visibleCount: "Đang hiển thị",
-        searchPlaceholder: "Tìm theo tên tệp, người upload, mã lệnh, mục đích...",
+        searchPlaceholder:
+            "Tìm theo tên tệp, người upload, mã lệnh, mục đích...",
         clearFilters: "Xóa lọc",
         sourceFilter: "Nguồn",
         formatFilter: "Định dạng",
@@ -164,7 +166,8 @@ const vi = {
         openFile: "Mở tệp",
         download: "Tải xuống",
         emptyTitle: "Không có tệp phù hợp",
-        emptyHint: "Các chứng từ không phải hình ảnh sẽ tự xuất hiện khi được gắn vào lệnh.",
+        emptyHint:
+            "Các chứng từ không phải hình ảnh sẽ tự xuất hiện khi được gắn vào lệnh.",
     },
 
     categories: {
@@ -237,7 +240,8 @@ const vi = {
         deleteSuccess: "Đã xóa sản phẩm.",
         deleteError: "Lỗi khi xóa sản phẩm.",
         deleteSuccessDescription: "Sản phẩm đã được đánh dấu xóa mềm.",
-        deleteErrorDescription: "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+        deleteErrorDescription:
+            "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
         redirectingCategories: "Đang chuyển sang tab danh mục",
         sortBy: "Sắp xếp theo",
         sortDirection: "Thứ tự",
@@ -281,12 +285,20 @@ const vi = {
         addNew: "Thêm kho",
         editWarehouse: "Chỉnh sửa kho",
         warehouseList: "Danh sách kho",
-        warehouseListHint: "Theo dõi mã kho, loại kho, trạng thái và số vị trí.",
+        warehouseListHint:
+            "Theo dõi mã kho, loại kho, trạng thái và số vị trí.",
         tabWarehouses: "Kho hàng",
         tabOrganizations: "Tổ chức",
         locations: "Vị trí",
         addLocation: "Thêm vị trí",
         editLocation: "Chỉnh sửa vị trí",
+        addSlot: "Thêm giải",
+        editSlot: "Chỉnh sửa giải",
+        slotName: "Tên giải",
+        slotCode: "Mã giải",
+        slotSortOrder: "Thứ tự",
+        slotDescription: "Mô tả giải",
+        slotActive: "Đang sử dụng",
         locationList: "Danh sách vị trí",
         locationListHint: "Mã vị trí là duy nhất trong phạm vi một kho.",
         empty: "Chưa có kho nào",
@@ -301,12 +313,14 @@ const vi = {
         selectOrganization: "Chọn tổ chức",
         noOrganizations: "Chưa có tổ chức khả dụng để tạo kho.",
         managerId: "Quản lý kho",
-        managerIdHint: "Tùy chọn. Chọn người phụ trách kho từ danh sách người dùng.",
+        managerIdHint:
+            "Tùy chọn. Chọn người phụ trách kho từ danh sách người dùng.",
         noManager: "Không chọn quản lý",
         noManagers: "Chưa có người dùng hoạt động để chọn làm quản lý kho.",
         noManagerMatches: "Không tìm thấy người dùng phù hợp.",
         searchManager: "Tìm theo tên, email hoặc mã nhân viên",
-        unknownManager: "Quản lý hiện tại không còn trong danh sách người dùng khả dụng.",
+        unknownManager:
+            "Quản lý hiện tại không còn trong danh sách người dùng khả dụng.",
         invalidManagerId: "Mã quản lý không hợp lệ",
         invalidManagerIdDescription:
             "Trường này yêu cầu UUID user. Hãy để trống nếu chưa chọn quản lý kho.",
@@ -316,7 +330,8 @@ const vi = {
         imageUrl: "URL hình ảnh",
         uploadImage: "Tải ảnh",
         imageTooLarge: "Ảnh vượt quá 20MB",
-        imageTooLargeDescription: "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
+        imageTooLargeDescription:
+            "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
         invalidImage: "Định dạng ảnh không hợp lệ",
         invalidImageDescription: "Chỉ hỗ trợ JPG, PNG hoặc WEBP.",
         longitude: "Kinh độ",
@@ -330,12 +345,19 @@ const vi = {
         backToList: "Quay lại danh sách kho",
         confirmDeleteWarehouse: "Bạn có chắc muốn xóa mềm kho này?",
         confirmDeleteLocation: "Bạn có chắc muốn xóa mềm vị trí này?",
+        confirmDeleteSlot: "Bạn có chắc muốn xóa mềm giải này?",
         saving: "Đang lưu dữ liệu kho...",
         saveSuccess: "Đã lưu dữ liệu kho.",
         saveError: "Lỗi khi lưu dữ liệu kho.",
+        slotSaving: "Đang lưu giải...",
+        slotSaveSuccess: "Đã lưu giải.",
+        slotSaveError: "Lỗi khi lưu giải.",
         deleting: "Đang xóa mềm...",
         deleteSuccess: "Đã xóa mềm thành công.",
         deleteError: "Lỗi khi xóa mềm.",
+        slotDeleting: "Đang xóa mềm giải...",
+        slotDeleteSuccess: "Đã xóa mềm giải.",
+        slotDeleteError: "Lỗi khi xóa mềm giải.",
         types: {
             MAIN: "Kho chính",
             STORE: "Kho cửa hàng",
@@ -396,7 +418,8 @@ const vi = {
             noResults: "Không tìm thấy sản phẩm nào",
             noResultsHint: "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.",
         },
-        locationTabDescription: "Chọn một vị trí để xem tồn kho chi tiết, thay vì cuộn qua nhiều danh sách dài.",
+        locationTabDescription:
+            "Chọn một vị trí để xem tồn kho chi tiết, thay vì cuộn qua nhiều danh sách dài.",
         locationCount: "vị trí",
         productCount: "sản phẩm",
         searchLocationPlaceholder: "Tìm vị trí...",
@@ -407,7 +430,8 @@ const vi = {
         overview: "Tổng quan kho",
         inventory: "Tồn kho",
         inventoryInWarehouse: "Tồn kho trong kho",
-        inventoryTabDescription: "Chuyển nhanh giữa góc nhìn theo sản phẩm và theo vị trí lưu trữ.",
+        inventoryTabDescription:
+            "Chuyển nhanh giữa góc nhìn theo sản phẩm và theo vị trí lưu trữ.",
         byProduct: "Theo sản phẩm",
         byLocation: "Theo vị trí",
     },
@@ -424,7 +448,8 @@ const vi = {
         image: "Hình ảnh tổ chức",
         uploadImage: "Tải ảnh",
         imageTooLarge: "Ảnh vượt quá 20MB",
-        imageTooLargeDescription: "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
+        imageTooLargeDescription:
+            "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
         invalidImage: "Định dạng ảnh không hợp lệ",
         invalidImageDescription: "Chỉ hỗ trợ JPG, PNG hoặc WEBP.",
         warehouses: "kho",
@@ -496,7 +521,8 @@ const vi = {
         saving: "Đang lưu người dùng...",
         saveSuccess: "Đã lưu người dùng.",
         createSuccessInvitationSent: "Đã tạo người dùng và gửi email khởi tạo.",
-        createSuccessInvitationFailed: "Đã tạo người dùng, nhưng chưa gửi được email khởi tạo.",
+        createSuccessInvitationFailed:
+            "Đã tạo người dùng, nhưng chưa gửi được email khởi tạo.",
         saveError: "Lỗi khi lưu người dùng.",
         resendInvitation: "Gửi lại email khởi tạo",
         resendingInvitation: "Đang gửi email khởi tạo...",
@@ -662,7 +688,8 @@ const vi = {
         stockDistribution: "Phân bổ theo loại",
         stockComparison: "So sánh giữa các kho",
         stockTrend: "Xu hướng tồn kho",
-        stockTrendPlaceholder: "Biểu đồ xu hướng sẽ hiển thị khi có dữ liệu lịch sử.",
+        stockTrendPlaceholder:
+            "Biểu đồ xu hướng sẽ hiển thị khi có dữ liệu lịch sử.",
         lowStockAlerts: "Cảnh báo sắp hết hàng",
         lowStockEmpty: "Không có sản phẩm nào dưới ngưỡng tồn kho tối thiểu.",
         topProducts: "Xếp hạng tồn kho",
@@ -678,7 +705,8 @@ const vi = {
         critical: "Nguy hiểm",
         normal: "Bình thường",
         noAccess: "Bạn không có quyền truy cập kho nào.",
-        noAccessDescription: "Liên hệ quản trị viên để được cấp quyền xem tồn kho.",
+        noAccessDescription:
+            "Liên hệ quản trị viên để được cấp quyền xem tồn kho.",
         productTypes: {
             EQUIPMENT: "Thiết bị",
             SOUVENIR_SALE: "Quà bán",
@@ -730,7 +758,8 @@ const vi = {
         toolbar: {
             save: "Lưu nháp",
             publish: "Xuất bản",
-            publishConfirm: "Bạn có chắc chắn muốn xuất bản phiên bản này? Các phiếu mới sẽ chạy theo quy trình này.",
+            publishConfirm:
+                "Bạn có chắc chắn muốn xuất bản phiên bản này? Các phiếu mới sẽ chạy theo quy trình này.",
             undo: "Hoàn tác",
             redo: "Làm lại",
             zoomIn: "Phóng to",
@@ -747,14 +776,18 @@ const vi = {
         toast: {
             saving: "Đang lưu quy trình...",
             saveSuccess: "Lưu quy trình thành công",
-            saveSuccessDesc: "Phiên bản nháp đã được lưu. Bạn có thể tiếp tục chỉnh sửa.",
+            saveSuccessDesc:
+                "Phiên bản nháp đã được lưu. Bạn có thể tiếp tục chỉnh sửa.",
             saveError: "Lỗi lưu quy trình",
-            saveErrorDesc: "Vui lòng kiểm tra lại cấu hình DAG hoặc thử lại sau.",
+            saveErrorDesc:
+                "Vui lòng kiểm tra lại cấu hình DAG hoặc thử lại sau.",
             publishing: "Đang xuất bản quy trình...",
             publishSuccess: "Xuất bản quy trình thành công",
-            publishSuccessDesc: "Quy trình đã được kích hoạt. Các chứng từ mới sẽ chạy theo quy trình này.",
+            publishSuccessDesc:
+                "Quy trình đã được kích hoạt. Các chứng từ mới sẽ chạy theo quy trình này.",
             publishError: "Lỗi xuất bản quy trình",
-            publishErrorDesc: "Vui lòng kiểm tra lại cấu hình DAG hoặc liên hệ quản trị viên.",
+            publishErrorDesc:
+                "Vui lòng kiểm tra lại cấu hình DAG hoặc liên hệ quản trị viên.",
         },
         // Sidebar
         sidebar: {
@@ -865,7 +898,7 @@ const vi = {
         },
         empty: {
             inProgress: "Không có lệnh nhập kho đang xử lý",
-            inProgressHint: "Tạo lệnh mới ở tab \"Tạo mới\" để bắt đầu.",
+            inProgressHint: 'Tạo lệnh mới ở tab "Tạo mới" để bắt đầu.',
             history: "Chưa có lịch sử nhập kho",
         },
         filter: {
@@ -929,7 +962,8 @@ const vi = {
             createError: "Lỗi khi tạo phiếu xuất kho",
             createErrorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
             atpError: "Không đủ tồn kho khả dụng",
-            atpErrorDesc: "Hệ thống không thể duyệt phiếu vì kho không đủ hàng.",
+            atpErrorDesc:
+                "Hệ thống không thể duyệt phiếu vì kho không đủ hàng.",
         },
     },
 
@@ -960,7 +994,8 @@ const vi = {
             imports: "Nhập kho",
             exports: "Xuất kho",
             realtimeTitle: "Dữ liệu realtime",
-            realtimeHint: "Danh sách tự cập nhật khi có phiếu phê duyệt mới hoặc khi task đã được xử lý.",
+            realtimeHint:
+                "Danh sách tự cập nhật khi có phiếu phê duyệt mới hoặc khi task đã được xử lý.",
         },
         card: {
             level: "Cấp",
@@ -1046,12 +1081,14 @@ const vi = {
         },
         receiving: {
             confirmTitle: "Xác nhận số liệu kiểm đếm",
-            confirmDescription: "Tôi đã kiểm đếm kỹ lưỡng từng sản phẩm và chịu mọi trách nhiệm về tính chính xác của số liệu thực nhận.",
+            confirmDescription:
+                "Tôi đã kiểm đếm kỹ lưỡng từng sản phẩm và chịu mọi trách nhiệm về tính chính xác của số liệu thực nhận.",
         },
         selfApproval: {
             blocked: "Không thể tự duyệt",
             title: "Không thể tự phê duyệt",
-            description: "Theo quy định ISO 9001 (Segregation of Duties), người tạo lệnh không được phép tự phê duyệt lệnh của mình. Vui lòng chờ người khác duyệt.",
+            description:
+                "Theo quy định ISO 9001 (Segregation of Duties), người tạo lệnh không được phép tự phê duyệt lệnh của mình. Vui lòng chờ người khác duyệt.",
             cancelButton: "Hủy lệnh",
             cancelReason: "Lý do hủy (không bắt buộc)",
             cancelling: "Đang hủy lệnh...",
@@ -1064,7 +1101,8 @@ const vi = {
 
     forbidden: {
         title: "Không có quyền truy cập",
-        description: "Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên để được cấp quyền.",
+        description:
+            "Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên để được cấp quyền.",
         goBack: "Quay lại",
         goHome: "Về trang chủ",
     },
@@ -1235,9 +1273,11 @@ const vi = {
         },
         actions: {
             closePeriod: "Chốt kỳ",
-            closePeriodConfirm: "Bạn có chắc muốn chốt kỳ? Sau khi chốt sẽ không thể chỉnh sửa.",
+            closePeriodConfirm:
+                "Bạn có chắc muốn chốt kỳ? Sau khi chốt sẽ không thể chỉnh sửa.",
             reopenPeriod: "Mở lại kỳ",
-            reopenPeriodConfirm: "Bạn có chắc muốn mở lại kỳ kế toán đã chốt? Dữ liệu có thể được chỉnh sửa sau khi mở.",
+            reopenPeriodConfirm:
+                "Bạn có chắc muốn mở lại kỳ kế toán đã chốt? Dữ liệu có thể được chỉnh sửa sau khi mở.",
             saving: "Đang lưu...",
             saved: "Đã lưu",
             saveFailed: "Lưu thất bại",
@@ -1256,7 +1296,8 @@ const vi = {
         },
         excel: {
             title: "Nhập bằng Excel",
-            subtitle: "Tải file mẫu, điền số liệu, rồi tải lên để cập nhật dòng cố định hoặc tạo dòng chi phí mới.",
+            subtitle:
+                "Tải file mẫu, điền số liệu, rồi tải lên để cập nhật dòng cố định hoặc tạo dòng chi phí mới.",
             closedHint: "Kỳ đã chốt nên không thể import dữ liệu.",
             dropHint: "Kéo thả file .xlsx vào đây hoặc chọn file từ máy.",
             actions: {
@@ -1275,25 +1316,29 @@ const vi = {
                 invalidFileTitle: "Tệp không hợp lệ",
                 invalidFileDescription: "Chỉ hỗ trợ tệp Excel định dạng .xlsx.",
                 fileTooLargeTitle: "Tệp vượt quá 10MB",
-                fileTooLargeDescription: "Vui lòng chọn tệp Excel có dung lượng nhỏ hơn 10MB.",
+                fileTooLargeDescription:
+                    "Vui lòng chọn tệp Excel có dung lượng nhỏ hơn 10MB.",
                 parseFailedTitle: "Không thể đọc tệp Excel",
                 parseFailedDescription: "Vui lòng kiểm tra lại định dạng tệp.",
                 parseHasErrorsTitle: "Tệp Excel có dòng lỗi",
                 parseHasErrorsSuffix: "dòng cần kiểm tra lại trước khi import.",
                 noRowsTitle: "Chưa có dữ liệu import",
-                noRowsDescription: "Điền ngân sách, thực chi hoặc ghi chú vào ít nhất một dòng.",
+                noRowsDescription:
+                    "Điền ngân sách, thực chi hoặc ghi chú vào ít nhất một dòng.",
                 importing: "Đang import chi phí từ Excel...",
                 imported: "Đã import chi phí từ Excel",
                 importedRowsSuffix: "dòng đã được cập nhật.",
                 importFailed: "Import chi phí thất bại",
-                importFailedDescription: "Vui lòng kiểm tra quyền nhập liệu và thử lại.",
+                importFailedDescription:
+                    "Vui lòng kiểm tra quyền nhập liệu và thử lại.",
                 retry: "Thử lại",
                 templateFailedTitle: "Không thể tạo file mẫu",
                 templateFailedDescription: "Vui lòng thử lại sau.",
             },
             errors: {
                 noSheet: "Tệp Excel không có sheet dữ liệu.",
-                noRecognizedColumns: "Không nhận diện được các cột trong file Excel.",
+                noRecognizedColumns:
+                    "Không nhận diện được các cột trong file Excel.",
                 invalidCostCenter: "Nhóm chi phí không hợp lệ",
                 invalidItemCode: "Mã dòng cố định không hợp lệ",
                 costCenterMismatch: "Nhóm chi phí không khớp dòng cố định",
@@ -1348,9 +1393,12 @@ const vi = {
                     invalidTitle: "Giá trị không hợp lệ",
                     invalidList: "Vui lòng chọn một giá trị trong danh sách.",
                     invalidAmount: "Số tiền phải là số không âm.",
-                    costCenter: "Chọn nhóm chi phí. Hệ thống dùng mã trước dấu '-'.",
-                    itemCode: "Chọn mã dòng cố định nếu muốn cập nhật dòng hệ thống; để trống để tạo dòng mới.",
-                    itemName: "Nhập tên chi phí. Dòng tự tạo sẽ dùng tên này để tạo hoặc cập nhật.",
+                    costCenter:
+                        "Chọn nhóm chi phí. Hệ thống dùng mã trước dấu '-'.",
+                    itemCode:
+                        "Chọn mã dòng cố định nếu muốn cập nhật dòng hệ thống; để trống để tạo dòng mới.",
+                    itemName:
+                        "Nhập tên chi phí. Dòng tự tạo sẽ dùng tên này để tạo hoặc cập nhật.",
                     amount: "Nhập số tiền không âm. Có thể để trống nếu không cập nhật ô này.",
                 },
                 refs: {
@@ -1391,7 +1439,8 @@ const vi = {
         hint: {
             suggested: "Gợi ý",
             apply: "Áp dụng",
-            selectWarehouse: "Chế độ tổng hợp chỉ để xem. Chọn cửa hàng cụ thể để nhập liệu chi phí.",
+            selectWarehouse:
+                "Chế độ tổng hợp chỉ để xem. Chọn cửa hàng cụ thể để nhập liệu chi phí.",
         },
         total: "TỔNG CỘNG",
     },

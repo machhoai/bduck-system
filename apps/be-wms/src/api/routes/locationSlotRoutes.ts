@@ -1,4 +1,4 @@
-import { Router, type Router as ExpressRouter } from "express";
+import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
   createLocationSlotHandler,
   deleteLocationSlotHandler,
@@ -16,10 +16,21 @@ const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requirePermission("locations.read"), getLocationSlotsHandler);
+const getWarehouseId = (req: Request) =>
+  typeof req.body?.warehouse_id === "string"
+    ? req.body.warehouse_id
+    : typeof req.query.warehouse_id === "string"
+      ? req.query.warehouse_id
+      : null;
+
+router.get(
+  "/",
+  requirePermission("locations.read", getWarehouseId),
+  getLocationSlotsHandler,
+);
 router.get(
   "/mappings",
-  requirePermission("locations.read"),
+  requirePermission("locations.read", getWarehouseId),
   getLocationSlotProductsHandler,
 );
 router.get(
@@ -29,27 +40,27 @@ router.get(
 );
 router.post(
   "/",
-  requirePermission("locations.write"),
+  requirePermission("locations.write", getWarehouseId),
   createLocationSlotHandler,
 );
 router.put(
   "/:id",
-  requirePermission("locations.write"),
+  requirePermission("locations.write", getWarehouseId),
   updateLocationSlotHandler,
 );
 router.delete(
   "/:id",
-  requirePermission("locations.write"),
+  requirePermission("locations.write", getWarehouseId),
   deleteLocationSlotHandler,
 );
 router.post(
   "/mappings",
-  requirePermission("locations.write"),
+  requirePermission("locations.write", getWarehouseId),
   upsertLocationSlotProductHandler,
 );
 router.delete(
   "/mappings/:id",
-  requirePermission("locations.write"),
+  requirePermission("locations.write", getWarehouseId),
   deleteLocationSlotProductHandler,
 );
 

@@ -31,6 +31,8 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   inventory: "inventory",
   warehouses: "warehouses",
   warehouse_locations: "warehouse_locations",
+  warehouse_location_slots: "warehouse_location_slots",
+  warehouse_location_slot_products: "warehouse_location_slot_products",
   organizations: "organizations",
   roles: "roles",
   users: "users",

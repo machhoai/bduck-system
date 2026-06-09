@@ -6,6 +6,10 @@ import VersionLogger from "../components/ui/VersionLogger";
 export const metadata = {
     title: "Joy World Cityfuns - ERP System",
     description: "Joy World Cityfuns - Enterprise Resource Planning System",
+    icons: {
+        icon: "/logo/jw.png",
+        shortcut: "/logo/jw.png",
+    },
 };
 
 export default function RootLayout({

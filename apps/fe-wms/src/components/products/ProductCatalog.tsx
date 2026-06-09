@@ -22,6 +22,7 @@ interface ProductCatalogProps {
     onAddNew: () => void;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    onMassEdit: () => void;
 }
 
 export function ProductCatalog({
@@ -31,6 +32,7 @@ export function ProductCatalog({
     onAddNew,
     onEdit,
     onDelete,
+    onMassEdit,
 }: ProductCatalogProps) {
     const { t } = useTranslation();
     const [filters, setFilters] = useState<ProductFilters>(defaultProductFilters);
@@ -83,14 +85,23 @@ export function ProductCatalog({
                         {t.products.catalogHint}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onAddNew}
-                    className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
-                >
-                    <Plus size={18} />
-                    {t.products.addNew}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onMassEdit}
+                        className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full border border-[var(--color-brand-primary)] bg-white px-5 text-sm font-normal text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+                    >
+                        Sửa hàng loạt
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onAddNew}
+                        className="inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-normal text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+                    >
+                        <Plus size={18} />
+                        {t.products.addNew}
+                    </button>
+                </div>
             </div>
 
             <ProductFilterBar

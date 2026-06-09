@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { CategoryManagementPanel } from "@/components/categories/CategoryManagementPanel";
 import { ProductCatalog } from "@/components/products/ProductCatalog";
 import { ProductFormModal } from "@/components/products/ProductFormModal";
+import { ProductMassEditModal } from "@/components/products/ProductMassEditModal";
 import { useCategories } from "@/hooks/useCategories";
 import { useProducts } from "@/hooks/useProducts";
 import { useTranslation } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export default function ProductsPage() {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const [activeTab, setActiveTab] = useState<ProductTab>("products");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMassEditModalOpen, setIsMassEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -125,6 +127,7 @@ export default function ProductsPage() {
           onAddNew={handleAddNew}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onMassEdit={() => setIsMassEditModalOpen(true)}
         />
       ) : (
         <CategoryManagementPanel />
@@ -135,6 +138,11 @@ export default function ProductsPage() {
         onClose={() => setIsModalOpen(false)}
         product={editingProduct}
         onSave={handleSave}
+      />
+
+      <ProductMassEditModal
+        isOpen={isMassEditModalOpen}
+        onClose={() => setIsMassEditModalOpen(false)}
       />
     </div>
   );

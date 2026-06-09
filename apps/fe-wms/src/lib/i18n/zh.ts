@@ -246,6 +246,13 @@ const zh: Dictionary = {
         locations: "库位",
         addLocation: "新增库位",
         editLocation: "编辑库位",
+        addSlot: "新增子库位",
+        editSlot: "编辑子库位",
+        slotName: "子库位名称",
+        slotCode: "子库位代码",
+        slotSortOrder: "排序",
+        slotDescription: "子库位描述",
+        slotActive: "启用",
         locationList: "库位列表",
         locationListHint: "库位代码在同一仓库内必须唯一。",
         empty: "暂无仓库",
@@ -289,12 +296,19 @@ const zh: Dictionary = {
         backToList: "返回仓库列表",
         confirmDeleteWarehouse: "确定要软删除此仓库吗？",
         confirmDeleteLocation: "确定要软删除此库位吗？",
+        confirmDeleteSlot: "确定要软删除此子库位吗？",
         saving: "正在保存仓库数据...",
         saveSuccess: "仓库数据已保存。",
         saveError: "保存仓库数据时出错。",
+        slotSaving: "正在保存子库位...",
+        slotSaveSuccess: "子库位已保存。",
+        slotSaveError: "保存子库位时出错。",
         deleting: "正在软删除...",
         deleteSuccess: "软删除成功。",
         deleteError: "软删除时出错。",
+        slotDeleting: "正在软删除子库位...",
+        slotDeleteSuccess: "子库位已软删除。",
+        slotDeleteError: "软删除子库位时出错。",
         types: {
             MAIN: "主仓库",
             STORE: "门店仓",
@@ -355,7 +369,8 @@ const zh: Dictionary = {
             noResults: "未找到任何产品",
             noResultsHint: "请调整筛选条件或搜索关键词。",
         },
-        locationTabDescription: "选择一个库位以查看详细库存，而无需滚动浏览长长的列表。",
+        locationTabDescription:
+            "选择一个库位以查看详细库存，而无需滚动浏览长长的列表。",
         locationCount: "个库位",
         productCount: "个产品",
         searchLocationPlaceholder: "搜索库位...",
@@ -815,7 +830,7 @@ const zh: Dictionary = {
         },
         empty: {
             inProgress: "没有正在处理的入库单",
-            inProgressHint: "在\"新建\"标签页创建新入库单。",
+            inProgressHint: '在"新建"标签页创建新入库单。',
             history: "暂无入库历史",
         },
         filter: {
@@ -996,12 +1011,14 @@ const zh: Dictionary = {
         },
         receiving: {
             confirmTitle: "确认清点数据",
-            confirmDescription: "我已仔细清点每件商品，并对实收数据的准确性承担全部责任。",
+            confirmDescription:
+                "我已仔细清点每件商品，并对实收数据的准确性承担全部责任。",
         },
         selfApproval: {
             blocked: "无法自批",
             title: "无法自行审批",
-            description: "根据 ISO 9001（职责分离）规定，创建人不得自行审批自己的单据。请等待其他人审批。",
+            description:
+                "根据 ISO 9001（职责分离）规定，创建人不得自行审批自己的单据。请等待其他人审批。",
             cancelButton: "撤销单据",
             cancelReason: "撤销原因（选填）",
             cancelling: "正在撤销单据...",
@@ -1187,7 +1204,8 @@ const zh: Dictionary = {
             closePeriod: "结账",
             closePeriodConfirm: "确定要结账吗？结账后无法修改。",
             reopenPeriod: "重新开放",
-            reopenPeriodConfirm: "确定要重新打开已结账的会计期间吗？数据可以在开放后进行修改。",
+            reopenPeriodConfirm:
+                "确定要重新打开已结账的会计期间吗？数据可以在开放后进行修改。",
             saving: "正在保存...",
             saved: "已保存",
             saveFailed: "保存失败",
@@ -1206,7 +1224,8 @@ const zh: Dictionary = {
         },
         excel: {
             title: "Excel 导入",
-            subtitle: "下载模板、填写金额，然后上传以更新固定行或创建新的费用行。",
+            subtitle:
+                "下载模板、填写金额，然后上传以更新固定行或创建新的费用行。",
             closedHint: "期间已结账，无法导入数据。",
             dropHint: "将 .xlsx 文件拖到这里，或从电脑选择文件。",
             actions: {

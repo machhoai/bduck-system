@@ -29,6 +29,8 @@ interface UseInventoryByWarehouseReturn {
   getAllLocationsForProduct: (productId: string) => LocationAtpInfo[];
   /** ATP for a product at a specific location (0 if not found) */
   getAtp: (productId: string, locationId: string) => number;
+  /** Total ATP for a product across the selected warehouse */
+  getTotalAtpForProduct: (productId: string) => number;
   loading: boolean;
 }
 
@@ -68,7 +70,8 @@ export function useInventoryByWarehouse(
           locationId: inv.warehouse_location_id,
           atpQty: inv.atp_quantity,
           totalQty: inv.total_quantity,
-        }));
+        }))
+        .sort((a, b) => b.atpQty - a.atpQty);
     },
     [warehouseInventory],
   );
@@ -93,11 +96,23 @@ export function useInventoryByWarehouse(
     [atpMap],
   );
 
+  const getTotalAtpForProduct = useMemo(
+    () => (productId: string): number => {
+      return warehouseInventory.reduce(
+        (sum, inv) =>
+          inv.product_id === productId ? sum + Math.max(inv.atp_quantity, 0) : sum,
+        0,
+      );
+    },
+    [warehouseInventory],
+  );
+
   return {
     atpMap,
     getLocationsForProduct,
     getAllLocationsForProduct,
     getAtp,
+    getTotalAtpForProduct,
     loading,
   };
 }

@@ -95,6 +95,7 @@ const COPY = {
         available: "Khả dụng",
         atpWarning:
             "SL xuất ({quantity}) vượt quá khả dụng ({atp}). Phiếu sẽ bị từ chối khi duyệt.",
+        addLocationLine: "Thêm dòng",
         confirmTitle: "Xác nhận thông tin xuất kho",
         attachments: "Tệp đính kèm",
         itemCount: "mặt hàng",
@@ -144,6 +145,7 @@ const COPY = {
         available: "可用",
         atpWarning:
             "出库数量 ({quantity}) 超过可用数量 ({atp})，审批时将被拒绝。",
+        addLocationLine: "添加行",
         confirmTitle: "确认出库信息",
         attachments: "附件",
         itemCount: "项",
@@ -172,11 +174,13 @@ function ProductPickerCard({
     product,
     isAdded,
     onAdd,
+    totalAtp,
     copy,
 }: {
     product: any;
     isAdded: boolean;
     onAdd: () => void;
+    totalAtp: number;
     copy: Record<string, string>;
 }) {
     return (
@@ -202,6 +206,9 @@ function ProductPickerCard({
                             {product.barcode}
                         </p>
                     )}
+                    <p className="mt-1 text-xxs font-semibold text-[var(--color-status-completed-text)]">
+                        {copy.available}: {totalAtp}
+                    </p>
                 </div>
             </div>
             <button
@@ -263,24 +270,73 @@ export default function CreateExportTab({
     const { locations, loading: locationsLoading } = useWarehouseLocations(
         warehouseId || undefined,
     );
-    const { getLocationsForProduct, getAtp, loading: inventoryLoading } =
+    const {
+        getLocationsForProduct,
+        getAtp,
+        getTotalAtpForProduct,
+        loading: inventoryLoading,
+    } =
         useInventoryByWarehouse(warehouseId || undefined);
 
     const filteredProducts = useMemo(() => {
-        if (!productSearch.trim()) return products;
         const q = productSearch.toLowerCase();
-        return products.filter(
-            (p) =>
+        return products.filter((p) => {
+            if (getTotalAtpForProduct(p.id) <= 0) return false;
+            if (!productSearch.trim()) return true;
+            return (
                 p.name.toLowerCase().includes(q) ||
                 p.code.toLowerCase().includes(q) ||
-                (p.barcode && p.barcode.toLowerCase().includes(q)),
-        );
-    }, [products, productSearch]);
+                (p.barcode && p.barcode.toLowerCase().includes(q))
+            );
+        });
+    }, [products, productSearch, getTotalAtpForProduct]);
 
-    const addedProductIds = useMemo(
-        () => new Set(items.map((i) => i.product_id)),
-        [items],
+    const getAvailableProductLocations = useCallback(
+        (productId: string, currentItemId?: string) => {
+            const usedLocationIds = new Set(
+                items
+                    .filter(
+                        (item) =>
+                            item.product_id === productId &&
+                            item.id !== currentItemId &&
+                            item.warehouse_location_id,
+                    )
+                    .map((item) => item.warehouse_location_id),
+            );
+
+            return getLocationsForProduct(productId).filter(
+                (location) => !usedLocationIds.has(location.locationId),
+            );
+        },
+        [items, getLocationsForProduct],
     );
+
+    const selectedProductGroups = useMemo(() => {
+        const groups = new Map<
+            string,
+            {
+                product_id: string;
+                product_name: string;
+                product?: (typeof products)[number];
+                lines: ExportItemData[];
+            }
+        >();
+
+        for (const item of items) {
+            const existing =
+                groups.get(item.product_id) ??
+                {
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    product: products.find((p) => p.id === item.product_id),
+                    lines: [],
+                };
+            existing.lines.push(item);
+            groups.set(item.product_id, existing);
+        }
+
+        return Array.from(groups.values());
+    }, [items, products]);
 
     const canGoNext = useCallback((): boolean => {
         switch (step) {
@@ -303,36 +359,74 @@ export default function CreateExportTab({
             case 2:
                 return (
                     items.length > 0 &&
-                    items.every(
-                        (item) =>
-                            item.product_id !== "" &&
-                            item.quantity > 0 &&
-                            item.warehouse_location_id !== "",
-                    )
+                    items.every((item) => {
+                        if (
+                            item.product_id === "" ||
+                            item.quantity <= 0 ||
+                            item.warehouse_location_id === ""
+                        ) {
+                            return false;
+                        }
+                        return (
+                            item.quantity <=
+                            getAtp(item.product_id, item.warehouse_location_id)
+                        );
+                    }) &&
+                    new Set(
+                        items.map(
+                            (item) =>
+                                `${item.product_id}:${item.warehouse_location_id}`,
+                        ),
+                    ).size === items.length
                 );
             default:
                 return true;
         }
-    }, [step, warehouseId, exportType, destinationWarehouseId, notes, items, files, processConfig]);
+    }, [step, warehouseId, exportType, destinationWarehouseId, notes, items, files, processConfig, getAtp]);
 
     const addProduct = useCallback(
         (productId: string) => {
             const product = products.find((p) => p.id === productId);
-            if (!product || addedProductIds.has(productId)) return;
+            if (!product || items.some((item) => item.product_id === productId)) {
+                return;
+            }
             setItems((prev) => [
                 ...prev,
                 {
                     id: crypto.randomUUID(),
                     product_id: product.id,
                     product_name: product.name,
-                    warehouse_location_id: "",
+                    warehouse_location_id:
+                        getAvailableProductLocations(productId)[0]?.locationId ?? "",
                     quantity: 1,
                     unit_price: 0,
                     notes: "",
                 },
             ]);
         },
-        [products, addedProductIds],
+        [products, items, getAvailableProductLocations],
+    );
+
+    const addLocationLine = useCallback(
+        (productId: string) => {
+            const product = products.find((p) => p.id === productId);
+            const locationId = getAvailableProductLocations(productId)[0]?.locationId;
+            if (!product || !locationId) return;
+
+            setItems((prev) => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    product_id: product.id,
+                    product_name: product.name,
+                    warehouse_location_id: locationId,
+                    quantity: 1,
+                    unit_price: 0,
+                    notes: "",
+                },
+            ]);
+        },
+        [products, getAvailableProductLocations],
     );
 
     const bulkAddItems = useCallback(
@@ -346,49 +440,68 @@ export default function CreateExportTab({
             }[]
         ) => {
             setItems((prev) => {
-                const existingIds = new Set(prev.map((i) => i.product_id));
-                const newItems = importedItems
-                    .filter((item) => !existingIds.has(item.productId))
-                    .map((item) => {
-                        const product = products.find((p) => p.id === item.productId);
+                const usedKeys = new Set(
+                    prev
+                        .filter((item) => item.warehouse_location_id)
+                        .map(
+                            (item) =>
+                                `${item.product_id}:${item.warehouse_location_id}`,
+                        ),
+                );
+                const newItems: ExportItemData[] = [];
 
-                        // Try to resolve location from Excel locationCode
-                        let resolvedLocationId = "";
-                        if (item.locationCode) {
-                            const code = item.locationCode.trim().toLowerCase();
-                            const matched = locations.find(
-                                (loc) =>
-                                    loc.code.toLowerCase() === code ||
-                                    loc.name.toLowerCase() === code,
-                            );
-                            if (matched) resolvedLocationId = matched.id;
+                for (const item of importedItems) {
+                    const product = products.find((p) => p.id === item.productId);
+                    if (!product || getTotalAtpForProduct(item.productId) <= 0) {
+                        continue;
+                    }
+
+                    // Try to resolve location from Excel locationCode
+                    let resolvedLocationId = "";
+                    if (item.locationCode) {
+                        const code = item.locationCode.trim().toLowerCase();
+                        const matched = locations.find(
+                            (loc) =>
+                                loc.code.toLowerCase() === code ||
+                                loc.name.toLowerCase() === code,
+                        );
+                        if (
+                            matched &&
+                            getAtp(item.productId, matched.id) > 0 &&
+                            !usedKeys.has(`${item.productId}:${matched.id}`)
+                        ) {
+                            resolvedLocationId = matched.id;
                         }
+                    }
 
-                        // Fallback: auto-assign from existing inventory
-                        if (!resolvedLocationId) {
-                            const invLocs = getLocationsForProduct(item.productId);
-                            if (invLocs.length > 0) {
-                                const best = invLocs.reduce((a, b) =>
-                                    b.atpQty > a.atpQty ? b : a,
-                                );
-                                resolvedLocationId = best.locationId;
-                            }
-                        }
+                    // Fallback: auto-assign from existing inventory
+                    if (!resolvedLocationId) {
+                        resolvedLocationId =
+                            getLocationsForProduct(item.productId).find(
+                                (location) =>
+                                    !usedKeys.has(
+                                        `${item.productId}:${location.locationId}`,
+                                    ),
+                            )?.locationId ?? "";
+                    }
 
-                        return {
-                            id: crypto.randomUUID(),
-                            product_id: item.productId,
-                            product_name: product?.name ?? item.productId,
-                            warehouse_location_id: resolvedLocationId,
-                            quantity: item.quantity,
-                            unit_price: item.unitPrice,
-                            notes: item.notes,
-                        };
+                    if (!resolvedLocationId) continue;
+                    usedKeys.add(`${item.productId}:${resolvedLocationId}`);
+
+                    newItems.push({
+                        id: crypto.randomUUID(),
+                        product_id: item.productId,
+                        product_name: product.name,
+                        warehouse_location_id: resolvedLocationId,
+                        quantity: item.quantity,
+                        unit_price: item.unitPrice,
+                        notes: item.notes,
                     });
+                }
                 return [...prev, ...newItems];
             });
         },
-        [products, locations, getLocationsForProduct],
+        [products, locations, getLocationsForProduct, getAtp, getTotalAtpForProduct],
     );
 
     const updateItem = (
@@ -714,7 +827,7 @@ export default function CreateExportTab({
                                             {copy.chooseFromCatalog}
                                         </h2>
                                         <p className="text-xs text-[var(--color-text-muted)]">
-                                            {products.length} {copy?.products?.toLowerCase() ?? ""}
+                                            {filteredProducts.length} {copy?.products?.toLowerCase() ?? ""}
                                         </p>
                                     </div>
                                     <div className="relative sm:w-80">
@@ -731,7 +844,7 @@ export default function CreateExportTab({
                                     </div>
                                 </div>
 
-                                {productsLoading ? (
+                                {productsLoading || inventoryLoading ? (
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {Array.from({ length: 6 }).map((_, index) => (
                                             <div
@@ -750,7 +863,8 @@ export default function CreateExportTab({
                                             <ProductPickerCard
                                                 key={product.id}
                                                 product={product}
-                                                isAdded={addedProductIds.has(product.id)}
+                                                isAdded={items.some((item) => item.product_id === product.id)}
+                                                totalAtp={getTotalAtpForProduct(product.id)}
                                                 copy={copy}
                                                 onAdd={() => addProduct(product.id)}
                                             />
@@ -768,7 +882,7 @@ export default function CreateExportTab({
                                         {copy.selectedProducts}
                                     </h2>
                                     <p className="text-xs text-[var(--color-text-muted)]">
-                                        {items.length} {copy.products.toLowerCase()}
+                                        {selectedProductGroups.length} {copy.products.toLowerCase()}
                                     </p>
                                 </div>
                                 <Package
@@ -777,7 +891,7 @@ export default function CreateExportTab({
                                 />
                             </div>
 
-                            {items.length === 0 ? (
+                            {selectedProductGroups.length === 0 ? (
                                 <div className="flex flex-1 items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
                                     {copy.emptyProducts}
                                 </div>
@@ -787,6 +901,17 @@ export default function CreateExportTab({
                                         const product = products.find(
                                             (p) => p.id === item.product_id,
                                         );
+                                        const group = selectedProductGroups.find(
+                                            (g) => g.product_id === item.product_id,
+                                        );
+                                        if (!group || group.lines[0]?.id !== item.id) {
+                                            return null;
+                                        }
+                                        const groupIndex = selectedProductGroups.findIndex(
+                                            (g) => g.product_id === item.product_id,
+                                        );
+                                        const canAddLine =
+                                            getAvailableProductLocations(item.product_id).length > 0;
                                         return (
                                             <div
                                                 key={item.id}
@@ -795,7 +920,7 @@ export default function CreateExportTab({
                                                 {/* Card Header */}
                                                 <div className="flex items-center gap-2.5 border-b border-[var(--color-border-soft)] px-3 py-2">
                                                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-brand-primary)] text-xxs font-bold text-white">
-                                                        {index + 1}
+                                                        {groupIndex + 1}
                                                     </span>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
@@ -807,8 +932,24 @@ export default function CreateExportTab({
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.id)}
-                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)] group-hover:opacity-100"
+                                                        onClick={() => addLocationLine(item.product_id)}
+                                                        disabled={!canAddLine}
+                                                        className="flex h-7 shrink-0 items-center justify-center gap-1 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] px-2 text-xxs font-semibold text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-border-focus)] hover:text-[var(--color-brand-primary)] disabled:opacity-40"
+                                                    >
+                                                        <Plus size={12} />
+                                                        {copy.addLocationLine}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setItems((prev) =>
+                                                                prev.filter(
+                                                                    (line) =>
+                                                                        line.product_id !== item.product_id,
+                                                                ),
+                                                            )
+                                                        }
+                                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
@@ -858,8 +999,9 @@ export default function CreateExportTab({
                                                                 {copy.location} *
                                                             </span>
                                                             {(() => {
-                                                                const productLocations = getLocationsForProduct(
+                                                                const productLocations = getAvailableProductLocations(
                                                                     item.product_id,
+                                                                    item.id,
                                                                 );
                                                                 const hasLocations = productLocations.length > 0;
                                                                 const isLoading =
@@ -937,6 +1079,145 @@ export default function CreateExportTab({
                                                                 </div>
                                                             );
                                                         })()}
+                                                    {group.lines.slice(1).map((line) => {
+                                                        const productLocations =
+                                                            getAvailableProductLocations(
+                                                                line.product_id,
+                                                                line.id,
+                                                            );
+                                                        const hasLocations =
+                                                            productLocations.length > 0;
+                                                        const isLoading =
+                                                            locationsLoading || inventoryLoading;
+                                                        const atp = line.warehouse_location_id
+                                                            ? getAtp(
+                                                                  line.product_id,
+                                                                  line.warehouse_location_id,
+                                                              )
+                                                            : 0;
+
+                                                        return (
+                                                            <div
+                                                                key={line.id}
+                                                                className="mt-2 rounded-[var(--radius-xs)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-2"
+                                                            >
+                                                                <div className="grid gap-2 grid-cols-2 lg:grid-cols-[minmax(0,1fr)_96px_96px_32px]">
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.location} *
+                                                                        </span>
+                                                                        <select
+                                                                            value={line.warehouse_location_id}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "warehouse_location_id",
+                                                                                    e.target.value,
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                isLoading ||
+                                                                                !warehouseId ||
+                                                                                !hasLocations
+                                                                            }
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                                                                        >
+                                                                            <option value="">
+                                                                                {!warehouseId
+                                                                                    ? copy.selectWarehouseFirst
+                                                                                    : isLoading
+                                                                                      ? copy.loading
+                                                                                      : !hasLocations
+                                                                                        ? copy.noLocationForProduct
+                                                                                        : copy.selectLocation}
+                                                                            </option>
+                                                                            {productLocations.map((pl) => {
+                                                                                const loc = locations.find(
+                                                                                    (l) =>
+                                                                                        l.id === pl.locationId,
+                                                                                );
+                                                                                return (
+                                                                                    <option
+                                                                                        key={pl.locationId}
+                                                                                        value={pl.locationId}
+                                                                                    >
+                                                                                        {loc
+                                                                                            ? `${loc.name} (${loc.code})`
+                                                                                            : pl.locationId}{" "}
+                                                                                        / {copy.available}:{" "}
+                                                                                        {pl.atpQty}
+                                                                                    </option>
+                                                                                );
+                                                                            })}
+                                                                        </select>
+                                                                    </label>
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.quantity} *
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={line.quantity || ""}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "quantity",
+                                                                                    Number(e.target.value),
+                                                                                )
+                                                                            }
+                                                                            min={1}
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                                        />
+                                                                    </label>
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.unitPrice}
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={line.unit_price || ""}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "unit_price",
+                                                                                    Number(e.target.value),
+                                                                                )
+                                                                            }
+                                                                            min={0}
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                                        />
+                                                                    </label>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeItem(line.id)}
+                                                                        className="mt-4 flex h-8 w-7 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
+                                                                    >
+                                                                        <Trash2 size={13} />
+                                                                    </button>
+                                                                </div>
+                                                                {line.warehouse_location_id &&
+                                                                    line.quantity > atp && (
+                                                                        <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
+                                                                            <AlertTriangle
+                                                                                size={12}
+                                                                                className="shrink-0"
+                                                                            />
+                                                                            <span>
+                                                                                {copy.atpWarning
+                                                                                    .replace(
+                                                                                        "{quantity}",
+                                                                                        String(line.quantity),
+                                                                                    )
+                                                                                    .replace(
+                                                                                        "{atp}",
+                                                                                        String(atp),
+                                                                                    )}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         );
@@ -992,7 +1273,7 @@ export default function CreateExportTab({
                             <div className="flex justify-between py-2">
                                 <span className="text-gray-500">{copy.products}</span>
                                 <span className="font-medium">
-                                    {items.length} {copy.itemCount}
+                                    {selectedProductGroups.length} {copy.itemCount}
                                 </span>
                             </div>
                         </div>

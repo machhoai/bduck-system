@@ -2,7 +2,13 @@
 
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarChart3, Boxes, MapPin, MapPinned, PackageSearch } from "lucide-react";
+import {
+    BarChart3,
+    Boxes,
+    MapPin,
+    MapPinned,
+    PackageSearch,
+} from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { WarehouseLocation } from "@bduck/shared-types";
 
@@ -24,6 +30,7 @@ import { useInventory } from "@/hooks/useInventory";
 import { useProducts } from "@/hooks/useProducts";
 import { useUsers } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
 
 import {
     computeInventoryValue,
@@ -38,6 +45,8 @@ export default function WarehouseDetailPage() {
     const { t } = useTranslation();
     const params = useParams<{ id: string }>();
     const warehouseId = params.id;
+    const hasPermission = useUserStore((state) => state.hasPermission);
+    const canWriteLocations = hasPermission("locations.write", warehouseId);
 
     const {
         warehouses,
@@ -104,17 +113,22 @@ export default function WarehouseDetailPage() {
     ]);
 
     const handleAdd = () => {
+        if (!canWriteLocations) return;
         setEditingLocation(null);
         setIsModalOpen(true);
     };
 
     const handleEdit = (location: WarehouseLocation) => {
+        if (!canWriteLocations) return;
         setEditingLocation(location);
         setIsModalOpen(true);
     };
 
     const handleDelete = async (location: WarehouseLocation) => {
-        if (!confirm(`${t.warehouses.confirmDeleteLocation}\n${location.name}`)) {
+        if (!canWriteLocations) return;
+        if (
+            !confirm(`${t.warehouses.confirmDeleteLocation}\n${location.name}`)
+        ) {
             return;
         }
         const deleteAction = async () => {
@@ -125,7 +139,9 @@ export default function WarehouseDetailPage() {
                 loading: t.warehouses.deleting,
                 success: t.warehouses.deleteSuccess,
                 error: (error: unknown) =>
-                    error instanceof Error ? error.message : t.warehouses.deleteError,
+                    error instanceof Error
+                        ? error.message
+                        : t.warehouses.deleteError,
                 description: {
                     success: t.warehouses.deleteSuccess,
                     error: t.warehouses.deleteError,
@@ -138,7 +154,10 @@ export default function WarehouseDetailPage() {
                 },
             });
         } catch (error) {
-            console.error("[WarehouseDetailPage] delete location error:", error);
+            console.error(
+                "[WarehouseDetailPage] delete location error:",
+                error,
+            );
         }
     };
 
@@ -183,10 +202,11 @@ export default function WarehouseDetailPage() {
                         <button
                             type="button"
                             onClick={() => setActiveTab("overview")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "overview"
-                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                                }`}
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
+                                activeTab === "overview"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                            }`}
                         >
                             <BarChart3 size={18} />
                             {t.warehouses.overview}
@@ -194,10 +214,11 @@ export default function WarehouseDetailPage() {
                         <button
                             type="button"
                             onClick={() => setActiveTab("products")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "products"
-                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                                }`}
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
+                                activeTab === "products"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                            }`}
                         >
                             <PackageSearch size={18} />
                             {t.warehouses.inventory}
@@ -205,10 +226,11 @@ export default function WarehouseDetailPage() {
                         <button
                             type="button"
                             onClick={() => setActiveTab("locations")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "locations"
-                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                                }`}
+                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
+                                activeTab === "locations"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                            }`}
                         >
                             <MapPin size={18} />
                             {t.warehouses.locations}
@@ -223,11 +245,14 @@ export default function WarehouseDetailPage() {
                             loading={false}
                             isAllWarehouses={false}
                             locationCount={locations.length}
-                            onCardClick={() => { }}
+                            onCardClick={() => {}}
                         />
 
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                            <StockDistributionChart data={typeDistribution} loading={false} />
+                            <StockDistributionChart
+                                data={typeDistribution}
+                                loading={false}
+                            />
                             <ImportExportChart warehouseId={warehouseId} />
                         </div>
 
@@ -339,10 +364,12 @@ export default function WarehouseDetailPage() {
                         </div> */}
 
                         <LocationCardGrid
+                            warehouseId={warehouseId}
                             locations={locations}
                             inventory={inventory}
                             products={products}
                             loading={locationsLoading}
+                            canWrite={canWriteLocations}
                             onAdd={handleAdd}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
@@ -350,7 +377,6 @@ export default function WarehouseDetailPage() {
                     </div>
                 )}
             </div>
-
 
             <LocationFormModal
                 isOpen={isModalOpen}

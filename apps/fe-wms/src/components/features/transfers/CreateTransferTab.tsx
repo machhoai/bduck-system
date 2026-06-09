@@ -95,6 +95,7 @@ const COPY = {
         selectDestinationLocation: "Chọn vị trí đích",
         sameLocation: "Vị trí nguồn và đích không được trùng",
         atpWarning: "SL chuyển ({quantity}) vượt quá khả dụng ({atp}).",
+        addLocationLine: "Thêm dòng",
         confirmTitle: "Xác nhận thông tin điều chuyển",
         attachments: "Tệp đính kèm",
         itemCount: "mặt hàng",
@@ -161,6 +162,7 @@ const COPY = {
         selectDestinationLocation: "选择目标库位",
         sameLocation: "源库位和目标库位不能相同",
         atpWarning: "调拨数量 ({quantity}) 超过可用数量 ({atp})。",
+        addLocationLine: "添加行",
         confirmTitle: "确认调拨信息",
         attachments: "附件",
         itemCount: "项",
@@ -217,11 +219,13 @@ function ProductPickerCard({
     product,
     isAdded,
     onAdd,
+    totalAtp,
     copy,
 }: {
-    product: { id: string; name: string; code: string; unit: string; barcode?: string };
+    product: { id: string; name: string; code: string; unit: string; barcode?: string | null };
     isAdded: boolean;
     onAdd: () => void;
+    totalAtp: number;
     copy: Record<string, string>;
 }) {
     return (
@@ -247,6 +251,9 @@ function ProductPickerCard({
                             {product.barcode}
                         </p>
                     )}
+                    <p className="mt-1 text-xxs font-semibold text-[var(--color-status-completed-text)]">
+                        ATP: {totalAtp}
+                    </p>
                 </div>
             </div>
             <button
@@ -321,7 +328,12 @@ export default function CreateTransferTab({
     const { locations: allLocations } = useWarehouseLocations();
     const { locations: srcLocations, loading: srcLocLoading } =
         useWarehouseLocations(sourceWarehouseId || undefined);
-    const { getLocationsForProduct, getAtp, loading: invLoading } =
+    const {
+        getLocationsForProduct,
+        getAtp,
+        getTotalAtpForProduct,
+        loading: invLoading,
+    } =
         useInventoryByWarehouse(sourceWarehouseId || undefined);
     const { locations: dstLocations, loading: dstLocLoading } =
         useWarehouseLocations(
@@ -329,15 +341,64 @@ export default function CreateTransferTab({
         );
 
     const filteredProducts = useMemo(() => {
-        if (!productSearch.trim()) return products;
         const q = productSearch.toLowerCase();
-        return products.filter(
-            (p) =>
+        return products.filter((p) => {
+            if (getTotalAtpForProduct(p.id) <= 0) return false;
+            if (!productSearch.trim()) return true;
+            return (
                 p.name.toLowerCase().includes(q) ||
                 p.code.toLowerCase().includes(q) ||
-                (p.barcode && p.barcode.toLowerCase().includes(q)),
-        );
-    }, [products, productSearch]);
+                (p.barcode && p.barcode.toLowerCase().includes(q))
+            );
+        });
+    }, [products, productSearch, getTotalAtpForProduct]);
+
+    const getAvailableSourceLocations = useCallback(
+        (productId: string, currentItemId?: string) => {
+            const usedLocationIds = new Set(
+                items
+                    .filter(
+                        (item) =>
+                            item.product_id === productId &&
+                            item.id !== currentItemId &&
+                            item.source_location_id,
+                    )
+                    .map((item) => item.source_location_id),
+            );
+
+            return getLocationsForProduct(productId).filter(
+                (location) => !usedLocationIds.has(location.locationId),
+            );
+        },
+        [items, getLocationsForProduct],
+    );
+
+    const selectedProductGroups = useMemo(() => {
+        const groups = new Map<
+            string,
+            {
+                product_id: string;
+                product_name: string;
+                product?: (typeof products)[number];
+                lines: TransferItemData[];
+            }
+        >();
+
+        for (const item of items) {
+            const existing =
+                groups.get(item.product_id) ??
+                {
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    product: products.find((p) => p.id === item.product_id),
+                    lines: [],
+                };
+            existing.lines.push(item);
+            groups.set(item.product_id, existing);
+        }
+
+        return Array.from(groups.values());
+    }, [items, products]);
 
     const canGoNext = useCallback((): boolean => {
         switch (step) {
@@ -355,6 +416,9 @@ export default function CreateTransferTab({
                         if (!item.product_id || item.quantity <= 0 || !item.source_location_id) {
                             return false;
                         }
+                        if (item.quantity > getAtp(item.product_id, item.source_location_id)) {
+                            return false;
+                        }
                         if (isIntra && !item.destination_location_id) return false;
                         if (
                             isIntra &&
@@ -363,30 +427,61 @@ export default function CreateTransferTab({
                             return false;
                         }
                         return true;
-                    })
+                    }) &&
+                    new Set(
+                        items.map(
+                            (item) =>
+                                `${item.product_id}:${item.source_location_id}`,
+                        ),
+                    ).size === items.length
                 );
             default:
                 return true;
         }
-    }, [step, sourceWarehouseId, destWarehouseId, isIntra, items, files, processConfig]);
+    }, [step, sourceWarehouseId, destWarehouseId, isIntra, items, files, processConfig, getAtp]);
 
     const addProduct = useCallback(
         (productId: string) => {
             const product = products.find((p) => p.id === productId);
-            if (!product) return;
+            if (!product || items.some((item) => item.product_id === productId)) {
+                return;
+            }
             setItems((prev) => [
                 ...prev,
                 {
                     id: crypto.randomUUID(),
                     product_id: product.id,
                     product_name: product.name,
-                    source_location_id: "",
+                    source_location_id:
+                        getAvailableSourceLocations(productId)[0]?.locationId ?? "",
                     destination_location_id: "",
                     quantity: 1,
                 },
             ]);
         },
-        [products],
+        [products, items, getAvailableSourceLocations],
+    );
+
+    const addSourceLocationLine = useCallback(
+        (productId: string) => {
+            const product = products.find((p) => p.id === productId);
+            const sourceLocationId =
+                getAvailableSourceLocations(productId)[0]?.locationId;
+            if (!product || !sourceLocationId) return;
+
+            setItems((prev) => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    product_id: product.id,
+                    product_name: product.name,
+                    source_location_id: sourceLocationId,
+                    destination_location_id: "",
+                    quantity: 1,
+                },
+            ]);
+        },
+        [products, getAvailableSourceLocations],
     );
 
     const updateItem = (
@@ -414,48 +509,67 @@ export default function CreateTransferTab({
             }[]
         ) => {
             setItems((prev) => {
-                const existingIds = new Set(prev.map((i) => i.product_id));
-                const newItems = importedItems
-                    .filter((item) => !existingIds.has(item.productId))
-                    .map((item) => {
-                        const product = products.find((p) => p.id === item.productId);
+                const usedKeys = new Set(
+                    prev
+                        .filter((item) => item.source_location_id)
+                        .map(
+                            (item) =>
+                                `${item.product_id}:${item.source_location_id}`,
+                        ),
+                );
+                const newItems: TransferItemData[] = [];
 
-                        // Try to resolve source location from Excel locationCode
-                        let resolvedSourceLocationId = "";
-                        if (item.locationCode) {
-                            const code = item.locationCode.trim().toLowerCase();
-                            const matched = srcLocations.find(
-                                (loc) =>
-                                    loc.code.toLowerCase() === code ||
-                                    loc.name.toLowerCase() === code,
-                            );
-                            if (matched) resolvedSourceLocationId = matched.id;
+                for (const item of importedItems) {
+                    const product = products.find((p) => p.id === item.productId);
+                    if (!product || getTotalAtpForProduct(item.productId) <= 0) {
+                        continue;
+                    }
+
+                    // Try to resolve source location from Excel locationCode
+                    let resolvedSourceLocationId = "";
+                    if (item.locationCode) {
+                        const code = item.locationCode.trim().toLowerCase();
+                        const matched = srcLocations.find(
+                            (loc) =>
+                                loc.code.toLowerCase() === code ||
+                                loc.name.toLowerCase() === code,
+                        );
+                        if (
+                            matched &&
+                            getAtp(item.productId, matched.id) > 0 &&
+                            !usedKeys.has(`${item.productId}:${matched.id}`)
+                        ) {
+                            resolvedSourceLocationId = matched.id;
                         }
+                    }
 
-                        // Fallback: auto-assign from existing inventory
-                        if (!resolvedSourceLocationId) {
-                            const invLocs = getLocationsForProduct(item.productId);
-                            if (invLocs.length > 0) {
-                                const best = invLocs.reduce((a, b) =>
-                                    b.atpQty > a.atpQty ? b : a,
-                                );
-                                resolvedSourceLocationId = best.locationId;
-                            }
-                        }
+                    // Fallback: auto-assign from existing inventory
+                    if (!resolvedSourceLocationId) {
+                        resolvedSourceLocationId =
+                            getLocationsForProduct(item.productId).find(
+                                (location) =>
+                                    !usedKeys.has(
+                                        `${item.productId}:${location.locationId}`,
+                                    ),
+                            )?.locationId ?? "";
+                    }
 
-                        return {
-                            id: crypto.randomUUID(),
-                            product_id: item.productId,
-                            product_name: product?.name ?? item.productId,
-                            source_location_id: resolvedSourceLocationId,
-                            destination_location_id: "",
-                            quantity: item.quantity,
-                        };
+                    if (!resolvedSourceLocationId) continue;
+                    usedKeys.add(`${item.productId}:${resolvedSourceLocationId}`);
+
+                    newItems.push({
+                        id: crypto.randomUUID(),
+                        product_id: item.productId,
+                        product_name: product.name,
+                        source_location_id: resolvedSourceLocationId,
+                        destination_location_id: "",
+                        quantity: item.quantity,
                     });
+                }
                 return [...prev, ...newItems];
             });
         },
-        [products, srcLocations, getLocationsForProduct],
+        [products, srcLocations, getLocationsForProduct, getAtp, getTotalAtpForProduct],
     );
 
     const handleSwap = () => {
@@ -470,7 +584,7 @@ export default function CreateTransferTab({
         if (isSubmitting) return;
 
         if (processConfig?.require_evidence && files.length === 0) {
-            gooeyToast.error(copy.requireEvidence ?? "Bắt buộc phải tải lên chứng từ đính kèm");
+            gooeyToast.error("Bắt buộc phải tải lên chứng từ đính kèm");
             return;
         }
 
@@ -838,7 +952,7 @@ export default function CreateTransferTab({
                                             {copy.chooseFromCatalog}
                                         </h2>
                                         <p className="text-xs text-[var(--color-text-muted)]">
-                                            {products.length} {copy?.products?.toLowerCase() ?? ""}
+                                            {filteredProducts.length} {copy?.products?.toLowerCase() ?? ""}
                                         </p>
                                     </div>
                                     <div className="relative sm:w-80">
@@ -855,7 +969,7 @@ export default function CreateTransferTab({
                                     </div>
                                 </div>
 
-                                {productsLoading ? (
+                                {productsLoading || invLoading ? (
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {Array.from({ length: 6 }).map((_, index) => (
                                             <div
@@ -874,7 +988,8 @@ export default function CreateTransferTab({
                                             <ProductPickerCard
                                                 key={product.id}
                                                 product={product}
-                                                isAdded={items.some((i) => i.product_id === product.id)}
+                                                isAdded={items.some((item) => item.product_id === product.id)}
+                                                totalAtp={getTotalAtpForProduct(product.id)}
                                                 copy={copy}
                                                 onAdd={() => addProduct(product.id)}
                                             />
@@ -892,7 +1007,7 @@ export default function CreateTransferTab({
                                         {copy.selectedProducts}
                                     </h2>
                                     <p className="text-xs text-[var(--color-text-muted)]">
-                                        {items.length} {copy.products.toLowerCase()}
+                                        {selectedProductGroups.length} {copy.products.toLowerCase()}
                                     </p>
                                 </div>
                                 <Package
@@ -901,7 +1016,7 @@ export default function CreateTransferTab({
                                 />
                             </div>
 
-                            {items.length === 0 ? (
+                            {selectedProductGroups.length === 0 ? (
                                 <div className="flex flex-1 items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
                                     {copy.emptyProducts}
                                 </div>
@@ -911,8 +1026,20 @@ export default function CreateTransferTab({
                                         const product = products.find(
                                             (p) => p.id === item.product_id,
                                         );
-                                        const productLocations = getLocationsForProduct(
+                                        const group = selectedProductGroups.find(
+                                            (g) => g.product_id === item.product_id,
+                                        );
+                                        if (!group || group.lines[0]?.id !== item.id) {
+                                            return null;
+                                        }
+                                        const groupIndex = selectedProductGroups.findIndex(
+                                            (g) => g.product_id === item.product_id,
+                                        );
+                                        const canAddLine =
+                                            getAvailableSourceLocations(item.product_id).length > 0;
+                                        const productLocations = getAvailableSourceLocations(
                                             item.product_id,
+                                            item.id,
                                         );
                                         const hasLocations = productLocations.length > 0;
                                         const isLocLoading = srcLocLoading || invLoading;
@@ -925,7 +1052,7 @@ export default function CreateTransferTab({
                                                 {/* Card Header */}
                                                 <div className="flex items-center gap-2.5 border-b border-[var(--color-border-soft)] px-3 py-2">
                                                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-brand-primary)] text-xxs font-bold text-white">
-                                                        {index + 1}
+                                                        {groupIndex + 1}
                                                     </span>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
@@ -937,8 +1064,24 @@ export default function CreateTransferTab({
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.id)}
-                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] opacity-0 transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)] group-hover:opacity-100"
+                                                        onClick={() => addSourceLocationLine(item.product_id)}
+                                                        disabled={!canAddLine}
+                                                        className="flex h-7 shrink-0 items-center justify-center gap-1 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] px-2 text-xxs font-semibold text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-border-focus)] hover:text-[var(--color-brand-primary)] disabled:opacity-40"
+                                                    >
+                                                        <Plus size={12} />
+                                                        {copy.addLocationLine}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setItems((prev) =>
+                                                                prev.filter(
+                                                                    (line) =>
+                                                                        line.product_id !== item.product_id,
+                                                                ),
+                                                            )
+                                                        }
+                                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
@@ -1092,6 +1235,169 @@ export default function CreateTransferTab({
                                                                 </div>
                                                             );
                                                         })()}
+                                                    {group.lines.slice(1).map((line) => {
+                                                        const lineLocations =
+                                                            getAvailableSourceLocations(
+                                                                line.product_id,
+                                                                line.id,
+                                                            );
+                                                        const lineHasLocations =
+                                                            lineLocations.length > 0;
+                                                        const lineAtp = line.source_location_id
+                                                            ? getAtp(
+                                                                  line.product_id,
+                                                                  line.source_location_id,
+                                                              )
+                                                            : 0;
+
+                                                        return (
+                                                            <div
+                                                                key={line.id}
+                                                                className="mt-2 rounded-[var(--radius-xs)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-2"
+                                                            >
+                                                                <div
+                                                                    className={`grid gap-2 ${isIntra ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_90px_32px]" : "sm:grid-cols-[minmax(0,1fr)_90px_32px]"}`}
+                                                                >
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.sourceLocation} *
+                                                                        </span>
+                                                                        <select
+                                                                            value={line.source_location_id}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "source_location_id",
+                                                                                    e.target.value,
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                isLocLoading ||
+                                                                                !sourceWarehouseId ||
+                                                                                !lineHasLocations
+                                                                            }
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                                                                        >
+                                                                            <option value="">
+                                                                                {!sourceWarehouseId
+                                                                                    ? copy.selectWarehouseFirst
+                                                                                    : isLocLoading
+                                                                                      ? copy.loading
+                                                                                      : !lineHasLocations
+                                                                                        ? copy.noLocation
+                                                                                        : copy.selectLocation}
+                                                                            </option>
+                                                                            {lineLocations.map((pl) => {
+                                                                                const loc = srcLocations.find(
+                                                                                    (l) =>
+                                                                                        l.id === pl.locationId,
+                                                                                );
+                                                                                return (
+                                                                                    <option
+                                                                                        key={pl.locationId}
+                                                                                        value={pl.locationId}
+                                                                                    >
+                                                                                        {loc
+                                                                                            ? `${loc.name} (${loc.code})`
+                                                                                            : pl.locationId}{" "}
+                                                                                        / ATP: {pl.atpQty}
+                                                                                    </option>
+                                                                                );
+                                                                            })}
+                                                                        </select>
+                                                                    </label>
+
+                                                                    {isIntra && (
+                                                                        <label className="block">
+                                                                            <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                                {copy.destinationLocation} *
+                                                                            </span>
+                                                                            <select
+                                                                                value={line.destination_location_id}
+                                                                                onChange={(e) =>
+                                                                                    updateItem(
+                                                                                        line.id,
+                                                                                        "destination_location_id",
+                                                                                        e.target.value,
+                                                                                    )
+                                                                                }
+                                                                                disabled={
+                                                                                    dstLocLoading ||
+                                                                                    !sourceWarehouseId
+                                                                                }
+                                                                                className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                                                                            >
+                                                                                <option value="">
+                                                                                    {copy.selectDestinationLocation}
+                                                                                </option>
+                                                                                {dstLocations
+                                                                                    .filter(
+                                                                                        (location) =>
+                                                                                            location.id !==
+                                                                                            line.source_location_id,
+                                                                                    )
+                                                                                    .map((location) => (
+                                                                                        <option
+                                                                                            key={location.id}
+                                                                                            value={location.id}
+                                                                                        >
+                                                                                            {location.name} (
+                                                                                            {location.code})
+                                                                                        </option>
+                                                                                    ))}
+                                                                            </select>
+                                                                        </label>
+                                                                    )}
+
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.quantity} *
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={line.quantity || ""}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "quantity",
+                                                                                    Number(e.target.value),
+                                                                                )
+                                                                            }
+                                                                            min={1}
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                                        />
+                                                                    </label>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeItem(line.id)}
+                                                                        className="mt-4 flex h-8 w-7 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
+                                                                    >
+                                                                        <Trash2 size={13} />
+                                                                    </button>
+                                                                </div>
+                                                                {line.source_location_id &&
+                                                                    line.quantity > lineAtp && (
+                                                                        <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
+                                                                            <AlertTriangle
+                                                                                size={12}
+                                                                                className="shrink-0"
+                                                                            />
+                                                                            <span>
+                                                                                {copy.atpWarning
+                                                                                    .replace(
+                                                                                        "{quantity}",
+                                                                                        String(line.quantity),
+                                                                                    )
+                                                                                    .replace(
+                                                                                        "{atp}",
+                                                                                        String(lineAtp),
+                                                                                    )}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         );
@@ -1187,7 +1493,7 @@ export default function CreateTransferTab({
                                             {copy.products}
                                         </p>
                                         <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">
-                                            {items.length}
+                                            {selectedProductGroups.length}
                                         </p>
                                     </div>
                                     <div className="col-span-2 rounded-[var(--radius-sm)] bg-[var(--color-status-export-bg)] p-3">

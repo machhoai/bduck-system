@@ -39,6 +39,7 @@ import type {
   TransferOrderItem,
   ExportVoucher,
   ExportVoucherItem,
+  Inventory,
   ProcessEntityType,
 } from "@bduck/shared-types";
 import * as transferRepo from "../repositories/transferOrderRepository.js";
@@ -311,85 +312,154 @@ async function executeIntraTransfer(
 ): Promise<TransferOrder> {
   // Execute in a Firestore Transaction for atomicity
   const order = await db.runTransaction(async (txn) => {
-    // 1. Validate ATP for each item at source location
+    const inventoryKey = (
+      warehouseId: string,
+      locationId: string,
+      productId: string,
+    ) => `${warehouseId}:${locationId}:${productId}`;
+
+    const inventoryDeltas = new Map<
+      string,
+      {
+        warehouseId: string;
+        locationId: string;
+        productId: string;
+        deltaQuantity: number;
+        outgoingQuantity: number;
+      }
+    >();
+
+    const addInventoryDelta = (
+      warehouseId: string,
+      locationId: string,
+      productId: string,
+      deltaQuantity: number,
+      outgoingQuantity = 0,
+    ) => {
+      const key = inventoryKey(warehouseId, locationId, productId);
+      const existing =
+        inventoryDeltas.get(key) ?? {
+          warehouseId,
+          locationId,
+          productId,
+          deltaQuantity: 0,
+          outgoingQuantity: 0,
+        };
+
+      existing.deltaQuantity += deltaQuantity;
+      existing.outgoingQuantity += outgoingQuantity;
+      inventoryDeltas.set(key, existing);
+    };
+
     for (const item of input.items) {
-      const invSnap = await txn.get(
-        db
-          .collection("inventory")
-          .where("warehouse_id", "==", input.source_warehouse_id)
-          .where("warehouse_location_id", "==", item.source_location_id)
-          .where("product_id", "==", item.product_id)
-          .limit(1),
+      addInventoryDelta(
+        input.source_warehouse_id,
+        item.source_location_id,
+        item.product_id,
+        -item.quantity,
+        item.quantity,
       );
-      const activeDoc = invSnap.docs.find(
+      addInventoryDelta(
+        input.destination_warehouse_id,
+        item.destination_location_id!,
+        item.product_id,
+        item.quantity,
+      );
+    }
+
+    const inventoryEntries = Array.from(inventoryDeltas.values());
+    const inventorySnapshots = await Promise.all(
+      inventoryEntries.map((entry) =>
+        txn.get(
+          db
+            .collection("inventory")
+            .where("warehouse_id", "==", entry.warehouseId)
+            .where("warehouse_location_id", "==", entry.locationId)
+            .where("product_id", "==", entry.productId)
+            .limit(1),
+        ),
+      ),
+    );
+
+    const activeInventory = new Map<
+      string,
+      { ref: FirebaseFirestore.DocumentReference; data: Inventory }
+    >();
+
+    for (let i = 0; i < inventoryEntries.length; i++) {
+      const entry = inventoryEntries[i];
+      const activeDoc = inventorySnapshots[i].docs.find(
         (d) => d.data().is_deleted !== true,
       );
-      const currentAtp = activeDoc
-        ? (activeDoc.data().atp_quantity as number) || 0
-        : 0;
 
-      if (currentAtp < item.quantity) {
-        throw createError(
-          400,
-          `Không đủ tồn kho khả dụng (ATP: ${currentAtp}, Yêu cầu: ${item.quantity}).`,
-          `可用库存不足 (ATP: ${currentAtp}, 请求: ${item.quantity})。`,
+      if (activeDoc) {
+        activeInventory.set(
+          inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
+          { ref: activeDoc.ref, data: activeDoc.data() as Inventory },
         );
       }
     }
 
-    // 2. Move inventory: decrease source, increase destination
-    for (const item of input.items) {
-      // Decrease source
-      const srcSnap = await txn.get(
-        db
-          .collection("inventory")
-          .where("warehouse_id", "==", input.source_warehouse_id)
-          .where("warehouse_location_id", "==", item.source_location_id)
-          .where("product_id", "==", item.product_id)
-          .limit(1),
+    // 1. Validate ATP after all reads and before any writes.
+    for (const entry of inventoryEntries) {
+      if (entry.outgoingQuantity <= 0) continue;
+
+      const activeRecord = activeInventory.get(
+        inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
       );
-      const srcDoc = srcSnap.docs.find((d) => d.data().is_deleted !== true);
-      if (srcDoc) {
-        const srcData = srcDoc.data();
-        txn.update(srcDoc.ref, {
-          atp_quantity: (srcData.atp_quantity as number) - item.quantity,
-          total_quantity: (srcData.total_quantity as number) - item.quantity,
-          last_updated_at: now,
-        });
+      const currentAtp = activeRecord?.data.atp_quantity ?? 0;
+
+      if (currentAtp < entry.outgoingQuantity) {
+        throw createError(
+          400,
+          `Không đủ tồn kho khả dụng (ATP: ${currentAtp}, Yêu cầu: ${entry.outgoingQuantity}).`,
+          `可用库存不足 (ATP: ${currentAtp}, 请求: ${entry.outgoingQuantity})。`,
+        );
       }
+    }
 
-      // Increase destination (upsert)
-      const dstSnap = await txn.get(
-        db
-          .collection("inventory")
-          .where("warehouse_id", "==", input.destination_warehouse_id)
-          .where(
-            "warehouse_location_id",
-            "==",
-            item.destination_location_id!,
-          )
-          .where("product_id", "==", item.product_id)
-          .limit(1),
+    // 2. Move inventory after every inventory read has completed.
+    for (const entry of inventoryEntries) {
+      if (entry.deltaQuantity === 0) continue;
+
+      const activeRecord = activeInventory.get(
+        inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
       );
-      const dstDoc = dstSnap.docs.find((d) => d.data().is_deleted !== true);
 
-      if (dstDoc) {
-        const dstData = dstDoc.data();
-        txn.update(dstDoc.ref, {
-          atp_quantity: (dstData.atp_quantity as number) + item.quantity,
-          total_quantity: (dstData.total_quantity as number) + item.quantity,
+      if (activeRecord) {
+        const newAtp = activeRecord.data.atp_quantity + entry.deltaQuantity;
+        const newTotal = activeRecord.data.total_quantity + entry.deltaQuantity;
+
+        if (newAtp < 0 || newTotal < 0) {
+          throw createError(
+            400,
+            "Tồn kho sau điều chuyển không hợp lệ.",
+            "调拨后库存无效。",
+          );
+        }
+
+        txn.update(activeRecord.ref, {
+          atp_quantity: newAtp,
+          total_quantity: newTotal,
           last_updated_at: now,
         });
       } else {
-        // Create new inventory record
+        if (entry.deltaQuantity < 0) {
+          throw createError(
+            400,
+            "Không tìm thấy tồn kho nguồn để điều chuyển.",
+            "找不到可用的源库存。",
+          );
+        }
+
         const newInvId = randomUUID();
         txn.set(db.collection("inventory").doc(newInvId), {
           id: newInvId,
-          warehouse_id: input.destination_warehouse_id,
-          warehouse_location_id: item.destination_location_id!,
-          product_id: item.product_id,
-          total_quantity: item.quantity,
-          atp_quantity: item.quantity,
+          warehouse_id: entry.warehouseId,
+          warehouse_location_id: entry.locationId,
+          product_id: entry.productId,
+          total_quantity: entry.deltaQuantity,
+          atp_quantity: entry.deltaQuantity,
           on_hold_quantity: 0,
           in_transit_quantity: 0,
           quarantine_quantity: 0,

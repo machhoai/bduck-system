@@ -251,11 +251,18 @@ export function useLocationSlots(warehouseId?: string, locationId?: string) {
     return result;
   }, []);
 
-  const deleteSlot = useCallback(async (id: string) => {
-    const result = await callSlotApi(`/api/location-slots/${id}`, "DELETE");
-    emitDataMutation(["warehouse_location_slots", "audit_logs"]);
-    return result;
-  }, []);
+  const deleteSlot = useCallback(
+    async (id: string) => {
+      const queryString = warehouseId ? `?warehouse_id=${warehouseId}` : "";
+      const result = await callSlotApi(
+        `/api/location-slots/${id}${queryString}`,
+        "DELETE",
+      );
+      emitDataMutation(["warehouse_location_slots", "audit_logs"]);
+      return result;
+    },
+    [warehouseId],
+  );
 
   const upsertMapping = useCallback(async (payload: unknown) => {
     const result = await callSlotApi(
@@ -267,14 +274,18 @@ export function useLocationSlots(warehouseId?: string, locationId?: string) {
     return result;
   }, []);
 
-  const deleteMapping = useCallback(async (id: string) => {
-    const result = await callSlotApi(
-      `/api/location-slots/mappings/${id}`,
-      "DELETE",
-    );
-    emitDataMutation(["warehouse_location_slot_products", "audit_logs"]);
-    return result;
-  }, []);
+  const deleteMapping = useCallback(
+    async (id: string) => {
+      const queryString = warehouseId ? `?warehouse_id=${warehouseId}` : "";
+      const result = await callSlotApi(
+        `/api/location-slots/mappings/${id}${queryString}`,
+        "DELETE",
+      );
+      emitDataMutation(["warehouse_location_slot_products", "audit_logs"]);
+      return result;
+    },
+    [warehouseId],
+  );
 
   return {
     slots,

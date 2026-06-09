@@ -41,13 +41,16 @@ import {
   type SlotInventoryGroup,
   type SlotProductInventoryRow,
 } from "@/utils/slotInventory";
+import { LocationSlotFormModal } from "./LocationSlotFormModal";
 import { WarehouseTableSkeleton } from "./WarehouseSkeleton";
 
 interface LocationCardGridProps {
+  warehouseId: string;
   locations: WarehouseLocation[];
   inventory: Inventory[];
   products: Product[];
   loading: boolean;
+  canWrite: boolean;
   onAdd: () => void;
   onEdit: (location: WarehouseLocation) => void;
   onDelete: (location: WarehouseLocation) => void;
@@ -56,19 +59,24 @@ interface LocationCardGridProps {
 const UNASSIGNED_SLOT_ID = "__unassigned__";
 
 export function LocationCardGrid({
+  warehouseId,
   locations,
   inventory,
   products,
   loading,
+  canWrite,
   onAdd,
   onEdit,
   onDelete,
 }: LocationCardGridProps) {
   const { t } = useTranslation();
-  const warehouseId = locations[0]?.warehouse_id;
   const [locationSearch, setLocationSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    null,
+  );
+  const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<WarehouseLocationSlot | null>(
     null,
   );
   const sensors = useSensors(
@@ -80,6 +88,8 @@ export function LocationCardGrid({
     mappings,
     loading: slotsLoading,
     createSlot,
+    updateSlot,
+    deleteSlot,
     deleteMapping,
     upsertMapping,
   } = useLocationSlots(warehouseId);
@@ -186,33 +196,59 @@ export function LocationCardGrid({
     }));
   }, [productSearch, slotGroups]);
 
-  const handleCreateDefaultSlot = async () => {
+  const handleCreateSlot = () => {
     if (!selectedLocation) return;
-    const nextOrder = selectedSlots.length + 1;
-    const action = () =>
-      createSlot({
-        warehouse_id: selectedLocation.warehouse_id,
-        warehouse_location_id: selectedLocation.id,
-        name: `Giải ${nextOrder}`,
-        code: `GIAI_${nextOrder}`,
-        sort_order: nextOrder,
-        description: null,
-        is_active: true,
-      });
+    setEditingSlot(null);
+    setIsSlotModalOpen(true);
+  };
 
-    await gooeyToast.promise(action(), {
-      loading: "Đang tạo giải...",
-      success: "Đã tạo giải",
-      error: "Không thể tạo giải",
-      description: {
-        success: "Giải mới đã được thêm vào vị trí.",
-        error: "Vui lòng thử lại sau.",
-      },
-      action: { error: { label: "Thử lại", onClick: handleCreateDefaultSlot } },
-    });
+  const handleEditSlot = (slot: WarehouseLocationSlot) => {
+    setEditingSlot(slot);
+    setIsSlotModalOpen(true);
+  };
+
+  const handleSaveSlot = async (payload: unknown) => {
+    if (editingSlot) {
+      return updateSlot(editingSlot.id, {
+        ...(payload as Record<string, unknown>),
+        warehouse_id: editingSlot.warehouse_id,
+        warehouse_location_id: editingSlot.warehouse_location_id,
+      });
+    }
+    return createSlot(payload);
+  };
+
+  const handleDeleteSlot = async (slot: WarehouseLocationSlot) => {
+    if (!confirm(`${t.warehouses.confirmDeleteSlot}\n${slot.name}`)) return;
+
+    const action = async () => {
+      await deleteSlot(slot.id);
+    };
+
+    try {
+      await gooeyToast.promise(action(), {
+        loading: t.warehouses.slotDeleting,
+        success: t.warehouses.slotDeleteSuccess,
+        error: (error: unknown) =>
+          error instanceof Error ? error.message : t.warehouses.slotDeleteError,
+        description: {
+          success: t.warehouses.slotDeleteSuccess,
+          error: t.warehouses.slotDeleteError,
+        },
+        action: {
+          error: {
+            label: t.common.retry,
+            onClick: () => void handleDeleteSlot(slot),
+          },
+        },
+      });
+    } catch (error) {
+      console.error("[LocationCardGrid] delete slot error:", error);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (!canWrite) return;
     if (!selectedLocation || !event.over) return;
 
     const productId = String(event.active.data.current?.productId ?? "");
@@ -265,14 +301,16 @@ export function LocationCardGrid({
             trí.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="inline-flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
-        >
-          <Plus size={18} />
-          {t.warehouses.addLocation}
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex min-h-8 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-95"
+          >
+            <Plus size={18} />
+            {t.warehouses.addLocation}
+          </button>
+        )}
       </div>
 
       {locations.length === 0 ? (
@@ -296,8 +334,9 @@ export function LocationCardGrid({
                 location={selectedLocation}
                 summary={selectedSummary}
                 productSearch={productSearch}
+                canWrite={canWrite}
                 onProductSearch={setProductSearch}
-                onCreateSlot={() => void handleCreateDefaultSlot()}
+                onCreateSlot={handleCreateSlot}
                 onEdit={() => onEdit(selectedLocation)}
                 onDelete={() => onDelete(selectedLocation)}
               />
@@ -310,6 +349,9 @@ export function LocationCardGrid({
                       <SlotDropColumn
                         key={group.slot?.id ?? UNASSIGNED_SLOT_ID}
                         group={group}
+                        canWrite={canWrite}
+                        onEditSlot={handleEditSlot}
+                        onDeleteSlot={handleDeleteSlot}
                         onSavePolicy={upsertPolicy}
                       />
                     ))}
@@ -324,6 +366,17 @@ export function LocationCardGrid({
           )}
         </div>
       )}
+      <LocationSlotFormModal
+        isOpen={isSlotModalOpen}
+        location={selectedLocation}
+        slot={editingSlot}
+        defaultSortOrder={selectedSlots.length + 1}
+        onClose={() => {
+          setIsSlotModalOpen(false);
+          setEditingSlot(null);
+        }}
+        onSave={handleSaveSlot}
+      />
     </section>
   );
 }
@@ -430,6 +483,7 @@ function LocationDetailHeader({
   location,
   summary,
   productSearch,
+  canWrite,
   onProductSearch,
   onCreateSlot,
   onEdit,
@@ -438,6 +492,7 @@ function LocationDetailHeader({
   location: WarehouseLocation;
   summary: { productCount: number; atp: number; total: number } | null;
   productSearch: string;
+  canWrite: boolean;
   onProductSearch: (value: string) => void;
   onCreateSlot: () => void;
   onEdit: () => void;
@@ -459,22 +514,24 @@ function LocationDetailHeader({
             {location.code} · {t.warehouses.types[location.type]}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onCreateSlot}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] px-3 text-sm font-medium text-[var(--color-brand-primary)] transition-colors hover:bg-[var(--color-surface-card)]"
-          >
-            <Plus size={16} />
-            Thêm giải
-          </button>
-          <IconButton label={t.common.edit} onClick={onEdit}>
-            <Edit3 size={16} />
-          </IconButton>
-          <IconButton label={t.common.delete} onClick={onDelete} danger>
-            <Trash2 size={16} />
-          </IconButton>
-        </div>
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={onCreateSlot}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] px-3 text-sm font-medium text-[var(--color-brand-primary)] transition-colors hover:bg-[var(--color-surface-card)]"
+            >
+              <Plus size={16} />
+              {t.warehouses.addSlot}
+            </button>
+            <IconButton label={t.common.edit} onClick={onEdit}>
+              <Edit3 size={16} />
+            </IconButton>
+            <IconButton label={t.common.delete} onClick={onDelete} danger>
+              <Trash2 size={16} />
+            </IconButton>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
@@ -514,11 +571,18 @@ function LocationDetailHeader({
 
 function SlotDropColumn({
   group,
+  canWrite,
+  onEditSlot,
+  onDeleteSlot,
   onSavePolicy,
 }: {
   group: SlotInventoryGroup;
+  canWrite: boolean;
+  onEditSlot: (slot: WarehouseLocationSlot) => void;
+  onDeleteSlot: (slot: WarehouseLocationSlot) => void;
   onSavePolicy: (payload: unknown) => Promise<unknown>;
 }) {
+  const { t } = useTranslation();
   const droppableId = group.slot?.id ?? UNASSIGNED_SLOT_ID;
   const { setNodeRef, isOver } = useDroppable({ id: droppableId });
 
@@ -541,9 +605,32 @@ function SlotDropColumn({
           </p>
         </div>
         {group.slot ? (
-          <span className="rounded bg-[var(--color-surface-card)] px-2 py-1 text-xxs font-semibold text-[var(--color-text-secondary)]">
-            {group.slot.code}
-          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="rounded bg-[var(--color-surface-card)] px-2 py-1 text-xxs font-semibold text-[var(--color-text-secondary)]">
+              {group.slot.code}
+            </span>
+            {canWrite && (
+              <>
+                <IconButton
+                  label={t.common.edit}
+                  onClick={() => {
+                    if (group.slot) onEditSlot(group.slot);
+                  }}
+                >
+                  <Edit3 size={14} />
+                </IconButton>
+                <IconButton
+                  label={t.common.delete}
+                  onClick={() => {
+                    if (group.slot) void onDeleteSlot(group.slot);
+                  }}
+                  danger
+                >
+                  <Trash2 size={14} />
+                </IconButton>
+              </>
+            )}
+          </div>
         ) : (
           <span className="rounded bg-amber-100 px-2 py-1 text-xxs font-semibold text-amber-700">
             Cần mapping
@@ -561,6 +648,7 @@ function SlotDropColumn({
             <DraggableProductRow
               key={row.product.id}
               row={row}
+              canWrite={canWrite}
               onSavePolicy={onSavePolicy}
             />
           ))
@@ -572,9 +660,11 @@ function SlotDropColumn({
 
 function DraggableProductRow({
   row,
+  canWrite,
   onSavePolicy,
 }: {
   row: SlotProductInventoryRow;
+  canWrite: boolean;
   onSavePolicy: (payload: unknown) => Promise<unknown>;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -626,7 +716,11 @@ function DraggableProductRow({
               <p className="text-xxs text-[var(--color-text-muted)]">ATP</p>
             </div>
           </div>
-          <StockPolicyControls row={row} onSavePolicy={onSavePolicy} />
+          <StockPolicyControls
+            row={row}
+            canWrite={canWrite}
+            onSavePolicy={onSavePolicy}
+          />
         </div>
       </div>
     </div>
@@ -635,9 +729,11 @@ function DraggableProductRow({
 
 function StockPolicyControls({
   row,
+  canWrite,
   onSavePolicy,
 }: {
   row: SlotProductInventoryRow;
+  canWrite: boolean;
   onSavePolicy: (payload: unknown) => Promise<unknown>;
 }) {
   return (
@@ -646,6 +742,7 @@ function StockPolicyControls({
         label="Kho"
         policy={row.warehousePolicy}
         value={row.warehousePolicy?.min_stock_quantity ?? null}
+        disabled={!canWrite}
         onSave={(min) =>
           onSavePolicy({
             scope: StockPolicyScope.WAREHOUSE,
@@ -662,6 +759,7 @@ function StockPolicyControls({
         label="Vị trí"
         policy={row.locationPolicy}
         value={row.locationPolicy?.min_stock_quantity ?? null}
+        disabled={!canWrite}
         onSave={(min) => {
           return onSavePolicy({
             scope: StockPolicyScope.LOCATION,
@@ -678,7 +776,7 @@ function StockPolicyControls({
         label="Giải"
         policy={row.slotPolicy}
         value={row.slotPolicy?.min_stock_quantity ?? null}
-        disabled={!row.slot || !row.mapping}
+        disabled={!canWrite || !row.slot || !row.mapping}
         onSave={(min) => {
           if (!row.slot || !row.mapping) return Promise.resolve();
           return onSavePolicy({
