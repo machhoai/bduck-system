@@ -23,6 +23,7 @@ import VoucherDetailDrawer from "./VoucherDetailDrawer";
 interface InProgressTabProps {
     vouchers: ImportVoucher[];
     onClone: (data: Record<string, unknown>) => void;
+    onEdit?: (data: Record<string, unknown>) => void;
 }
 
 type SortKey = "newest" | "oldest" | "voucher";
@@ -75,12 +76,14 @@ function getTimestamp(value: unknown): number {
 export default function InProgressTab({
     vouchers,
     onClone,
+    onEdit,
 }: InProgressTabProps) {
     const { t } = useTranslation();
     const importText = t.importVoucher as any;
     const { warehouses } = useWarehouses();
     const user = useUserStore((state) => state.user);
     const roleIds = useUserStore((state) => state.roleIds);
+    const hasPermission = useUserStore((state) => state.hasPermission);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [receivingVoucherId, setReceivingVoucherId] = useState<string | null>(
         null,
@@ -116,6 +119,8 @@ export default function InProgressTab({
     }, []);
 
     const canPerformReceiving = (voucher: ImportVoucher): boolean => {
+        if (hasPermission("admin")) return true;
+
         if (!processConfig?.step_options?.receiving) return true;
         const step = processConfig.step_options.receiving;
         if (step.assignment_mode === "CREATOR") {
@@ -378,6 +383,8 @@ export default function InProgressTab({
                         <VoucherDetailDrawer
                             voucher={selected}
                             onClose={() => setSelectedId(null)}
+                            onClone={onClone}
+                            onEdit={onEdit}
                         />
                     );
                 })()}

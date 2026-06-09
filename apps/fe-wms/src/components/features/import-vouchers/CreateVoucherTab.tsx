@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { Product } from "@bduck/shared-types";
-import { createImportVoucher } from "../../../hooks/useImportVoucherApi";
+import { createImportVoucher, updateImportVoucher } from "../../../hooks/useImportVoucherApi";
 import { useProducts } from "../../../hooks/useProducts";
 import {
     useWarehouseLocations,
@@ -40,6 +40,8 @@ type Locale = "vi" | "zh";
 
 interface CreateVoucherTabProps {
     cloneData?: Record<string, unknown> | null;
+    editData?: Record<string, unknown> | null;
+    isEdit?: boolean;
     prefillWarehouseId?: string;
     onCreated: () => void;
 }
@@ -206,6 +208,8 @@ function ProductPickerCard({
 
 export default function CreateVoucherTab({
     cloneData,
+    editData,
+    isEdit,
     prefillWarehouseId,
     onCreated,
 }: CreateVoucherTabProps) {
@@ -295,22 +299,40 @@ export default function CreateVoucherTab({
     );
 
     useEffect(() => {
-        if (!cloneData) return;
+        if (!cloneData && !editData) return;
+
+        const dataSource = editData || cloneData;
 
         setFormData({
-            warehouse_id: (cloneData.warehouse_id as string) || "",
-            supplier_name: (cloneData.supplier_name as string) || "",
-            purchase_order_id: (cloneData.purchase_order_id as string) || "",
-            notes: (cloneData.notes as string) || "",
-            items: Array.isArray(cloneData.items)
-                ? (cloneData.items as VoucherItemData[]).map((item) => ({
+            warehouse_id: (dataSource?.warehouse_id as string) || "",
+            supplier_name: (dataSource?.supplier_name as string) || "",
+            purchase_order_id: (dataSource?.purchase_order_id as string) || "",
+            notes: (dataSource?.notes as string) || "",
+            items: Array.isArray(dataSource?.items)
+                ? (dataSource?.items as VoucherItemData[]).map((item) => ({
                     ...item,
                     id: crypto.randomUUID(),
                 }))
                 : [],
         });
+        
+        if (editData && Array.isArray(editData.attachment_urls)) {
+            setFiles(editData.attachment_urls.map((url: string) => {
+                const name = url.split('/').pop() || "attachment";
+                return {
+                    id: crypto.randomUUID(),
+                    file: new File([], name),
+                    name: name,
+                    size: 0,
+                    type: "application/octet-stream",
+                    progress: 100,
+                    url: url,
+                    error: null
+                };
+            }));
+        }
         setStep(0);
-    }, [cloneData]);
+    }, [cloneData, editData]);
 
     const canGoNext = useCallback(() => {
         switch (step) {
@@ -511,40 +533,63 @@ export default function CreateVoucherTab({
                 uploadedUrls.push(url);
             }
 
-            await createImportVoucher({
-                warehouse_id: formData.warehouse_id,
-                supplier_name: formData.supplier_name,
-                purchase_order_id: formData.purchase_order_id || undefined,
-                notes: formData.notes || undefined,
-                attachment_urls: uploadedUrls,
-                items: formData.items.map((item) => ({
-                    product_id: item.product_id,
-                    warehouse_location_id: item.warehouse_location_id,
-                    expected_quantity: item.expected_quantity,
-                    actual_quantity: item.actual_quantity,
-                    unit_price: item.unit_price,
-                    condition: item.condition,
-                    notes: item.notes || undefined,
-                })),
-                action_time: new Date().toISOString(),
-                otp,
-            });
+            if (isEdit && editData?.id) {
+                await updateImportVoucher(editData.id as string, {
+                    warehouse_id: formData.warehouse_id,
+                    supplier_name: formData.supplier_name,
+                    purchase_order_id: formData.purchase_order_id || undefined,
+                    notes: formData.notes || undefined,
+                    attachment_urls: uploadedUrls,
+                    items: formData.items.map((item) => ({
+                        product_id: item.product_id,
+                        warehouse_location_id: item.warehouse_location_id,
+                        expected_quantity: item.expected_quantity,
+                        actual_quantity: item.actual_quantity,
+                        unit_price: item.unit_price,
+                        condition: item.condition,
+                        notes: item.notes || undefined,
+                    })),
+                    otp,
+                });
+            } else {
+                await createImportVoucher({
+                    warehouse_id: formData.warehouse_id,
+                    supplier_name: formData.supplier_name,
+                    purchase_order_id: formData.purchase_order_id || undefined,
+                    notes: formData.notes || undefined,
+                    attachment_urls: uploadedUrls,
+                    items: formData.items.map((item) => ({
+                        product_id: item.product_id,
+                        warehouse_location_id: item.warehouse_location_id,
+                        expected_quantity: item.expected_quantity,
+                        actual_quantity: item.actual_quantity,
+                        unit_price: item.unit_price,
+                        condition: item.condition,
+                        notes: item.notes || undefined,
+                    })),
+                    action_time: new Date().toISOString(),
+                    otp,
+                });
+            }
         };
 
         const promise = submitAction();
         
         gooeyToast.promise(promise, {
-            loading:
+            loading: isEdit ? "Đang cập nhật phiếu nhập kho..." : (
                 (t as any).importVoucher?.toast?.creating ??
-                "Đang tạo phiếu nhập kho...",
-            success:
+                "Đang tạo phiếu nhập kho..."
+            ),
+            success: isEdit ? "Cập nhật thành công" : (
                 (t as any).importVoucher?.toast?.createSuccess ??
-                "Đã tạo phiếu nhập kho",
-            error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createError ?? "Lỗi khi tạo phiếu nhập kho"),
+                "Đã tạo phiếu nhập kho"
+            ),
+            error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createError ?? "Lỗi khi xử lý phiếu nhập kho"),
             description: {
-                success:
+                success: isEdit ? "Phiếu đã được cập nhật." : (
                     (t as any).importVoucher?.toast?.createSuccessDesc ??
-                    "Phiếu đã được gửi vào quy trình duyệt.",
+                    "Phiếu đã được gửi vào quy trình duyệt."
+                ),
                 error: (t as any).importVoucher?.toast?.createErrorDesc ?? "Vui lòng thử lại hoặc liên hệ quản trị viên.",
             },
             action: {

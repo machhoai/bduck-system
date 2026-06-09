@@ -30,6 +30,7 @@ import {
     ShieldAlert,
     Loader2,
     Copy,
+    Edit,
 } from "lucide-react";
 import {
     doc,
@@ -51,6 +52,7 @@ interface VoucherDetailDrawerProps {
     voucher: ImportVoucher;
     onClose: () => void;
     onClone?: (data: Record<string, unknown>) => void;
+    onEdit?: (data: Record<string, unknown>) => void;
 }
 
 // ── Enriched item ──
@@ -150,6 +152,7 @@ export default function VoucherDetailDrawer({
     voucher,
     onClose,
     onClone,
+    onEdit,
 }: VoucherDetailDrawerProps) {
     const { t } = useTranslation();
     const currentUser = useUserStore((s) => s.user);
@@ -169,6 +172,7 @@ export default function VoucherDetailDrawer({
     const isPendingApproval = voucher.status === "PENDING_APPROVAL";
     const canCreatorCancel = isCreator && isPendingApproval;
     const canForceCancel = hasPermission("vouchers.force_cancel") && !TERMINAL_STATUSES.has(voucher.status);
+    const canEdit = isCreator && ["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(voucher.status) && !!onEdit;
 
     // ── Resolve creator + warehouse names ──
     useEffect(() => {
@@ -367,6 +371,25 @@ export default function VoucherDetailDrawer({
                         </p>
                     </div>
                     <div className="flex items-center gap-1">
+                        {canEdit && onEdit && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const editData = {
+                                        ...voucher,
+                                        type: entityType.split('_')[0],
+                                        items: items
+                                    };
+                                    onEdit(editData);
+                                    onClose();
+                                }}
+                                className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-neutral-100)]"
+                                title="Sửa lệnh này"
+                            >
+                                <Edit className="h-4 w-4" />
+                                Sửa
+                            </button>
+                        )}
                         {onClone && (
                             <button
                                 type="button"

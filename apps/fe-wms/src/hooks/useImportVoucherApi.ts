@@ -141,3 +141,24 @@ export async function saveReceivingActuals(
 ) {
   return importVoucherApi(`/${voucherId}/actuals`, "PUT", data);
 }
+
+// ─────────────────────────────────────────────
+// UPDATE
+// ─────────────────────────────────────────────
+
+export interface UpdateImportVoucherPayload extends CreateImportVoucherPayload {
+  items: Array<{
+    id?: string;
+    product_id: string;
+    warehouse_location_id: string | null;
+    expected_quantity: number;
+    actual_quantity?: number;
+    unit_price: number;
+    condition: string;
+    notes?: string | null;
+  }>;
+}
+
+export async function updateImportVoucher(id: string, data: UpdateImportVoucherPayload) {
+  return importVoucherApi(`/${id}`, "PUT", data);
+}

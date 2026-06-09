@@ -12,6 +12,7 @@ import UnifiedInProgressTab from "./UnifiedInProgressTab";
 import { IonIcon } from "@/components/ui/IonIcon";
 import { playForward, checkmarkCircle, time } from "ionicons/icons";
 import ImportVoucherSkeleton from "../import-vouchers/ImportVoucherSkeleton";
+import { EditImportVoucherModal } from "../import-vouchers/EditImportVoucherModal";
 
 type TabId = "create" | "inProgress" | "history";
 
@@ -78,6 +79,9 @@ export default function VouchersPage() {
     const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
         null,
     );
+    const [editData, setEditData] = useState<Record<string, unknown> | null>(
+        null,
+    );
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
@@ -107,6 +111,10 @@ export default function VouchersPage() {
     const handleCloneToCreate = (voucherData: Record<string, unknown>) => {
         setActiveTab("create");
         setCloneData(voucherData);
+    };
+
+    const handleEditVoucher = (voucherData: Record<string, unknown>) => {
+        setEditData(voucherData);
     };
 
     const handleTabSwitch = (tabId: TabId) => {
@@ -221,6 +229,7 @@ export default function VouchersPage() {
                         <UnifiedInProgressTab
                             vouchers={activeVouchers}
                             onClone={handleCloneToCreate}
+                            onEdit={handleEditVoucher}
                         />
                     )}
 
@@ -232,6 +241,13 @@ export default function VouchersPage() {
                     )}
                 </div>
             </div>
+            
+            {editData && (
+                <EditImportVoucherModal
+                    editData={editData}
+                    onClose={() => setEditData(null)}
+                />
+            )}
         </div>
     );
 }

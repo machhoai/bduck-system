@@ -16,6 +16,7 @@ import {
   getImportVoucherByIdHandler,
   getImportVoucherTimelineHandler,
   createImportVoucherHandler,
+  updateImportVoucherHandler,
 } from "../controllers/importVoucherController.js";
 import { saveActuals, completeReceivingHandler } from "../controllers/receivingSessionController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
@@ -38,6 +39,12 @@ router.post(
   "/",
   requireAnyScopedPermission("vouchers.write"),
   createImportVoucherHandler,
+);
+
+router.put(
+  "/:id",
+  requireAnyScopedPermission("vouchers.write"),
+  updateImportVoucherHandler,
 );
 
 router.put(

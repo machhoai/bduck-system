@@ -212,3 +212,73 @@ export const createImportVoucherHandler = async (
     });
   }
 };
+
+// ─────────────────────────────────────────────
+// PUT /api/import-vouchers/:id — Update
+// ─────────────────────────────────────────────
+
+export const updateImportVoucherHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const userId = getRequestUserId(req);
+    const voucherId = req.params.id as string;
+
+    if (userId === "unknown") {
+      res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Chưa xác thực. Vui lòng đăng nhập.",
+          zh: "未认证，请登录。",
+        },
+      });
+      return;
+    }
+
+    const { updateImportVoucher, updateImportVoucherSchema } = await import("../../services/importVoucherService.js");
+
+    // ── Zod validation ──
+    const parsed = updateImportVoucherSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: `Dữ liệu không hợp lệ: ${parsed.error.issues.map((e: { message: string }) => e.message).join(", ")}`,
+          zh: `数据无效: ${parsed.error.issues.map((e: { message: string }) => e.message).join(", ")}`,
+        },
+      });
+      return;
+    }
+
+    // ── Service call ──
+    const voucher = await updateImportVoucher(voucherId, parsed.data, userId);
+
+    res.status(200).json({
+      success: true,
+      data: voucher,
+      messages: {
+        vi: "Phiếu nhập kho đã được cập nhật thành công.",
+        zh: "入库单已成功更新。",
+      },
+    });
+  } catch (error: unknown) {
+    const err = error as {
+      statusCode?: number;
+      messages?: { vi: string; zh: string };
+    };
+
+    console.error("[importVoucherController] Update error:", error);
+
+    res.status(err.statusCode || 500).json({
+      success: false,
+      data: null,
+      messages: err.messages || {
+        vi: "Đã xảy ra lỗi khi cập nhật phiếu nhập kho.",
+        zh: "更新入库单时发生错误。",
+      },
+    });
+  }
+};

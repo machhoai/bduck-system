@@ -247,8 +247,17 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                                             let d: Date;
                                             if (typeof (dVal as any).toDate === 'function') d = (dVal as any).toDate();
                                             else if ((dVal as any)._seconds !== undefined) d = new Date((dVal as any)._seconds * 1000);
-                                            else d = new Date(dVal);
-                                            return isNaN(d.getTime()) ? "N/A" : format(d, "dd/MM/yyyy HH:mm", { locale: vi });
+                                            else if ((dVal as any).seconds !== undefined) d = new Date((dVal as any).seconds * 1000);
+                                            else d = new Date(dVal as any);
+                                            
+                                            if (isNaN(d.getTime())) {
+                                                try {
+                                                    return typeof dVal === 'string' ? dVal : JSON.stringify(dVal);
+                                                } catch {
+                                                    return "N/A";
+                                                }
+                                            }
+                                            return format(d, "dd/MM/yyyy HH:mm", { locale: vi });
                                         })()}
                                     </span>
                                 </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     PackageOpen,
     Search,
@@ -9,7 +9,8 @@ import {
     ArrowUpCircle,
     Calendar,
     User,
-    ClipboardSignature
+    ClipboardSignature,
+    Play
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -17,11 +18,18 @@ import type { UnifiedVoucher } from "../../../types/unified-voucher";
 import { useTranslation } from "../../../lib/i18n";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useUsers } from "../../../hooks/useUsers";
+import { useUserStore } from "../../../stores/useUserStore";
+import { fetchConfigByEntityType } from "../../../hooks/useApprovalApi";
+import type { ProcessConfig } from "@bduck/shared-types";
 import VoucherDetailDrawer from "../import-vouchers/VoucherDetailDrawer";
+import ReceivingSessionDrawer from "../../tasks/ReceivingSessionDrawer";
+import PickingSessionDrawer from "../../tasks/PickingSessionDrawer";
+// import TransferSessionDrawer from "../../tasks/TransferSessionDrawer"; // If it exists, add it if needed later.
 
 interface UnifiedInProgressTabProps {
     vouchers: UnifiedVoucher[];
     onClone: (voucherData: Record<string, unknown>) => void;
+    onEdit?: (voucherData: Record<string, unknown>) => void;
 }
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; icon: React.ElementType; labelKey: string }> = {
@@ -54,7 +62,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
     SHIPPED: { bg: "bg-[var(--color-status-approved-bg)]", text: "text-[var(--color-status-approved-text)]" },
 };
 
-export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInProgressTabProps) {
+export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: UnifiedInProgressTabProps) {
     const { t } = useTranslation();
     const { warehouses } = useWarehouses();
     const { users } = useUsers();
@@ -64,6 +72,48 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [sort, setSort] = useState<"newest" | "oldest">("newest");
     const [selectedVoucher, setSelectedVoucher] = useState<UnifiedVoucher | null>(null);
+
+    const user = useUserStore((state) => state.user);
+    const roleIds = useUserStore((state) => state.roleIds);
+    const hasPermission = useUserStore((state) => state.hasPermission);
+
+    const [importConfig, setImportConfig] = useState<ProcessConfig | null>(null);
+    const [exportConfig, setExportConfig] = useState<ProcessConfig | null>(null);
+    const [receivingVoucherId, setReceivingVoucherId] = useState<string | null>(null);
+    const [pickingVoucherId, setPickingVoucherId] = useState<string | null>(null);
+
+    useEffect(() => {
+        let disposed = false;
+        Promise.all([
+            fetchConfigByEntityType("IMPORT_VOUCHER").catch(() => null),
+            fetchConfigByEntityType("EXPORT_VOUCHER").catch(() => null)
+        ]).then(([importCfg, exportCfg]) => {
+            if (!disposed) {
+                if (importCfg) setImportConfig(importCfg as ProcessConfig);
+                if (exportCfg) setExportConfig(exportCfg as ProcessConfig);
+            }
+        });
+        return () => { disposed = true; };
+    }, []);
+
+    const canPerformSession = (voucher: UnifiedVoucher) => {
+        if (hasPermission("admin")) return true;
+
+        if (voucher.type === "IMPORT") {
+            if (!importConfig?.step_options?.receiving) return true;
+            const step = importConfig.step_options.receiving;
+            if (step.assignment_mode === "CREATOR") return user?.id === voucher.creator_id;
+            if (step.assignment_mode === "ROLE") return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
+            return true;
+        } else if (voucher.type === "EXPORT") {
+            if (!exportConfig?.step_options?.picking) return true;
+            const step = exportConfig.step_options.picking;
+            if (step.assignment_mode === "CREATOR") return user?.id === voucher.creator_id;
+            if (step.assignment_mode === "ROLE") return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
+            return true;
+        }
+        return false; // Transfer or other types not handled yet
+    };
 
     const warehouseById = useMemo(() => new Map(warehouses.map(w => [w.id, w])), [warehouses]);
     const userById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
@@ -200,13 +250,33 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
                                             {voucher.voucher_number}
                                         </h3>
                                         <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] mt-0.5">
-                                            <span>{warehouse?.name || t.vouchers?.inProgressTab?.unknownWarehouse || "Kho không xác định"}</span>
+                                            <span>{warehouse?.name || (t as any).vouchers?.inProgressTab?.unknownWarehouse || "Kho không xác định"}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
-                                    {t.importVoucher?.status?.[voucher.status] || voucher.status}
-                                </span>
+                                <div className="flex flex-col items-end gap-2">
+                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
+                                        {(t as any).importVoucher?.status?.[voucher.status] || (t as any).exportVoucher?.status?.[voucher.status] || voucher.status}
+                                    </span>
+                                    {voucher.status === "APPROVED" && canPerformSession(voucher) && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (voucher.type === "IMPORT") {
+                                                    setReceivingVoucherId(voucher.id);
+                                                } else if (voucher.type === "EXPORT") {
+                                                    setPickingVoucherId(voucher.id);
+                                                }
+                                            }}
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
+                                            title="Tiếp tục"
+                                        >
+                                            <Play size={12} />
+                                            <span>Tiếp tục</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] p-2">
@@ -223,8 +293,17 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
                                             let d: Date;
                                             if (typeof (dVal as any).toDate === 'function') d = (dVal as any).toDate();
                                             else if ((dVal as any)._seconds !== undefined) d = new Date((dVal as any)._seconds * 1000);
-                                            else d = new Date(dVal);
-                                            return isNaN(d.getTime()) ? "N/A" : format(d, "dd/MM/yyyy HH:mm", { locale: vi });
+                                            else if ((dVal as any).seconds !== undefined) d = new Date((dVal as any).seconds * 1000);
+                                            else d = new Date(dVal as any);
+                                            
+                                            if (isNaN(d.getTime())) {
+                                                try {
+                                                    return typeof dVal === 'string' ? dVal : JSON.stringify(dVal);
+                                                } catch {
+                                                    return "N/A";
+                                                }
+                                            }
+                                            return format(d, "dd/MM/yyyy HH:mm", { locale: vi });
                                         })()}
                                     </span>
                                 </div>
@@ -245,8 +324,45 @@ export default function UnifiedInProgressTab({ vouchers, onClone }: UnifiedInPro
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
                     onClone={onClone}
+                    onEdit={onEdit}
                 />
             )}
+
+            {receivingVoucherId &&
+                (() => {
+                    const voucher = vouchers.find(
+                        (item) => item.id === receivingVoucherId,
+                    );
+                    if (!voucher) return null;
+                    return (
+                        <ReceivingSessionDrawer
+                            task={
+                                {
+                                    id: `receiving-${voucher.id}`,
+                                    instance_id: voucher.id,
+                                    entity_id: voucher.id,
+                                    entity_type: "IMPORT_VOUCHER",
+                                    voucher_id: voucher.id,
+                                } as any
+                            }
+                            onClose={() => setReceivingVoucherId(null)}
+                        />
+                    );
+                })()}
+
+            {pickingVoucherId &&
+                (() => {
+                    const voucher = vouchers.find(
+                        (item) => item.id === pickingVoucherId,
+                    );
+                    if (!voucher) return null;
+                    return (
+                        <PickingSessionDrawer
+                            voucherId={voucher.id}
+                            onClose={() => setPickingVoucherId(null)}
+                        />
+                    );
+                })()}
         </div>
     );
 }

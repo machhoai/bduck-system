@@ -22,6 +22,7 @@
     "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.3.0",
     "exceljs": "^4.4.0",
     "firebase": "^12.13.0",
     "framer-motion": "^12.40.0",

@@ -53,7 +53,7 @@ export default function UserProfilePage() {
     return null; // or an error state
   }
 
-  const assignments = "assignments" in currentUser ? currentUser.assignments : [];
+  const assignments = ("assignments" in currentUser ? (currentUser as any).assignments : []) as any[];
 
   return (
     <div className="flex w-full flex-col gap-4 p-4 lg:flex-row">
