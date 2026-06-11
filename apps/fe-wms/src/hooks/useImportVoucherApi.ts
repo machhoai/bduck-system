@@ -11,6 +11,7 @@
  */
 
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -40,7 +41,7 @@ async function importVoucherApi<T>(
     .catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Lỗi khi xử lý phiếu nhập kho.");
+    throw createDetailedApiError(response, body, "Loi khi xu ly phieu nhap kho.");
   }
 
   if (method !== "GET") {

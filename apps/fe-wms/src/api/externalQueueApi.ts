@@ -1,3 +1,5 @@
+import { createDetailedApiError } from "@/utils/apiError";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promise<T> {
@@ -13,8 +15,8 @@ async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promi
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `API Error: ${response.status}`);
+    const errorData = await response.json().catch(() => null);
+    throw createDetailedApiError(response, errorData, `API Error: ${response.status}`);
   }
 
   return response.json();

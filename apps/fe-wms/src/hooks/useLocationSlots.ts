@@ -12,6 +12,7 @@ import {
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -36,7 +37,7 @@ async function fetchCollection<T>(
     .catch(() => null)) as ApiCollectionResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải dữ liệu slot.");
+    throw createDetailedApiError(response, body, "Khong the tai du lieu slot.");
   }
 
   return body.data || [];
@@ -56,7 +57,7 @@ async function callSlotApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể lưu dữ liệu slot.");
+    throw createDetailedApiError(response, body, "Khong the luu du lieu slot.");
   }
 
   return body;

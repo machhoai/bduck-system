@@ -3,6 +3,7 @@
  */
 
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -31,15 +32,7 @@ async function apiFetch<T = unknown>(
     .json()
     .catch(() => null)) as ApiResponse<T> | null;
   if (!response.ok || !json?.success) {
-    const err = new Error(
-      json?.messages?.vi || "Không thể xử lý phản hồi từ máy chủ.",
-    ) as Error & {
-      statusCode: number;
-      messages: Record<string, string>;
-    };
-    err.statusCode = response.status;
-    err.messages = json?.messages || {};
-    throw err;
+    throw createDetailedApiError(response, json, "Khong the xu ly phan hoi tu may chu.");
   }
 
   if (method !== "GET") {

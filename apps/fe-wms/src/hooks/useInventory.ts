@@ -15,6 +15,7 @@ import type { Inventory } from "@bduck/shared-types";
 import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -28,7 +29,7 @@ async function fetchInventoryFromApi(signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải dữ liệu tồn kho.");
+    throw createDetailedApiError(response, body, "Khong the tai du lieu ton kho.");
   }
 
   return (body.data || []) as Inventory[];

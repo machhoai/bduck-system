@@ -12,6 +12,7 @@ import {
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -59,7 +60,7 @@ async function fetchPolicies(
     .catch(() => null)) as ApiCollectionResponse<InventoryStockPolicy> | null;
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải chính sách tồn kho.");
+    throw createDetailedApiError(response, body, "Khong the tai chinh sach ton kho.");
   }
 
   return body.data || [];
@@ -79,7 +80,7 @@ async function callStockPolicyApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể lưu chính sách tồn kho.");
+    throw createDetailedApiError(response, body, "Khong the luu chinh sach ton kho.");
   }
 
   return body;

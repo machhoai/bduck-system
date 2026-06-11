@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ProductBOM } from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -23,9 +24,7 @@ async function fetchBomFromApi(productId: string, signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(
-      body?.messages?.vi || "Có lỗi xảy ra khi tải định mức sản phẩm",
-    );
+    throw createDetailedApiError(response, body, "Co loi xay ra khi tai dinh muc san pham");
   }
 
   return (body.data || []) as ProductBOM[];
@@ -158,9 +157,7 @@ export function useProductBOM(productId?: string) {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.success) {
-        const errorMsg =
-          data?.messages?.vi || "Có lỗi xảy ra khi cập nhật định mức";
-        throw new Error(errorMsg);
+        throw createDetailedApiError(response, data, "Co loi xay ra khi cap nhat dinh muc");
       }
 
       emitDataMutation(["product_bom", "products", "audit_logs"]);

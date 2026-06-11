@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -41,9 +42,7 @@ async function fetchProductsFromApi(categoryId?: string, signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(
-      body?.messages?.vi || "Có lỗi xảy ra khi tải danh sách sản phẩm",
-    );
+    throw createDetailedApiError(response, body, "Co loi xay ra khi tai danh sach san pham");
   }
 
   return normalizeProductsResponse(body);
@@ -176,8 +175,7 @@ export function useProducts(categoryId?: string) {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.success) {
-        const errorMsg = data?.messages?.vi || "Có lỗi xảy ra khi gọi API";
-        throw new Error(errorMsg);
+        throw createDetailedApiError(response, data, "Co loi xay ra khi goi API");
       }
 
       emitDataMutation(["products", "audit_logs"]);

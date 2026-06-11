@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Role } from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -19,7 +20,7 @@ async function fetchRolesFromApi(signal?: AbortSignal) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.messages?.vi || "Không thể tải danh sách role.");
+    throw createDetailedApiError(response, errorData, "Khong the tai danh sach role.");
   }
 
   const body = await response.json();
@@ -40,7 +41,7 @@ async function mutateRole(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.messages?.vi || "Không thể lưu role.");
+    throw createDetailedApiError(response, errorData, "Khong the luu role.");
   }
 
   return response.json();

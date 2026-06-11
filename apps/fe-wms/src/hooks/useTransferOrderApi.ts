@@ -2,6 +2,8 @@
  * Transfer Order API — REST helpers for transfer order operations
  */
 
+import { createDetailedApiError } from "@/utils/apiError";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
@@ -18,17 +20,11 @@ async function apiFetch<T = unknown>(
     ...options,
   });
 
-  const json = await response.json();
+  const json = await response.json().catch(() => null);
   if (!response.ok) {
-    const err = new Error(json.messages?.vi || "API Error") as Error & {
-      statusCode: number;
-      messages: Record<string, string>;
-    };
-    err.statusCode = response.status;
-    err.messages = json.messages || {};
-    throw err;
+    throw createDetailedApiError(response, json, "Khong the xu ly lenh chuyen kho.");
   }
-  return json.data as T;
+  return json?.data as T;
 }
 
 /** Create new transfer order */

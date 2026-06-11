@@ -6,6 +6,7 @@ import { useTranslation } from "../../lib/i18n";
 import { gooeyToast } from "goey-toast";
 import type { ProductCategory } from "@bduck/shared-types";
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -84,7 +85,7 @@ export default function CategoryFormModal({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.messages?.vi || t.categories.saveError);
+        throw createDetailedApiError(response, errorData, t.categories.saveError);
       }
 
       return response.json();

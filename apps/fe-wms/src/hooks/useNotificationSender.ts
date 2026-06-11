@@ -17,6 +17,7 @@ import type {
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -58,7 +59,7 @@ async function fetchDispatchesFromApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải lịch sử thông báo.");
+    throw createDetailedApiError(response, body, "Khong the tai lich su thong bao.");
   }
 
   return ((body.data || []) as Record<string, unknown>[]).map(normalizeDispatch);
@@ -77,7 +78,7 @@ async function postNotification<TPayload>(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể gửi thông báo.");
+    throw createDetailedApiError(response, body, "Khong the gui thong bao.");
   }
 
   return normalizeDispatch(body.data as Record<string, unknown>);

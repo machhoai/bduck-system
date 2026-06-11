@@ -9,6 +9,7 @@ import {
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -26,9 +27,7 @@ async function fetchUsersFromApi(signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(
-      body?.messages?.vi || "Không thể tải danh sách người dùng.",
-    );
+    throw createDetailedApiError(response, body, "Khong the tai danh sach nguoi dung.");
   }
 
   return (body.data || []) as UserWithAssignments[];
@@ -48,7 +47,7 @@ async function mutateUser(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể lưu người dùng.");
+    throw createDetailedApiError(response, body, "Khong the luu nguoi dung.");
   }
 
   return body;

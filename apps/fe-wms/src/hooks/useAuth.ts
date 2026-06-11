@@ -8,6 +8,7 @@ import { useState } from "react";
 import { auth } from "../lib/firebase";
 import { useUserStore } from "../stores/useUserStore";
 import { useMfaStore } from "../stores/useMfaStore";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -38,8 +39,10 @@ export const useAuth = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         await firebaseSignOut(auth);
-        throw new Error(
-          errorData?.messages?.vi || "Đăng nhập hệ thống thất bại",
+        throw createDetailedApiError(
+          response,
+          errorData,
+          "Dang nhap he thong that bai",
         );
       }
 
@@ -65,7 +68,10 @@ export const useAuth = () => {
           err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập",
         description: {
           success: "Hệ thống đang tải dữ liệu của bạn.",
-          error: "Vui lòng kiểm tra lại thông tin và thử lại.",
+          error: (err: unknown) =>
+            err instanceof Error
+              ? err.message
+              : "Vui lòng kiểm tra lại thông tin và thử lại.",
         },
         action: {
           error: {

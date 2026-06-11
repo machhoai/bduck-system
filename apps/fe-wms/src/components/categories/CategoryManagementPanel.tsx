@@ -8,6 +8,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
+import { createDetailedApiError } from "@/utils/apiError";
 import CategorySkeleton from "./CategorySkeleton";
 import CategoryTreeView from "./CategoryTreeView";
 
@@ -38,7 +39,7 @@ export function CategoryManagementPanel() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.messages?.vi || t.categories.deleteError);
+        throw createDetailedApiError(response, errorData, t.categories.deleteError);
       }
     };
 

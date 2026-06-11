@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import type { ProductCategory } from "@bduck/shared-types";
 import { subscribeDataMutation } from "@/lib/dataInvalidation";
+import { createDetailedApiError } from "@/utils/apiError";
 import { auth, db } from "../lib/firebase";
 
 const API_BASE_URL =
@@ -25,9 +26,7 @@ async function fetchCategoriesFromApi(signal?: AbortSignal) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    throw new Error(
-      errorData?.messages?.vi || "Không thể tải danh sách danh mục.",
-    );
+    throw createDetailedApiError(response, errorData, "Khong the tai danh sach danh muc.");
   }
 
   const body = await response.json();

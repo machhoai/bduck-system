@@ -8,6 +8,7 @@ import { useReceivingSessionData } from "@/hooks/useTaskSessionData";
 import { useTranslation } from "@/lib/i18n";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useReceivingStore } from "@/stores/useReceivingStore";
+import { createDetailedApiError } from "@/utils/apiError";
 import {
     ReceivingSessionFooter,
     ReceivingSessionHeader,
@@ -127,7 +128,7 @@ export default function ReceivingSessionDrawer({
 
             if (!actualsRes.ok) {
                 const errorBody = await actualsRes.json().catch(() => null);
-                throw new Error(errorBody?.messages?.vi || t.receiving.submitError);
+                throw createDetailedApiError(actualsRes, errorBody, t.receiving.submitError);
             }
 
             const completeRes = await fetch(
@@ -141,7 +142,7 @@ export default function ReceivingSessionDrawer({
 
             if (!completeRes.ok) {
                 const errorBody = await completeRes.json().catch(() => null);
-                throw new Error(errorBody?.messages?.vi || t.receiving.submitError);
+                throw createDetailedApiError(completeRes, errorBody, t.receiving.submitError);
             }
 
             emitDataMutation([

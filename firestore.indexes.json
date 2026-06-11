@@ -1,496 +1,500 @@
-{
-    "indexes": [
+﻿{
+  "indexes": [
+    {
+      "collectionGroup": "attachments",
+      "queryScope": "COLLECTION",
+      "fields": [
         {
-            "collectionGroup": "product_categories",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
+          "fieldPath": "entity_id",
+          "order": "ASCENDING"
         },
         {
-            "collectionGroup": "organizations",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "name",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
+          "fieldPath": "entity_type",
+          "order": "ASCENDING"
         },
         {
-            "collectionGroup": "export_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "action_time",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
         },
         {
-            "collectionGroup": "attachments",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "entity_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "entity_type",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "audit_logs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "sync_time",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "export_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "export_type",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "action_time",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "export_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "export_type",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "action_time",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "export_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "action_time",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "import_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "import_vouchers",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "in_app_notifications",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "target_user_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "in_app_notifications",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "target_user_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_read",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "inventory",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "warehouse_location_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "product_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "nonconformity_reports",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "source_type",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "source_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "products",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "tasks",
-            "queryScope": "COLLECTION_GROUP",
-            "fields": [
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "started_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "warehouse_locations",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "warehouse_locations",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "warehouse_id",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "warehouses",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "workflow_definitions",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "created_at",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "workflow_definitions",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "is_deleted",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "entity_type",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
         }
-    ],
-    "fieldOverrides": [
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
         {
-            "collectionGroup": "tasks",
-            "fieldPath": "status",
-            "ttl": false,
-            "indexes": [
-                {
-                    "order": "ASCENDING",
-                    "queryScope": "COLLECTION"
-                },
-                {
-                    "order": "DESCENDING",
-                    "queryScope": "COLLECTION"
-                },
-                {
-                    "arrayConfig": "CONTAINS",
-                    "queryScope": "COLLECTION"
-                },
-                {
-                    "order": "ASCENDING",
-                    "queryScope": "COLLECTION_GROUP"
-                }
-            ]
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sync_time",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
         }
-    ]
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "export_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "export_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "action_time",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "export_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "export_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "action_time",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "export_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "action_time",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "external_scan_queue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "client_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "operator_id_external",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scan_time",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "import_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "import_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "in_app_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "target_user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "in_app_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "target_user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_read",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "inventory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_location_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "product_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "nonconformity_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "source_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "source_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "organizations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "product_categories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "started_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_locations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_locations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workflow_definitions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workflow_definitions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entity_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "tasks",
+      "fieldPath": "status",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
 }

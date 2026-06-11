@@ -13,6 +13,7 @@ import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -37,7 +38,7 @@ async function fetchCollection<T>(
     .catch(() => null)) as ApiCollectionResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể tải dữ liệu kho.");
+    throw createDetailedApiError(response, body, "Khong the tai du lieu kho.");
   }
 
   return body.data || [];
@@ -57,7 +58,7 @@ async function callWarehouseApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể lưu dữ liệu kho.");
+    throw createDetailedApiError(response, body, "Khong the luu du lieu kho.");
   }
 
   return body;

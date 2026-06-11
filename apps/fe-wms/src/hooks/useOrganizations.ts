@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Organization } from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -19,9 +20,7 @@ async function fetchOrganizationsFromApi(signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(
-      body?.messages?.vi || "Không thể tải danh sách tổ chức.",
-    );
+    throw createDetailedApiError(response, body, "Khong the tai danh sach to chuc.");
   }
 
   return (body.data || []) as Organization[];
@@ -45,7 +44,7 @@ async function callOrganizationApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Không thể lưu dữ liệu tổ chức.");
+    throw createDetailedApiError(response, body, "Khong the luu du lieu to chuc.");
   }
 
   return body;

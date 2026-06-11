@@ -15,6 +15,7 @@
  */
 
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -42,15 +43,7 @@ async function approvalApi<T>(
     .catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    const error = new Error(
-      body?.messages?.vi || "Lỗi khi xử lý phê duyệt.",
-    ) as Error & {
-      statusCode?: number;
-      messages?: { vi: string; zh: string };
-    };
-    error.statusCode = response.status;
-    error.messages = body?.messages as { vi: string; zh: string };
-    throw error;
+    throw createDetailedApiError(response, body, "Loi khi xu ly phe duyet.");
   }
 
   if (method !== "GET") {
@@ -77,7 +70,7 @@ async function configApi<T>(
     .catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !body?.success) {
-    throw new Error(body?.messages?.vi || "Lỗi khi xử lý cấu hình quy trình.");
+    throw createDetailedApiError(response, body, "Loi khi xu ly cau hinh quy trinh.");
   }
 
   return body.data as T;
