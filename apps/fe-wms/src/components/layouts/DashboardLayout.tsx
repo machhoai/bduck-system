@@ -6,7 +6,6 @@ import BottomNav from "./BottomNav";
 import MobileDrawer from "./MobileDrawer";
 import TopBar from "./TopBar";
 
-import GuideProvider from "../providers/GuideProvider";
 
 /**
  * DashboardLayout — Main layout orchestrator
@@ -23,8 +22,7 @@ export default function DashboardLayout({
     const isCollapsed = useSidebarStore((s) => s.isCollapsed);
 
     return (
-        <GuideProvider>
-            <div className="min-h-screen flex relative bg-[var(--color-surface-base)]">
+        <div className="min-h-screen flex relative bg-[var(--color-surface-base)]">
                 <Sidebar />
                 <MobileDrawer />
 
@@ -43,6 +41,5 @@ export default function DashboardLayout({
 
                 <BottomNav />
             </div>
-        </GuideProvider>
     );
 }

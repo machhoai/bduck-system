@@ -1,7 +1,7 @@
 "use client";
 
 import { NextStepProvider, NextStep } from "nextstepjs";
-import { tours } from "@/config/tours";
+import { tours } from "../../config/tours";
 
 export default function GuideProvider({
     children,
@@ -10,8 +10,7 @@ export default function GuideProvider({
 }) {
     return (
         <NextStepProvider>
-            <NextStep steps={tours} />
-            {children}
+            <NextStep steps={tours}>{children}</NextStep>
         </NextStepProvider>
     );
 }

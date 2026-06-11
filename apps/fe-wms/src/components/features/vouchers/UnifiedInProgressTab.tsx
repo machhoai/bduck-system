@@ -62,6 +62,51 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
     SHIPPED: { bg: "bg-[var(--color-status-approved-bg)]", text: "text-[var(--color-status-approved-text)]" },
 };
 
+function parseVoucherDate(value: unknown): Date | null {
+    if (!value) return null;
+    let date: Date;
+    if (typeof (value as any).toDate === "function") date = (value as any).toDate();
+    else if ((value as any)._seconds !== undefined) date = new Date((value as any)._seconds * 1000);
+    else if ((value as any).seconds !== undefined) date = new Date((value as any).seconds * 1000);
+    else date = new Date(value as any);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getVoucherTimestamp(voucher: UnifiedVoucher): number {
+    return parseVoucherDate(voucher.created_at)?.getTime() ?? 0;
+}
+
+function formatVoucherDateTime(value: unknown): string {
+    const date = parseVoucherDate(value);
+    if (!date) {
+        try {
+            return typeof value === "string" ? value : value ? JSON.stringify(value) : "N/A";
+        } catch {
+            return "N/A";
+        }
+    }
+    return format(date, "dd/MM/yyyy HH:mm", { locale: vi });
+}
+
+function getVoucherDateGroup(voucher: UnifiedVoucher): { key: string; label: string } {
+    const date = parseVoucherDate(voucher.created_at);
+    if (!date) return { key: "unknown", label: "Không xác định ngày" };
+    return {
+        key: format(date, "yyyy-MM-dd"),
+        label: format(date, "EEEE, dd/MM/yyyy", { locale: vi }),
+    };
+}
+
+function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
+    return vouchers.reduce<Array<{ key: string; label: string; items: UnifiedVoucher[] }>>((groups, voucher) => {
+        const groupInfo = getVoucherDateGroup(voucher);
+        const existing = groups.find((group) => group.key === groupInfo.key);
+        if (existing) existing.items.push(voucher);
+        else groups.push({ ...groupInfo, items: [voucher] });
+        return groups;
+    }, []);
+}
+
 export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: UnifiedInProgressTabProps) {
     const { t } = useTranslation();
     const { warehouses } = useWarehouses();
@@ -138,13 +183,15 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
         }
 
         if (sort === "newest") {
-            list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            list.sort((a, b) => getVoucherTimestamp(b) - getVoucherTimestamp(a));
         } else {
-            list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            list.sort((a, b) => getVoucherTimestamp(a) - getVoucherTimestamp(b));
         }
 
         return list;
     }, [vouchers, search, typeFilter, statusFilter, sort]);
+
+    const groupedVouchers = useMemo(() => groupVouchersByDate(filteredVouchers), [filteredVouchers]);
 
     if (vouchers.length === 0) {
         return (
@@ -226,8 +273,24 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
             </div>
 
             {/* List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {filteredVouchers.map((voucher) => {
+            {filteredVouchers.length === 0 ? (
+                <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">
+                    {(t as any).vouchers?.inProgressTab?.noMatches || "Không tìm thấy lệnh phù hợp"}
+                </p>
+            ) : (
+                <div className="flex flex-col gap-5">
+                    {groupedVouchers.map((group) => (
+                        <section key={group.key} className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-xs font-semibold uppercase text-[var(--color-text-secondary)]">
+                                    {group.label}
+                                </h3>
+                                <span className="rounded-full bg-[var(--color-surface-subtle)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-text-muted)]">
+                                    {group.items.length}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {group.items.map((voucher) => {
                     const typeCfg = TYPE_CONFIG[voucher.type];
                     const statusCfg = STATUS_CONFIG[voucher.status] || { bg: "bg-gray-100", text: "text-gray-600" };
                     const TypeIcon = typeCfg.icon;
@@ -286,26 +349,7 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                                 </div>
                                 <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
                                     <Calendar size={12} className="shrink-0 text-[var(--color-text-muted)]" />
-                                    <span>
-                                        {(() => {
-                                            const dVal = voucher.created_at;
-                                            if (!dVal) return "N/A";
-                                            let d: Date;
-                                            if (typeof (dVal as any).toDate === 'function') d = (dVal as any).toDate();
-                                            else if ((dVal as any)._seconds !== undefined) d = new Date((dVal as any)._seconds * 1000);
-                                            else if ((dVal as any).seconds !== undefined) d = new Date((dVal as any).seconds * 1000);
-                                            else d = new Date(dVal as any);
-                                            
-                                            if (isNaN(d.getTime())) {
-                                                try {
-                                                    return typeof dVal === 'string' ? dVal : JSON.stringify(dVal);
-                                                } catch {
-                                                    return "N/A";
-                                                }
-                                            }
-                                            return format(d, "dd/MM/yyyy HH:mm", { locale: vi });
-                                        })()}
-                                    </span>
+                                    <span>{formatVoucherDateTime(voucher.created_at)}</span>
                                 </div>
                                 {voucher.approver_id && (
                                     <div className="flex items-center gap-2 text-xs text-[var(--color-status-approved-text)]">
@@ -317,7 +361,11 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                         </div>
                     );
                 })}
-            </div>
+                            </div>
+                        </section>
+                    ))}
+                </div>
+            )}
 
             {selectedVoucher && (
                 <VoucherDetailDrawer

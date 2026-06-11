@@ -24,6 +24,8 @@ export interface ReceivingItem {
   product_id: string;
   product_name: string;
   product_sku: string;
+  product_barcode: string;
+  product_image_url: string | null;
   warehouse_location_id: string;
   location_name: string;
   expected_quantity: number;
@@ -141,6 +143,35 @@ function debouncedSave(voucherId: string, items: ReceivingItem[]) {
   }, 500);
 }
 
+function mergeSessionItems(
+  sourceItems: ReceivingItem[],
+  persistedItems: ReceivingItem[],
+) {
+  return sourceItems.map((sourceItem) => {
+    const persistedItem = persistedItems.find((item) => item.id === sourceItem.id);
+    return persistedItem
+      ? {
+          ...sourceItem,
+          actual_quantity: persistedItem.actual_quantity,
+          notes: persistedItem.notes,
+        }
+      : sourceItem;
+  });
+}
+
+function hasReceivingProgress(items: ReceivingItem[]) {
+  return items.some(
+    (item) => item.actual_quantity > 0 || item.notes.trim().length > 0,
+  );
+}
+
+function prefillActualQuantities(items: ReceivingItem[]) {
+  return items.map((item) => ({
+    ...item,
+    actual_quantity: item.expected_quantity,
+  }));
+}
+
 // ─────────────────────────────────────────────
 // STORE
 // ─────────────────────────────────────────────
@@ -156,31 +187,40 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
   isConfirmed: false,
 
   initSession: async (voucherId, voucherNumber, supplierName, items) => {
+    const currentState = get();
+
+    if (currentState.voucherId === voucherId && currentState.items.length > 0) {
+      set({
+        voucherId,
+        voucherNumber,
+        supplierName,
+        items: mergeSessionItems(items, currentState.items),
+      });
+      return;
+    }
+
     // Try to restore draft from IndexedDB
     const draft = await loadDraftFromIDB(voucherId);
 
     if (draft && draft.length > 0) {
-      // Merge: keep server item structure but restore actual_quantity from draft
-      const mergedItems = items.map((serverItem) => {
-        const draftItem = draft.find((d) => d.id === serverItem.id);
-        return draftItem
-          ? { ...serverItem, actual_quantity: draftItem.actual_quantity, notes: draftItem.notes }
-          : serverItem;
-      });
       set({
         voucherId,
         voucherNumber,
         supplierName,
-        items: mergedItems,
+        items: mergeSessionItems(items, draft),
         isDirty: true,
         lastSavedAt: new Date(),
       });
     } else {
+      const nextItems = hasReceivingProgress(items)
+        ? items
+        : prefillActualQuantities(items);
+
       set({
         voucherId,
         voucherNumber,
         supplierName,
-        items,
+        items: nextItems,
         isDirty: false,
         lastSavedAt: null,
       });
@@ -196,10 +236,12 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
     if (voucherId) debouncedSave(voucherId, updated);
   },
 
-  incrementByBarcode: (sku) => {
+  incrementByBarcode: (barcode) => {
     const { voucherId, items } = get();
     const idx = items.findIndex(
-      (item) => item.product_sku.toUpperCase() === sku.toUpperCase(),
+      (item) =>
+        item.product_barcode.toUpperCase() === barcode.toUpperCase() ||
+        item.product_sku.toUpperCase() === barcode.toUpperCase(),
     );
     if (idx === -1) return false;
 

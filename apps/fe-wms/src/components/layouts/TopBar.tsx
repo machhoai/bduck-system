@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Download, HelpCircle } from "lucide-react";
+import { ArrowLeft, HelpCircle } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
 import { useNextStep } from "nextstepjs";
 import NotificationBell from "../ui/NotificationBell";
@@ -10,10 +10,17 @@ import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 import { BreadcrumbNav } from "../ui/BreadcrumbNav";
 import { useExportStore } from "../../stores/useExportStore";
+import { tours } from "../../config/tours";
 import { gooeyToast } from "goey-toast";
 import IonIcon from "../ui/IonIcon";
-import { folder, save } from "ionicons/icons";
-import { size } from "zod";
+import { folder } from "ionicons/icons";
+
+function getTourName(pathname: string) {
+    const routeName = pathname.replace(/^\/+|\/+$/g, "").replace(/\//g, "-");
+    const tourName = routeName ? `${routeName}Tour` : "dashboardTour";
+
+    return tours.some((tour) => tour.tour === tourName) ? tourName : "dashboardTour";
+}
 
 export default function TopBar() {
     const { lang, t } = useTranslation();
@@ -40,7 +47,7 @@ export default function TopBar() {
     }, [pathname]);
 
     return (
-        <div className={`flex absolute top-0 z-50 w-full items-start justify-between gap-2 px-4 pt-2 ${scrolled ? "h-20" : "h-12"}`}>
+        <div id="wms-topbar" className={`flex absolute top-0 z-50 w-full items-start justify-between gap-2 px-4 pt-2 ${scrolled ? "h-20" : "h-12"}`}>
             {/*
              * Gradient blur overlay:
              * - Trên cùng: blur đầy + bg mờ (opaque mask)
@@ -102,9 +109,7 @@ export default function TopBar() {
                 </div>
                 <button
                     onClick={() => {
-                        let tourName = pathname.substring(1).replace(/\//g, "-") + "Tour";
-                        if (tourName === "Tour") tourName = "dashboardTour";
-                        startNextStep(tourName);
+                        startNextStep(getTourName(pathname));
                     }}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-brand-primary)] z-50"
                     title="Hướng dẫn sử dụng"

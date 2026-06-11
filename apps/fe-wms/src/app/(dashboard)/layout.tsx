@@ -10,6 +10,7 @@ import { usePagePermission } from "../../hooks/usePagePermission";
 import Forbidden403 from "../../components/shared/Forbidden403";
 import { MFALockScreen } from "../../components/auth/MFALockScreen";
 import { useMFA } from "../../hooks/useMFA";
+import GuideProvider from "../../components/providers/GuideProvider";
 
 /**
  * Dashboard Group Layout — Auth Guard + RBAC Guard + Layout wrapper
@@ -51,9 +52,11 @@ export default function DashboardGroupLayout({
     <I18nProvider>
       <MFALockScreen />
       <div className={`h-full w-full transition-all duration-300 ${isLocked ? 'blur-md pointer-events-none select-none' : ''}`}>
-        <DashboardLayout>
-          {hasAccess ? children : <Forbidden403 />}
-        </DashboardLayout>
+        <GuideProvider>
+          <DashboardLayout>
+            {hasAccess ? children : <Forbidden403 />}
+          </DashboardLayout>
+        </GuideProvider>
       </div>
     </I18nProvider>
   );

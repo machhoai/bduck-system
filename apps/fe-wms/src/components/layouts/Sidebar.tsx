@@ -20,6 +20,7 @@ export default function Sidebar() {
 
     return (
         <aside
+            id="wms-sidebar"
             className={`
         fixed left-0 top-0 z-40 hidden h-screen flex-col border-r
         border-[var(--color-border-soft)] bg-[var(--color-surface-nav)]

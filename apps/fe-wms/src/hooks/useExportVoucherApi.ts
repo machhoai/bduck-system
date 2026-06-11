@@ -39,11 +39,14 @@ export async function createExportVoucher(data: Record<string, unknown>) {
 /** Save picking actuals */
 export async function savePickingActuals(
   voucherId: string,
-  items: Array<{ id: string; picked_quantity: number; notes?: string | null }>,
+  payload: {
+    items: Array<{ id: string; picked_quantity: number; notes?: string | null }>;
+    action_time?: string;
+  },
 ) {
   return apiFetch(`/${voucherId}/picking-actuals`, {
     method: "PUT",
-    body: JSON.stringify({ items }),
+    body: JSON.stringify(payload),
   });
 }
 

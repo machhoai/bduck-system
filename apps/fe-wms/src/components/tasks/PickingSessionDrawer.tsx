@@ -1,394 +1,398 @@
 "use client";
 
-/**
- * PickingSessionDrawer — Full-screen overlay for warehouse picking (export)
- *
- * KEY FEATURES:
- * - Loads export voucher items from Firestore
- * - User enters picked_quantity for each item
- * - ATP warning: red highlight if picked_quantity > available ATP
- * - Save draft → Submit (complete picking + deduct ATP)
- *
- * LUẬT THÉP:
- * - gooeyToast.promise for submit
- * - Anti-double-click (disable button while submitting)
- * - Light Theme only
- */
-
-import { useEffect, useState, useCallback } from "react";
-import { X, Send, Package, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Package,
+    Send,
+    ShieldCheck,
+    ShoppingCart,
+    X,
+} from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
-import {
-  savePickingActuals,
-  completePicking,
-} from "../../hooks/useExportVoucherApi";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
-
-interface PickingItem {
-  id: string;
-  product_id: string;
-  product_name: string;
-  product_code: string;
-  warehouse_location_id: string;
-  quantity: number; // requested
-  picked_quantity: number; // actual
-  notes: string;
-}
+import { usePickingSessionData } from "@/hooks/useTaskSessionData";
+import { savePickingActuals, completePicking } from "@/hooks/useExportVoucherApi";
+import { useTranslation } from "@/lib/i18n";
+import PickingSessionItemCard from "./PickingSessionItemCard";
+import TaskSessionReviewOverlay from "./TaskSessionReviewOverlay";
 
 interface PickingSessionDrawerProps {
-  voucherId: string;
-  onClose: () => void;
+    voucherId: string;
+    onClose: () => void;
 }
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
 export default function PickingSessionDrawer({
-  voucherId,
-  onClose,
+    voucherId,
+    onClose,
 }: PickingSessionDrawerProps) {
-  const [items, setItems] = useState<PickingItem[]>([]);
-  const [voucherNumber, setVoucherNumber] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+    const { voucherNumber, items: sourceItems, isLoading, exists } =
+        usePickingSessionData(voucherId);
+    const { t } = useTranslation();
 
-  // ── Load voucher data from Firestore ──
-  useEffect(() => {
-    async function load() {
-      try {
-        // 1. Get voucher
-        const voucherSnap = await getDoc(doc(db, "export_vouchers", voucherId));
-        if (!voucherSnap.exists()) {
-          gooeyToast.error("Phiếu không tồn tại", {
-            description: "Không tìm thấy phiếu xuất kho.",
-            preset: "snappy",
-          });
-          onClose();
-          return;
-        }
-        const voucher = voucherSnap.data();
-        setVoucherNumber(voucher.voucher_number || "");
+    const [items, setItems] = useState(sourceItems);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [isConfirmed, setIsConfirmed] = useState(false);
 
-        // 2. Get items
-        const itemsRef = collection(db, "export_vouchers", voucherId, "items");
-        const itemsSnap = await getDocs(
-          query(itemsRef, where("is_deleted", "==", false)),
+    useEffect(() => {
+        setItems((currentItems) =>
+            sourceItems.map((sourceItem) => {
+                const currentItem = currentItems.find((item) => item.id === sourceItem.id);
+                return currentItem
+                    ? {
+                        ...sourceItem,
+                        picked_quantity: currentItem.picked_quantity,
+                        notes: currentItem.notes,
+                    }
+                    : sourceItem;
+            }),
         );
+    }, [sourceItems]);
 
-        // 3. Resolve product names
-        const loadedItems: PickingItem[] = [];
-        for (const itemDoc of itemsSnap.docs) {
-          const d = itemDoc.data();
-          let productName = d.product_id;
-          let productCode = "";
-          try {
-            const prodSnap = await getDoc(doc(db, "products", d.product_id));
-            if (prodSnap.exists()) {
-              const prod = prodSnap.data();
-              productName = prod.name || d.product_id;
-              productCode = prod.code || "";
-            }
-          } catch { /* fallback to ID */ }
+    useEffect(() => {
+        if (isLoading || exists) return;
 
-          loadedItems.push({
-            id: itemDoc.id,
-            product_id: d.product_id,
-            product_name: productName,
-            product_code: productCode,
-            warehouse_location_id: d.warehouse_location_id || "",
-            quantity: d.quantity || 0,
-            picked_quantity: d.picked_quantity || 0,
-            notes: d.notes || "",
-          });
+        gooeyToast.error(t.pickingSession.voucherNotFound, {
+            description: t.pickingSession.voucherNotFoundDescription,
+            preset: "snappy",
+        });
+        onClose();
+    }, [exists, isLoading, onClose, t]);
+
+    const updatePickedQty = useCallback((itemId: string, quantity: number) => {
+        setItems((currentItems) =>
+            currentItems.map((item) =>
+                item.id === itemId ? { ...item, picked_quantity: quantity } : item,
+            ),
+        );
+    }, []);
+
+    const updateItemNotes = useCallback((itemId: string, notes: string) => {
+        setItems((currentItems) =>
+            currentItems.map((item) =>
+                item.id === itemId ? { ...item, notes } : item,
+            ),
+        );
+    }, []);
+
+    const buildPayload = useCallback(
+        () => ({
+            items: items.map((item) => ({
+                id: item.id,
+                picked_quantity: item.picked_quantity,
+                notes: item.notes || null,
+            })),
+            action_time: new Date().toISOString(),
+        }),
+        [items],
+    );
+
+    const handleSaveDraft = useCallback(async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+
+        try {
+            await gooeyToast.promise(savePickingActuals(voucherId, buildPayload()), {
+                loading: t.pickingSession.savingDraft,
+                success: t.pickingSession.saveDraftSuccess,
+                error: t.pickingSession.saveDraftError,
+                description: {
+                    success: t.pickingSession.saveDraftSuccessDescription,
+                    error: t.pickingSession.saveDraftErrorDescription,
+                },
+                action: {
+                    error: {
+                        label: t.common.retry,
+                        onClick: () => handleSaveDraft(),
+                    },
+                },
+            });
+        } catch {
+            // toast handles feedback
+        } finally {
+            setIsSaving(false);
+        }
+    }, [buildPayload, isSaving, t, voucherId]);
+
+    const handleSubmit = useCallback(async () => {
+        if (isSubmitting) return;
+
+        const hasPickedItems = items.some((item) => item.picked_quantity > 0);
+        if (!hasPickedItems) {
+            gooeyToast.error(t.pickingSession.submitValidationError, {
+                description: t.pickingSession.submitValidationDescription,
+                preset: "snappy",
+            });
+            return;
         }
 
-        setItems(loadedItems);
-      } catch (err) {
-        console.error("[PickingSessionDrawer] Load error:", err);
-        gooeyToast.error("Lỗi tải dữ liệu", {
-          description: "Không thể tải thông tin phiếu xuất.",
-          preset: "snappy",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
+        setIsSubmitting(true);
 
-    load();
-  }, [voucherId, onClose]);
+        const submitAction = async () => {
+            await savePickingActuals(voucherId, buildPayload());
+            await completePicking(voucherId);
+        };
 
-  // ── Update picked quantity ──
-  const updatePickedQty = useCallback((itemId: string, qty: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, picked_quantity: qty } : item,
-      ),
-    );
-  }, []);
+        try {
+            const promise = submitAction();
 
-  const updateItemNotes = useCallback((itemId: string, notes: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, notes } : item,
-      ),
-    );
-  }, []);
+            gooeyToast.promise(promise, {
+                loading: t.pickingSession.submitting,
+                success: t.pickingSession.submitSuccess,
+                error: t.pickingSession.submitError,
+                description: {
+                    success: t.pickingSession.submitSuccessDescription,
+                    error: t.pickingSession.submitErrorDescription,
+                },
+                action: {
+                    error: {
+                        label: t.common.retry,
+                        onClick: () => handleSubmit(),
+                    },
+                },
+            });
 
-  // ── Save draft ──
-  const handleSaveDraft = useCallback(async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    try {
-      await gooeyToast.promise(
-        savePickingActuals(
-          voucherId,
-          items.map((i) => ({
-            id: i.id,
-            picked_quantity: i.picked_quantity,
-            notes: i.notes || null,
-          })),
-        ),
-        {
-          loading: "Đang lưu bản nháp...",
-          success: "Đã lưu bản nháp",
-          error: "Lỗi khi lưu",
-          description: {
-            success: "Dữ liệu soạn hàng đã được cập nhật.",
-            error: "Vui lòng thử lại.",
-          },
-          action: {
-            error: { label: "Thử lại", onClick: () => handleSaveDraft() },
-          },
-        },
-      );
-    } catch { /* toast handles */ }
-    finally {
-      setIsSaving(false);
-    }
-  }, [items, voucherId, isSaving]);
+            await promise;
+            setIsReviewOpen(false);
+            onClose();
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [buildPayload, isSubmitting, items, onClose, t, voucherId]);
 
-  // ── Submit: save actuals then complete picking (deduct ATP) ──
-  const handleSubmit = useCallback(async () => {
-    if (isSubmitting) return;
+    const handleOpenReview = useCallback(() => {
+        if (isSubmitting || isSaving) return;
+        if (!isConfirmed) return;
 
-    // Validate: at least one item has picked > 0
-    const hasPickedItems = items.some((i) => i.picked_quantity > 0);
-    if (!hasPickedItems) {
-      gooeyToast.error("Chưa soạn hàng", {
-        description: "Vui lòng nhập số lượng đã soạn cho ít nhất một sản phẩm.",
-        preset: "snappy",
-      });
-      return;
-    }
+        const hasPickedItems = items.some((item) => item.picked_quantity > 0);
+        if (!hasPickedItems) {
+            gooeyToast.error(t.pickingSession.submitValidationError, {
+                description: t.pickingSession.submitValidationDescription,
+                preset: "snappy",
+            });
+            return;
+        }
 
-    setIsSubmitting(true);
-    const submitAction = async () => {
-      // 1. Save actuals first
-      await savePickingActuals(
-        voucherId,
-        items.map((i) => ({
-          id: i.id,
-          picked_quantity: i.picked_quantity,
-          notes: i.notes || null,
-        })),
-      );
-      // 2. Complete picking → deduct ATP
-      await completePicking(voucherId);
-    };
+        setIsReviewOpen(true);
+    }, [isConfirmed, isSaving, isSubmitting, items, t]);
 
-    try {
-      const promise = submitAction();
-      
-      gooeyToast.promise(promise, {
-        loading: "Đang hoàn tất soạn hàng & trừ tồn kho...",
-        success: "Soạn hàng hoàn tất",
-        error: "Lỗi hoàn tất soạn hàng",
-        description: {
-          success: "Tồn kho đã được trừ. Phiếu chuyển sang trạng thái Đã bàn giao.",
-          error: "Không đủ tồn kho hoặc lỗi hệ thống. Vui lòng kiểm tra lại.",
-        },
-        action: {
-          error: { label: "Thử lại", onClick: () => handleSubmit() },
-        },
-      });
+    const totalRequested = items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalPicked = items.reduce((sum, item) => sum + item.picked_quantity, 0);
+    const hasOverPicked = items.some((item) => item.picked_quantity > item.quantity);
+    const readyItems = items.filter(
+        (item) => item.quantity > 0 && item.picked_quantity === item.quantity,
+    ).length;
+    const attentionItems = items.filter(
+        (item) => item.picked_quantity === 0 || item.picked_quantity !== item.quantity,
+    ).length;
+    const progressValue =
+        totalRequested > 0 ? Math.round((totalPicked / totalRequested) * 100) : 0;
 
-      await promise;
-      onClose();
-    } catch {
-      // Toast handles — ATP error will show specific product info
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [items, voucherId, isSubmitting, onClose]);
-
-  // ── Totals ──
-  const totalRequested = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPicked = items.reduce((sum, i) => sum + i.picked_quantity, 0);
-  const hasOverPicked = items.some((i) => i.picked_quantity > i.quantity);
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]">
-            <Package size={18} />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">
-              Soạn hàng
-            </h2>
-            <p className="text-xs text-gray-500">{voucherNumber}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isSubmitting}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20">
-            <Package className="h-8 w-12 text-gray-300" />
-            <p className="text-sm text-gray-400">Phiếu không có sản phẩm nào.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {items.map((item) => {
-              const isOverPicked = item.picked_quantity > item.quantity;
-              return (
-                <div
-                  key={item.id}
-                  className={`rounded-xl border p-4 transition-colors ${
-                    isOverPicked
-                      ? "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)]"
-                      : "border-gray-100 bg-white"
-                  }`}
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {item.product_name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {item.product_code && `SKU: ${item.product_code} · `}
-                        Yêu cầu: <span className="font-medium text-gray-700">{item.quantity}</span>
-                      </p>
+    return (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+            <div className="border-b border-[var(--color-border-soft)] bg-white px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)]">
+                            <Package size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                {t.pickingSession.title}
+                            </h2>
+                            <p className="truncate text-xs text-[var(--color-text-muted)]">
+                                {voucherNumber || t.common.noData}
+                            </p>
+                        </div>
                     </div>
-                    {isOverPicked && (
-                      <div className="flex items-center gap-1 text-[var(--color-status-pending-text)]">
-                        <AlertTriangle size={14} />
-                        <span className="text-xxs font-medium">Vượt SL</span>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-0.5 block text-xxs font-medium text-gray-400">
-                        SL đã soạn
-                      </label>
-                      <input
-                        type="number"
-                        value={item.picked_quantity || ""}
-                        onChange={(e) =>
-                          updatePickedQty(item.id, Math.max(0, Number(e.target.value)))
-                        }
-                        min={0}
+                    <button
+                        type="button"
+                        onClick={onClose}
                         disabled={isSubmitting}
-                        className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition-colors focus:ring-2 ${
-                          isOverPicked
-                            ? "border-[var(--color-status-pending-border)] text-[var(--color-status-pending-text)] focus:border-[var(--color-status-pending-icon)] focus:ring-[var(--color-status-pending-bg-muted)]"
-                            : "border-[var(--color-border-subtle)] text-[var(--color-text-primary)] focus:border-[var(--color-border-focus)] focus:ring-[var(--color-brand-primary-muted)]"
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-0.5 block text-xxs font-medium text-gray-400">
-                        Ghi chú
-                      </label>
-                      <input
-                        type="text"
-                        value={item.notes}
-                        onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                        placeholder="Ghi chú..."
-                        disabled={isSubmitting}
-                        className="w-full rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
-                      />
-                    </div>
-                  </div>
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="border-t border-gray-200 bg-white px-4 py-3 shadow-inner">
-        {/* Summary */}
-        <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
-          <span>
-            Đã soạn: <span className="font-semibold text-gray-900">{totalPicked}</span>
-            {" / "}
-            <span className="text-gray-600">{totalRequested}</span>
-          </span>
-          {hasOverPicked && (
-            <span className="flex items-center gap-1 text-[var(--color-status-pending-text)]">
-              <AlertTriangle size={12} />
-              Có sản phẩm vượt số lượng yêu cầu
-            </span>
-          )}
-        </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                            <ShoppingCart className="h-3.5 w-3.5" />
+                            {t.pickingSession.progressLabel}
+                        </div>
+                        <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                            {progressValue}%
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-neutral-100)]">
+                            <div
+                                className="h-full rounded-full bg-[var(--color-brand-primary)] transition-all"
+                                style={{ width: `${Math.min(progressValue, 100)}%` }}
+                            />
+                        </div>
+                    </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={isSaving || isSubmitting}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-4 py-2.5 text-xs font-medium text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
-          >
-            Lưu nháp
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting || isSaving}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--color-status-export-icon)] px-4 py-2.5 text-xs font-semibold text-[var(--color-text-on-dark)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-          >
-            <Send size={14} />
-            {isSubmitting ? "Đang xử lý..." : "Hoàn tất soạn hàng"}
-          </button>
+                    <div className="rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {t.pickingSession.ready}
+                        </div>
+                        <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                            {readyItems}
+                            <span className="ml-1 text-sm font-medium text-[var(--color-text-muted)]">
+                                / {items.length}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)]/40 p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs text-[var(--color-status-pending-text)]">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {t.pickingSession.attentionItems}
+                        </div>
+                        <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                            {attentionItems}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+                {isLoading ? (
+                    <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                                key={index}
+                                className="h-44 animate-pulse rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface-card)]"
+                            />
+                        ))}
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-20">
+                        <Package className="h-8 w-12 text-gray-300" />
+                        <p className="text-sm text-gray-400">{t.pickingSession.empty}</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {items.map((item) => (
+                            <PickingSessionItemCard
+                                key={item.id}
+                                item={item}
+                                isSubmitting={isSubmitting}
+                                onQuantityChange={updatePickedQty}
+                                onNotesChange={updateItemNotes}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="border-t border-[var(--color-border-soft)] bg-white px-4 py-3 shadow-inner">
+                <div className="mb-3 flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                    <span>
+                        {t.pickingSession.picked}:{" "}
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            {totalPicked}
+                        </span>
+                        {" / "}
+                        <span className="text-[var(--color-text-secondary)]">
+                            {totalRequested}
+                        </span>
+                    </span>
+                    {hasOverPicked && (
+                        <span className="flex items-center gap-1 text-[var(--color-status-pending-text)]">
+                            <AlertTriangle size={12} />
+                            {t.pickingSession.overPickedSummary}
+                        </span>
+                    )}
+                </div>
+
+                <label
+                    className={`mb-3 flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-all ${
+                        isConfirmed
+                            ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)]/40"
+                            : "border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]"
+                    }`}
+                >
+                    <input
+                        type="checkbox"
+                        checked={isConfirmed}
+                        onChange={(event) => setIsConfirmed(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 cursor-pointer rounded border-[var(--color-border-subtle)] accent-[var(--color-brand-primary)]"
+                    />
+                    <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                            <ShieldCheck
+                                className={`h-4 w-4 flex-shrink-0 ${
+                                    isConfirmed
+                                        ? "text-[var(--color-success-icon)]"
+                                        : "text-[var(--color-text-muted)]"
+                                }`}
+                            />
+                            <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                {t.pickingSession.confirmData}
+                            </span>
+                        </div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                            {t.pickingSession.confirmStatement}
+                        </p>
+                    </div>
+                </label>
+
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={handleSaveDraft}
+                        disabled={isSaving || isSubmitting}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-4 py-2.5 text-xs font-medium text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-surface-subtle)] disabled:opacity-50"
+                    >
+                        {t.pickingSession.saveDraft}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleOpenReview}
+                        disabled={isSubmitting || isSaving || !isConfirmed}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-semibold transition-all disabled:opacity-50 ${
+                            isConfirmed
+                                ? "bg-[var(--color-status-export-icon)] text-[var(--color-text-on-dark)] hover:opacity-90 active:scale-[0.98]"
+                                : "cursor-not-allowed bg-[var(--color-neutral-200)] text-[var(--color-text-muted)]"
+                        }`}
+                    >
+                        <Send size={14} />
+                        {isSubmitting ? t.pickingSession.processing : t.pickingSession.complete}
+                    </button>
+                </div>
+            </div>
+
+            {isReviewOpen ? (
+                <TaskSessionReviewOverlay
+                    title={t.pickingSession.reviewTitle}
+                    description={t.pickingSession.reviewDescription}
+                    quantityLabel={t.pickingSession.picked}
+                    expectedLabel={t.pickingSession.requested}
+                    actualLabel={t.pickingSession.picked}
+                    diffLabel={t.receiving.diff}
+                    confirmLabel={t.pickingSession.confirmSubmit}
+                    attentionLabel={t.pickingSession.attentionItems}
+                    items={items.map((item) => ({
+                        id: item.id,
+                        product_name: item.product_name,
+                        product_sku: item.product_code,
+                        product_barcode: item.product_barcode,
+                        product_image_url: item.product_image_url,
+                        location_name: item.location_name,
+                        expected_quantity: item.quantity,
+                        actual_quantity: item.picked_quantity,
+                    }))}
+                    isSubmitting={isSubmitting}
+                    onBack={() => setIsReviewOpen(false)}
+                    onClose={() => setIsReviewOpen(false)}
+                    onConfirm={handleSubmit}
+                />
+            ) : null}
         </div>
-      </div>
-    </div>
-  );
+    );
 }
