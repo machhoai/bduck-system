@@ -9,7 +9,11 @@ const router: Router = Router();
 router.get(
   "/pending",
   requireAuth,
-  requireAnyScopedPermission(["external_scan.view", "external_scan.approve"]),
+  requireAnyScopedPermission([
+    "external_scan.view",
+    "external_scan.approve",
+    "external_scan.manage_queue",
+  ]),
   externalQueueController.getPendingBatches,
 );
 
@@ -33,8 +37,24 @@ router.post(
 router.patch(
   "/update-quantity",
   requireAuth,
-  requireAnyScopedPermission("external_scan.edit_quantity"),
+  requireAnyScopedPermission(["external_scan.edit_quantity", "external_scan.manage_queue"]),
   externalQueueController.updateScanQuantity,
+);
+
+// /api/external-queue/cancel-scan
+router.post(
+  "/cancel-scan",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.cancelScan,
+);
+
+// /api/external-queue/auto-submit
+router.post(
+  "/auto-submit",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.autoSubmitQueuedLocations,
 );
 
 // /api/external-queue/reject

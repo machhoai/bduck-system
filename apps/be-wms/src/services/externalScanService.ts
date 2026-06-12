@@ -28,6 +28,56 @@ async function resolveProduct(
   throw new Error("MISSING_PRODUCT_INFO");
 }
 
+async function enrichScansWithProducts(scans: ExternalScanQueue[]) {
+  const products = await productRepo.findByIds(scans.map((scan) => scan.product_id));
+  const productById = new Map(products.map((product) => [product.id, product]));
+
+  return scans.map((scan) => {
+    const product = productById.get(scan.product_id);
+    return {
+      ...scan,
+      product_name: product?.name ?? null,
+      product_code: product?.code ?? null,
+      product_barcode: product?.barcode ?? null,
+      product_unit: product?.unit ?? null,
+      product_type: product?.product_type ?? null,
+      product_image_url:
+        product?.product_image_url && product.product_image_url.length > 0
+          ? product.product_image_url[0]
+          : null,
+    };
+  });
+}
+
+function getShiftDate(scanTime: Date) {
+  return scanTime.toISOString().slice(0, 10);
+}
+
+function buildLocationBatchId(shiftDate: string) {
+  return `B-${shiftDate.replace(/-/g, "")}-${uuidv4().substring(0, 8).toUpperCase()}`;
+}
+
+function toDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof (value as { seconds: unknown }).seconds === "number"
+  ) {
+    return new Date((value as { seconds: number }).seconds * 1000);
+  }
+  return new Date(value as string | number);
+}
+
 export const scanProduct = async (
   client: IntegrationClient,
   warehouseId: string,
@@ -197,7 +247,7 @@ export const submitBatch = async (
     throw new Error("UNAUTHORIZED_WAREHOUSE");
   }
 
-  const batchId = `B-${data.shift_date.replace(/-/g, "")}-${uuidv4().substring(0, 8).toUpperCase()}`;
+  const batchId = buildLocationBatchId(data.shift_date);
 
   const scans = await externalScanRepo.findQueuedByLocationAndDate(
     client.id,
@@ -226,6 +276,24 @@ export const submitBatch = async (
 
   await batch.commit();
 
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: data.warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: data.operator_id_external || `EXT:${client.id}`,
+    old_value: { status: ExternalScanQueueStatus.QUEUED },
+    new_value: {
+      status: ExternalScanQueueStatus.SUBMITTED,
+      warehouse_location_id: data.warehouse_location_id,
+      total_quantity: totalQty,
+      total_value: totalValue,
+      submitted_by: data.operator_name,
+      notes: data.notes,
+    },
+    notes: data.notes,
+  }).catch(console.error);
+
   return {
     batch_id: batchId,
     total_products: scans.length,
@@ -247,24 +315,205 @@ export const getMyScans = async (
     operatorIdExternal
   );
 
-  const products = await productRepo.findByIds(scans.map((scan) => scan.product_id));
-  const productById = new Map(products.map((product) => [product.id, product]));
+  return enrichScansWithProducts(scans);
+};
 
-  return scans.map((scan) => {
-    const product = productById.get(scan.product_id);
-    return {
-      ...scan,
-      product_name: product?.name ?? null,
-      product_code: product?.code ?? null,
-      product_barcode: product?.barcode ?? null,
-      product_unit: product?.unit ?? null,
-      product_type: product?.product_type ?? null,
-      product_image_url:
-        product?.product_image_url && product.product_image_url.length > 0
-          ? product.product_image_url[0]
-          : null,
-    };
+export const getLocationScans = async (
+  client: IntegrationClient,
+  warehouseId: string,
+  warehouseLocationId: string,
+) => {
+  if (!client.allowed_warehouse_ids.includes(warehouseId)) {
+    throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  const scans = await externalScanRepo.findQueuedByLocation({
+    clientId: client.id,
+    warehouseId,
+    locationId: warehouseLocationId,
   });
+
+  return enrichScansWithProducts(scans);
+};
+
+export const cancelScanByManager = async (
+  scanId: string,
+  managerId: string,
+  canManageWarehouse: (warehouseId: string) => boolean,
+  reason: string | null,
+) => {
+  const scan = await externalScanRepo.findById(scanId);
+  if (!scan) throw new Error("SCAN_NOT_FOUND");
+  if (scan.status !== ExternalScanQueueStatus.QUEUED) {
+    throw new Error("INVALID_SCAN_STATUS");
+  }
+  if (!canManageWarehouse(scan.warehouse_id)) {
+    throw new Error("PERMISSION_DENIED");
+  }
+
+  let atpBefore = 0;
+  let atpAfter = 0;
+  let onHoldBefore = 0;
+  let onHoldAfter = 0;
+
+  await db.runTransaction(async (tx) => {
+    const scanRef = db.collection("external_scan_queue").doc(scanId);
+    const scanSnap = await tx.get(scanRef);
+    if (!scanSnap.exists) throw new Error("SCAN_NOT_FOUND");
+
+    const currentScan = scanSnap.data() as ExternalScanQueue;
+    if (currentScan.is_deleted) throw new Error("SCAN_NOT_FOUND");
+    if (currentScan.status !== ExternalScanQueueStatus.QUEUED) {
+      throw new Error("INVALID_SCAN_STATUS");
+    }
+
+    const invSnapshot = await tx.get(
+      db.collection("inventory")
+        .where("warehouse_location_id", "==", currentScan.warehouse_location_id)
+        .where("product_id", "==", currentScan.product_id)
+        .limit(1),
+    );
+
+    if (!invSnapshot.empty && currentScan.atp_held) {
+      const invDoc = invSnapshot.docs[0];
+      const invData = invDoc.data();
+      atpBefore = Number(invData.atp_quantity ?? 0);
+      onHoldBefore = Number(invData.on_hold_quantity ?? 0);
+      atpAfter = atpBefore + currentScan.quantity;
+      onHoldAfter = Math.max(0, onHoldBefore - currentScan.quantity);
+
+      tx.update(invDoc.ref, {
+        atp_quantity: atpAfter,
+        on_hold_quantity: onHoldAfter,
+        last_updated_at: new Date(),
+      });
+    }
+
+    tx.update(scanRef, {
+      is_deleted: true,
+      atp_held: false,
+      rejection_reason: reason,
+      sync_time: new Date(),
+    });
+  });
+
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: scan.id,
+    warehouse_id: scan.warehouse_id,
+    action: AuditAction.SOFT_DELETE,
+    user_id: managerId,
+    old_value: {
+      scan_id: scan.id,
+      product_id: scan.product_id,
+      quantity: scan.quantity,
+      atp_quantity: atpBefore,
+      on_hold_quantity: onHoldBefore,
+    },
+    new_value: {
+      scan_id: scan.id,
+      is_deleted: true,
+      atp_held: false,
+      atp_quantity: atpAfter,
+      on_hold_quantity: onHoldAfter,
+      reason,
+    },
+    notes: reason,
+  }).catch(console.error);
+
+  return { scan_id: scanId, cancelled: true };
+};
+
+export const autoSubmitQueuedLocations = async (params: {
+  actorId: string;
+  warehouseId?: string;
+  warehouseLocationId?: string;
+  olderThanMinutes: number;
+  now?: Date;
+}) => {
+  const scans = await externalScanRepo.findQueued({
+    warehouse_id: params.warehouseId,
+    warehouse_location_id: params.warehouseLocationId,
+  });
+  const now = params.now ?? new Date();
+  const cutoffTime = now.getTime() - params.olderThanMinutes * 60 * 1000;
+
+  const groupMap = new Map<string, ExternalScanQueue[]>();
+  for (const scan of scans) {
+    const scanDate = toDate(scan.scan_time);
+    if (scanDate.getTime() > cutoffTime) continue;
+
+    const shiftDate = getShiftDate(scanDate);
+    const groupKey = [
+      scan.client_id,
+      scan.warehouse_id,
+      scan.warehouse_location_id,
+      shiftDate,
+    ].join(":");
+
+    const group = groupMap.get(groupKey) ?? [];
+    group.push(scan);
+    groupMap.set(groupKey, group);
+  }
+
+  const submittedBatches = [];
+  let submittedScans = 0;
+  for (const group of groupMap.values()) {
+    const first = group[0];
+    const shiftDate = getShiftDate(toDate(first.scan_time));
+    const batchId = buildLocationBatchId(shiftDate);
+    const batch = db.batch();
+    let totalQty = 0;
+    let totalValue = 0;
+
+    for (const scan of group) {
+      batch.update(db.collection("external_scan_queue").doc(scan.id), {
+        status: ExternalScanQueueStatus.SUBMITTED,
+        batch_id: batchId,
+        sync_time: now,
+        notes: `Auto-submitted by location after ${params.olderThanMinutes} minutes without new scans.`,
+      });
+      totalQty += scan.quantity;
+      totalValue += scan.quantity * scan.unit_price;
+    }
+
+    await batch.commit();
+
+    await logAudit({
+      entity_type: "EXTERNAL_SCAN",
+      entity_id: batchId,
+      warehouse_id: first.warehouse_id,
+      action: AuditAction.UPDATE,
+      user_id: params.actorId,
+      old_value: { status: ExternalScanQueueStatus.QUEUED },
+      new_value: {
+        status: ExternalScanQueueStatus.SUBMITTED,
+        auto_submit: true,
+        warehouse_location_id: first.warehouse_location_id,
+        total_scans: group.length,
+        total_quantity: totalQty,
+        total_value: totalValue,
+        older_than_minutes: params.olderThanMinutes,
+      },
+      notes: "Auto-submit location queue",
+    }).catch(console.error);
+
+    submittedBatches.push({
+      batch_id: batchId,
+      warehouse_id: first.warehouse_id,
+      warehouse_location_id: first.warehouse_location_id,
+      total_scans: group.length,
+      total_quantity: totalQty,
+      total_value: totalValue,
+    });
+    submittedScans += group.length;
+  }
+
+  return {
+    submitted_batches: submittedBatches.length,
+    submitted_scans: submittedScans,
+    batches: submittedBatches,
+  };
 };
 
 // -------------------------------------------------------------------------

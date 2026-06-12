@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { db } from "../../config/firebase.js";
 import { ExternalScanQueue, ExternalScanQueueStatus } from "@bduck/shared-types";
 import * as externalScanService from "../../services/externalScanService.js";
+import { locationRepository } from "../../repositories/locationRepository.js";
+import { productRepository } from "../../repositories/productRepository.js";
+import { warehouseRepository } from "../../repositories/warehouseRepository.js";
 import { z } from "zod";
 
 const hasScopedPermission = (
@@ -31,33 +34,93 @@ const hasScopedPermission = (
   );
 };
 
+const toDate = (value: unknown): Date => {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof (value as { seconds: unknown }).seconds === "number"
+  ) {
+    return new Date((value as { seconds: number }).seconds * 1000);
+  }
+  return new Date(value as string | number);
+};
+
+const toQueueDate = (value: unknown) => toDate(value).toISOString().slice(0, 10);
+
+const getOperatorDisplayName = (record: ExternalScanQueue) => {
+  const operatorName = record.operator_name?.trim();
+  if (operatorName && !operatorName.includes("@")) return operatorName;
+  return record.operator_id_external || operatorName || "Unknown";
+};
+
 export const getPendingBatches = async (req: Request, res: Response) => {
   try {
     // Query both QUEUED (đang quét, chưa submit batch) and SUBMITTED (đã gửi batch chờ duyệt)
-    const snapshot = await db
-      .collection("external_scan_queue")
-      .where("status", "in", [ExternalScanQueueStatus.QUEUED, ExternalScanQueueStatus.SUBMITTED])
-      .where("is_deleted", "==", false)
-      .get();
+    const [queuedSnapshot, submittedSnapshot] = await Promise.all([
+      db
+        .collection("external_scan_queue")
+        .where("status", "==", ExternalScanQueueStatus.QUEUED)
+        .get(),
+      db
+        .collection("external_scan_queue")
+        .where("status", "==", ExternalScanQueueStatus.SUBMITTED)
+        .get(),
+    ]);
 
-    const allRecords = snapshot.docs.map(doc => doc.data() as ExternalScanQueue);
+    const allRecords = [...queuedSnapshot.docs, ...submittedSnapshot.docs]
+      .map(doc => doc.data() as ExternalScanQueue)
+      .filter(record => !record.is_deleted);
+    const products = await productRepository.findByIds(
+      allRecords.map((record) => record.product_id),
+    );
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const uniqueLocationIds = [...new Set(allRecords.map((record) => record.warehouse_location_id))];
+    const uniqueWarehouseIds = [...new Set(allRecords.map((record) => record.warehouse_id))];
+    const [locationPairs, warehousePairs] = await Promise.all([
+      Promise.all(uniqueLocationIds.map(async (id) => [id, await locationRepository.findById(id)] as const)),
+      Promise.all(uniqueWarehouseIds.map(async (id) => [id, await warehouseRepository.findById(id)] as const)),
+    ]);
+    const locationById = new Map(locationPairs);
+    const warehouseById = new Map(warehousePairs);
 
     // Group: SUBMITTED → by batch_id, QUEUED → by warehouse_location_id + operator
     const batchMap = new Map<string, any>();
 
     for (const record of allRecords) {
       // SUBMITTED records must have batch_id; QUEUED records may not
+      const queueDate = toQueueDate(record.scan_time);
+      const product = productById.get(record.product_id);
+      const location = locationById.get(record.warehouse_location_id);
+      const warehouse = warehouseById.get(record.warehouse_id);
+      const operatorDisplayName = getOperatorDisplayName(record);
       const groupKey = record.batch_id
         ? record.batch_id
-        : `DRAFT-${record.warehouse_location_id}-${record.operator_id_external || record.operator_name}`;
+        : `DRAFT-${record.warehouse_location_id}-${queueDate}`;
 
       if (!batchMap.has(groupKey)) {
         batchMap.set(groupKey, {
           batch_id: groupKey,
           warehouse_id: record.warehouse_id,
+          warehouse_name: warehouse?.name ?? null,
+          warehouse_code: warehouse?.code ?? null,
           warehouse_location_id: record.warehouse_location_id,
-          operator_name: record.operator_name,
+          location_name: location?.name ?? null,
+          location_code: location?.code ?? null,
+          operator_name: operatorDisplayName,
+          operator_names: [],
+          queue_date: queueDate,
           shift_date: record.scan_time,
+          last_scan_time: record.scan_time,
           submitted_at: record.batch_id ? record.sync_time : null,
           status: record.status, // QUEUED or SUBMITTED
           is_draft: !record.batch_id, // true nếu chưa batch-submit
@@ -69,6 +132,12 @@ export const getPendingBatches = async (req: Request, res: Response) => {
       }
 
       const batch = batchMap.get(groupKey);
+      if (!batch.operator_names.includes(operatorDisplayName)) {
+        batch.operator_names.push(operatorDisplayName);
+      }
+      if (toDate(record.scan_time).getTime() > toDate(batch.last_scan_time).getTime()) {
+        batch.last_scan_time = record.scan_time;
+      }
       batch.total_quantity += record.quantity;
       batch.total_value += record.quantity * record.unit_price;
 
@@ -80,10 +149,20 @@ export const getPendingBatches = async (req: Request, res: Response) => {
       batch.items.push({
         scan_id: record.id,
         product_id: record.product_id,
+        product_name: product?.name ?? null,
+        product_code: product?.code ?? null,
+        product_barcode: product?.barcode ?? null,
+        product_unit: product?.unit ?? null,
+        product_image_url:
+          product?.product_image_url && product.product_image_url.length > 0
+            ? product.product_image_url[0]
+            : null,
         barcode: record.barcode_scanned,
         quantity: record.quantity,
         unit_price: record.unit_price,
         scan_time: record.scan_time,
+        operator_name: operatorDisplayName,
+        operator_id_external: record.operator_id_external,
       });
     }
 
@@ -131,12 +210,13 @@ export const getHistory = async (req: Request, res: Response) => {
     const batchMap = new Map<string, any>();
     for (const record of allRecords) {
       if (!record.batch_id) continue;
+      const operatorDisplayName = getOperatorDisplayName(record);
       
       if (!batchMap.has(record.batch_id)) {
         batchMap.set(record.batch_id, {
           batch_id: record.batch_id,
           status: record.status,
-          operator_name: record.operator_name,
+          operator_name: operatorDisplayName,
           location_name: "Location",
           shift_date: record.scan_time,
           total_products: 0,
@@ -218,7 +298,8 @@ export const updateScanQuantity = async (req: Request, res: Response) => {
       parsed.quantity,
       user.id,
       (warehouseId) =>
-        hasScopedPermission(user, "external_scan.edit_quantity", warehouseId),
+        hasScopedPermission(user, "external_scan.edit_quantity", warehouseId) ||
+        hasScopedPermission(user, "external_scan.manage_queue", warehouseId),
       parsed.reason || null,
     );
 
@@ -234,6 +315,84 @@ export const updateScanQuantity = async (req: Request, res: Response) => {
       success: false,
       data: null,
       messages: { vi: "Lỗi khi cập nhật số lượng: " + error.message, zh: "更新数量错误" },
+    });
+  }
+};
+
+const cancelScanSchema = z.object({
+  scan_id: z.string(),
+  reason: z.string().trim().max(500).optional().nullable(),
+});
+
+export const cancelScan = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parsed = cancelScanSchema.parse(req.body);
+
+    const result = await externalScanService.cancelScanByManager(
+      parsed.scan_id,
+      user.id,
+      (warehouseId) =>
+        hasScopedPermission(user, "external_scan.manage_queue", warehouseId),
+      parsed.reason || null,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      messages: { vi: "Da huy muc hang cho.", zh: "队列项已取消。" },
+    });
+  } catch (error: any) {
+    console.error("[cancelScan]", error);
+    const status = error.message === "PERMISSION_DENIED" ? 403 : 400;
+    return res.status(status).json({
+      success: false,
+      data: null,
+      messages: { vi: "Loi khi huy hang cho: " + error.message, zh: "取消队列项失败。" },
+    });
+  }
+};
+
+const autoSubmitSchema = z.object({
+  warehouse_id: z.string().optional(),
+  warehouse_location_id: z.string().optional(),
+  older_than_minutes: z.number().int().min(1).max(1440).default(30),
+});
+
+export const autoSubmitQueuedLocations = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parsed = autoSubmitSchema.parse(req.body ?? {});
+
+    if (
+      parsed.warehouse_id &&
+      !hasScopedPermission(user, "external_scan.manage_queue", parsed.warehouse_id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: { vi: "Khong co quyen quan ly hang cho kho nay.", zh: "无权管理此仓库队列。" },
+      });
+    }
+
+    const result = await externalScanService.autoSubmitQueuedLocations({
+      actorId: user.id,
+      warehouseId: parsed.warehouse_id,
+      warehouseLocationId: parsed.warehouse_location_id,
+      olderThanMinutes: parsed.older_than_minutes,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      messages: { vi: "Da chay auto-submit theo quay.", zh: "已按柜台执行自动提交。" },
+    });
+  } catch (error: any) {
+    console.error("[autoSubmitQueuedLocations]", error);
+    return res.status(400).json({
+      success: false,
+      data: null,
+      messages: { vi: "Loi auto-submit: " + error.message, zh: "自动提交失败。" },
     });
   }
 };
@@ -270,5 +429,7 @@ export default {
   getHistory,
   approveBatch,
   updateScanQuantity,
+  cancelScan,
+  autoSubmitQueuedLocations,
   rejectBatch,
 };

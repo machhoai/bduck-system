@@ -423,7 +423,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                 />
                                 <button
                                     type="button"
-                                    onClick={handleCancel}
+                                    onClick={() => handleCancel()}
                                     disabled={isSubmitting}
                                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                                 >

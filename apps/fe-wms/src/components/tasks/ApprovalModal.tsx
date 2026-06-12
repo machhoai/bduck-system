@@ -153,7 +153,7 @@ export default function ApprovalModal({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={isSubmitting || (!isApprove && !comment.trim())}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--color-text-on-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               isApprove

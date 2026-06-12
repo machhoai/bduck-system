@@ -3,6 +3,27 @@ import type { ExternalScanQueue, ExternalScanQueueStatus } from "@bduck/shared-t
 
 const COLLECTION = "external_scan_queue";
 
+const toMillis = (value: unknown) => {
+  if (value instanceof Date) return value.getTime();
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof (value as { seconds: unknown }).seconds === "number"
+  ) {
+    return (value as { seconds: number }).seconds * 1000;
+  }
+  return new Date(value as string | number).getTime();
+};
+
 export async function findById(id: string): Promise<ExternalScanQueue | null> {
   const snap = await db.collection(COLLECTION).doc(id).get();
   if (!snap.exists) return null;
@@ -57,6 +78,55 @@ export async function findQueuedByExternalOperator(
     .get();
 
   return snap.docs.map((d) => d.data() as ExternalScanQueue);
+}
+
+export async function findQueuedByLocation(params: {
+  clientId: string;
+  warehouseId: string;
+  locationId: string;
+  limit?: number;
+}): Promise<ExternalScanQueue[]> {
+  const snap = await db
+    .collection(COLLECTION)
+    .where("client_id", "==", params.clientId)
+    .where("status", "==", "QUEUED")
+    .get();
+
+  return snap.docs
+    .map((d) => d.data() as ExternalScanQueue)
+    .filter(
+      (record) =>
+        !record.is_deleted &&
+        record.warehouse_id === params.warehouseId &&
+        record.warehouse_location_id === params.locationId,
+    )
+    .sort((a, b) => toMillis(b.scan_time) - toMillis(a.scan_time))
+    .slice(0, params.limit ?? 300);
+}
+
+export async function findQueued(params?: {
+  warehouse_id?: string;
+  warehouse_location_id?: string;
+}): Promise<ExternalScanQueue[]> {
+  const snap = await db
+    .collection(COLLECTION)
+    .where("status", "==", "QUEUED")
+    .get();
+  return snap.docs
+    .map((d) => d.data() as ExternalScanQueue)
+    .filter((record) => {
+      if (record.is_deleted) return false;
+      if (params?.warehouse_id && record.warehouse_id !== params.warehouse_id) {
+        return false;
+      }
+      if (
+        params?.warehouse_location_id &&
+        record.warehouse_location_id !== params.warehouse_location_id
+      ) {
+        return false;
+      }
+      return true;
+    });
 }
 
 export async function create(

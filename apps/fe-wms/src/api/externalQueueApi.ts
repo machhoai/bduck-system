@@ -35,6 +35,12 @@ export const externalQueueApi = {
 
     updateQuantity: (data: { scan_id: string; quantity: number; reason?: string | null }) =>
         apiFetch<any>("/update-quantity", { method: "PATCH", body: JSON.stringify(data) }),
+
+    cancelScan: (data: { scan_id: string; reason?: string | null }) =>
+        apiFetch<any>("/cancel-scan", { method: "POST", body: JSON.stringify(data) }),
+
+    autoSubmit: (data: { warehouse_id?: string; warehouse_location_id?: string; older_than_minutes?: number }) =>
+        apiFetch<any>("/auto-submit", { method: "POST", body: JSON.stringify(data) }),
         
     rejectBatch: (data: { batch_id: string; reason: string }) =>
         apiFetch<any>("/reject", { method: "POST", body: JSON.stringify(data) }),

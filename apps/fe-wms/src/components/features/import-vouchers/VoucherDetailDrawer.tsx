@@ -47,6 +47,8 @@ import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
 import type { ImportVoucher } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
+import { useProcessConfig } from "@/hooks/useApprovalApi";
+import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 
 interface VoucherDetailDrawerProps {
     voucher: ImportVoucher;
@@ -166,6 +168,8 @@ export default function VoucherDetailDrawer({
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const entityType = useMemo(() => getEntityType(voucher), [voucher]);
+    const { config: processConfig } = useProcessConfig(entityType, voucher.warehouse_id);
+    const [otpAction, setOtpAction] = useState<"cancel" | "forceCancel" | null>(null);
     const collectionName = useMemo(() => getCollectionName(entityType), [entityType]);
 
     const isCreator = currentUser?.id === voucher.creator_id;
@@ -273,12 +277,24 @@ export default function VoucherDetailDrawer({
     }, [voucher.id, collectionName]);
 
     // ── Cancel by creator ──
-    const handleCreatorCancel = useCallback(async () => {
+    const handleCreatorCancel = useCallback(async (otp?: string) => {
         if (isSubmitting) return;
+
+        if (!cancelReason.trim()) {
+            gooeyToast.error(t.tasks.selfApproval.cancelReason, { preset: "snappy" });
+            return;
+        }
+
+        if (processConfig?.require_otp && !otp) {
+            setOtpAction("cancel");
+            return;
+        }
+
         setIsSubmitting(true);
+        setOtpAction(null);
 
         const action = async () => {
-            await cancelApproval(entityType, voucher.id, cancelReason || undefined);
+            await cancelApproval(entityType, voucher.id, cancelReason || undefined, otp);
         };
 
         try {
@@ -303,7 +319,7 @@ export default function VoucherDetailDrawer({
     }, [isSubmitting, cancelReason, entityType, voucher.id, onClose, t]);
 
     // ── Force cancel ──
-    const handleForceCancel = useCallback(async () => {
+    const handleForceCancel = useCallback(async (otp?: string) => {
         if (isSubmitting) return;
         if (!cancelReason.trim()) {
             gooeyToast.error(t.tasks.selfApproval.cancelError, {
@@ -313,10 +329,17 @@ export default function VoucherDetailDrawer({
             });
             return;
         }
+
+        if (processConfig?.require_otp && !otp) {
+            setOtpAction("forceCancel");
+            return;
+        }
+
         setIsSubmitting(true);
+        setOtpAction(null);
 
         const action = async () => {
-            await forceCancelApproval(entityType, voucher.id, cancelReason);
+            await forceCancelApproval(entityType, voucher.id, cancelReason, otp);
         };
 
         try {
@@ -572,7 +595,7 @@ export default function VoucherDetailDrawer({
                                 {canCreatorCancel && (
                                     <button
                                         type="button"
-                                        onClick={handleCreatorCancel}
+                                        onClick={() => handleCreatorCancel()}
                                         disabled={isSubmitting}
                                         className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
@@ -583,7 +606,7 @@ export default function VoucherDetailDrawer({
                                 {canForceCancel && !canCreatorCancel && (
                                     <button
                                         type="button"
-                                        onClick={handleForceCancel}
+                                        onClick={() => handleForceCancel()}
                                         disabled={isSubmitting || !cancelReason.trim()}
                                         className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
@@ -594,7 +617,7 @@ export default function VoucherDetailDrawer({
                                 {canForceCancel && canCreatorCancel && (
                                     <button
                                         type="button"
-                                        onClick={handleForceCancel}
+                                        onClick={() => handleForceCancel()}
                                         disabled={isSubmitting || !cancelReason.trim()}
                                         className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--color-neutral-300)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-text-secondary)] transition-all hover:bg-[var(--color-neutral-50)] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
@@ -607,6 +630,17 @@ export default function VoucherDetailDrawer({
                     </div>
                 )}
             </div>
+
+            {!!otpAction && (
+                <ActionOtpModal
+                    onConfirm={(code) => {
+                        if (otpAction === "cancel") handleCreatorCancel(code);
+                        else if (otpAction === "forceCancel") handleForceCancel(code);
+                    }}
+                    onCancel={() => setOtpAction(null)}
+                    isSubmitting={isSubmitting}
+                />
+            )}
         </>
     );
 }

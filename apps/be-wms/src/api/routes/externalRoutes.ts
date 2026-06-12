@@ -18,7 +18,7 @@ router.post("/scan", requireApiKey(["scan"]), externalScanController.scan);
 router.get("/scan", requireApiKey(["scan"]), externalScanController.getMyScans);
 
 // /api/external/v1/scan/:scanId
-router.delete("/scan/:scanId", requireApiKey(["scan"]), externalScanController.cancelScan);
+router.delete("/scan/:scanId", requireApiKey(["external_scan.manage_queue"]), externalScanController.cancelScan);
 
 // /api/external/v1/batch-submit
 router.post("/batch-submit", requireApiKey(["scan"]), externalScanController.submitBatch);

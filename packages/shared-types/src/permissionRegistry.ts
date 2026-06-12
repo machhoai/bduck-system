@@ -567,6 +567,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "external_scan.manage_queue",
+    group: "external",
+    label: { vi: "Quan ly hang cho quet", zh: "管理外部扫描队列" },
+    description: {
+      vi: "Huy muc trong hang cho va chay co che tu dong submit theo quay.",
+      zh: "取消队列项并执行按柜台自动提交。",
+    },
+  },
+  {
     key: "external_scan.view",
     group: "external",
     label: { vi: "Xem hàng chờ từ hệ thống ngoài", zh: "查看外部扫描队列" },

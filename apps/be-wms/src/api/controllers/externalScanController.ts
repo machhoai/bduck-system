@@ -236,6 +236,21 @@ const getMyScans = async (req: Request, res: Response) => {
   try {
     const client = (req as any).integrationClient!;
     const operatorIdExternal = req.query.operator_id_external as string;
+    const warehouseId = req.query.warehouse_id as string;
+    const warehouseLocationId = req.query.warehouse_location_id as string;
+
+    if (warehouseId && warehouseLocationId) {
+      const scans = await externalScanService.getLocationScans(
+        client,
+        warehouseId,
+        warehouseLocationId,
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: scans,
+      });
+    }
 
     if (!operatorIdExternal) {
       return res.status(400).json({
