@@ -592,19 +592,25 @@ export const approveBatch = async (
   let voucherNumber = await generateVoucherNumber("EXP");
 
   await db.runTransaction(async (tx) => {
-    // 1. Process inventory updates and prepare voucher items
+    // 1. Process inventory reads
+    const inventoryDocs = await Promise.all(
+      scans.map(async (scan) => {
+        const invSnapshot = await tx.get(
+          db
+            .collection("inventory")
+            .where("warehouse_location_id", "==", scan.warehouse_location_id)
+            .where("product_id", "==", scan.product_id)
+            .limit(1),
+        );
+        return { scan, invSnapshot };
+      })
+    );
+
+    // 2. Process writes and prepare voucher items
     const voucherItems = [];
 
-    for (const scan of scans) {
+    for (const { scan, invSnapshot } of inventoryDocs) {
       const approvedQty = approvedByScanId.get(scan.id) ?? 0;
-
-      const invSnapshot = await tx.get(
-        db
-          .collection("inventory")
-          .where("warehouse_location_id", "==", scan.warehouse_location_id)
-          .where("product_id", "==", scan.product_id)
-          .limit(1),
-      );
 
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
@@ -645,7 +651,7 @@ export const approveBatch = async (
       }
     }
 
-    // 2. Create Export Voucher
+    // 3. Create Export Voucher
     if (voucherItems.length > 0) {
       const voucher = {
         id: voucherId,
@@ -833,15 +839,20 @@ export const rejectBatch = async (
   }
 
   await db.runTransaction(async (tx) => {
-    for (const scan of scans) {
-      const invSnapshot = await tx.get(
-        db
-          .collection("inventory")
-          .where("warehouse_location_id", "==", scan.warehouse_location_id)
-          .where("product_id", "==", scan.product_id)
-          .limit(1),
-      );
+    const inventoryDocs = await Promise.all(
+      scans.map(async (scan) => {
+        const invSnapshot = await tx.get(
+          db
+            .collection("inventory")
+            .where("warehouse_location_id", "==", scan.warehouse_location_id)
+            .where("product_id", "==", scan.product_id)
+            .limit(1),
+        );
+        return { scan, invSnapshot };
+      })
+    );
 
+    for (const { scan, invSnapshot } of inventoryDocs) {
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
         const invData = invDoc.data();
