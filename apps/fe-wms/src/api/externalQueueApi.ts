@@ -32,6 +32,9 @@ export const externalQueueApi = {
     
     approveBatch: (data: { batch_id: string; approved_items: { scan_id: string; quantity: number }[]; notes?: string | null }) =>
         apiFetch<any>("/approve", { method: "POST", body: JSON.stringify(data) }),
+
+    updateQuantity: (data: { scan_id: string; quantity: number; reason?: string | null }) =>
+        apiFetch<any>("/update-quantity", { method: "PATCH", body: JSON.stringify(data) }),
         
     rejectBatch: (data: { batch_id: string; reason: string }) =>
         apiFetch<any>("/reject", { method: "POST", body: JSON.stringify(data) }),

@@ -9,6 +9,7 @@ import { externalQueueApi } from "../../../api/externalQueueApi";
 
 export default function ExternalQueueHistoryTab() {
     const { t } = useTranslation();
+    const externalQueueText = (t as any).externalQueue;
     const [searchTerm, setSearchTerm] = useState("");
     const [data, setData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -51,8 +52,8 @@ export default function ExternalQueueHistoryTab() {
         return (
             <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg border border-[var(--color-border-subtle)]">
                 <History size={48} className="text-gray-300 mb-4" />
-                <h3 className="text-base font-semibold text-gray-700">{t.externalQueue?.historyTab?.emptyTitle || "Không có lịch sử"}</h3>
-                <p className="text-sm text-gray-500 mt-1">{t.externalQueue?.historyTab?.emptyHint || "Chưa có batch nào được duyệt hoặc từ chối."}</p>
+                <h3 className="text-base font-semibold text-gray-700">{externalQueueText?.historyTab?.emptyTitle || "Không có lịch sử"}</h3>
+                <p className="text-sm text-gray-500 mt-1">{externalQueueText?.historyTab?.emptyHint || "Chưa có batch nào được duyệt hoặc từ chối."}</p>
             </div>
         );
     }
@@ -78,13 +79,13 @@ export default function ExternalQueueHistoryTab() {
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.batchId || "Mã đợt"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.shiftDate || "Ngày ca"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.operator || "Nhân viên"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b text-right">{t.externalQueue?.historyTab?.columns?.totalQty || "Tổng SL"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.status || "Trạng thái"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.processedAt || "TG xử lý"}</th>
-                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{t.externalQueue?.historyTab?.columns?.processedBy || "Người xử lý"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.batchId || "Mã đợt"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.shiftDate || "Ngày ca"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.operator || "Nhân viên"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b text-right">{externalQueueText?.historyTab?.columns?.totalQty || "Tổng SL"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.status || "Trạng thái"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.processedAt || "TG xử lý"}</th>
+                            <th className="p-2 text-xxs uppercase tracking-wider font-semibold text-gray-600 border-b">{externalQueueText?.historyTab?.columns?.processedBy || "Người xử lý"}</th>
                         </tr>
                     </thead>
                     <tbody>

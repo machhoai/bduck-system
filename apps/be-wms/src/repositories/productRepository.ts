@@ -65,6 +65,19 @@ class ProductRepository extends BaseRepository<Product> {
     return snapshot.docs[0].data() as Product;
   }
 
+  async findByIds(ids: string[]): Promise<Product[]> {
+    const uniqueIds = [...new Set(ids)].filter(Boolean);
+    if (uniqueIds.length === 0) return [];
+
+    const docRefs = uniqueIds.map((id) => db.collection(COLLECTION).doc(id));
+    const docSnaps = await db.getAll(...docRefs);
+
+    return docSnaps
+      .filter((doc) => doc.exists)
+      .map((doc) => doc.data() as Product)
+      .filter((product) => !product.is_deleted);
+  }
+
   /**
    * Get products with pagination and optional search by code or category_id
    */

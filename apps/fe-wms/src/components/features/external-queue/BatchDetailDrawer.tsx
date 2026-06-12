@@ -1,21 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    X,
-    Hash,
-    User,
+    AlertCircle,
     Calendar,
-    FileText,
     CheckCircle,
-    XCircle,
+    ClipboardList,
+    FileText,
+    Hash,
     Loader2,
+    Package,
+    Pencil,
+    Save,
+    User,
+    X,
+    XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { useTranslation } from "../../../lib/i18n";
-import { externalQueueApi } from "../../../api/externalQueueApi";
 import { gooeyToast } from "goey-toast";
+import { useTranslation } from "../../../lib/i18n";
+import { useUserStore } from "../../../stores/useUserStore";
+import { externalQueueApi } from "../../../api/externalQueueApi";
 
 interface BatchDetailDrawerProps {
     batchId: string;
@@ -25,7 +31,27 @@ interface BatchDetailDrawerProps {
     onSuccess?: () => void;
 }
 
-function Field({
+function safeDate(value: unknown): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value === "string" || typeof value === "number") {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+    if (typeof value === "object") {
+        const raw = value as { seconds?: number; _seconds?: number };
+        const seconds = raw.seconds ?? raw._seconds;
+        return typeof seconds === "number" ? new Date(seconds * 1000) : null;
+    }
+    return null;
+}
+
+function formatDateTime(value: unknown) {
+    const date = safeDate(value);
+    return date ? format(date, "HH:mm dd/MM/yyyy", { locale: vi }) : "-";
+}
+
+function InfoTile({
     icon: Icon,
     label,
     value,
@@ -35,15 +61,13 @@ function Field({
     value: React.ReactNode;
 }) {
     return (
-        <div className="flex items-start gap-3 py-2.5">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
+        <div className="flex min-w-0 items-center gap-3 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-[var(--color-brand-primary)] shadow-sm">
                 <Icon className="h-4 w-4" />
             </div>
-            <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
-                <p className="mt-0.5 break-all text-sm font-medium text-[var(--color-text-primary)]">
-                    {value || "—"}
-                </p>
+            <div className="min-w-0">
+                <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">{label}</p>
+                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{value || "-"}</p>
             </div>
         </div>
     );
@@ -57,25 +81,101 @@ export default function BatchDetailDrawer({
     onSuccess,
 }: BatchDetailDrawerProps) {
     const { t } = useTranslation();
+    const externalQueueText = (t as any).externalQueue;
+    const hasPermission = useUserStore((state) => state.hasPermission);
     const [notes, setNotes] = useState("");
     const [rejectReason, setRejectReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [savingScanId, setSavingScanId] = useState<string | null>(null);
     const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+    const [quantities, setQuantities] = useState<Record<string, number>>({});
+    const [savedQuantities, setSavedQuantities] = useState<Record<string, number>>({});
+
+    const canEditQuantity =
+        !readonly && hasPermission("external_scan.edit_quantity", batchData?.warehouse_id);
+
+    useEffect(() => {
+        const nextQuantities: Record<string, number> = {};
+        for (const item of batchData?.items || []) {
+            nextQuantities[item.scan_id] = Number(item.quantity || 0);
+        }
+        setQuantities(nextQuantities);
+        setSavedQuantities(nextQuantities);
+    }, [batchData]);
+
+    const items = batchData?.items || [];
+    const hasUnsavedChanges = items.some(
+        (item: any) => quantities[item.scan_id] !== savedQuantities[item.scan_id],
+    );
+    const totalQuantity = useMemo(
+        () => items.reduce((sum: number, item: any) => sum + (quantities[item.scan_id] || 0), 0),
+        [items, quantities],
+    );
+    const totalValue = useMemo(
+        () =>
+            items.reduce(
+                (sum: number, item: any) =>
+                    sum + (quantities[item.scan_id] || 0) * (item.unit_price || 0),
+                0,
+            ),
+        [items, quantities],
+    );
+
+    const handleSaveQuantity = async (item: any) => {
+        if (!canEditQuantity || savingScanId) return;
+        const nextQuantity = quantities[item.scan_id];
+        if (!Number.isInteger(nextQuantity) || nextQuantity < 0) {
+            gooeyToast.error("Số lượng không hợp lệ", {
+                description: "Vui lòng nhập số nguyên lớn hơn hoặc bằng 0.",
+                preset: "snappy",
+            });
+            return;
+        }
+
+        setSavingScanId(item.scan_id);
+        const promise = externalQueueApi.updateQuantity({
+            scan_id: item.scan_id,
+            quantity: nextQuantity,
+            reason: `Điều chỉnh từ ${savedQuantities[item.scan_id]} sang ${nextQuantity} trên hàng chờ ${batchId}`,
+        });
+
+        gooeyToast.promise(promise, {
+            loading: "Đang lưu số lượng...",
+            success: "Đã lưu số lượng",
+            error: "Không thể lưu số lượng",
+            description: {
+                success: "Thay đổi đã được ghi audit log.",
+                error: "Vui lòng kiểm tra quyền hoặc tồn khả dụng.",
+            },
+        });
+
+        try {
+            await promise;
+            setSavedQuantities((current) => ({
+                ...current,
+                [item.scan_id]: nextQuantity,
+            }));
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setSavingScanId(null);
+        }
+    };
 
     const handleApprove = async () => {
-        if (isSubmitting) return;
+        if (isSubmitting || hasUnsavedChanges) return;
         setIsSubmitting(true);
         setActionType("approve");
 
-        const itemsToApprove = batchData.items.map((i: any) => ({
-            scan_id: i.scan_id,
-            quantity: i.quantity
+        const itemsToApprove = items.map((item: any) => ({
+            scan_id: item.scan_id,
+            quantity: savedQuantities[item.scan_id] ?? item.quantity,
         }));
 
         const promise = externalQueueApi.approveBatch({
             batch_id: batchId,
             approved_items: itemsToApprove,
-            notes: notes || null
+            notes: notes || null,
         });
 
         gooeyToast.promise(promise, {
@@ -83,12 +183,12 @@ export default function BatchDetailDrawer({
             success: "Đã duyệt thành công",
             error: "Đã xảy ra lỗi khi duyệt",
             description: {
-                success: "Tất cả thay đổi đã được ghi nhận.",
+                success: "Phiếu xuất đã được tạo từ hàng chờ.",
                 error: "Vui lòng thử lại sau.",
             },
             action: {
-                error: { label: "Thử lại", onClick: handleApprove }
-            }
+                error: { label: "Thử lại", onClick: handleApprove },
+            },
         });
 
         try {
@@ -106,10 +206,9 @@ export default function BatchDetailDrawer({
     const handleReject = async () => {
         if (isSubmitting) return;
         if (!rejectReason.trim()) {
-            gooeyToast.error("Lỗi", {
-                description: "Vui lòng nhập lý do từ chối",
+            gooeyToast.error("Thiếu lý do từ chối", {
+                description: "Vui lòng nhập lý do trước khi từ chối.",
                 preset: "snappy",
-                timing: { displayDuration: 4000 }
             });
             return;
         }
@@ -119,7 +218,7 @@ export default function BatchDetailDrawer({
 
         const promise = externalQueueApi.rejectBatch({
             batch_id: batchId,
-            reason: rejectReason
+            reason: rejectReason,
         });
 
         gooeyToast.promise(promise, {
@@ -127,12 +226,12 @@ export default function BatchDetailDrawer({
             success: "Đã từ chối thành công",
             error: "Đã xảy ra lỗi khi từ chối",
             description: {
-                success: "Đợt quét đã bị từ chối và giải phóng hàng chờ.",
+                success: "Hàng giữ đã được hoàn về tồn khả dụng.",
                 error: "Vui lòng thử lại sau.",
             },
             action: {
-                error: { label: "Thử lại", onClick: handleReject }
-            }
+                error: { label: "Thử lại", onClick: handleReject },
+            },
         });
 
         try {
@@ -151,112 +250,183 @@ export default function BatchDetailDrawer({
 
     return (
         <>
-            <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
-                onClick={onClose}
-            />
+            <div className="fixed inset-0 z-40 bg-black/35 backdrop-blur-xs" onClick={onClose} />
 
-            <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-                            {t.externalQueue?.detail?.title || "Chi tiết đợt quét"}
-                        </h2>
-                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                            {batchId}
-                        </p>
+            <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-white shadow-2xl sm:w-[92%] xl:w-[980px]">
+                <div className="border-b border-[var(--color-border-soft)] px-4 py-4 sm:px-5">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                                <ClipboardList className="h-4 w-4" />
+                                Hàng chờ quét sản phẩm
+                            </div>
+                            <h2 className="mt-1 truncate text-xl font-bold text-[var(--color-text-primary)]">
+                                {externalQueueText?.detail?.title || "Chi tiết đợt quét"}
+                            </h2>
+                            <p className="mt-0.5 truncate text-sm text-[var(--color-text-muted)]">{batchId}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
+                            aria-label="Đóng"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
+
+                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        <InfoTile icon={Hash} label="Máy POS" value={batchData.integration_client_id || batchData.client_id} />
+                        <InfoTile icon={Calendar} label="Thời gian gửi" value={formatDateTime(batchData.submitted_at)} />
+                        <InfoTile icon={User} label="Nhân viên" value={batchData.operator_name} />
+                        <InfoTile icon={Package} label="Tổng hiện tại" value={`${totalQuantity.toLocaleString()} sản phẩm`} />
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto">
-                    {/* Fields */}
-                    <div className="px-4 pt-4">
-                        <Field icon={Hash} label="Mã máy POS" value={batchData.integration_client_id} />
-                        <Field icon={Calendar} label="Ca làm việc" value={batchData.shift_date} />
-                        <Field icon={User} label="Nhân viên" value={batchData.operator_name} />
-                        <Field icon={Calendar} label="Thời gian gửi" value={batchData.submitted_at ? format(new Date(batchData.submitted_at), "HH:mm dd/MM/yyyy", { locale: vi }) : "—"} />
-                        {batchData.notes && <Field icon={FileText} label="Ghi chú đợt" value={batchData.notes} />}
-                        {batchData.reject_reason && <Field icon={XCircle} label="Lý do từ chối" value={batchData.reject_reason} />}
-                    </div>
+                <div className="flex-1 overflow-y-auto bg-[var(--color-surface-subtle)] px-4 py-4 sm:px-5">
+                    {canEditQuantity && (
+                        <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-3 py-2 text-sm text-[var(--color-status-pending-text)]">
+                            <Pencil className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>Người có quyền có thể chỉnh số lượng từng dòng. Mỗi lần lưu sẽ ghi audit log trước khi duyệt.</span>
+                        </div>
+                    )}
 
-                    {/* Items */}
-                    <div className="mt-4 px-4">
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Danh sách mã hàng ({batchData.items?.length || 0})
-                        </h3>
-                        
-                        <div className="space-y-2">
-                            {batchData.items?.map((item: any, idx: number) => (
-                                <div key={item.scan_id || idx} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-4 py-3">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.product_id}</p>
-                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                                                <span className="flex items-center gap-0.5">
-                                                    Mã quét: {item.scan_id}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <p className="flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
-                                            {(item.quantity * (item.unit_price || 0)).toLocaleString()}đ
-                                        </p>
-                                    </div>
-                                    <div className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-                                        Số lượng: {item.quantity}
-                                        {(item.unit_price || 0) > 0 && <> × {(item.unit_price || 0).toLocaleString()}đ</>}
-                                    </div>
-                                    {item.scan_type && (
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded text-xxs font-medium bg-gray-200 text-gray-700">
-                                                {item.scan_type}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                    {hasUnsavedChanges && (
+                        <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2 text-sm text-[var(--color-error-text)]">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>Còn thay đổi số lượng chưa lưu. Hãy lưu từng dòng trước khi duyệt.</span>
+                        </div>
+                    )}
+
+                    <div className="overflow-hidden rounded-lg border border-[var(--color-border-subtle)] bg-white">
+                        <div className="grid grid-cols-[minmax(0,1.8fr)_110px_130px_150px] gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-4 py-2 text-xxs font-semibold uppercase text-[var(--color-text-muted)] max-md:hidden">
+                            <span>Sản phẩm</span>
+                            <span className="text-right">Đơn giá</span>
+                            <span className="text-right">Số lượng</span>
+                            <span className="text-right">Thành tiền</span>
                         </div>
 
-                        {batchData.total_value > 0 && (
-                            <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-status-approved-bg)] px-4 py-3 mb-4">
-                                <span className="text-sm font-medium text-[var(--color-status-approved-text)]">Tổng giá trị</span>
-                                <span className="text-base font-bold text-[var(--color-brand-primary)]">{batchData.total_value.toLocaleString()}đ</span>
-                            </div>
-                        )}
+                        <div className="divide-y divide-[var(--color-border-soft)]">
+                            {items.map((item: any, index: number) => {
+                                const quantity = quantities[item.scan_id] ?? 0;
+                                const savedQuantity = savedQuantities[item.scan_id] ?? item.quantity;
+                                const isDirty = quantity !== savedQuantity;
+                                const lineTotal = quantity * (item.unit_price || 0);
+
+                                return (
+                                    <div
+                                        key={item.scan_id || index}
+                                        className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.8fr)_110px_130px_150px] md:items-center"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                                {item.product_id}
+                                            </p>
+                                            <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+                                                Mã quét: {item.scan_id}
+                                            </p>
+                                        </div>
+
+                                        <div className="text-sm text-[var(--color-text-secondary)] md:text-right">
+                                            <span className="md:hidden text-xs text-[var(--color-text-muted)]">Đơn giá: </span>
+                                            {(item.unit_price || 0).toLocaleString()}đ
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 md:justify-end">
+                                            <span className="text-xs text-[var(--color-text-muted)] md:hidden">Số lượng</span>
+                                            {canEditQuantity ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        step={1}
+                                                        value={quantity}
+                                                        onChange={(event) =>
+                                                            setQuantities((current) => ({
+                                                                ...current,
+                                                                [item.scan_id]: Number(event.target.value),
+                                                            }))
+                                                        }
+                                                        className="h-8 w-20 rounded-md border border-[var(--color-border-subtle)] bg-white px-2 text-right text-sm font-semibold outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSaveQuantity(item)}
+                                                        disabled={!isDirty || savingScanId === item.scan_id}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border-subtle)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)] disabled:cursor-not-allowed disabled:opacity-40"
+                                                        title="Lưu số lượng"
+                                                        aria-label="Lưu số lượng"
+                                                    >
+                                                        {savingScanId === item.scan_id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Save className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                                    {quantity.toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="text-sm font-semibold text-[var(--color-text-primary)] md:text-right">
+                                            <span className="md:hidden text-xs font-medium text-[var(--color-text-muted)]">Thành tiền: </span>
+                                            {lineTotal.toLocaleString()}đ
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3">
+                            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Tổng số lượng</p>
+                            <p className="mt-1 text-xl font-bold text-[var(--color-text-primary)]">{totalQuantity.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3">
+                            <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Tổng giá trị</p>
+                            <p className="mt-1 text-xl font-bold text-[var(--color-brand-primary)]">{totalValue.toLocaleString()}đ</p>
+                        </div>
+                    </div>
+
+                    {batchData.notes && (
+                        <div className="mt-3 rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                                <FileText className="h-4 w-4" />
+                                Ghi chú đợt
+                            </div>
+                            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{batchData.notes}</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Actions */}
                 {!readonly && (
-                    <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4 space-y-3">
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            rows={2}
-                            placeholder="Ghi chú phê duyệt (nếu có)"
-                            className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm outline-none transition-colors"
-                        />
-                        <textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            rows={2}
-                            placeholder="Lý do từ chối (bắt buộc nếu từ chối)"
-                            className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm outline-none transition-colors"
-                        />
-                        <div className="flex gap-2">
+                    <div className="border-t border-[var(--color-border-soft)] bg-white px-4 py-4 sm:px-5">
+                        <div className="grid gap-3 lg:grid-cols-2">
+                            <textarea
+                                value={notes}
+                                onChange={(event) => setNotes(event.target.value)}
+                                rows={2}
+                                placeholder="Ghi chú phê duyệt (nếu có)"
+                                className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                            />
+                            <textarea
+                                value={rejectReason}
+                                onChange={(event) => setRejectReason(event.target.value)}
+                                rows={2}
+                                placeholder="Lý do từ chối (bắt buộc nếu từ chối)"
+                                className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                            />
+                        </div>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                             <button
                                 type="button"
                                 onClick={handleReject}
                                 disabled={isSubmitting || !rejectReason.trim()}
-                                className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-200 disabled:opacity-50"
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-error-bg-muted)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition hover:bg-[var(--color-error-bg)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting && actionType === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                                 Từ chối
@@ -264,11 +434,11 @@ export default function BatchDetailDrawer({
                             <button
                                 type="button"
                                 onClick={handleApprove}
-                                disabled={isSubmitting}
-                                className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
+                                disabled={isSubmitting || hasUnsavedChanges}
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting && actionType === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                                Duyệt toàn bộ
+                                Duyệt hàng chờ
                             </button>
                         </div>
                     </div>

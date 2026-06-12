@@ -29,6 +29,14 @@ router.post(
   externalQueueController.approveBatch,
 );
 
+// /api/external-queue/update-quantity
+router.patch(
+  "/update-quantity",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.edit_quantity"),
+  externalQueueController.updateScanQuantity,
+);
+
 // /api/external-queue/reject
 router.post(
   "/reject",

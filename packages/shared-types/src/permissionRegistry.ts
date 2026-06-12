@@ -558,6 +558,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "external_scan.edit_quantity",
+    group: "external",
+    label: { vi: "Chỉnh số lượng hàng chờ quét", zh: "编辑外部扫描队列数量" },
+    description: {
+      vi: "Chỉnh sửa số lượng hàng hóa trong hàng chờ quét từ hệ thống ngoài trước khi duyệt.",
+      zh: "在审批前编辑来自外部系统的扫描队列商品数量。",
+    },
+  },
+  {
     key: "external_scan.view",
     group: "external",
     label: { vi: "Xem hàng chờ từ hệ thống ngoài", zh: "查看外部扫描队列" },

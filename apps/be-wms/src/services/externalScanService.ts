@@ -242,10 +242,29 @@ export const getMyScans = async (
   client: IntegrationClient,
   operatorIdExternal: string
 ) => {
-  return await externalScanRepo.findQueuedByExternalOperator(
+  const scans = await externalScanRepo.findQueuedByExternalOperator(
     client.id,
     operatorIdExternal
   );
+
+  const products = await productRepo.findByIds(scans.map((scan) => scan.product_id));
+  const productById = new Map(products.map((product) => [product.id, product]));
+
+  return scans.map((scan) => {
+    const product = productById.get(scan.product_id);
+    return {
+      ...scan,
+      product_name: product?.name ?? null,
+      product_code: product?.code ?? null,
+      product_barcode: product?.barcode ?? null,
+      product_unit: product?.unit ?? null,
+      product_type: product?.product_type ?? null,
+      product_image_url:
+        product?.product_image_url && product.product_image_url.length > 0
+          ? product.product_image_url[0]
+          : null,
+    };
+  });
 };
 
 // -------------------------------------------------------------------------
@@ -256,7 +275,8 @@ export const approveBatch = async (
   batchId: string,
   managerId: string,
   approvedItems: { scan_id: string; quantity: number }[],
-  notes: string | null
+  notes: string | null,
+  canEditQuantitiesForWarehouse: (warehouseId: string) => boolean = () => false,
 ) => {
   const scans = await externalScanRepo.findByBatchId(batchId);
   if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
@@ -267,6 +287,30 @@ export const approveBatch = async (
   }
 
   const warehouseId = scans[0].warehouse_id;
+  const approvedByScanId = new Map(
+    approvedItems.map((item) => [item.scan_id, item.quantity]),
+  );
+  const quantityChanges = scans
+    .map((scan) => {
+      const approvedQty = approvedByScanId.get(scan.id) ?? 0;
+      return {
+        scan_id: scan.id,
+        product_id: scan.product_id,
+        old_quantity: scan.quantity,
+        approved_quantity: approvedQty,
+      };
+    })
+    .filter((item) => item.old_quantity !== item.approved_quantity);
+
+  if (quantityChanges.length > 0 && !canEditQuantitiesForWarehouse(warehouseId)) {
+    throw new Error("QUANTITY_EDIT_PERMISSION_REQUIRED");
+  }
+
+  for (const change of quantityChanges) {
+    if (change.approved_quantity > change.old_quantity) {
+      throw new Error("APPROVED_QUANTITY_EXCEEDS_HELD_QUANTITY");
+    }
+  }
 
   // We need to create an Export Voucher and update inventory + queue
   let voucherId = uuidv4();
@@ -277,8 +321,7 @@ export const approveBatch = async (
     const voucherItems = [];
 
     for (const scan of scans) {
-      const approvedItem = approvedItems.find(i => i.scan_id === scan.id);
-      const approvedQty = approvedItem ? approvedItem.quantity : 0;
+      const approvedQty = approvedByScanId.get(scan.id) ?? 0;
       
       const invSnapshot = await tx.get(
         db.collection("inventory")
@@ -363,10 +406,142 @@ export const approveBatch = async (
       export_voucher_id: voucherId,
       export_voucher_number: voucherNumber,
       approved_items: approvedItems,
+      quantity_changes: quantityChanges,
     },
   }).catch(console.error);
 
   return { batch_id: batchId, export_voucher_id: voucherId };
+};
+
+export const updateScanQuantity = async (
+  scanId: string,
+  newQuantity: number,
+  managerId: string,
+  canEditWarehouse: (warehouseId: string) => boolean,
+  reason: string | null,
+) => {
+  const scan = await externalScanRepo.findById(scanId);
+  if (!scan) throw new Error("SCAN_NOT_FOUND");
+  if (
+    scan.status !== ExternalScanQueueStatus.QUEUED &&
+    scan.status !== ExternalScanQueueStatus.SUBMITTED
+  ) {
+    throw new Error("INVALID_SCAN_STATUS");
+  }
+  if (!canEditWarehouse(scan.warehouse_id)) {
+    throw new Error("PERMISSION_DENIED");
+  }
+
+  let oldQuantity = scan.quantity;
+  if (newQuantity === oldQuantity) {
+    return {
+      scan_id: scanId,
+      quantity: newQuantity,
+      unchanged: true,
+    };
+  }
+
+  let quantityDelta = newQuantity - oldQuantity;
+  let atpBefore = 0;
+  let atpAfter = 0;
+  let onHoldBefore = 0;
+  let onHoldAfter = 0;
+
+  await db.runTransaction(async (tx) => {
+    const scanRef = db.collection("external_scan_queue").doc(scanId);
+    const scanSnap = await tx.get(scanRef);
+    if (!scanSnap.exists) throw new Error("SCAN_NOT_FOUND");
+
+    const currentScan = scanSnap.data() as ExternalScanQueue;
+    if (currentScan.is_deleted) throw new Error("SCAN_NOT_FOUND");
+    if (
+      currentScan.status !== ExternalScanQueueStatus.QUEUED &&
+      currentScan.status !== ExternalScanQueueStatus.SUBMITTED
+    ) {
+      throw new Error("INVALID_SCAN_STATUS");
+    }
+
+    const invSnapshot = await tx.get(
+      db.collection("inventory")
+        .where("warehouse_location_id", "==", currentScan.warehouse_location_id)
+        .where("product_id", "==", currentScan.product_id)
+        .limit(1),
+    );
+
+    if (invSnapshot.empty) {
+      throw new Error("INVENTORY_NOT_FOUND");
+    }
+
+    const invDoc = invSnapshot.docs[0];
+    const invData = invDoc.data();
+    oldQuantity = currentScan.quantity;
+    quantityDelta = newQuantity - oldQuantity;
+    atpBefore = invData.atp_quantity || 0;
+    onHoldBefore = invData.on_hold_quantity || 0;
+
+    if (quantityDelta === 0) return;
+
+    if (quantityDelta > 0 && atpBefore < quantityDelta) {
+      throw new Error("INSUFFICIENT_ATP");
+    }
+
+    atpAfter = atpBefore - quantityDelta;
+    onHoldAfter = Math.max(0, onHoldBefore + quantityDelta);
+
+    tx.update(invDoc.ref, {
+      atp_quantity: atpAfter,
+      on_hold_quantity: onHoldAfter,
+      last_updated_at: new Date(),
+    });
+
+    tx.update(scanRef, {
+      quantity: newQuantity,
+      sync_time: new Date(),
+    });
+  });
+
+  if (quantityDelta === 0) {
+    return {
+      scan_id: scanId,
+      quantity: newQuantity,
+      unchanged: true,
+    };
+  }
+
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: scan.batch_id || scan.id,
+    warehouse_id: scan.warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: managerId,
+    old_value: {
+      scan_id: scan.id,
+      batch_id: scan.batch_id,
+      product_id: scan.product_id,
+      quantity: oldQuantity,
+      atp_quantity: atpBefore,
+      on_hold_quantity: onHoldBefore,
+    },
+    new_value: {
+      scan_id: scan.id,
+      batch_id: scan.batch_id,
+      product_id: scan.product_id,
+      quantity: newQuantity,
+      quantity_delta: quantityDelta,
+      atp_quantity: atpAfter,
+      on_hold_quantity: onHoldAfter,
+      reason,
+    },
+    notes: reason,
+  }).catch(console.error);
+
+  return {
+    scan_id: scanId,
+    batch_id: scan.batch_id,
+    old_quantity: oldQuantity,
+    quantity: newQuantity,
+    quantity_delta: quantityDelta,
+  };
 };
 
 export const rejectBatch = async (

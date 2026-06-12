@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as externalScanService from "../../services/externalScanService.js";
 import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
+import * as inventoryRepository from "../../repositories/inventoryRepository.js";
 import { z } from "zod";
 import { warehouseRepository } from "../../repositories/warehouseRepository.js";
 
@@ -75,15 +76,34 @@ const getProducts = async (req: Request, res: Response) => {
   try {
     const client = (req as any).integrationClient!;
     const warehouseId = req.query.warehouse_id as string;
+    const warehouseLocationId = req.query.warehouse_location_id as string | undefined;
     const search = req.query.search as string;
 
     if (!warehouseId || !client.allowed_warehouse_ids.includes(warehouseId)) {
       return res.status(403).json({ success: false, data: null, messages: { vi: "Kho không hợp lệ", zh: "无效的仓库" } });
     }
 
-    const products = await productRepository.findAll();
+    const atpByProductId = new Map<string, number>();
+    if (warehouseLocationId) {
+      const inventory = await inventoryRepository.findAll({
+        warehouse_id: warehouseId,
+        warehouse_location_id: warehouseLocationId,
+      });
+
+      for (const item of inventory) {
+        const atpQuantity = Number(item.atp_quantity ?? 0);
+        if (atpQuantity > 0) {
+          atpByProductId.set(item.product_id, atpQuantity);
+        }
+      }
+    }
+
+    const products = warehouseLocationId
+      ? await productRepository.findByIds([...atpByProductId.keys()])
+      : await productRepository.findAll();
     
     const activeProducts = products.filter(p => {
+      if (warehouseLocationId && !atpByProductId.has(p.id)) return false;
       if (!search) return true;
       const lower = search.toLowerCase();
       return (
@@ -104,6 +124,7 @@ const getProducts = async (req: Request, res: Response) => {
         product_type: p.product_type,
         unit_price: p.unit_price,
         image_url: p.product_image_url && p.product_image_url.length > 0 ? p.product_image_url[0] : null,
+        atp_quantity: warehouseLocationId ? atpByProductId.get(p.id) ?? 0 : null,
       })),
     });
   } catch (error) {

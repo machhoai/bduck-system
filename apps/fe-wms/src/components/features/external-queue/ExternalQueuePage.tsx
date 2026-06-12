@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ClipboardList, History, ScanBarcode } from "lucide-react";
 import { useTranslation } from "../../../lib/i18n";
-import { useUserStore } from "../../../stores/useUserStore";
 import ExternalQueuePendingTab from "./ExternalQueuePendingTab";
 import ExternalQueueHistoryTab from "./ExternalQueueHistoryTab";
 
@@ -22,7 +21,7 @@ const TAB_DEFINITIONS: TabDef[] = [
 
 export default function ExternalQueuePage() {
     const { t } = useTranslation();
-    const hasPermission = useUserStore((state) => state.hasPermission);
+    const externalQueueText = (t as any).externalQueue;
     const [activeTab, setActiveTab] = useState<TabId>("pending");
 
     const handleTabSwitch = (tabId: TabId) => {
@@ -38,10 +37,10 @@ export default function ExternalQueuePage() {
                     </div>
                     <div className="min-w-0 flex-1">
                         <h1 className="text-lg font-bold tracking-normal text-[var(--color-text-primary)]">
-                            {t.externalQueue?.title || "Quét mã ngoài"}
+                            {externalQueueText?.title || "Quét mã ngoài"}
                         </h1>
                         <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
-                            {t.externalQueue?.subtitle || "Duyệt yêu cầu xuất kho từ thiết bị bên ngoài (như máy POS)"}
+                            {externalQueueText?.subtitle || "Duyệt yêu cầu xuất kho từ thiết bị bên ngoài (như máy POS)"}
                         </p>
                     </div>
                 </div>
@@ -53,7 +52,7 @@ export default function ExternalQueuePage() {
                         {TAB_DEFINITIONS.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
-                            const label = t.externalQueue?.tabs?.[tab.labelKey] || tab.labelKey;
+                            const label = externalQueueText?.tabs?.[tab.labelKey] || tab.labelKey;
 
                             return (
                                 <button

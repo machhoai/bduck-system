@@ -1661,6 +1661,7 @@ Object.assign(vi, {
             rejectSuccess: "Từ chối thành công",
             columns: {
                 batchId: "Mã đợt (Batch)",
+                status: "Trạng thái",
                 shiftDate: "Ngày ca",
                 operator: "Nhân viên",
                 location: "Vị trí kho",
