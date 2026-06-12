@@ -607,26 +607,25 @@ export const approveBatch = async (
     );
 
     // 2. Process writes and prepare voucher items
-    const voucherItems = [];
+    const invMap = new Map<string, { ref: any, oldData: any, atp_delta: number, hold_delta: number }>();
+    const groupedVoucherItems = new Map<string, any>();
 
     for (const { scan, invSnapshot } of inventoryDocs) {
       const approvedQty = approvedByScanId.get(scan.id) ?? 0;
 
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
-        const invData = invDoc.data();
+        const path = invDoc.ref.path;
+        if (!invMap.has(path)) {
+          invMap.set(path, { ref: invDoc.ref, oldData: invDoc.data(), atp_delta: 0, hold_delta: 0 });
+        }
+        const state = invMap.get(path)!;
 
         // Release on_hold (we subtract the original requested quantity because that's what was held)
-        const newOnHold = Math.max(0, invData.on_hold_quantity - scan.quantity);
+        state.hold_delta -= scan.quantity;
         // If approved less than requested, refund ATP
         const refundAtp = scan.quantity - approvedQty;
-        const newAtp = invData.atp_quantity + refundAtp;
-
-        tx.update(invDoc.ref, {
-          on_hold_quantity: newOnHold,
-          atp_quantity: newAtp,
-          last_updated_at: new Date(),
-        });
+        state.atp_delta += refundAtp;
       }
 
       // Update queue record
@@ -640,16 +639,33 @@ export const approveBatch = async (
       });
 
       if (approvedQty > 0) {
-        voucherItems.push({
-          product_id: scan.product_id,
-          warehouse_location_id: scan.warehouse_location_id,
-          requested_quantity: approvedQty,
-          actual_quantity: 0, // Will be updated when picker picks
-          unit_price: scan.unit_price,
-          total_price: approvedQty * scan.unit_price,
-        });
+        const key = `${scan.product_id}_${scan.warehouse_location_id}`;
+        if (!groupedVoucherItems.has(key)) {
+          groupedVoucherItems.set(key, {
+            product_id: scan.product_id,
+            warehouse_location_id: scan.warehouse_location_id,
+            requested_quantity: 0,
+            actual_quantity: 0,
+            unit_price: scan.unit_price,
+            total_price: 0,
+          });
+        }
+        const item = groupedVoucherItems.get(key)!;
+        item.requested_quantity += approvedQty;
+        item.total_price += approvedQty * scan.unit_price;
       }
     }
+
+    // Apply aggregated inventory updates
+    for (const state of invMap.values()) {
+      tx.update(state.ref, {
+        on_hold_quantity: Math.max(0, state.oldData.on_hold_quantity + state.hold_delta),
+        atp_quantity: state.oldData.atp_quantity + state.atp_delta,
+        last_updated_at: new Date(),
+      });
+    }
+
+    const voucherItems = Array.from(groupedVoucherItems.values());
 
     // 3. Create Export Voucher
     if (voucherItems.length > 0) {
@@ -852,18 +868,18 @@ export const rejectBatch = async (
       })
     );
 
+    const invMap = new Map<string, { ref: any, oldData: any, atp_delta: number, hold_delta: number }>();
+
     for (const { scan, invSnapshot } of inventoryDocs) {
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
-        const invData = invDoc.data();
-        tx.update(invDoc.ref, {
-          on_hold_quantity: Math.max(
-            0,
-            invData.on_hold_quantity - scan.quantity,
-          ),
-          atp_quantity: invData.atp_quantity + scan.quantity,
-          last_updated_at: new Date(),
-        });
+        const path = invDoc.ref.path;
+        if (!invMap.has(path)) {
+          invMap.set(path, { ref: invDoc.ref, oldData: invDoc.data(), atp_delta: 0, hold_delta: 0 });
+        }
+        const state = invMap.get(path)!;
+        state.hold_delta -= scan.quantity;
+        state.atp_delta += scan.quantity;
       }
 
       tx.update(db.collection("external_scan_queue").doc(scan.id), {
@@ -871,6 +887,14 @@ export const rejectBatch = async (
         rejection_reason: reason,
         approved_by: managerId,
         approved_at: new Date(),
+      });
+    }
+
+    for (const state of invMap.values()) {
+      tx.update(state.ref, {
+        on_hold_quantity: Math.max(0, state.oldData.on_hold_quantity + state.hold_delta),
+        atp_quantity: state.oldData.atp_quantity + state.atp_delta,
+        last_updated_at: new Date(),
       });
     }
   });
