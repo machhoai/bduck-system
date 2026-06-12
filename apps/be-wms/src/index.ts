@@ -69,6 +69,17 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/stock-policies", stockPolicyRoutes);
 app.use("/api/external/v1", externalRoutes);
 app.use("/api/external-queue", externalQueueRoutes);
+
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    success: false,
+    data: null,
+    messages: {
+      vi: `Khong tim thay API route: ${req.method} ${req.originalUrl}`,
+      zh: `未找到 API 路由: ${req.method} ${req.originalUrl}`,
+    },
+  });
+});
 // ---------------------------------------------------------------------------
 // Health Check
 // ---------------------------------------------------------------------------
