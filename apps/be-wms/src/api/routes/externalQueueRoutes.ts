@@ -5,6 +5,12 @@ import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: Router = Router();
 
+// /api/external-queue/cron/auto-submit
+router.post(
+  "/cron/auto-submit",
+  externalQueueController.runScheduledAutoSubmit,
+);
+
 // /api/external-queue/pending
 router.get(
   "/pending",
@@ -37,7 +43,10 @@ router.post(
 router.patch(
   "/update-quantity",
   requireAuth,
-  requireAnyScopedPermission(["external_scan.edit_quantity", "external_scan.manage_queue"]),
+  requireAnyScopedPermission([
+    "external_scan.edit_quantity",
+    "external_scan.manage_queue",
+  ]),
   externalQueueController.updateScanQuantity,
 );
 
@@ -50,6 +59,20 @@ router.post(
 );
 
 // /api/external-queue/auto-submit
+router.get(
+  "/auto-submit-schedule",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.getAutoSubmitSchedule,
+);
+
+router.put(
+  "/auto-submit-schedule",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.updateAutoSubmitSchedule,
+);
+
 router.post(
   "/auto-submit",
   requireAuth,

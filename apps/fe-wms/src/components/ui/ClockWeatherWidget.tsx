@@ -10,6 +10,8 @@ import {
     rainy,
     snow,
     water,
+    moon,
+    cloudyNight,
 } from "ionicons/icons";
 import { IonIcon } from "@/components/ui/IonIcon";
 
@@ -17,14 +19,15 @@ import { IonIcon } from "@/components/ui/IonIcon";
 interface WeatherData {
     temp: number;
     code: number;
+    isDay: number;
 }
 
 type Locale = "vi" | "zh";
 
 /* ── Weather icon mapper (WMO codes) → ionicons filled strings ── */
-function weatherIcon(code: number): string {
-    if (code === 0 || code === 1) return sunny;           // ☀️  Nắng
-    if (code === 2) return partlySunny;     // ⛅  Mây rải rác
+function weatherIcon(code: number, isDay: number): string {
+    if (code === 0 || code === 1) return isDay !== 0 ? sunny : moon;           // ☀️  Nắng / 🌙 Trăng
+    if (code === 2) return isDay !== 0 ? partlySunny : cloudyNight;            // ⛅  Mây rải rác / ☁️🌙
     if (code === 3) return cloudy;          // ☁️  Nhiều mây
     if (code >= 45 && code <= 48) return cloud;           // 🌫️  Sương mù
     if (code >= 51 && code <= 55) return rainy;           // 🌦️  Mưa phùn
@@ -39,11 +42,11 @@ function weatherIcon(code: number): string {
 }
 
 /* ── Weather icon color mapper (WMO codes) ── */
-function weatherColor(code: number): string {
-    if (code === 0 || code === 1) return "text-amber-400";        // ☀️ Nắng — vàng
+function weatherColor(code: number, isDay: number): string {
+    if (code === 0 || code === 1) return isDay !== 0 ? "text-amber-400" : "text-amber-200";        // ☀️ Nắng — vàng / 🌙 Trăng — vàng nhạt
     if (code === 2 || code === 3) return "text-slate-400";        // ⛅ Nhiều mây — xám
     if (code >= 45 && code <= 48) return "text-slate-500";        // 🌫️ Sương mù/gió — slate đậm
-    if (code >= 51 && code <= 55) return "text-cyan-400";         // 🌦️ Mưa phùn — cyan
+    if (code >= 51 && code <= 55) return isDay !== 0 ? "text-cyan-400" : "text-cyan-600";         // 🌦️ Mưa phùn — cyan
     if (code >= 56 && code <= 57) return "text-cyan-300";         // 🌨️ Mưa đá nhẹ — cyan nhạt
     if (code >= 61 && code <= 65) return "text-blue-500";         // 🌧️ Mưa — xanh dương
     if (code >= 66 && code <= 67) return "text-blue-300";         // 🌨️ Mưa lạnh — xanh nhạt
@@ -93,13 +96,14 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
     const fetchWeather = useCallback(async (lat: number, lon: number) => {
         try {
             const res = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`,
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&timezone=auto`,
             );
             const data = await res.json();
             if (data.current) {
                 setWeather({
                     temp: Math.round(data.current.temperature_2m),
                     code: data.current.weather_code,
+                    isDay: data.current.is_day ?? 1,
                 });
             }
         } catch {
@@ -148,8 +152,8 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
         ? `${now.getFullYear()}\u5e74${now.getMonth() + 1}\u6708${now.getDate()}\u65e5 \u5468${DAYS_ZH[now.getDay()]}`
         : `${pad(now.getDate())} ${MONTHS_VI[now.getMonth()]} ${now.getFullYear()}`;
 
-    const wIcon = weather ? weatherIcon(weather.code) : null;
-    const wColor = weather ? weatherColor(weather.code) : "";
+    const wIcon = weather ? weatherIcon(weather.code, weather.isDay) : null;
+    const wColor = weather ? weatherColor(weather.code, weather.isDay) : "";
 
     return (
         <div

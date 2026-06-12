@@ -109,7 +109,15 @@ export default function BatchDetailDrawer({
         setSavedQuantities(nextQuantities);
     }, [batchData]);
 
-    const items = batchData?.items || [];
+    const items = useMemo(
+        () =>
+            [...(batchData?.items || [])].sort((a: any, b: any) => {
+                const scanTimeA = safeDate(a.scan_time)?.getTime() ?? 0;
+                const scanTimeB = safeDate(b.scan_time)?.getTime() ?? 0;
+                return scanTimeB - scanTimeA;
+            }),
+        [batchData],
+    );
     const hasUnsavedChanges = items.some(
         (item: any) => quantities[item.scan_id] !== savedQuantities[item.scan_id],
     );
@@ -362,6 +370,7 @@ export default function BatchDetailDrawer({
                                 const savedQuantity = savedQuantities[item.scan_id] ?? item.quantity;
                                 const isDirty = quantity !== savedQuantity;
                                 const lineTotal = quantity * (item.unit_price || 0);
+                                const scanTimeText = formatDateTime(item.scan_time);
 
                                 return (
                                     <div
@@ -375,6 +384,9 @@ export default function BatchDetailDrawer({
                                             <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
                                                 {item.product_code ? `Ma SP: ${item.product_code}` : `Ma quet: ${item.barcode || item.scan_id}`}
                                                 {item.operator_name ? ` · ${item.operator_name}` : ""}
+                                            </p>
+                                            <p className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
+                                                {drawerText?.info?.scanTime || "Thời gian quét"}: {scanTimeText}
                                             </p>
                                             {isDraftBatch && canManageQueue && (
                                                 <button

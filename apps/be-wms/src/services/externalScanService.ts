@@ -7,13 +7,17 @@ import * as externalScanRepo from "../repositories/externalScanRepository.js";
 import { productRepository as productRepo } from "../repositories/productRepository.js";
 import * as exportVoucherRepo from "../repositories/exportVoucherRepository.js";
 import { logAudit } from "./auditService.js";
-import { AuditAction, ExportType, ExportVoucherStatus } from "@bduck/shared-types";
+import {
+  AuditAction,
+  ExportType,
+  ExportVoucherStatus,
+} from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
 async function resolveProduct(
   productId: string | null,
-  barcode: string | null
+  barcode: string | null,
 ) {
   if (productId) {
     const product = await productRepo.findById(productId);
@@ -29,7 +33,9 @@ async function resolveProduct(
 }
 
 async function enrichScansWithProducts(scans: ExternalScanQueue[]) {
-  const products = await productRepo.findByIds(scans.map((scan) => scan.product_id));
+  const products = await productRepo.findByIds(
+    scans.map((scan) => scan.product_id),
+  );
   const productById = new Map(products.map((product) => [product.id, product]));
 
   return scans.map((scan) => {
@@ -91,10 +97,10 @@ export const scanProduct = async (
     device_id: string | null;
     scan_time: string;
   },
-  clientIp: string
+  clientIp: string,
 ): Promise<ExternalScanQueue> => {
   const product = await resolveProduct(data.product_id, data.barcode);
-  
+
   if (!client.allowed_warehouse_ids.includes(warehouseId)) {
     throw new Error("UNAUTHORIZED_WAREHOUSE");
   }
@@ -110,10 +116,11 @@ export const scanProduct = async (
   await db.runTransaction(async (tx) => {
     // 1. Check Inventory ATP
     const invSnapshot = await tx.get(
-      db.collection("inventory")
+      db
+        .collection("inventory")
         .where("warehouse_location_id", "==", data.warehouse_location_id)
         .where("product_id", "==", product.id)
-        .limit(1)
+        .limit(1),
     );
 
     if (invSnapshot.empty) {
@@ -196,23 +203,27 @@ export const scanProduct = async (
 
 export const cancelScan = async (
   scanId: string,
-  clientId: string
+  clientId: string,
 ): Promise<void> => {
   await db.runTransaction(async (tx) => {
-    const queueDoc = await tx.get(db.collection("external_scan_queue").doc(scanId));
+    const queueDoc = await tx.get(
+      db.collection("external_scan_queue").doc(scanId),
+    );
     if (!queueDoc.exists) throw new Error("NOT_FOUND");
-    
+
     const queueData = queueDoc.data() as ExternalScanQueue;
     if (queueData.client_id !== clientId) throw new Error("UNAUTHORIZED");
-    if (queueData.status !== ExternalScanQueueStatus.QUEUED) throw new Error("INVALID_STATUS");
+    if (queueData.status !== ExternalScanQueueStatus.QUEUED)
+      throw new Error("INVALID_STATUS");
     if (queueData.is_deleted) throw new Error("NOT_FOUND");
 
     // Revert ATP
     const invSnapshot = await tx.get(
-      db.collection("inventory")
+      db
+        .collection("inventory")
         .where("warehouse_location_id", "==", queueData.warehouse_location_id)
         .where("product_id", "==", queueData.product_id)
-        .limit(1)
+        .limit(1),
     );
 
     if (!invSnapshot.empty) {
@@ -220,7 +231,10 @@ export const cancelScan = async (
       const invData = invDoc.data();
       tx.update(invDoc.ref, {
         atp_quantity: invData.atp_quantity + queueData.quantity,
-        on_hold_quantity: Math.max(0, invData.on_hold_quantity - queueData.quantity),
+        on_hold_quantity: Math.max(
+          0,
+          invData.on_hold_quantity - queueData.quantity,
+        ),
         last_updated_at: new Date(),
       });
     }
@@ -241,7 +255,7 @@ export const submitBatch = async (
     operator_name: string;
     operator_id_external: string | null;
     notes: string | null;
-  }
+  },
 ) => {
   if (!client.allowed_warehouse_ids.includes(data.warehouse_id)) {
     throw new Error("UNAUTHORIZED_WAREHOUSE");
@@ -252,7 +266,7 @@ export const submitBatch = async (
   const scans = await externalScanRepo.findQueuedByLocationAndDate(
     client.id,
     data.warehouse_location_id,
-    data.shift_date
+    data.shift_date,
   );
 
   if (scans.length === 0) {
@@ -263,7 +277,7 @@ export const submitBatch = async (
   let totalQty = 0;
   let totalValue = 0;
 
-  scans.forEach(scan => {
+  scans.forEach((scan) => {
     const ref = db.collection("external_scan_queue").doc(scan.id);
     batch.update(ref, {
       status: ExternalScanQueueStatus.SUBMITTED,
@@ -308,11 +322,11 @@ export const submitBatch = async (
 
 export const getMyScans = async (
   client: IntegrationClient,
-  operatorIdExternal: string
+  operatorIdExternal: string,
 ) => {
   const scans = await externalScanRepo.findQueuedByExternalOperator(
     client.id,
-    operatorIdExternal
+    operatorIdExternal,
   );
 
   return enrichScansWithProducts(scans);
@@ -368,7 +382,8 @@ export const cancelScanByManager = async (
     }
 
     const invSnapshot = await tx.get(
-      db.collection("inventory")
+      db
+        .collection("inventory")
         .where("warehouse_location_id", "==", currentScan.warehouse_location_id)
         .where("product_id", "==", currentScan.product_id)
         .limit(1),
@@ -428,7 +443,7 @@ export const autoSubmitQueuedLocations = async (params: {
   actorId: string;
   warehouseId?: string;
   warehouseLocationId?: string;
-  olderThanMinutes: number;
+  olderThanMinutes?: number;
   now?: Date;
 }) => {
   const scans = await externalScanRepo.findQueued({
@@ -436,12 +451,15 @@ export const autoSubmitQueuedLocations = async (params: {
     warehouse_location_id: params.warehouseLocationId,
   });
   const now = params.now ?? new Date();
-  const cutoffTime = now.getTime() - params.olderThanMinutes * 60 * 1000;
+  const cutoffTime =
+    typeof params.olderThanMinutes === "number"
+      ? now.getTime() - params.olderThanMinutes * 60 * 1000
+      : null;
 
   const groupMap = new Map<string, ExternalScanQueue[]>();
   for (const scan of scans) {
     const scanDate = toDate(scan.scan_time);
-    if (scanDate.getTime() > cutoffTime) continue;
+    if (cutoffTime !== null && scanDate.getTime() > cutoffTime) continue;
 
     const shiftDate = getShiftDate(scanDate);
     const groupKey = [
@@ -471,7 +489,10 @@ export const autoSubmitQueuedLocations = async (params: {
         status: ExternalScanQueueStatus.SUBMITTED,
         batch_id: batchId,
         sync_time: now,
-        notes: `Auto-submitted by location after ${params.olderThanMinutes} minutes without new scans.`,
+        notes:
+          typeof params.olderThanMinutes === "number"
+            ? `Auto-submitted by location after ${params.olderThanMinutes} minutes without new scans.`
+            : "Auto-submitted by scheduled time.",
       });
       totalQty += scan.quantity;
       totalValue += scan.quantity * scan.unit_price;
@@ -493,7 +514,9 @@ export const autoSubmitQueuedLocations = async (params: {
         total_scans: group.length,
         total_quantity: totalQty,
         total_value: totalValue,
-        older_than_minutes: params.olderThanMinutes,
+        ...(typeof params.olderThanMinutes === "number"
+          ? { older_than_minutes: params.olderThanMinutes }
+          : { scheduled_submit: true }),
       },
       notes: "Auto-submit location queue",
     }).catch(console.error);
@@ -531,7 +554,7 @@ export const approveBatch = async (
   if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
 
   // Check if any scan is not in SUBMITTED status
-  if (scans.some(s => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+  if (scans.some((s) => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
     throw new Error("INVALID_BATCH_STATUS");
   }
 
@@ -551,7 +574,10 @@ export const approveBatch = async (
     })
     .filter((item) => item.old_quantity !== item.approved_quantity);
 
-  if (quantityChanges.length > 0 && !canEditQuantitiesForWarehouse(warehouseId)) {
+  if (
+    quantityChanges.length > 0 &&
+    !canEditQuantitiesForWarehouse(warehouseId)
+  ) {
     throw new Error("QUANTITY_EDIT_PERMISSION_REQUIRED");
   }
 
@@ -571,18 +597,19 @@ export const approveBatch = async (
 
     for (const scan of scans) {
       const approvedQty = approvedByScanId.get(scan.id) ?? 0;
-      
+
       const invSnapshot = await tx.get(
-        db.collection("inventory")
+        db
+          .collection("inventory")
           .where("warehouse_location_id", "==", scan.warehouse_location_id)
           .where("product_id", "==", scan.product_id)
-          .limit(1)
+          .limit(1),
       );
 
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
         const invData = invDoc.data();
-        
+
         // Release on_hold (we subtract the original requested quantity because that's what was held)
         const newOnHold = Math.max(0, invData.on_hold_quantity - scan.quantity);
         // If approved less than requested, refund ATP
@@ -603,7 +630,7 @@ export const approveBatch = async (
         approved_by: managerId,
         approved_at: new Date(),
         export_voucher_id: voucherId,
-        notes: notes
+        notes: notes,
       });
 
       if (approvedQty > 0) {
@@ -637,7 +664,7 @@ export const approveBatch = async (
         notes: `Tạo từ External Batch: ${batchId}. ${notes || ""}`,
         items: voucherItems,
       };
-      
+
       tx.set(db.collection("export_vouchers").doc(voucherId), voucher);
     }
   });
@@ -711,7 +738,8 @@ export const updateScanQuantity = async (
     }
 
     const invSnapshot = await tx.get(
-      db.collection("inventory")
+      db
+        .collection("inventory")
         .where("warehouse_location_id", "==", currentScan.warehouse_location_id)
         .where("product_id", "==", currentScan.product_id)
         .limit(1),
@@ -796,28 +824,32 @@ export const updateScanQuantity = async (
 export const rejectBatch = async (
   batchId: string,
   managerId: string,
-  reason: string
+  reason: string,
 ) => {
   const scans = await externalScanRepo.findByBatchId(batchId);
   if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
-  if (scans.some(s => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+  if (scans.some((s) => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
     throw new Error("INVALID_BATCH_STATUS");
   }
 
   await db.runTransaction(async (tx) => {
     for (const scan of scans) {
       const invSnapshot = await tx.get(
-        db.collection("inventory")
+        db
+          .collection("inventory")
           .where("warehouse_location_id", "==", scan.warehouse_location_id)
           .where("product_id", "==", scan.product_id)
-          .limit(1)
+          .limit(1),
       );
 
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
         const invData = invDoc.data();
         tx.update(invDoc.ref, {
-          on_hold_quantity: Math.max(0, invData.on_hold_quantity - scan.quantity),
+          on_hold_quantity: Math.max(
+            0,
+            invData.on_hold_quantity - scan.quantity,
+          ),
           atp_quantity: invData.atp_quantity + scan.quantity,
           last_updated_at: new Date(),
         });

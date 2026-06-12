@@ -276,12 +276,50 @@ const getMyScans = async (req: Request, res: Response) => {
   }
 };
 
+const getLocationScans = async (req: Request, res: Response) => {
+  try {
+    const client = (req as any).integrationClient!;
+    const warehouseId = req.query.warehouse_id as string;
+    const warehouseLocationId = req.query.warehouse_location_id as string;
+
+    if (!warehouseId || !warehouseLocationId) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Thiếu warehouse_id hoặc warehouse_location_id",
+          zh: "缺少 warehouse_id 或 warehouse_location_id",
+        },
+      });
+    }
+
+    const scans = await externalScanService.getLocationScans(
+      client,
+      warehouseId,
+      warehouseLocationId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: scans,
+    });
+  } catch (error: any) {
+    console.error("[getLocationScans]", error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: "Không thể lấy hàng chờ theo vị trí.", zh: "无法获取库位队列。" },
+    });
+  }
+};
+
 export default {
   getLocations,
   getProducts,
   scan,
   cancelScan,
   getMyScans,
+  getLocationScans,
   submitBatch,
   getWarehouses,
 };
