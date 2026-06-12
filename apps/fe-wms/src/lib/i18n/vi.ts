@@ -1675,6 +1675,17 @@ Object.assign(vi, {
       autoSubmitSuccessDesc:
         "Các hàng chờ đang quét đã được chuyển sang chờ duyệt.",
       autoSubmitErrorDesc: "Vui lòng kiểm tra quyền hoặc thử lại sau.",
+      scheduleButton: "Cài giờ",
+      refresh: "Làm mới",
+      noSearchResults: "Không có hàng chờ phù hợp từ khóa tìm kiếm.",
+      sku: "SKU",
+      quantityShort: "SL",
+      money: "Tiền",
+      open: "Mở",
+      scanning: "Đang quét",
+      readOnly: "Chỉ xem",
+      latestScanPrefix: "Quét gần nhất",
+      submittedAtPrefix: "Gửi lúc",
       columns: {
         batchId: "Mã đợt (Batch)",
         status: "Trạng thái",
@@ -1696,6 +1707,8 @@ Object.assign(vi, {
       rejected: "Từ chối",
       products: "sản phẩm",
       processedAt: "Xử lý: ",
+      batch: "Batch",
+      unknownOperator: "-",
       columns: {
         batchId: "Mã đợt (Batch)",
         shiftDate: "Ngày ca",

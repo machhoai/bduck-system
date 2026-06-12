@@ -112,6 +112,7 @@ export const getPendingBatches = async (req: Request, res: Response) => {
 
     // Group: SUBMITTED → by batch_id, QUEUED → by warehouse_location_id + operator
     const batchMap = new Map<string, any>();
+    const user = (req as any).user;
 
     for (const record of allRecords) {
       // SUBMITTED records must have batch_id; QUEUED records may not
@@ -120,6 +121,11 @@ export const getPendingBatches = async (req: Request, res: Response) => {
       const location = locationById.get(record.warehouse_location_id);
       const warehouse = warehouseById.get(record.warehouse_id);
       const operatorDisplayName = getOperatorDisplayName(record);
+      const canViewPrice = hasScopedPermission(
+        user,
+        "products.price.view",
+        record.warehouse_id,
+      );
       const groupKey = record.batch_id
         ? record.batch_id
         : `DRAFT-${record.warehouse_location_id}-${queueDate}`;
@@ -144,6 +150,7 @@ export const getPendingBatches = async (req: Request, res: Response) => {
           total_products: 0,
           total_quantity: 0,
           total_value: 0,
+          can_view_price: canViewPrice,
           items: [],
         });
       }
@@ -160,6 +167,7 @@ export const getPendingBatches = async (req: Request, res: Response) => {
       }
       batch.total_quantity += record.quantity;
       batch.total_value += record.quantity * record.unit_price;
+      batch.can_view_price = batch.can_view_price && canViewPrice;
 
       const existingItem = batch.items.find(
         (i: any) => i.product_id === record.product_id,
@@ -181,11 +189,17 @@ export const getPendingBatches = async (req: Request, res: Response) => {
             : null,
         barcode: record.barcode_scanned,
         quantity: record.quantity,
-        unit_price: record.unit_price,
+        unit_price: canViewPrice ? record.unit_price : null,
         scan_time: record.scan_time,
         operator_name: operatorDisplayName,
         operator_id_external: record.operator_id_external,
       });
+    }
+
+    for (const batch of batchMap.values()) {
+      if (!batch.can_view_price) {
+        batch.total_value = null;
+      }
     }
 
     // Sort: SUBMITTED first (chờ duyệt ưu tiên), then QUEUED (đang quét)
@@ -244,15 +258,22 @@ export const getHistory = async (req: Request, res: Response) => {
     const allRecords = snapshot.docs.map(
       (doc) => doc.data() as ExternalScanQueue,
     );
+    const user = (req as any).user;
 
     const batchMap = new Map<string, any>();
     for (const record of allRecords) {
       if (!record.batch_id) continue;
       const operatorDisplayName = getOperatorDisplayName(record);
+      const canViewPrice = hasScopedPermission(
+        user,
+        "products.price.view",
+        record.warehouse_id,
+      );
 
       if (!batchMap.has(record.batch_id)) {
         batchMap.set(record.batch_id, {
           batch_id: record.batch_id,
+          warehouse_id: record.warehouse_id,
           status: record.status,
           operator_name: operatorDisplayName,
           location_name: "Location",
@@ -260,6 +281,7 @@ export const getHistory = async (req: Request, res: Response) => {
           total_products: 0,
           total_quantity: 0,
           total_value: 0,
+          can_view_price: canViewPrice,
           approved_by_name: record.approved_by, // Should join user name
           approved_at: record.approved_at,
           export_voucher_id: record.export_voucher_id,
@@ -269,7 +291,14 @@ export const getHistory = async (req: Request, res: Response) => {
       const batch = batchMap.get(record.batch_id);
       batch.total_quantity += record.quantity;
       batch.total_value += record.quantity * record.unit_price;
+      batch.can_view_price = batch.can_view_price && canViewPrice;
       batch.total_products += 1; // Simplified
+    }
+
+    for (const batch of batchMap.values()) {
+      if (!batch.can_view_price) {
+        batch.total_value = null;
+      }
     }
 
     return res.status(200).json({

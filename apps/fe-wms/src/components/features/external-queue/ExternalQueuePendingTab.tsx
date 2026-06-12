@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
 import { format } from "date-fns";
-import { vi as viLocale } from "date-fns/locale";
+import type { Locale } from "date-fns";
+import { vi as viLocale, zhCN } from "date-fns/locale";
 import {
   CalendarDays,
   ClipboardCheck,
@@ -62,9 +63,13 @@ const safeParseDate = (val: unknown): Date | null => {
   return null;
 };
 
-function formatQueueDate(value: unknown, pattern: string) {
+function formatQueueDate(
+  value: unknown,
+  pattern: string,
+  locale: Locale = viLocale,
+) {
   const date = safeParseDate(value);
-  return date ? format(date, pattern, { locale: viLocale }) : "-";
+  return date ? format(date, pattern, { locale }) : "-";
 }
 
 function Metric({
@@ -96,8 +101,11 @@ function Metric({
 }
 
 export default function ExternalQueuePendingTab() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const externalQueueText = (t as any).externalQueue;
+  const pendingText = externalQueueText.pendingTab;
+  const commonText = (t as any).common;
+  const dateLocale = lang === "zh" ? zhCN : viLocale;
   const hasPermission = useUserStore((state) => state.hasPermission);
   const canApprove = hasPermission("external_scan.approve");
   const canManageQueue = hasPermission("external_scan.manage_queue");
@@ -145,26 +153,16 @@ export default function ExternalQueuePendingTab() {
     const promise = externalQueueApi.autoSubmit();
 
     gooeyToast.promise(promise, {
-      loading:
-        externalQueueText?.pendingTab?.autoSubmitLoading ||
-        "Dang chay auto-submit theo quay...",
-      success:
-        externalQueueText?.pendingTab?.autoSubmitSuccess ||
-        "Da chay auto-submit",
-      error:
-        externalQueueText?.pendingTab?.autoSubmitError ||
-        "Khong the chay auto-submit",
+      loading: pendingText.autoSubmitLoading,
+      success: pendingText.autoSubmitSuccess,
+      error: pendingText.autoSubmitError,
       description: {
-        success:
-          externalQueueText?.pendingTab?.autoSubmitSuccessDesc ||
-          "Cac hang cho dang quet da duoc chuyen sang cho duyet.",
-        error:
-          externalQueueText?.pendingTab?.autoSubmitErrorDesc ||
-          "Vui long kiem tra quyen hoac thu lai sau.",
+        success: pendingText.autoSubmitSuccessDesc,
+        error: pendingText.autoSubmitErrorDesc,
       },
       action: {
         error: {
-          label: (t as any).common?.retry || "Thu lai",
+          label: commonText.retry,
           onClick: handleAutoSubmit,
         },
       },
@@ -211,6 +209,9 @@ export default function ExternalQueuePendingTab() {
     (sum, batch: any) => sum + (batch.total_quantity || 0),
     0,
   );
+  const canViewBatchPrice = (batch: any) =>
+    batch.can_view_price === true &&
+    hasPermission("products.price.view", batch.warehouse_id);
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const batch of filteredBatches) {
@@ -227,7 +228,7 @@ export default function ExternalQueuePendingTab() {
     const badge = STATUS_BADGE_MAP[status];
     if (!badge) return null;
     const Icon = badge.icon;
-    const label = (externalQueueText?.statuses as any)?.[status] || badge.label;
+    const label = (externalQueueText.statuses as any)?.[status] ?? badge.label;
     return (
       <span
         className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${badge.className}`}
@@ -264,12 +265,10 @@ export default function ExternalQueuePendingTab() {
       <div className="flex h-72 flex-col items-center justify-center rounded-lg border border-[var(--color-border-subtle)] bg-white px-4 text-center">
         <Inbox size={48} className="mb-4 text-[var(--color-neutral-300)]" />
         <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-          {externalQueueText?.pendingTab?.emptyTitle ||
-            "Không có yêu cầu chờ duyệt"}
+          {pendingText.emptyTitle}
         </h3>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          {externalQueueText?.pendingTab?.emptyHint ||
-            "Sản phẩm đang quét tại POS sẽ hiển thị tại đây."}
+          {pendingText.emptyHint}
         </p>
       </div>
     );
@@ -279,22 +278,17 @@ export default function ExternalQueuePendingTab() {
     <div className="flex h-full flex-col gap-3">
       <div className="grid gap-2 md:grid-cols-3">
         <Metric
-          label={
-            externalQueueText?.pendingTab?.metrics?.submitted || "Chờ duyệt"
-          }
+          label={pendingText.metrics.submitted}
           value={submittedCount.toLocaleString()}
           icon={ClipboardCheck}
         />
         <Metric
-          label={externalQueueText?.pendingTab?.metrics?.draft || "Đang quét"}
+          label={pendingText.metrics.draft}
           value={draftCount.toLocaleString()}
           icon={ScanLine}
         />
         <Metric
-          label={
-            externalQueueText?.pendingTab?.metrics?.totalQuantity ||
-            "Tổng số lượng"
-          }
+          label={pendingText.metrics.totalQuantity}
           value={totalQuantity.toLocaleString()}
           icon={PackageCheck}
         />
@@ -309,10 +303,7 @@ export default function ExternalQueuePendingTab() {
             />
             <input
               type="text"
-              placeholder={
-                externalQueueText?.pendingTab?.searchPlaceholder ||
-                "Tìm theo quầy, kho, mã đợt hoặc nhân viên..."
-              }
+              placeholder={pendingText.searchPlaceholder}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="h-9 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] pl-9 pr-3 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
@@ -327,7 +318,7 @@ export default function ExternalQueuePendingTab() {
                   title={
                     schedule?.enabled && schedule.times.length > 0
                       ? `GMT+7 ${schedule.times.join(", ")}`
-                      : "Cai gio"
+                      : pendingText.scheduleButton
                   }
                   className="inline-flex h-9 max-w-full items-center justify-center gap-2 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-neutral-50)] sm:max-w-72"
                 >
@@ -335,7 +326,7 @@ export default function ExternalQueuePendingTab() {
                   <span className="truncate">
                     {schedule?.enabled && schedule.times.length > 0
                       ? `GMT+7 ${schedule.times.join(", ")}`
-                      : "Cai gio"}
+                      : pendingText.scheduleButton}
                   </span>
                 </button>
                 <button
@@ -345,7 +336,7 @@ export default function ExternalQueuePendingTab() {
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
                 >
                   <Sparkles className="h-4 w-4" />
-                  Auto-submit
+                  {pendingText.autoSubmit}
                 </button>
               </>
             )}
@@ -358,7 +349,7 @@ export default function ExternalQueuePendingTab() {
               <RefreshCw
                 className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
               />
-              Lam moi
+              {pendingText.refresh}
             </button>
           </div>
         </div>
@@ -366,7 +357,7 @@ export default function ExternalQueuePendingTab() {
         <div className="flex-1 overflow-auto bg-[var(--color-neutral-50)] p-3">
           {filteredBatches.length === 0 ? (
             <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-white text-sm text-[var(--color-text-muted)]">
-              Khong co hang cho phu hop tu khoa tim kiem.
+              {pendingText.noSearchResults}
             </div>
           ) : (
             <div className="space-y-4">
@@ -374,7 +365,11 @@ export default function ExternalQueuePendingTab() {
                 <section key={dateKey} className="space-y-2">
                   <div className="flex items-center gap-2 px-1 text-xs font-bold uppercase text-[var(--color-text-muted)]">
                     <CalendarDays className="h-4 w-4" />
-                    {formatQueueDate(`${dateKey}T00:00:00`, "EEEE, dd/MM/yyyy")}
+                    {formatQueueDate(
+                      `${dateKey}T00:00:00`,
+                      "EEEE, dd/MM/yyyy",
+                      dateLocale,
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -389,11 +384,14 @@ export default function ExternalQueuePendingTab() {
                         ? formatQueueDate(
                             batch.last_scan_time || batch.shift_date,
                             "HH:mm",
+                            dateLocale,
                           )
                         : formatQueueDate(
                             batch.submitted_at,
                             "HH:mm dd/MM/yyyy",
+                            dateLocale,
                           );
+                      const canViewPrice = canViewBatchPrice(batch);
 
                       return (
                         <div
@@ -437,17 +435,23 @@ export default function ExternalQueuePendingTab() {
                                   <Clock3 className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                                   <span className="truncate">
                                     {isDraft
-                                      ? `Quet gan nhat ${timeLabel}`
-                                      : `Gui luc ${timeLabel}`}
+                                      ? `${pendingText.latestScanPrefix} ${timeLabel}`
+                                      : `${pendingText.submittedAtPrefix} ${timeLabel}`}
                                   </span>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 lg:w-[360px]">
+                            <div
+                              className={`grid gap-2 ${
+                                canViewPrice
+                                  ? "grid-cols-3 lg:w-[360px]"
+                                  : "grid-cols-2 lg:w-60"
+                              }`}
+                            >
                               <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
                                 <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                  SKU
+                                  {pendingText.sku}
                                 </p>
                                 <p className="text-sm font-bold text-[var(--color-text-primary)]">
                                   {(batch.total_products || 0).toLocaleString()}
@@ -455,20 +459,25 @@ export default function ExternalQueuePendingTab() {
                               </div>
                               <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
                                 <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                  SL
+                                  {pendingText.quantityShort}
                                 </p>
                                 <p className="text-sm font-bold text-[var(--color-text-primary)]">
                                   {(batch.total_quantity || 0).toLocaleString()}
                                 </p>
                               </div>
-                              <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
-                                <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                  Tien
-                                </p>
-                                <p className="text-sm font-bold text-[var(--color-brand-primary)]">
-                                  {(batch.total_value || 0).toLocaleString()}d
-                                </p>
-                              </div>
+                              {canViewPrice && (
+                                <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
+                                  <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                    {pendingText.money}
+                                  </p>
+                                  <p className="text-sm font-bold text-[var(--color-brand-primary)]">
+                                    {Number(
+                                      batch.total_value || 0,
+                                    ).toLocaleString("vi-VN")}
+                                    đ
+                                  </p>
+                                </div>
+                              )}
                             </div>
 
                             <div className="flex justify-end lg:w-28">
@@ -481,11 +490,13 @@ export default function ExternalQueuePendingTab() {
                                   className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)]"
                                 >
                                   <Eye className="h-4 w-4" />
-                                  Mo
+                                  {pendingText.open}
                                 </button>
                               ) : (
                                 <span className="inline-flex h-9 items-center text-xs text-[var(--color-text-muted)]">
-                                  {isDraft ? "Dang quet" : "Chi xem"}
+                                  {isDraft
+                                    ? pendingText.scanning
+                                    : pendingText.readOnly}
                                 </span>
                               )}
                             </div>
