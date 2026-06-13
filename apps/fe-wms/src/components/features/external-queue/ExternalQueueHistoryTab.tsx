@@ -6,7 +6,9 @@ import { vi, zhCN } from "date-fns/locale";
 import {
   CalendarDays,
   CheckCircle,
+  Eye,
   History,
+  MapPin,
   PackageCheck,
   Search,
   User,
@@ -14,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "../../../lib/i18n";
 import { externalQueueApi } from "../../../api/externalQueueApi";
+import BatchDetailDrawer from "./BatchDetailDrawer";
 
 function safeDate(value: unknown): Date | null {
   if (!value) return null;
@@ -44,6 +47,7 @@ export default function ExternalQueueHistoryTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [data, setData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBatch, setSelectedBatch] = useState<any | null>(null);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -68,9 +72,15 @@ export default function ExternalQueueHistoryTab() {
       [
         batch.batch_id,
         batch.operator_name,
+        batch.operator_names?.join(" "),
         batch.location_name,
+        batch.location_code,
         batch.warehouse_name,
+        batch.warehouse_code,
         batch.status,
+        batch.approved_by_name,
+        batch.processed_by_name,
+        batch.rejection_reason,
       ]
         .filter(Boolean)
         .some((value) =>
@@ -168,7 +178,17 @@ export default function ExternalQueueHistoryTab() {
                     return (
                       <div
                         key={batch.batch_id}
-                        className="rounded-lg border border-[var(--color-border-subtle)] bg-white px-4 py-3 shadow-sm"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${historyText.openDetail} ${batch.batch_id}`}
+                        onClick={() => setSelectedBatch(batch)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedBatch(batch);
+                          }
+                        }}
+                        className="rounded-lg border border-[var(--color-border-subtle)] bg-white px-4 py-3 text-left shadow-sm transition hover:border-[var(--color-border-focus)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
                       >
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                           <div className="min-w-0 flex-1">
@@ -188,6 +208,11 @@ export default function ExternalQueueHistoryTab() {
                               <span className="truncate text-sm font-bold text-[var(--color-text-primary)]">
                                 {batch.location_name || batch.batch_id}
                               </span>
+                              {batch.location_code && (
+                                <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                                  {batch.location_code}
+                                </span>
+                              )}
                             </div>
 
                             <div className="mt-2 grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
@@ -196,6 +221,15 @@ export default function ExternalQueueHistoryTab() {
                                 <span className="truncate">
                                   {batch.operator_name ||
                                     historyText.unknownOperator}
+                                </span>
+                              </div>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <MapPin className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                                <span className="truncate">
+                                  {batch.warehouse_name ||
+                                    batch.warehouse_code ||
+                                    batch.warehouse_id ||
+                                    "-"}
                                 </span>
                               </div>
                               <div className="flex min-w-0 items-center gap-2">
@@ -228,6 +262,10 @@ export default function ExternalQueueHistoryTab() {
                                 batch.approved_by_name ||
                                 historyText.unknownOperator}
                             </p>
+                            <div className="mt-2 inline-flex items-center justify-end gap-1 text-xs font-semibold text-[var(--color-brand-primary)]">
+                              <Eye className="h-3.5 w-3.5" />
+                              {historyText.openDetail}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -239,6 +277,14 @@ export default function ExternalQueueHistoryTab() {
           </div>
         )}
       </div>
+      {selectedBatch && (
+        <BatchDetailDrawer
+          batchId={selectedBatch.batch_id}
+          batchData={selectedBatch}
+          readonly
+          onClose={() => setSelectedBatch(null)}
+        />
+      )}
     </div>
   );
 }

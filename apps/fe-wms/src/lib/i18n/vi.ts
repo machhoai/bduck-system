@@ -1709,6 +1709,7 @@ Object.assign(vi, {
       processedAt: "Xử lý: ",
       batch: "Batch",
       unknownOperator: "-",
+      openDetail: "Xem chi tiết",
       columns: {
         batchId: "Mã đợt (Batch)",
         shiftDate: "Ngày ca",
@@ -1742,6 +1743,20 @@ Object.assign(vi, {
         totalQuantity: "Tổng số lượng",
         totalValue: "Tổng giá trị",
         batchNotes: "Ghi chú đợt",
+        location: "Vị trí",
+        itemLocation: "Vị trí",
+        approvedBy: "Người duyệt",
+        rejectedBy: "Người từ chối",
+        approvedAt: "Thời gian duyệt",
+        rejectedAt: "Thời gian từ chối",
+        exportVoucher: "Phiếu xuất",
+        rejectionReason: "Lý do từ chối",
+        approveNotes: "Ghi chú duyệt",
+      },
+      processed: {
+        title: "Kết quả xử lý",
+        approved: "Đã duyệt",
+        rejected: "Đã từ chối",
       },
       messages: {
         invalidQty: "Số lượng không hợp lệ",

@@ -8,6 +8,7 @@ import * as externalScanService from "../../services/externalScanService.js";
 import * as autoSubmitConfigService from "../../services/externalQueueAutoSubmitConfigService.js";
 import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
+import { getUsersByIds } from "../../repositories/userRepository.js";
 import { warehouseRepository } from "../../repositories/warehouseRepository.js";
 import { z } from "zod";
 
@@ -59,6 +60,11 @@ const toDate = (value: unknown): Date => {
 
 const toQueueDate = (value: unknown) =>
   toDate(value).toISOString().slice(0, 10);
+
+const toSortableTime = (value: unknown): number => {
+  const date = value ? toDate(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+};
 
 const getOperatorDisplayName = (record: ExternalScanQueue) => {
   const operatorName = record.operator_name?.trim();
@@ -259,51 +265,165 @@ export const getHistory = async (req: Request, res: Response) => {
       (doc) => doc.data() as ExternalScanQueue,
     );
     const user = (req as any).user;
+    const products = await productRepository.findByIds(
+      allRecords.map((record) => record.product_id),
+    );
+    const productById = new Map(
+      products.map((product) => [product.id, product]),
+    );
+    const uniqueLocationIds = [
+      ...new Set(allRecords.map((record) => record.warehouse_location_id)),
+    ];
+    const uniqueWarehouseIds = [
+      ...new Set(allRecords.map((record) => record.warehouse_id)),
+    ];
+    const uniqueApproverIds = [
+      ...new Set(
+        allRecords
+          .map((record) => record.approved_by)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const [locationPairs, warehousePairs, approvers] = await Promise.all([
+      Promise.all(
+        uniqueLocationIds.map(
+          async (id) => [id, await locationRepository.findById(id)] as const,
+        ),
+      ),
+      Promise.all(
+        uniqueWarehouseIds.map(
+          async (id) => [id, await warehouseRepository.findById(id)] as const,
+        ),
+      ),
+      getUsersByIds(uniqueApproverIds),
+    ]);
+    const locationById = new Map(locationPairs);
+    const warehouseById = new Map(warehousePairs);
+    const approverById = new Map(
+      approvers.map((approver) => [approver.id, approver]),
+    );
 
     const batchMap = new Map<string, any>();
     for (const record of allRecords) {
       if (!record.batch_id) continue;
+      const queueDate = toQueueDate(record.scan_time);
+      const product = productById.get(record.product_id);
+      const location = locationById.get(record.warehouse_location_id);
+      const warehouse = warehouseById.get(record.warehouse_id);
       const operatorDisplayName = getOperatorDisplayName(record);
       const canViewPrice = hasScopedPermission(
         user,
         "products.price.view",
         record.warehouse_id,
       );
+      const approver = record.approved_by
+        ? approverById.get(record.approved_by)
+        : null;
+      const approverName = approver?.full_name || record.approved_by || null;
 
       if (!batchMap.has(record.batch_id)) {
         batchMap.set(record.batch_id, {
           batch_id: record.batch_id,
           warehouse_id: record.warehouse_id,
+          warehouse_name: warehouse?.name ?? null,
+          warehouse_code: warehouse?.code ?? null,
+          warehouse_location_id: record.warehouse_location_id,
           status: record.status,
           operator_name: operatorDisplayName,
-          location_name: "Location",
+          operator_names: [],
+          location_name: location?.name ?? null,
+          location_code: location?.code ?? null,
+          queue_date: queueDate,
           shift_date: record.scan_time,
+          last_scan_time: record.scan_time,
+          submitted_at: record.sync_time,
+          processed_at: record.approved_at,
           total_products: 0,
           total_quantity: 0,
           total_value: 0,
           can_view_price: canViewPrice,
-          approved_by_name: record.approved_by, // Should join user name
+          approved_by: record.approved_by,
+          approved_by_name: approverName,
+          processed_by_name: approverName,
           approved_at: record.approved_at,
           export_voucher_id: record.export_voucher_id,
+          rejection_reason: record.rejection_reason,
+          notes: record.notes,
+          items: [],
+          product_ids: new Set<string>(),
         });
       }
 
       const batch = batchMap.get(record.batch_id);
+      if (!batch.operator_names.includes(operatorDisplayName)) {
+        batch.operator_names.push(operatorDisplayName);
+      }
+      if (
+        toSortableTime(record.scan_time) > toSortableTime(batch.last_scan_time)
+      ) {
+        batch.last_scan_time = record.scan_time;
+      }
+      if (
+        toSortableTime(record.approved_at) > toSortableTime(batch.processed_at)
+      ) {
+        batch.processed_at = record.approved_at;
+        batch.approved_at = record.approved_at;
+        batch.approved_by = record.approved_by;
+        batch.approved_by_name = approverName;
+        batch.processed_by_name = approverName;
+      }
+      batch.rejection_reason =
+        batch.rejection_reason || record.rejection_reason;
+      batch.notes = batch.notes || record.notes;
       batch.total_quantity += record.quantity;
       batch.total_value += record.quantity * record.unit_price;
       batch.can_view_price = batch.can_view_price && canViewPrice;
-      batch.total_products += 1; // Simplified
+      if (!batch.product_ids.has(record.product_id)) {
+        batch.product_ids.add(record.product_id);
+        batch.total_products += 1;
+      }
+      batch.items.push({
+        scan_id: record.id,
+        product_id: record.product_id,
+        product_name: product?.name ?? null,
+        product_code: product?.code ?? null,
+        product_barcode: product?.barcode ?? null,
+        product_unit: product?.unit ?? null,
+        product_image_url:
+          product?.product_image_url && product.product_image_url.length > 0
+            ? product.product_image_url[0]
+            : null,
+        barcode: record.barcode_scanned,
+        quantity: record.quantity,
+        unit_price: canViewPrice ? record.unit_price : null,
+        scan_time: record.scan_time,
+        operator_name: operatorDisplayName,
+        operator_id_external: record.operator_id_external,
+        warehouse_id: record.warehouse_id,
+        warehouse_name: warehouse?.name ?? null,
+        warehouse_code: warehouse?.code ?? null,
+        warehouse_location_id: record.warehouse_location_id,
+        location_name: location?.name ?? null,
+        location_code: location?.code ?? null,
+        notes: record.notes,
+        rejection_reason: record.rejection_reason,
+      });
     }
 
     for (const batch of batchMap.values()) {
       if (!batch.can_view_price) {
         batch.total_value = null;
       }
+      delete batch.product_ids;
     }
 
     return res.status(200).json({
       success: true,
-      data: Array.from(batchMap.values()),
+      data: Array.from(batchMap.values()).sort(
+        (a, b) =>
+          toSortableTime(b.processed_at || b.shift_date) -
+          toSortableTime(a.processed_at || a.shift_date),
+      ),
     });
   } catch (error) {
     console.error("[getHistory]", error);

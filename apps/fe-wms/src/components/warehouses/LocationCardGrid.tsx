@@ -14,6 +14,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { gooeyToast } from "goey-toast";
 import {
   Boxes,
+  ChevronDown,
+  ChevronUp,
   Edit3,
   GripVertical,
   Layers,
@@ -79,6 +81,10 @@ export function LocationCardGrid({
   const [editingSlot, setEditingSlot] = useState<WarehouseLocationSlot | null>(
     null,
   );
+  const [isMappingMode, setIsMappingMode] = useState(false);
+  const [selectedPolicyProductId, setSelectedPolicyProductId] = useState<
+    string | null
+  >(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -182,9 +188,12 @@ export function LocationCardGrid({
 
   const filteredSlotGroups = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
-    if (!query) return slotGroups;
+    const visibleGroups = isMappingMode
+      ? slotGroups
+      : slotGroups.filter((group) => group.slot || group.rows.length > 0);
+    if (!query) return visibleGroups;
 
-    return slotGroups.map((group) => ({
+    return visibleGroups.map((group) => ({
       ...group,
       rows: group.rows.filter(({ product }) => {
         return (
@@ -194,7 +203,27 @@ export function LocationCardGrid({
         );
       }),
     }));
-  }, [productSearch, slotGroups]);
+  }, [isMappingMode, productSearch, slotGroups]);
+
+  const selectedPolicyRow = useMemo(() => {
+    if (!selectedPolicyProductId) return null;
+    return (
+      slotGroups
+        .flatMap((group) => group.rows)
+        .find((row) => row.product.id === selectedPolicyProductId) ?? null
+    );
+  }, [selectedPolicyProductId, slotGroups]);
+
+  useEffect(() => {
+    if (
+      selectedPolicyProductId &&
+      !slotGroups.some((group) =>
+        group.rows.some((row) => row.product.id === selectedPolicyProductId),
+      )
+    ) {
+      setSelectedPolicyProductId(null);
+    }
+  }, [selectedPolicyProductId, slotGroups]);
 
   const handleCreateSlot = () => {
     if (!selectedLocation) return;
@@ -249,6 +278,7 @@ export function LocationCardGrid({
 
   const handleDragEnd = async (event: DragEndEvent) => {
     if (!canWrite) return;
+    if (!isMappingMode) return;
     if (!selectedLocation || !event.over) return;
 
     const productId = String(event.active.data.current?.productId ?? "");
@@ -293,7 +323,7 @@ export function LocationCardGrid({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
+          <h2 className="text-base font-semibold leading-tight tracking-normal text-[var(--color-text-primary)]">
             {t.warehouses.tabLocations}
           </h2>
           <p className="text-sm text-[var(--color-text-muted)]">
@@ -316,7 +346,7 @@ export function LocationCardGrid({
       {locations.length === 0 ? (
         <EmptyLocations label={t.warehouses.emptyLocations} />
       ) : (
-        <div className="grid min-h-[620px] grid-cols-1 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid min-h-screen grid-cols-1 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] lg:grid-cols-3">
           <LocationSidebar
             summaries={visibleSummaries}
             selectedLocationId={selectedLocationId}
@@ -329,13 +359,17 @@ export function LocationCardGrid({
           />
 
           {selectedLocation ? (
-            <div className="min-w-0">
+            <div className="min-w-0 lg:col-span-2">
               <LocationDetailHeader
                 location={selectedLocation}
                 summary={selectedSummary}
                 productSearch={productSearch}
                 canWrite={canWrite}
+                isMappingMode={isMappingMode}
                 onProductSearch={setProductSearch}
+                onToggleMappingMode={() =>
+                  setIsMappingMode((current) => !current)
+                }
                 onCreateSlot={handleCreateSlot}
                 onEdit={() => onEdit(selectedLocation)}
                 onDelete={() => onDelete(selectedLocation)}
@@ -344,17 +378,34 @@ export function LocationCardGrid({
                 <WarehouseTableSkeleton />
               ) : (
                 <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                  <div className="grid gap-3 p-3 xl:grid-cols-2">
-                    {filteredSlotGroups.map((group) => (
-                      <SlotDropColumn
-                        key={group.slot?.id ?? UNASSIGNED_SLOT_ID}
-                        group={group}
-                        canWrite={canWrite}
-                        onEditSlot={handleEditSlot}
-                        onDeleteSlot={handleDeleteSlot}
-                        onSavePolicy={upsertPolicy}
-                      />
-                    ))}
+                  <PrizeOverviewPanel groups={slotGroups} />
+                  <div className="grid gap-3 p-3 2xl:grid-cols-3">
+                    <div className="grid gap-3 xl:grid-cols-2 2xl:col-span-2">
+                      {filteredSlotGroups.length === 0 ? (
+                        <MappingHiddenState
+                          canWrite={canWrite}
+                          onShowMapping={() => setIsMappingMode(true)}
+                        />
+                      ) : (
+                        filteredSlotGroups.map((group) => (
+                          <SlotDropColumn
+                            key={group.slot?.id ?? UNASSIGNED_SLOT_ID}
+                            group={group}
+                            canWrite={canWrite}
+                            isMappingMode={isMappingMode}
+                            selectedPolicyProductId={selectedPolicyProductId}
+                            onEditSlot={handleEditSlot}
+                            onDeleteSlot={handleDeleteSlot}
+                            onSelectPolicy={setSelectedPolicyProductId}
+                          />
+                        ))
+                      )}
+                    </div>
+                    <MinStockPanel
+                      row={selectedPolicyRow}
+                      canWrite={canWrite}
+                      onSavePolicy={upsertPolicy}
+                    />
                   </div>
                 </DndContext>
               )}
@@ -419,7 +470,7 @@ function LocationSidebar({
         </div>
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto p-2 lg:max-h-[720px]">
+      <div className="max-h-96 overflow-y-auto p-2 lg:max-h-screen">
         {summaries.length === 0 ? (
           <div className="flex h-32 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] text-sm text-[var(--color-text-muted)]">
             Không tìm thấy vị trí
@@ -484,7 +535,9 @@ function LocationDetailHeader({
   summary,
   productSearch,
   canWrite,
+  isMappingMode,
   onProductSearch,
+  onToggleMappingMode,
   onCreateSlot,
   onEdit,
   onDelete,
@@ -493,7 +546,9 @@ function LocationDetailHeader({
   summary: { productCount: number; atp: number; total: number } | null;
   productSearch: string;
   canWrite: boolean;
+  isMappingMode: boolean;
   onProductSearch: (value: string) => void;
+  onToggleMappingMode: () => void;
   onCreateSlot: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -515,7 +570,23 @@ function LocationDetailHeader({
           </p>
         </div>
         {canWrite && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={onToggleMappingMode}
+              className={`inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-md)] border px-3 text-sm font-medium transition-colors ${
+                isMappingMode
+                  ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              }`}
+            >
+              {isMappingMode ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+              {isMappingMode ? "Ẩn mapping" : "Mapping"}
+            </button>
             <button
               type="button"
               onClick={onCreateSlot}
@@ -572,15 +643,19 @@ function LocationDetailHeader({
 function SlotDropColumn({
   group,
   canWrite,
+  isMappingMode,
+  selectedPolicyProductId,
   onEditSlot,
   onDeleteSlot,
-  onSavePolicy,
+  onSelectPolicy,
 }: {
   group: SlotInventoryGroup;
   canWrite: boolean;
+  isMappingMode: boolean;
+  selectedPolicyProductId: string | null;
   onEditSlot: (slot: WarehouseLocationSlot) => void;
   onDeleteSlot: (slot: WarehouseLocationSlot) => void;
-  onSavePolicy: (payload: unknown) => Promise<unknown>;
+  onSelectPolicy: (productId: string) => void;
 }) {
   const { t } = useTranslation();
   const droppableId = group.slot?.id ?? UNASSIGNED_SLOT_ID;
@@ -598,10 +673,10 @@ function SlotDropColumn({
       <div className="flex items-start justify-between gap-3 border-b border-[var(--color-border-subtle)] p-3">
         <div className="min-w-0">
           <h4 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-            {group.slot ? group.slot.name : "Chưa gán giải"}
+            {group.slot ? group.slot.name : "Chưa phân giải"}
           </h4>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            {group.productCount} SKU · ATP {group.atp.toLocaleString()}
+            {group.productCount} SKU / ATP {group.atp.toLocaleString()}
           </p>
         </div>
         {group.slot ? (
@@ -641,7 +716,7 @@ function SlotDropColumn({
       <div className="flex flex-col gap-2 p-2">
         {group.rows.length === 0 ? (
           <div className="flex min-h-24 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] px-3 text-center text-xs text-[var(--color-text-muted)]">
-            Kéo sản phẩm vào đây
+            {isMappingMode ? "Kéo sản phẩm vào đây" : "Chưa có sản phẩm"}
           </div>
         ) : (
           group.rows.map((row) => (
@@ -649,7 +724,9 @@ function SlotDropColumn({
               key={row.product.id}
               row={row}
               canWrite={canWrite}
-              onSavePolicy={onSavePolicy}
+              isMappingMode={isMappingMode}
+              isPolicySelected={selectedPolicyProductId === row.product.id}
+              onSelectPolicy={onSelectPolicy}
             />
           ))
         )}
@@ -661,12 +738,17 @@ function SlotDropColumn({
 function DraggableProductRow({
   row,
   canWrite,
-  onSavePolicy,
+  isMappingMode,
+  isPolicySelected,
+  onSelectPolicy,
 }: {
   row: SlotProductInventoryRow;
   canWrite: boolean;
-  onSavePolicy: (payload: unknown) => Promise<unknown>;
+  isMappingMode: boolean;
+  isPolicySelected: boolean;
+  onSelectPolicy: (productId: string) => void;
 }) {
+  const canDrag = canWrite && isMappingMode;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: row.product.id,
@@ -674,25 +756,30 @@ function DraggableProductRow({
         productId: row.product.id,
         mappingId: row.mapping?.id ?? null,
       },
+      disabled: !canDrag,
     });
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 shadow-sm ${
-        isDragging ? "opacity-70" : ""
-      }`}
+      className={`rounded-[var(--radius-md)] border bg-[var(--color-surface-elevated)] p-3 shadow-sm transition-colors ${
+        isPolicySelected
+          ? "border-blue-300 ring-1 ring-blue-100"
+          : "border-[var(--color-border-subtle)]"
+      } ${isDragging ? "opacity-70" : ""}`}
     >
       <div className="flex items-start gap-3">
-        <button
-          type="button"
-          className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
-          {...listeners}
-          {...attributes}
-        >
-          <GripVertical size={16} />
-        </button>
+        {canDrag && (
+          <button
+            type="button"
+            className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
+            {...listeners}
+            {...attributes}
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -700,33 +787,202 @@ function DraggableProductRow({
                 {row.product.name}
               </p>
               <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                {row.product.code} · {row.product.unit}
+                {row.product.code} / {row.product.unit}
               </p>
             </div>
-            <div className="shrink-0 text-right">
-              <p
-                className={`text-sm font-bold ${
-                  isBelowMin(row.atp, row.slotPolicy ?? row.locationPolicy)
-                    ? "text-red-600"
-                    : "text-[var(--color-brand-primary)]"
-                }`}
-              >
-                {row.atp.toLocaleString()}
-              </p>
-              <p className="text-xxs text-[var(--color-text-muted)]">ATP</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => onSelectPolicy(row.product.id)}
+              className={`h-7 shrink-0 rounded-[var(--radius-sm)] border px-2 text-xxs font-semibold transition-colors ${
+                isPolicySelected
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)]"
+              }`}
+            >
+              Min stock
+            </button>
           </div>
-          <StockPolicyControls
-            row={row}
-            canWrite={canWrite}
-            onSavePolicy={onSavePolicy}
-          />
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            <QuantityBadge
+              label="ATP"
+              value={row.atp}
+              tone={
+                isBelowMin(row.atp, row.slotPolicy ?? row.locationPolicy)
+                  ? "danger"
+                  : "primary"
+              }
+            />
+            <QuantityBadge label="Hold" value={row.onHold} tone="warning" />
+            <QuantityBadge label="Shipping" value={row.inTransit} tone="info" />
+            <QuantityBadge label="Tổng" value={row.total} tone="neutral" />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+function MappingHiddenState({
+  canWrite,
+  onShowMapping,
+}: {
+  canWrite: boolean;
+  onShowMapping: () => void;
+}) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-dashed border-amber-200 bg-amber-50 p-4 xl:col-span-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-amber-900">
+            Chưa có giải đang hiển thị
+          </h4>
+          <p className="mt-1 text-xs text-amber-700">
+            Các sản phẩm chưa map đang được ẩn để màn hình tồn kho gọn hơn.
+          </p>
+        </div>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={onShowMapping}
+            className="inline-flex h-8 w-fit items-center justify-center gap-2 rounded-[var(--radius-md)] border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            <ChevronDown size={15} />
+            Mapping
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuantityBadge({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "primary" | "warning" | "info" | "neutral" | "danger";
+}) {
+  const toneClass = {
+    primary: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    info: "border-sky-200 bg-sky-50 text-sky-700",
+    neutral: "border-slate-200 bg-slate-50 text-slate-700",
+    danger: "border-red-200 bg-red-50 text-red-700",
+  }[tone];
+
+  return (
+    <div className={`rounded-[var(--radius-sm)] border px-2 py-1 ${toneClass}`}>
+      <p className="text-xxs font-semibold leading-tight">
+        {value.toLocaleString()}
+      </p>
+      <p className="text-micro leading-tight opacity-80">{label}</p>
+    </div>
+  );
+}
+
+function MinStockPanel({
+  row,
+  canWrite,
+  onSavePolicy,
+}: {
+  row: SlotProductInventoryRow | null;
+  canWrite: boolean;
+  onSavePolicy: (payload: unknown) => Promise<unknown>;
+}) {
+  return (
+    <aside className="rounded-[var(--radius-lg)] border border-blue-100 bg-blue-50/60 p-3">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-blue-900">
+            Cài đặt min stock
+          </h4>
+          <p className="mt-1 text-xs text-blue-700">
+            {row
+              ? row.product.code
+              : "Chọn sản phẩm để cấu hình tồn tối thiểu."}
+          </p>
+        </div>
+        <span className="rounded bg-white px-2 py-1 text-xxs font-semibold text-blue-700">
+          Policy
+        </span>
+      </div>
+      {row ? (
+        <StockPolicyControls
+          row={row}
+          canWrite={canWrite}
+          onSavePolicy={onSavePolicy}
+        />
+      ) : (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-blue-200 bg-white/70 p-3 text-xs text-blue-700">
+          Min stock được tách riêng để thẻ sản phẩm ưu tiên số liệu tồn kho.
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function PrizeOverviewPanel({ groups }: { groups: SlotInventoryGroup[] }) {
+  const assignedGroups = groups.filter((group) => group.slot);
+  if (assignedGroups.length === 0) return null;
+
+  return (
+    <div className="border-b border-[var(--color-border-subtle)] bg-gradient-to-r from-blue-50 via-emerald-50 to-amber-50 p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Tổng quan quầy theo giải thưởng
+        </h4>
+        <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+          ATP từng sản phẩm
+        </span>
+      </div>
+      <div className="grid gap-2 xl:grid-cols-2 2xl:grid-cols-3">
+        {assignedGroups.map((group) => (
+          <div
+            key={group.slot?.id}
+            className="rounded-[var(--radius-md)] border border-white/80 bg-white/80 p-2 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                  {group.slot?.name}
+                </p>
+                <p className="text-xxs text-[var(--color-text-muted)]">
+                  {group.productCount} SKU
+                </p>
+              </div>
+              <div className="rounded bg-emerald-100 px-2 py-1 text-right text-xxs font-semibold text-emerald-700">
+                ATP {group.atp.toLocaleString()}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {group.rows.length === 0 ? (
+                <span className="rounded bg-slate-100 px-2 py-1 text-xxs text-slate-600">
+                  Chưa có sản phẩm
+                </span>
+              ) : (
+                group.rows.map((row) => (
+                  <span
+                    key={row.product.id}
+                    className="rounded bg-sky-50 px-2 py-1 text-xxs font-medium text-sky-700"
+                  >
+                    {row.product.code}: {row.atp.toLocaleString()}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/*
+ * Product cards intentionally keep stock numbers only. Min-stock inputs live in
+ * MinStockPanel so dense location cards stay scan-friendly during operations.
+ */
 function StockPolicyControls({
   row,
   canWrite,

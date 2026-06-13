@@ -10,13 +10,46 @@ export interface ExcelColumnConfig {
   format?: (value: any, row: any) => string | number;
 }
 
+export interface ExcelColumnGroup {
+  header: string;
+  fromKey: string;
+  toKey: string;
+}
+
+export type ExportDataKind =
+  | "inventory"
+  | "imports"
+  | "exports"
+  | "movement"
+  | "dailySummary";
+export type ExportDateMode = "date" | "month" | "range";
+
+export interface ExportRequestOptions {
+  dataKind?: ExportDataKind;
+  dateMode?: ExportDateMode;
+  date?: string;
+  month?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface ExportDialogConfig {
+  type: "warehouse";
+  title: string;
+  description?: string;
+  defaultOptions?: ExportRequestOptions;
+}
+
 export interface ExportConfig {
   filename: string;
   columns: ExcelColumnConfig[];
+  columnGroups?: ExcelColumnGroup[];
   data: any[];
   entityType: string;
   warehouseId?: string;
   filters?: Record<string, any>;
+  dialog?: ExportDialogConfig;
+  prepare?: (options: ExportRequestOptions) => Promise<ExportConfig>;
 }
 
 export const formatExportDate = (val: any): string => {
@@ -43,22 +76,13 @@ const entityColorMap: Record<string, string> = {
 };
 
 export async function exportToExcel(config: ExportConfig): Promise<void> {
-  const { filename, columns, data, entityType, warehouseId, filters } = config;
+  const { filename, columns, columnGroups, data, entityType, warehouseId, filters } = config;
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Data");
-
-  // Format headers
-  sheet.columns = columns.map((col) => ({
-    header: col.header,
-    key: col.key,
-    width: col.width || 20,
-  }));
-
   const headerColor = entityColorMap[entityType] || entityColorMap.default;
 
-  const headerRow = sheet.getRow(1);
-  headerRow.eachCell((cell) => {
+  const styleHeaderCell = (cell: ExcelJS.Cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
     cell.fill = {
       type: "pattern",
@@ -66,7 +90,59 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
       fgColor: { argb: headerColor },
     };
     cell.alignment = { vertical: "middle", horizontal: "center" };
-  });
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFE5E7EB" } },
+      left: { style: "thin", color: { argb: "FFE5E7EB" } },
+      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+      right: { style: "thin", color: { argb: "FFE5E7EB" } },
+    };
+  };
+
+  if (columnGroups?.length) {
+    sheet.columns = columns.map((col) => ({
+      key: col.key,
+      width: col.width || 20,
+    }));
+
+    const groupedKeys = new Set<string>();
+    for (const group of columnGroups) {
+      const fromIndex = columns.findIndex((column) => column.key === group.fromKey);
+      const toIndex = columns.findIndex((column) => column.key === group.toKey);
+      if (fromIndex < 0 || toIndex < 0) continue;
+      for (let index = fromIndex; index <= toIndex; index += 1) {
+        groupedKeys.add(columns[index].key);
+      }
+      sheet.mergeCells(1, fromIndex + 1, 1, toIndex + 1);
+      sheet.getRow(1).getCell(fromIndex + 1).value = group.header;
+    }
+
+    columns.forEach((column, index) => {
+      const columnIndex = index + 1;
+      if (groupedKeys.has(column.key)) {
+        sheet.getRow(2).getCell(columnIndex).value = column.header;
+      } else {
+        sheet.mergeCells(1, columnIndex, 2, columnIndex);
+        sheet.getRow(1).getCell(columnIndex).value = column.header;
+      }
+    });
+
+    sheet.getRow(1).height = 22;
+    sheet.getRow(2).height = 20;
+    sheet.getRow(1).eachCell(styleHeaderCell);
+    sheet.getRow(2).eachCell(styleHeaderCell);
+    sheet.views = [{ state: "frozen", ySplit: 2 }];
+  } else {
+    // Format headers
+    sheet.columns = columns.map((col) => ({
+      header: col.header,
+      key: col.key,
+      width: col.width || 20,
+    }));
+
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell(styleHeaderCell);
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+  }
 
   // Add data
   data.forEach((row) => {

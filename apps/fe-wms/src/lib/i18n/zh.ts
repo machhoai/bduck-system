@@ -1734,6 +1734,7 @@ Object.assign(zh, {
       processedAt: "处理时间: ",
       batch: "Batch",
       unknownOperator: "-",
+      openDetail: "查看详情",
       columns: {
         batchId: "批次 ID",
         shiftDate: "班次日期",
@@ -1767,6 +1768,20 @@ Object.assign(zh, {
         totalQuantity: "总数量",
         totalValue: "总价值",
         batchNotes: "批次备注",
+        location: "库位",
+        itemLocation: "库位",
+        approvedBy: "批准人",
+        rejectedBy: "拒绝人",
+        approvedAt: "批准时间",
+        rejectedAt: "拒绝时间",
+        exportVoucher: "出库单",
+        rejectionReason: "拒绝原因",
+        approveNotes: "批准备注",
+      },
+      processed: {
+        title: "处理结果",
+        approved: "已批准",
+        rejected: "已拒绝",
       },
       messages: {
         invalidQty: "数量无效",

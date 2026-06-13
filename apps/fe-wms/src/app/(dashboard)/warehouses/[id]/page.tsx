@@ -28,7 +28,11 @@ import { WarehouseInventoryView } from "@/components/warehouses/WarehouseInvento
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useInventory } from "@/hooks/useInventory";
 import { useProducts } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { useUsers } from "@/hooks/useUsers";
+import { useExportVouchers } from "@/hooks/useExportVouchers";
+import { useImportVouchers } from "@/hooks/useImportVouchers";
+import { useExportRegistration } from "@/hooks/useExportRegistration";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 
@@ -37,6 +41,11 @@ import {
     computeKPIs,
     computeProductTypeDistribution,
 } from "@/utils/inventoryAggregation";
+import {
+    buildWarehouseInventoryExportConfig,
+    buildWarehouseMovementExportConfig,
+} from "@/utils/warehouseMovementExport";
+import type { ExportConfig, ExportRequestOptions } from "@/utils/exportExcel";
 
 type PageTab = "overview" | "products" | "locations";
 type InventoryTab = "products" | "locations";
@@ -62,7 +71,13 @@ export default function WarehouseDetailPage() {
     } = useWarehouseLocations(warehouseId);
     const { inventory, loading: invLoading } = useInventory();
     const { products, loading: prodLoading } = useProducts();
+    const { categories, isLoading: categoriesLoading } = useCategories();
     const { users, isLoading: usersLoading } = useUsers();
+    const { allVouchers: importVouchers } = useImportVouchers();
+    const {
+        activeVouchers: activeExportVouchers,
+        completedVouchers: completedExportVouchers,
+    } = useExportVouchers();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
@@ -90,6 +105,65 @@ export default function WarehouseDetailPage() {
         () => computeInventoryValue(inventory, products, warehouseId),
         [inventory, products, warehouseId],
     );
+
+    const exportVouchers = useMemo(
+        () => [...activeExportVouchers, ...completedExportVouchers],
+        [activeExportVouchers, completedExportVouchers],
+    );
+
+    const canViewPrice = hasPermission("products.price.view", warehouseId);
+    const exportContext = useMemo(
+        () => ({
+            warehouseId,
+            warehouseName: warehouse?.name ?? warehouseId,
+            inventory,
+            products,
+            categories,
+            locations,
+            importVouchers,
+            exportVouchers,
+            canViewPrice,
+        }),
+        [
+            canViewPrice,
+            categories,
+            exportVouchers,
+            importVouchers,
+            inventory,
+            locations,
+            products,
+            warehouse?.name,
+            warehouseId,
+        ],
+    );
+
+    const warehouseExportConfig = useMemo<ExportConfig | null>(() => {
+        if (!warehouse) return null;
+
+        return {
+            ...buildWarehouseInventoryExportConfig(exportContext),
+            dialog: {
+                type: "warehouse" as const,
+                title: "Xuất dữ liệu kho",
+                description: warehouse.name,
+                defaultOptions: {
+                    dataKind: "movement" as const,
+                    dateMode: "month" as const,
+                    month: new Date().toISOString().slice(0, 7),
+                },
+            },
+            prepare: (options: ExportRequestOptions) => {
+                if (options.dataKind === "inventory") {
+                    return Promise.resolve(
+                        buildWarehouseInventoryExportConfig(exportContext),
+                    );
+                }
+                return buildWarehouseMovementExportConfig(exportContext, options);
+            },
+        };
+    }, [exportContext, warehouse]);
+
+    useExportRegistration(warehouseExportConfig);
 
     const managerName = useMemo(() => {
         if (!warehouse?.manager_id) {
@@ -172,7 +246,8 @@ export default function WarehouseDetailPage() {
         return updateWarehouse(warehouseId, payload);
     };
 
-    const isLoading = warehousesLoading || invLoading || prodLoading;
+    const isLoading =
+        warehousesLoading || invLoading || prodLoading || categoriesLoading;
 
     if (isLoading) {
         return <WarehouseTableSkeleton />;
