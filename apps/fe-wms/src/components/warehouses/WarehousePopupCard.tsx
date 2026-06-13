@@ -90,7 +90,7 @@ export function WarehousePopupCard({ warehouse, onClose }: WarehousePopupCardPro
                     href={`/warehouses/${warehouse.id}`}
                     className="flex h-8 w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] hover:shadow-md active:scale-[0.97]"
                 >
-                    Vào kho
+                    {t.warehouses.enterWarehouse}
                     <ArrowRight size={13} />
                 </Link>
             </div>
