@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     AlertTriangle,
     ArrowRightLeft,
@@ -20,7 +20,7 @@ import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPa
 import { gooeyToast } from "goey-toast";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
 import { useProducts } from "../../../hooks/useProducts";
-import { createTransferOrder } from "../../../hooks/useTransferOrderApi";
+import { createTransferOrder, updateTransferOrder } from "../../../hooks/useTransferOrderApi";
 import {
     useWarehouseLocations,
     useWarehouses,
@@ -42,6 +42,8 @@ type TransferTypeValue = "INTRA_WAREHOUSE" | "INTER_WAREHOUSE";
 
 interface Props {
     cloneData?: Record<string, unknown> | null;
+    editData?: Record<string, unknown> | null;
+    isEdit?: boolean;
     prefillWarehouseId?: string;
     onCreated: () => void;
 }
@@ -271,6 +273,8 @@ function ProductPickerCard({
 
 export default function CreateTransferTab({
     cloneData,
+    editData,
+    isEdit,
     prefillWarehouseId,
     onCreated,
 }: Props) {
@@ -294,6 +298,7 @@ export default function CreateTransferTab({
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<TransferItemData[]>([]);
     const [showOtpModal, setShowOtpModal] = useState(false);
+    const skipSourceClearForValueRef = useRef<string | null>(null);
 
     const isIntra = transferType === "INTRA_WAREHOUSE";
 
@@ -322,17 +327,21 @@ export default function CreateTransferTab({
     }, [prefillWarehouseId]);
 
     useEffect(() => {
-        if (!cloneData) return;
-        setSourceWarehouseId((cloneData.source_warehouse_id as string) || (cloneData.warehouse_id as string) || "");
-        setTransferType(((cloneData.transfer_type as string) || "INTER_WAREHOUSE") as TransferTypeValue);
+        if (!cloneData && !editData) return;
+        const dataSource = editData || cloneData;
+
+        const nextSourceWarehouseId = (dataSource?.source_warehouse_id as string) || (dataSource?.warehouse_id as string) || "";
+        skipSourceClearForValueRef.current = nextSourceWarehouseId;
+        setSourceWarehouseId(nextSourceWarehouseId);
+        setTransferType(((dataSource?.transfer_type as string) || "INTER_WAREHOUSE") as TransferTypeValue);
         setDestWarehouseId(
-            (cloneData.destination_warehouse_id as string) || "",
+            (dataSource?.destination_warehouse_id as string) || "",
         );
-        setNotes((cloneData.notes as string) || "");
+        setNotes((dataSource?.notes as string) || "");
         
-        if (Array.isArray(cloneData.items)) {
+        if (Array.isArray(dataSource?.items)) {
             setItems(
-                (cloneData.items as any[]).map((item) => ({
+                (dataSource?.items as any[]).map((item) => ({
                     id: crypto.randomUUID(),
                     product_id: item.product_id || "",
                     product_name: item.product_name || "",
@@ -342,11 +351,32 @@ export default function CreateTransferTab({
                 }))
             );
         }
+
+        if (editData && Array.isArray(editData.attachment_urls)) {
+            setFiles(editData.attachment_urls.map((url: string) => {
+                const name = url.split("/").pop() || "attachment";
+                return {
+                    id: crypto.randomUUID(),
+                    file: new File([], name),
+                    name,
+                    size: 0,
+                    type: "application/octet-stream",
+                    progress: 100,
+                    url,
+                    error: null,
+                };
+            }));
+        }
         
         setStep(0);
-    }, [cloneData]);
+    }, [cloneData, editData]);
 
     useEffect(() => {
+        if (skipSourceClearForValueRef.current === sourceWarehouseId) {
+            skipSourceClearForValueRef.current = null;
+            return;
+        }
+        skipSourceClearForValueRef.current = null;
         setItems([]);
     }, [sourceWarehouseId]);
 
@@ -648,7 +678,7 @@ export default function CreateTransferTab({
                 uploadedUrls.push(url);
             }
 
-            await createTransferOrder({
+            const payload = {
                 transfer_type: transferType,
                 source_warehouse_id: sourceWarehouseId,
                 destination_warehouse_id: isIntra
@@ -666,17 +696,23 @@ export default function CreateTransferTab({
                     quantity: item.quantity,
                 })),
                 action_time: new Date().toISOString(),
-            });
+            };
+
+            if (isEdit && editData?.id) {
+                await updateTransferOrder(editData.id as string, payload);
+            } else {
+                await createTransferOrder(payload);
+            }
         };
 
         const promise = submitAction();
 
         gooeyToast.promise(promise, {
-            loading: isIntra ? copy.intraLoading : copy.interLoading,
-            success: isIntra ? copy.intraSuccess : copy.interSuccess,
+            loading: isEdit ? "\u0110ang c\u1eadp nh\u1eadt l\u1ec7nh \u0111i\u1ec1u chuy\u1ec3n..." : (isIntra ? copy.intraLoading : copy.interLoading),
+            success: isEdit ? "C\u1eadp nh\u1eadt th\u00e0nh c\u00f4ng" : (isIntra ? copy.intraSuccess : copy.interSuccess),
             error: copy.createError,
             description: {
-                success: isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc,
+                success: isEdit ? "L\u1ec7nh \u0111i\u1ec1u chuy\u1ec3n \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt." : (isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc),
                 error: copy.errorDesc,
             },
             action: {

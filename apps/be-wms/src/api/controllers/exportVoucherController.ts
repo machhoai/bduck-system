@@ -9,6 +9,8 @@ import type { Request, Response, NextFunction } from "express";
 import {
   createExportVoucher,
   createExportVoucherSchema,
+  updateExportVoucher,
+  updateExportVoucherSchema,
   startPicking,
   completePicking,
   completeExport,
@@ -54,6 +56,43 @@ export async function createHandler(
       success: true,
       data: voucher,
       messages: { vi: "Đã tạo phiếu xuất kho thành công.", zh: "出库单创建成功。" },
+    });
+  } catch (error: any) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      data: null,
+      messages: error.messages || { vi: error.message, zh: error.message },
+    });
+  }
+}
+
+export async function updateHandler(
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
+    const parseResult = updateExportVoucherSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Du lieu khong hop le: " + parseResult.error.issues.map((i) => i.message).join(", "),
+          zh: "数据无效: " + parseResult.error.issues.map((i) => i.message).join(", "),
+        },
+      });
+      return;
+    }
+
+    const voucher = await updateExportVoucher(req.params.id as string, parseResult.data, userId);
+    res.status(200).json({
+      success: true,
+      data: voucher,
+      messages: { vi: "Phieu xuat kho da duoc cap nhat thanh cong.", zh: "出库单已成功更新。" },
     });
   } catch (error: any) {
     const statusCode = error.statusCode || 500;

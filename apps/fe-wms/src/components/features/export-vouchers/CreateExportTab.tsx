@@ -16,7 +16,7 @@ import {
 import { gooeyToast } from "goey-toast";
 import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
-import { createExportVoucher } from "../../../hooks/useExportVoucherApi";
+import { createExportVoucher, updateExportVoucher } from "../../../hooks/useExportVoucherApi";
 import { useProducts } from "../../../hooks/useProducts";
 import {
     useWarehouseLocations,
@@ -38,6 +38,8 @@ type StepId = 0 | 1 | 2 | 3;
 
 interface Props {
     cloneData?: Record<string, unknown> | null;
+    editData?: Record<string, unknown> | null;
+    isEdit?: boolean;
     prefillWarehouseId?: string;
     onCreated: () => void;
 }
@@ -226,6 +228,8 @@ function ProductPickerCard({
 
 export default function CreateExportTab({
     cloneData,
+    editData,
+    isEdit,
     prefillWarehouseId,
     onCreated,
 }: Props) {
@@ -256,17 +260,21 @@ export default function CreateExportTab({
     }, [prefillWarehouseId]);
 
     useEffect(() => {
-        if (!cloneData) return;
-        setWarehouseId((cloneData.warehouse_id as string) || "");
-        setExportType((cloneData.export_type as string) || "TRANSFER");
+        if (!cloneData && !editData) return;
+        const dataSource = editData || cloneData;
+
+        setWarehouseId((dataSource?.warehouse_id as string) || "");
+        setExportType((dataSource?.export_type as string) || "TRANSFER");
         setDestinationWarehouseId(
-            (cloneData.destination_warehouse_id as string) || "",
+            (dataSource?.destination_warehouse_id as string) ||
+            (dataSource?.recipient_department as string) ||
+            "",
         );
-        setNotes((cloneData.notes as string) || "");
+        setNotes((dataSource?.notes as string) || "");
         
-        if (Array.isArray(cloneData.items)) {
+        if (Array.isArray(dataSource?.items)) {
             setItems(
-                (cloneData.items as any[]).map((item) => ({
+                (dataSource?.items as any[]).map((item) => ({
                     id: crypto.randomUUID(),
                     product_id: item.product_id || "",
                     product_name: item.product_name || "",
@@ -277,9 +285,25 @@ export default function CreateExportTab({
                 }))
             );
         }
+
+        if (editData && Array.isArray(editData.attachment_urls)) {
+            setFiles(editData.attachment_urls.map((url: string) => {
+                const name = url.split("/").pop() || "attachment";
+                return {
+                    id: crypto.randomUUID(),
+                    file: new File([], name),
+                    name,
+                    size: 0,
+                    type: "application/octet-stream",
+                    progress: 100,
+                    url,
+                    error: null,
+                };
+            }));
+        }
         
         setStep(0);
-    }, [cloneData]);
+    }, [cloneData, editData]);
 
     const { locations: allLocations } = useWarehouseLocations();
     const { locations, loading: locationsLoading } = useWarehouseLocations(
@@ -575,7 +599,7 @@ export default function CreateExportTab({
                 uploadedUrls.push(url);
             }
 
-            await createExportVoucher({
+            const payload = {
                 warehouse_id: warehouseId,
                 export_type: exportType,
                 recipient_name:
@@ -596,17 +620,23 @@ export default function CreateExportTab({
                     notes: item.notes || undefined,
                 })),
                 action_time: new Date().toISOString(),
-            });
+            };
+
+            if (isEdit && editData?.id) {
+                await updateExportVoucher(editData.id as string, payload);
+            } else {
+                await createExportVoucher(payload);
+            }
         };
 
         const promise = submitAction();
         
         gooeyToast.promise(promise, {
-            loading: exportText.toast.creating,
-            success: exportText.toast.createSuccess,
+            loading: isEdit ? "\u0110ang c\u1eadp nh\u1eadt phi\u1ebfu xu\u1ea5t kho..." : exportText.toast.creating,
+            success: isEdit ? "C\u1eadp nh\u1eadt th\u00e0nh c\u00f4ng" : exportText.toast.createSuccess,
             error: (err: any) => err?.message || exportText.toast.createError,
             description: {
-                success: exportText.toast.createSuccessDesc,
+                success: isEdit ? "Phi\u1ebfu xu\u1ea5t kho \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt." : exportText.toast.createSuccessDesc,
                 error: exportText.toast.createErrorDesc,
             },
             action: {

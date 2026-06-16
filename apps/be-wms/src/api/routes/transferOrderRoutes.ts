@@ -9,6 +9,7 @@ import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   createHandler,
+  updateHandler,
   listHandler,
   getDetailHandler,
   createExportHandler,
@@ -25,6 +26,7 @@ router.use(requireAuth);
 router.post("/", createHandler);
 router.get("/", listHandler);
 router.get("/:id", getDetailHandler);
+router.put("/:id", updateHandler);
 
 // ── Transfer → Export (1-click) ──
 router.post("/:id/create-export", createExportHandler);

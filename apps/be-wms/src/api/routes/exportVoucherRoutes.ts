@@ -9,6 +9,7 @@ import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   createHandler,
+  updateHandler,
   getActiveHandler,
   getCompletedHandler,
   getByIdHandler,
@@ -27,6 +28,7 @@ router.post("/", createHandler);
 router.get("/", getActiveHandler);
 router.get("/completed", getCompletedHandler);
 router.get("/:id", getByIdHandler);
+router.put("/:id", updateHandler);
 
 // ── Picking session ──
 router.put("/:id/picking-actuals", savePickingHandler);

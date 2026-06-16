@@ -32,6 +32,11 @@ export async function createExportVoucher(data: Record<string, unknown>) {
   return apiFetch("/", { method: "POST", body: JSON.stringify(data) });
 }
 
+/** Update an editable export voucher */
+export async function updateExportVoucher(id: string, data: Record<string, unknown>) {
+  return apiFetch(`/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
 /** Save picking actuals */
 export async function savePickingActuals(
   voucherId: string,

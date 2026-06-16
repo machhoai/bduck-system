@@ -75,6 +75,9 @@ export type CreateTransferOrderInput = z.infer<
   typeof createTransferOrderSchema
 >;
 
+export const updateTransferOrderSchema = createTransferOrderSchema;
+export type UpdateTransferOrderInput = CreateTransferOrderInput;
+
 // ─────────────────────────────────────────────
 // ERROR HELPERS
 // ─────────────────────────────────────────────
@@ -274,7 +277,7 @@ export async function createTransferOrder(
       userId,
       { voucher_number: orderNumber, creator_name: creatorName },
     );
-    if (approvals.length === 0) {
+    if (approvals.length === 0 && !isIntra) {
       await onApprovalCompleted(orderId, "SYSTEM_AUTO_APPROVE");
     }
   } catch (error) {
@@ -295,6 +298,165 @@ export async function createTransferOrder(
   });
 
   return order;
+}
+
+export async function updateTransferOrder(
+  orderId: string,
+  input: UpdateTransferOrderInput,
+  userId: string,
+): Promise<TransferOrder> {
+  const oldOrder = await transferRepo.findById(orderId);
+  if (!oldOrder) throw createError(404, "Khong tim thay phieu dieu chuyen.", "找不到调拨单。");
+
+  if (oldOrder.creator_id !== userId) {
+    throw createError(403, "Ban khong co quyen sua phieu dieu chuyen nay.", "您没有权限修改此调拨单。");
+  }
+
+  const allowedStatuses = [
+    TransferOrderStatus.DRAFT,
+    TransferOrderStatus.PENDING_APPROVAL,
+    TransferOrderStatus.REJECTED,
+  ];
+  if (!allowedStatuses.includes(oldOrder.status)) {
+    throw createError(400, "Chi co the sua phieu dang cho duyet hoac bi tu choi.", "只能修改待审批或已拒绝的单据。");
+  }
+
+  const isIntra = input.transfer_type === TransferType.INTRA_WAREHOUSE;
+  if (isIntra && input.source_warehouse_id !== input.destination_warehouse_id) {
+    throw createError(400, "Dieu chuyen trong kho: kho nguon va kho dich phai giong nhau.", "库内调拨：源仓库和目标仓库必须相同。");
+  }
+  if (!isIntra && input.source_warehouse_id === input.destination_warehouse_id) {
+    throw createError(400, "Dieu chuyen lien kho: kho nguon va kho dich phai khac nhau.", "跨库调拨：源仓库和目标仓库必须不同。");
+  }
+  if (isIntra) {
+    for (const item of input.items) {
+      if (!item.destination_location_id) {
+        throw createError(400, "Dieu chuyen trong kho: moi san pham phai chon vi tri dich.", "库内调拨：每个产品必须选择目标库位。");
+      }
+      if (item.source_location_id === item.destination_location_id) {
+        throw createError(400, "Vi tri nguon va vi tri dich khong duoc giong nhau.", "源库位和目标库位不能相同。");
+      }
+    }
+  }
+
+  const configEntityType: ProcessEntityType = isIntra
+    ? "TRANSFER_INTRA"
+    : "TRANSFER_ORDER";
+  const config = await configRepo.findByEntityType(
+    configEntityType,
+    input.source_warehouse_id,
+  );
+  const createExportOpt = config?.step_options?.create_export as any;
+  const receivingOpt = config?.step_options?.receiving as any;
+  const configSnapshot = {
+    auto_approve: config?.auto_approve ?? isIntra,
+    auto_create_export: createExportOpt?.auto_create_export !== false,
+    require_receiving: receivingOpt?.enabled !== false,
+    require_evidence: receivingOpt?.require_evidence === true,
+  };
+
+  if (config?.require_evidence && (!input.attachment_urls || input.attachment_urls.length === 0)) {
+    throw createError(400, "Bat buoc tai len chung tu khi sua phieu dieu chuyen.", "修改调拨单时必须上传凭证。");
+  }
+
+  if (config?.require_otp) {
+    if (!input.otp) {
+      throw createError(400, "Ma xac thuc OTP la bat buoc.", "验证码是必需的。");
+    }
+    const isOtpValid = await verifyMfa(userId, input.otp);
+    if (!isOtpValid) {
+      throw createError(400, "Ma xac thuc OTP khong hop le hoac da het han.", "验证码无效或已过期。");
+    }
+  }
+
+  const now = new Date();
+  const actionTime = input.action_time ? new Date(input.action_time) : now;
+  const newOrder: Partial<TransferOrder> = {
+    transfer_type: input.transfer_type,
+    source_warehouse_id: input.source_warehouse_id,
+    destination_warehouse_id: input.destination_warehouse_id,
+    status: TransferOrderStatus.PENDING_APPROVAL,
+    approver_id: null,
+    approved_at: null,
+    export_voucher_id: null,
+    received_by: null,
+    received_at: null,
+    dispatched_at: null,
+    attachment_urls: input.attachment_urls ?? [],
+    config_snapshot: configSnapshot,
+    notes: input.notes ?? null,
+    updated_at: now,
+    sync_time: now,
+    action_time: actionTime,
+  };
+
+  const items: TransferOrderItem[] = input.items.map((item) => ({
+    id: randomUUID(),
+    transfer_order_id: orderId,
+    product_id: item.product_id,
+    source_location_id: item.source_location_id,
+    destination_location_id: item.destination_location_id ?? null,
+    quantity: item.quantity,
+    received_quantity: null,
+    status: TransferItemStatus.PENDING,
+    is_deleted: false,
+  }));
+
+  const orderRef = db.collection("transfer_orders").doc(orderId);
+  const batch = db.batch();
+  batch.update(orderRef, newOrder);
+
+  const oldItemsSnap = await orderRef.collection("items").get();
+  for (const doc of oldItemsSnap.docs) batch.delete(doc.ref);
+  for (const item of items) {
+    batch.set(orderRef.collection("items").doc(item.id), item);
+  }
+
+  const oldApprovalsSnap = await db.collection("pending_approvals")
+    .where("entity_type", "in", ["TRANSFER_ORDER", "TRANSFER_INTRA"])
+    .where("entity_id", "==", orderId)
+    .get();
+  for (const doc of oldApprovalsSnap.docs) batch.delete(doc.ref);
+
+  await batch.commit();
+
+  await logAudit({
+    entity_type: configEntityType,
+    entity_id: orderId,
+    warehouse_id: input.source_warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: userId,
+    old_value: oldOrder as unknown as Record<string, unknown>,
+    new_value: newOrder as unknown as Record<string, unknown>,
+    action_time: actionTime,
+  });
+
+  try {
+    let creatorName: string | undefined;
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        creatorName = u?.full_name || u?.email || undefined;
+      }
+    } catch {}
+
+    const approvals = await approvalService.createApprovalsForEntity(
+      configEntityType,
+      orderId,
+      input.source_warehouse_id,
+      userId,
+      { voucher_number: oldOrder.order_number, creator_name: creatorName },
+    );
+
+    if (approvals.length === 0 && !isIntra) {
+      await onApprovalCompleted(orderId, "SYSTEM_AUTO_APPROVE");
+    }
+  } catch (error) {
+    console.error("[transferOrderService] Approval recreation failed:", error);
+  }
+
+  return { ...oldOrder, ...newOrder } as TransferOrder;
 }
 
 // ─────────────────────────────────────────────

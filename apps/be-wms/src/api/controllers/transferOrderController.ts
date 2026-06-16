@@ -9,6 +9,8 @@ import type { Request, Response, NextFunction } from "express";
 import {
   createTransferOrder,
   createTransferOrderSchema,
+  updateTransferOrder,
+  updateTransferOrderSchema,
   createExportFromTransfer,
   receiveTransfer,
   completeReceiving,
@@ -61,6 +63,57 @@ export async function createHandler(
     });
   } catch (error: any) {
     console.error("[transferOrderController] Create error:", error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      data: null,
+      messages: error.messages || { vi: error.message, zh: error.message },
+    });
+  }
+}
+
+export async function updateHandler(
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+): Promise<void> {
+  try {
+    const userId =
+      (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
+    const parseResult = updateTransferOrderSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi:
+            "Du lieu khong hop le: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
+          zh:
+            "数据无效: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
+        },
+      });
+      return;
+    }
+
+    const order = await updateTransferOrder(
+      req.params.id as string,
+      parseResult.data,
+      userId,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: order,
+      messages: {
+        vi: "Phieu dieu chuyen da duoc cap nhat thanh cong.",
+        zh: "调拨单已成功更新。",
+      },
+    });
+  } catch (error: any) {
+    console.error("[transferOrderController] Update error:", error);
     const statusCode = error.statusCode || 500;
     res.status(statusCode).json({
       success: false,
