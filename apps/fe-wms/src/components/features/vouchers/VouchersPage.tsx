@@ -15,6 +15,7 @@ import ImportVoucherSkeleton from "../import-vouchers/ImportVoucherSkeleton";
 import { EditImportVoucherModal } from "../import-vouchers/EditImportVoucherModal";
 
 type TabId = "create" | "inProgress" | "history";
+type VoucherType = "IMPORT" | "EXPORT" | "TRANSFER";
 
 interface TabDef {
     id: TabId;
@@ -34,6 +35,13 @@ const TAB_DEFINITIONS: TabDef[] = [
     { id: "inProgress", labelKey: "inProgress", icon: ClipboardList },
     { id: "history", labelKey: "history", icon: History },
 ];
+
+function parseVoucherType(value: string | null): VoucherType | undefined {
+    if (value === "IMPORT" || value === "EXPORT" || value === "TRANSFER") {
+        return value;
+    }
+    return undefined;
+}
 
 function MetricCard({
     icon,
@@ -73,8 +81,9 @@ export default function VouchersPage() {
     const searchParams = useSearchParams();
     const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
     const prefillVoucherId = searchParams.get("voucherId") || undefined;
+    const prefillVoucherType = parseVoucherType(searchParams.get("type"));
     const [activeTab, setActiveTab] = useState<TabId>(
-        prefillWarehouseId || prefillVoucherId ? "create" : "inProgress",
+        prefillWarehouseId || prefillVoucherId || prefillVoucherType ? "create" : "inProgress",
     );
     const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
         null,
@@ -85,10 +94,10 @@ export default function VouchersPage() {
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
-        if (prefillWarehouseId || prefillVoucherId) {
+        if (prefillWarehouseId || prefillVoucherId || prefillVoucherType) {
             setActiveTab("create");
         }
-    }, [prefillWarehouseId, prefillVoucherId]);
+    }, [prefillWarehouseId, prefillVoucherId, prefillVoucherType]);
 
     const visibleTabs = useMemo(
         () =>
@@ -218,6 +227,7 @@ export default function VouchersPage() {
                         <UnifiedCreateTab
                             cloneData={cloneData}
                             prefillWarehouseId={prefillWarehouseId}
+                            prefillVoucherType={prefillVoucherType}
                             onCreated={() => {
                                 setCloneData(null);
                                 setActiveTab("inProgress");

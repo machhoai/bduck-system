@@ -1,34 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CreateVoucherTab from "../import-vouchers/CreateVoucherTab";
 import CreateExportTab from "../export-vouchers/CreateExportTab";
 import CreateTransferTab from "../transfers/CreateTransferTab";
 import { ArrowDownCircle, ArrowUpCircle, ArrowRightCircle } from "lucide-react";
 import { useTranslation } from "../../../lib/i18n";
 
+type VoucherType = "IMPORT" | "EXPORT" | "TRANSFER";
+
 interface UnifiedCreateTabProps {
     cloneData?: Record<string, unknown> | null;
     prefillWarehouseId?: string;
+    prefillVoucherType?: VoucherType;
     onCreated: () => void;
 }
 
-type VoucherType = "IMPORT" | "EXPORT" | "TRANSFER";
-
-export default function UnifiedCreateTab({ cloneData, prefillWarehouseId, onCreated }: UnifiedCreateTabProps) {
-    const { t } = useTranslation();
-    
-    // If we have cloneData, we can infer the type from it (cloneData.type if we passed it in, or structure)
-    // For simplicity, we default to IMPORT, or whatever type is cloned
-    const [voucherType, setVoucherType] = useState<VoucherType>(() => {
-        if (cloneData) {
-            if (cloneData.type) return cloneData.type as VoucherType;
-            if ("export_type" in cloneData) return "EXPORT";
-            if ("transfer_type" in cloneData) return "TRANSFER";
-            return "IMPORT";
-        }
+function resolveVoucherType(
+    cloneData?: Record<string, unknown> | null,
+    prefillVoucherType?: VoucherType,
+): VoucherType {
+    if (cloneData) {
+        if (cloneData.type) return cloneData.type as VoucherType;
+        if ("export_type" in cloneData) return "EXPORT";
+        if ("transfer_type" in cloneData) return "TRANSFER";
         return "IMPORT";
-    });
+    }
+    if (prefillVoucherType) return prefillVoucherType;
+    return "IMPORT";
+}
+
+export default function UnifiedCreateTab({ cloneData, prefillWarehouseId, prefillVoucherType, onCreated }: UnifiedCreateTabProps) {
+    const { t } = useTranslation();
+
+    const [voucherType, setVoucherType] = useState<VoucherType>(() =>
+        resolveVoucherType(cloneData, prefillVoucherType),
+    );
+
+    useEffect(() => {
+        setVoucherType(resolveVoucherType(cloneData, prefillVoucherType));
+    }, [cloneData, prefillVoucherType]);
 
     return (
         <div className="flex flex-col flex-1 h-full">

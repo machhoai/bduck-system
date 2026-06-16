@@ -44,10 +44,10 @@ import { gooeyToast } from "goey-toast";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
-import type { ImportVoucher } from "@bduck/shared-types";
+import { useProcessConfig } from "@/hooks/useProcessConfig";
+import type { ImportVoucher, ProcessEntityType } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
-import { useProcessConfig } from "@/hooks/useApprovalApi";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 
 interface VoucherDetailDrawerProps {
@@ -132,7 +132,7 @@ function Field({
 }
 
 // ── Determine entity type from voucher ──
-function getEntityType(voucher: ImportVoucher): string {
+function getEntityType(voucher: ImportVoucher): ProcessEntityType {
     if ("export_type" in voucher || "recipient_name" in voucher) return "EXPORT_VOUCHER";
     if ("transfer_type" in voucher || "source_warehouse_id" in voucher) return "TRANSFER_ORDER";
     return "IMPORT_VOUCHER";

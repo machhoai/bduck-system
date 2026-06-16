@@ -107,18 +107,18 @@ export function WarehouseDetailHero({
                                 </p>
                                 <div className="flex gap-2 w-full">
                                     <ActionLink
-                                        href={`/import-vouchers?warehouseId=${warehouseId}`}
+                                        href={`/vouchers?warehouseId=${warehouseId}&type=IMPORT`}
                                         label={t.warehouses.import}
                                         tone="primary"
                                         icon={<ArrowDownToLine size={18} />}
                                     />
                                     <ActionLink
-                                        href={`/export-vouchers?warehouseId=${warehouseId}`}
+                                        href={`/vouchers?warehouseId=${warehouseId}&type=EXPORT`}
                                         label={t.warehouses.export}
                                         icon={<ArrowUpFromLine size={18} />}
                                     />
                                     <ActionLink
-                                        href={`/transfers?warehouseId=${warehouseId}`}
+                                        href={`/vouchers?warehouseId=${warehouseId}&type=TRANSFER`}
                                         label={t.warehouses.transfer}
                                         icon={<ArrowRightLeft size={18} />}
                                     />
@@ -170,18 +170,18 @@ export function WarehouseDetailHero({
 
                         <div className="grid grid-cols-2 gap-2">
                             <ActionLink
-                                href={`/import-vouchers?warehouseId=${warehouseId}`}
+                                href={`/vouchers?warehouseId=${warehouseId}&type=IMPORT`}
                                 label={t.warehouses.import}
                                 tone="primary"
                                 icon={<ArrowDownToLine size={18} />}
                             />
                             <ActionLink
-                                href={`/export-vouchers?warehouseId=${warehouseId}`}
+                                href={`/vouchers?warehouseId=${warehouseId}&type=EXPORT`}
                                 label={t.warehouses.export}
                                 icon={<ArrowUpFromLine size={18} />}
                             />
                             <ActionLink
-                                href={`/transfers?warehouseId=${warehouseId}`}
+                                href={`/vouchers?warehouseId=${warehouseId}&type=TRANSFER`}
                                 label={t.warehouses.transfer}
                                 icon={<ArrowRightLeft size={18} />}
                             />
