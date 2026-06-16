@@ -10,6 +10,8 @@ import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 import { BreadcrumbNav } from "../ui/BreadcrumbNav";
 import { useExportStore } from "../../stores/useExportStore";
+import { WarehouseExportModal } from "./WarehouseExportModal";
+import type { ExportRequestOptions } from "@/utils/exportExcel";
 import { tours } from "../../config/tours";
 import { gooeyToast } from "goey-toast";
 import IonIcon from "../ui/IonIcon";
@@ -28,6 +30,7 @@ export default function TopBar() {
     const pathname = usePathname();
     const [isAtDashboard, setIsAtDashboard] = useState(pathname === "/dashboard");
     const [scrolled, setScrolled] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const { exportConfig, isExporting, triggerExport } = useExportStore();
     const { startNextStep } = useNextStep();
 
@@ -45,6 +48,26 @@ export default function TopBar() {
     useEffect(() => {
         setIsAtDashboard(pathname === "/dashboard");
     }, [pathname]);
+
+    const runExport = async (options?: ExportRequestOptions) => {
+        const exportTask = triggerExport(options);
+        gooeyToast.promise(exportTask, {
+            loading: t.common.exporting,
+            success: t.common.exportSuccess,
+            error: t.common.exportError,
+            preset: 'snappy',
+            description: {
+                success: t.common.exportSuccessDescription,
+                error: t.common.exportErrorDescription
+            }
+        });
+        try {
+            await exportTask;
+            setIsExportModalOpen(false);
+        } catch {
+            // Toast already renders the export failure from the same promise.
+        }
+    };
 
     return (
         <div id="wms-topbar" className={`flex absolute top-0 z-50 w-full items-start justify-between gap-2 px-4 pt-2 ${scrolled ? "h-20" : "h-12"}`}>
@@ -88,16 +111,11 @@ export default function TopBar() {
                 <div className="overflow-hidden z-50">
                     <button
                         onClick={() => {
-                            gooeyToast.promise(triggerExport(), {
-                                loading: t.common.exporting,
-                                success: t.common.exportSuccess,
-                                error: t.common.exportError,
-                                preset: 'snappy',
-                                description: {
-                                    success: t.common.exportSuccessDescription,
-                                    error: t.common.exportErrorDescription
-                                }
-                            });
+                            if (exportConfig?.dialog?.type === "warehouse") {
+                                setIsExportModalOpen(true);
+                                return;
+                            }
+                            void runExport();
                         }}
                         disabled={isExporting}
                         className={`flex h-8 px-3 items-center gap-1.5 justify-center rounded-full bg-green-600 text-[var(--color-text-on-dark)] shadow-sm hover:bg-green-700 disabled:opacity-50 transition-all duration-300 ${exportConfig ? "" : "translate-x-[120px]"}`}
@@ -118,6 +136,15 @@ export default function TopBar() {
                 </button>
                 <NotificationBell />
             </div>
+            {exportConfig?.dialog?.type === "warehouse" && (
+                <WarehouseExportModal
+                    isOpen={isExportModalOpen}
+                    config={exportConfig.dialog}
+                    isExporting={isExporting}
+                    onClose={() => setIsExportModalOpen(false)}
+                    onSubmit={runExport}
+                />
+            )}
         </div>
     );
 }

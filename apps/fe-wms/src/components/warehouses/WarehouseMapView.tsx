@@ -219,10 +219,10 @@ export function WarehouseMapView({
                     <div className="flex h-full flex-col items-center justify-center bg-[var(--color-surface-card)] p-4 text-center">
                         <WarehouseIcon size={48} className="mx-auto mb-3 text-[var(--color-text-muted)] opacity-50" />
                         <h3 className="mb-2 text-lg font-semibold text-[var(--color-text-primary)]">
-                            Không thể tải bản đồ
+                            {t.warehouses.mapLoadError}
                         </h3>
                         <p className="text-sm text-[var(--color-text-muted)]">
-                            Trình duyệt của bạn không hỗ trợ WebGL hoặc tính năng tăng tốc phần cứng (Hardware Acceleration) đang bị tắt. Vui lòng bật nó trong cài đặt trình duyệt để xem bản đồ.
+                            {t.warehouses.webglErrorDesc}
                         </p>
                     </div>
                 ) : MAPBOX_TOKEN ? (

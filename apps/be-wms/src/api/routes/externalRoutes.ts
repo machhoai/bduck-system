@@ -17,6 +17,9 @@ router.get("/products", requireApiKey(["products.read"]), externalScanController
 router.post("/scan", requireApiKey(["scan"]), externalScanController.scan);
 router.get("/scan", requireApiKey(["scan"]), externalScanController.getMyScans);
 
+// /api/external/v1/location-queue
+router.get("/location-queue", requireApiKey(["scan"]), externalScanController.getLocationScans);
+
 // /api/external/v1/scan/:scanId
 router.delete("/scan/:scanId", requireApiKey(["external_scan.manage_queue"]), externalScanController.cancelScan);
 
