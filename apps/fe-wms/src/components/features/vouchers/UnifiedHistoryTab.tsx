@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     PackageOpen,
     Search,
@@ -19,10 +19,12 @@ import { useTranslation } from "../../../lib/i18n";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useUsers } from "../../../hooks/useUsers";
 import VoucherDetailDrawer from "../import-vouchers/VoucherDetailDrawer";
+import TransferDetailDrawer from "../transfers/TransferDetailDrawer";
 
 interface UnifiedHistoryTabProps {
     vouchers: UnifiedVoucher[];
     onClone: (voucherData: Record<string, unknown>) => void;
+    initialTypeFilter?: string;
 }
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; icon: React.ElementType; labelKey: string }> = {
@@ -97,21 +99,26 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
     }, []);
 }
 
-export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryTabProps) {
+export default function UnifiedHistoryTab({ vouchers, onClone, initialTypeFilter }: UnifiedHistoryTabProps) {
     const { t } = useTranslation();
     const { warehouses } = useWarehouses();
     const { users } = useUsers();
 
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<string>("");
+    const [typeFilter, setTypeFilter] = useState<string>(initialTypeFilter ?? "");
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [creatorFilter, setCreatorFilter] = useState<string>("");
     const [approverFilter, setApproverFilter] = useState<string>("");
     const [sort, setSort] = useState<"newest" | "oldest">("newest");
     const [selectedVoucher, setSelectedVoucher] = useState<UnifiedVoucher | null>(null);
+    const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
 
     const warehouseById = useMemo(() => new Map(warehouses.map(w => [w.id, w])), [warehouses]);
     const userById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+
+    useEffect(() => {
+        setTypeFilter(initialTypeFilter ?? "");
+    }, [initialTypeFilter]);
 
     const filteredVouchers = useMemo(() => {
         let list = [...vouchers];
@@ -158,10 +165,10 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     <PackageOpen size={24} className="text-[var(--color-text-muted)]" />
                 </div>
                 <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
-                    {t.vouchers?.historyTab?.emptyTitle || "Chưa có lịch sử lệnh nào"}
+                    {(t as any).vouchers?.historyTab?.emptyTitle || "Chưa có lịch sử lệnh nào"}
                 </p>
                 <p className="w-full text-xs leading-5 text-[var(--color-text-muted)]">
-                    {t.vouchers?.historyTab?.emptyHint || "Các lệnh đã hoàn thành hoặc bị hủy sẽ xuất hiện ở đây."}
+                    {(t as any).vouchers?.historyTab?.emptyHint || "Các lệnh đã hoàn thành hoặc bị hủy sẽ xuất hiện ở đây."}
                 </p>
             </div>
         );
@@ -177,14 +184,14 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder={t.vouchers?.inProgressTab?.searchPlaceholder || "Tìm theo mã lệnh, ghi chú..."}
+                        placeholder={(t as any).vouchers?.inProgressTab?.searchPlaceholder || "Tìm theo mã lệnh, ghi chú..."}
                         className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--color-border-focus)]"
                     />
                 </div>
 
                 <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-border-subtle)]">
                     <Filter size={14} className="text-[var(--color-text-muted)]" />
-                    <span className="text-xs font-medium text-[var(--color-text-secondary)]">{t.vouchers?.historyTab?.advancedFilter || "Lọc nâng cao:"}</span>
+                    <span className="text-xs font-medium text-[var(--color-text-secondary)]">{(t as any).vouchers?.historyTab?.advancedFilter || "Lọc nâng cao:"}</span>
                 </div>
 
                 <div className="flex gap-2">
@@ -192,25 +199,25 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                         onClick={() => setTypeFilter("")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterAll || "Tất cả"}
+                        {(t as any).vouchers?.inProgressTab?.filterAll || "Tất cả"}
                     </button>
                     <button
                         onClick={() => setTypeFilter("IMPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "IMPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterImport || "Nhập kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterImport || "Nhập kho"}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("EXPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "EXPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterExport || "Xuất kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterExport || "Xuất kho"}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("TRANSFER")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "TRANSFER" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterTransfer || "Điều chuyển"}
+                        {(t as any).vouchers?.inProgressTab?.filterTransfer || "Điều chuyển"}
                     </button>
                 </div>
 
@@ -219,7 +226,7 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     onChange={(e) => setCreatorFilter(e.target.value)}
                     className="h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] max-w-[150px]"
                 >
-                    <option value="">{t.vouchers?.historyTab?.creatorAll || "Người tạo (Tất cả)"}</option>
+                    <option value="">{(t as any).vouchers?.historyTab?.creatorAll || "Người tạo (Tất cả)"}</option>
                     {users.map(u => (
                         <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
                     ))}
@@ -230,7 +237,7 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     onChange={(e) => setApproverFilter(e.target.value)}
                     className="h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] max-w-[150px]"
                 >
-                    <option value="">{t.vouchers?.historyTab?.approverAll || "Người duyệt (Tất cả)"}</option>
+                    <option value="">{(t as any).vouchers?.historyTab?.approverAll || "Người duyệt (Tất cả)"}</option>
                     {users.map(u => (
                         <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
                     ))}
@@ -241,8 +248,8 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     onChange={(e) => setSort(e.target.value as any)}
                     className="h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
                 >
-                    <option value="newest">{t.vouchers?.inProgressTab?.sortNewest || "Mới nhất trước"}</option>
-                    <option value="oldest">{t.vouchers?.inProgressTab?.sortOldest || "Cũ nhất trước"}</option>
+                    <option value="newest">{(t as any).vouchers?.inProgressTab?.sortNewest || "Mới nhất trước"}</option>
+                    <option value="oldest">{(t as any).vouchers?.inProgressTab?.sortOldest || "Cũ nhất trước"}</option>
                 </select>
             </div>
 
@@ -274,7 +281,10 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     return (
                         <div
                             key={voucher.id}
-                            onClick={() => setSelectedVoucher(voucher)}
+                            onClick={() => {
+                                if (voucher.type === "TRANSFER") setSelectedTransferId(voucher.id);
+                                else setSelectedVoucher(voucher);
+                            }}
                             className="flex cursor-pointer flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 shadow-sm transition-all hover:border-[var(--color-border-focus)] hover:shadow-md"
                         >
                             <div className="flex items-start justify-between gap-2">
@@ -287,12 +297,12 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                                             {voucher.voucher_number}
                                         </h3>
                                         <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] mt-0.5">
-                                            <span>{warehouse?.name || t.vouchers?.inProgressTab?.unknownWarehouse || "Kho không xác định"}</span>
+                                            <span>{warehouse?.name || (t as any).vouchers?.inProgressTab?.unknownWarehouse || "Kho không xác định"}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
-                                    {t.importVoucher?.status?.[voucher.status] || voucher.status}
+                                    {(t as any).importVoucher?.status?.[voucher.status] || voucher.status}
                                 </span>
                             </div>
 
@@ -308,7 +318,7 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                                 {voucher.approver_id && (
                                     <div className="flex items-center gap-2 text-xs text-[var(--color-status-approved-text)]">
                                         <ClipboardSignature size={12} className="shrink-0" />
-                                        <span className="truncate">{t.vouchers?.inProgressTab?.approver || "Người duyệt: "}{userById.get(voucher.approver_id)?.full_name || voucher.approver_id}</span>
+                                        <span className="truncate">{(t as any).vouchers?.inProgressTab?.approver || "Người duyệt: "}{userById.get(voucher.approver_id)?.full_name || voucher.approver_id}</span>
                                     </div>
                                 )}
                             </div>
@@ -326,6 +336,13 @@ export default function UnifiedHistoryTab({ vouchers, onClone }: UnifiedHistoryT
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
                     onClone={onClone}
+                />
+            )}
+
+            {selectedTransferId && (
+                <TransferDetailDrawer
+                    orderId={selectedTransferId}
+                    onClose={() => setSelectedTransferId(null)}
                 />
             )}
         </div>

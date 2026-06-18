@@ -1,5 +1,5 @@
-import ImportVoucherPage from "../../../components/features/import-vouchers/ImportVoucherPage";
+import { redirect } from "next/navigation";
 
-export default function ImportVouchersRoute() {
-    return <ImportVoucherPage />;
+export default function ImportVouchersRedirectPage() {
+    redirect("/vouchers?type=IMPORT");
 }

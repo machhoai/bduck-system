@@ -10,26 +10,31 @@ import {
     Calendar,
     User,
     ClipboardSignature,
-    Play
+    Play,
+    CheckCircle,
+    ArrowDownRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { gooeyToast } from "goey-toast";
 import type { UnifiedVoucher } from "../../../types/unified-voucher";
 import { useTranslation } from "../../../lib/i18n";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useUsers } from "../../../hooks/useUsers";
 import { useUserStore } from "../../../stores/useUserStore";
 import { fetchConfigByEntityType } from "../../../hooks/useApprovalApi";
+import { completeExportVoucher } from "../../../hooks/useExportVoucherApi";
 import type { ProcessConfig } from "@bduck/shared-types";
 import VoucherDetailDrawer from "../import-vouchers/VoucherDetailDrawer";
+import TransferDetailDrawer from "../transfers/TransferDetailDrawer";
 import ReceivingSessionDrawer from "../../tasks/ReceivingSessionDrawer";
 import PickingSessionDrawer from "../../tasks/PickingSessionDrawer";
-// import TransferSessionDrawer from "../../tasks/TransferSessionDrawer"; // If it exists, add it if needed later.
 
 interface UnifiedInProgressTabProps {
     vouchers: UnifiedVoucher[];
     onClone: (voucherData: Record<string, unknown>) => void;
     onEdit?: (voucherData: Record<string, unknown>) => void;
+    initialTypeFilter?: string;
 }
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; icon: React.ElementType; labelKey: string }> = {
@@ -107,16 +112,19 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
     }, []);
 }
 
-export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: UnifiedInProgressTabProps) {
+export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initialTypeFilter }: UnifiedInProgressTabProps) {
     const { t } = useTranslation();
+    const exportText = t.exportVoucher as any;
+    const transferText = t.transfer as any;
     const { warehouses } = useWarehouses();
     const { users } = useUsers();
 
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<string>("");
+    const [typeFilter, setTypeFilter] = useState<string>(initialTypeFilter ?? "");
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [sort, setSort] = useState<"newest" | "oldest">("newest");
     const [selectedVoucher, setSelectedVoucher] = useState<UnifiedVoucher | null>(null);
+    const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
 
     const user = useUserStore((state) => state.user);
     const roleIds = useUserStore((state) => state.roleIds);
@@ -141,6 +149,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
         return () => { disposed = true; };
     }, []);
 
+    useEffect(() => {
+        setTypeFilter(initialTypeFilter ?? "");
+    }, [initialTypeFilter]);
+
     const canPerformSession = (voucher: UnifiedVoucher) => {
         if (hasPermission("admin")) return true;
 
@@ -158,6 +170,24 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
             return true;
         }
         return false; // Transfer or other types not handled yet
+    };
+
+    const handleCompleteExport = async (voucherId: string) => {
+        await gooeyToast.promise(completeExportVoucher(voucherId), {
+            loading: exportText.toast?.completing ?? "Dang hoan thanh phieu xuat...",
+            success: exportText.toast?.completeSuccess ?? "Da hoan thanh phieu xuat",
+            error: exportText.toast?.completeError ?? "Khong the hoan thanh phieu xuat",
+            description: {
+                success: exportText.toast?.completeSuccessDesc ?? "Lenh xuat da duoc chuyen sang hoan thanh.",
+                error: t.common.retry,
+            },
+            action: {
+                error: {
+                    label: t.common.retry,
+                    onClick: () => void handleCompleteExport(voucherId),
+                },
+            },
+        });
     };
 
     const warehouseById = useMemo(() => new Map(warehouses.map(w => [w.id, w])), [warehouses]);
@@ -200,10 +230,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                     <PackageOpen size={24} className="text-[var(--color-text-muted)]" />
                 </div>
                 <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
-                    {t.vouchers?.inProgressTab?.emptyTitle || "Chưa có lệnh nào đang xử lý"}
+                    {(t as any).vouchers?.inProgressTab?.emptyTitle || "Chưa có lệnh nào đang xử lý"}
                 </p>
                 <p className="w-full text-xs leading-5 text-[var(--color-text-muted)]">
-                    {t.vouchers?.inProgressTab?.emptyHint || "Lệnh nháp hoặc đang chờ duyệt sẽ xuất hiện ở đây."}
+                    {(t as any).vouchers?.inProgressTab?.emptyHint || "Lệnh nháp hoặc đang chờ duyệt sẽ xuất hiện ở đây."}
                 </p>
             </div>
         );
@@ -219,7 +249,7 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder={t.vouchers?.inProgressTab?.searchPlaceholder || "Tìm theo mã lệnh, ghi chú..."}
+                        placeholder={(t as any).vouchers?.inProgressTab?.searchPlaceholder || "Tìm theo mã lệnh, ghi chú..."}
                         className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--color-border-focus)]"
                     />
                 </div>
@@ -230,25 +260,25 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                         onClick={() => setTypeFilter("")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterAll || "Tất cả"}
+                        {(t as any).vouchers?.inProgressTab?.filterAll || "Tất cả"}
                     </button>
                     <button
                         onClick={() => setTypeFilter("IMPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "IMPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterImport || "Nhập kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterImport || "Nhập kho"}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("EXPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "EXPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterExport || "Xuất kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterExport || "Xuất kho"}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("TRANSFER")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "TRANSFER" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {t.vouchers?.inProgressTab?.filterTransfer || "Điều chuyển"}
+                        {(t as any).vouchers?.inProgressTab?.filterTransfer || "Điều chuyển"}
                     </button>
                 </div>
                 {/* <select
@@ -267,8 +297,8 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                     onChange={(e) => setSort(e.target.value as any)}
                     className="h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
                 >
-                    <option value="newest">{t.vouchers?.inProgressTab?.sortNewest || "Mới nhất trước"}</option>
-                    <option value="oldest">{t.vouchers?.inProgressTab?.sortOldest || "Cũ nhất trước"}</option>
+                    <option value="newest">{(t as any).vouchers?.inProgressTab?.sortNewest || "Mới nhất trước"}</option>
+                    <option value="oldest">{(t as any).vouchers?.inProgressTab?.sortOldest || "Cũ nhất trước"}</option>
                 </select>
             </div>
 
@@ -300,7 +330,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                     return (
                         <div
                             key={voucher.id}
-                            onClick={() => setSelectedVoucher(voucher)}
+                            onClick={() => {
+                                if (voucher.type === "TRANSFER") setSelectedTransferId(voucher.id);
+                                else setSelectedVoucher(voucher);
+                            }}
                             className="flex cursor-pointer flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 shadow-sm transition-all hover:border-[var(--color-border-focus)] hover:shadow-md"
                         >
                             <div className="flex items-start justify-between gap-2">
@@ -339,6 +372,34 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                                             <span>Tiếp tục</span>
                                         </button>
                                     )}
+                                    {voucher.type === "EXPORT" && voucher.status === "SHIPPED" && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void handleCompleteExport(voucher.id);
+                                            }}
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
+                                            title={exportText.actions?.complete ?? "Hoan thanh"}
+                                        >
+                                            <CheckCircle size={12} />
+                                            <span>{exportText.actions?.complete ?? "Hoan thanh"}</span>
+                                        </button>
+                                    )}
+                                    {voucher.type === "TRANSFER" && (voucher.status === "PENDING_RECEIVE" || voucher.status === "RECEIVING") && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedTransferId(voucher.id);
+                                            }}
+                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-status-transit-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
+                                            title={transferText.actions?.receive ?? "Nhan hang"}
+                                        >
+                                            <ArrowDownRight size={12} />
+                                            <span>{transferText.actions?.receive ?? "Nhan hang"}</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -354,7 +415,7 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                                 {voucher.approver_id && (
                                     <div className="flex items-center gap-2 text-xs text-[var(--color-status-approved-text)]">
                                         <ClipboardSignature size={12} className="shrink-0" />
-                                        <span className="truncate">{t.vouchers?.inProgressTab?.approver || "Người duyệt: "}{userById.get(voucher.approver_id)?.full_name || voucher.approver_id}</span>
+                                        <span className="truncate">{(t as any).vouchers?.inProgressTab?.approver || "Người duyệt: "}{userById.get(voucher.approver_id)?.full_name || voucher.approver_id}</span>
                                     </div>
                                 )}
                             </div>
@@ -373,6 +434,13 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit }: Unif
                     onClose={() => setSelectedVoucher(null)}
                     onClone={onClone}
                     onEdit={onEdit}
+                />
+            )}
+
+            {selectedTransferId && (
+                <TransferDetailDrawer
+                    orderId={selectedTransferId}
+                    onClose={() => setSelectedTransferId(null)}
                 />
             )}
 

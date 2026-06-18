@@ -1,5 +1,5 @@
-import ExportVoucherPage from "../../../components/features/export-vouchers/ExportVoucherPage";
+import { redirect } from "next/navigation";
 
-export default function ExportVouchersRoute() {
-    return <ExportVoucherPage />;
+export default function ExportVouchersRedirectPage() {
+    redirect("/vouchers?type=EXPORT");
 }

@@ -80,10 +80,9 @@ export default function VouchersPage() {
     const hasPermission = useUserStore((state) => state.hasPermission);
     const searchParams = useSearchParams();
     const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
-    const prefillVoucherId = searchParams.get("voucherId") || undefined;
     const prefillVoucherType = parseVoucherType(searchParams.get("type"));
     const [activeTab, setActiveTab] = useState<TabId>(
-        prefillWarehouseId || prefillVoucherId || prefillVoucherType ? "create" : "inProgress",
+        prefillWarehouseId ? "create" : "inProgress",
     );
     const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
         null,
@@ -94,10 +93,10 @@ export default function VouchersPage() {
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
-        if (prefillWarehouseId || prefillVoucherId || prefillVoucherType) {
+        if (prefillWarehouseId) {
             setActiveTab("create");
         }
-    }, [prefillWarehouseId, prefillVoucherId, prefillVoucherType]);
+    }, [prefillWarehouseId]);
 
     const visibleTabs = useMemo(
         () =>
@@ -240,6 +239,7 @@ export default function VouchersPage() {
                             vouchers={activeVouchers}
                             onClone={handleCloneToCreate}
                             onEdit={handleEditVoucher}
+                            initialTypeFilter={prefillVoucherType}
                         />
                     )}
 
@@ -247,6 +247,7 @@ export default function VouchersPage() {
                         <UnifiedHistoryTab
                             vouchers={completedVouchers}
                             onClone={handleCloneToCreate}
+                            initialTypeFilter={prefillVoucherType}
                         />
                     )}
                 </div>

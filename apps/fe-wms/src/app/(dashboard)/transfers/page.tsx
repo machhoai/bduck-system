@@ -1,5 +1,5 @@
-import TransferPage from "../../../components/features/transfers/TransferPage";
+import { redirect } from "next/navigation";
 
-export default function TransfersRoute() {
-    return <TransferPage />;
+export default function TransfersRedirectPage() {
+    redirect("/vouchers?type=TRANSFER");
 }
