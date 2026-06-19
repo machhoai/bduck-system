@@ -330,9 +330,25 @@ export async function completeReceiving(
 ): Promise<void> {
   // Import dynamically to avoid circular dependency
   const { updateInventoryATP } = await import("./actions/updateInventoryATP.js");
+  const { createNonconformity } = await import(
+    "./actions/createNonconformity.js"
+  );
 
   // Call ATP update directly — no registry lookup
   await updateInventoryATP(
+    {},
+    {
+      instanceId: `direct_${voucherId}`,
+      entityPayload: {
+        voucher_id: voucherId,
+        entity_type: "IMPORT_VOUCHER",
+      },
+      userId,
+    },
+  );
+
+  // Create post-receiving exception reports and lock affected inventory buckets.
+  await createNonconformity(
     {},
     {
       instanceId: `direct_${voucherId}`,

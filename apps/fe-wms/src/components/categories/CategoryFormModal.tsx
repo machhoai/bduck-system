@@ -95,7 +95,7 @@ export default function CategoryFormModal({
       await gooeyToast.promise(saveAction(), {
         loading: t.categories.saving,
         success: t.categories.saveSuccess,
-        error: (err: any) => err.message || t.categories.saveError,
+        error: t.categories.saveError,
         description: {
           success: isEdit ? t.categories.edit : t.categories.addNew,
           error: t.common.retry,

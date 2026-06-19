@@ -21,7 +21,7 @@ const API_BASE_URL =
 type ApiCollectionResponse<T> = {
   success?: boolean;
   data?: T[];
-  messages?: { vi?: string };
+  messages?: { vi?: string; zh?: string };
 };
 
 async function fetchCollection<T>(

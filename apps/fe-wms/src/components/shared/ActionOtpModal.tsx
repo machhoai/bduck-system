@@ -3,6 +3,8 @@ import { LockClosedIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { useUserStore } from "../../stores/useUserStore";
+import { useTranslation } from "@/lib/i18n";
+import { ACTION_OTP_TEXT } from "@/lib/i18n/componentTranslations";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
@@ -17,10 +19,12 @@ interface ActionOtpModalProps {
 export function ActionOtpModal({
     onConfirm,
     onCancel,
-    title = "Xác thực hành động",
-    description = "Thao tác này yêu cầu xác thực OTP. Vui lòng nhập mã để tiếp tục.",
+    title,
+    description,
     isSubmitting = false,
 }: ActionOtpModalProps) {
+    const { lang } = useTranslation();
+    const copy = ACTION_OTP_TEXT[lang === "zh" ? "zh" : "vi"];
     const { user } = useUserStore();
     const [code, setCode] = useState("");
     const [method, setMethod] = useState<"totp" | "email">(user?.mfa_enabled ? "totp" : "email");
@@ -33,19 +37,19 @@ export function ActionOtpModal({
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
                 }).then(async (res) => {
-                    if (!res.ok) throw new Error("Gửi email thất bại");
+                    if (!res.ok) throw new Error(copy.sendEmailFailed);
                     return res.json();
                 }),
                 {
-                    loading: "Đang gửi mã OTP qua email...",
-                    success: "Mã OTP đã được gửi đến email của bạn",
-                    error: "Đã xảy ra lỗi khi gửi mã",
+                    loading: copy.sendingEmailOtp,
+                    success: copy.emailOtpSent,
+                    error: copy.sendOtpError,
                 }
             );
         } catch (e) {
             console.error(e);
         }
-    }, []);
+    }, [copy]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,8 +74,8 @@ export function ActionOtpModal({
                         <LockClosedIcon className="h-6 w-6 text-blue-600" />
                     </div>
 
-                    <h3 className="mb-2 text-lg font-bold text-gray-900">{title}</h3>
-                    <p className="mb-6 text-sm text-gray-500">{description}</p>
+                    <h3 className="mb-2 text-lg font-bold text-gray-900">{title ?? copy.title}</h3>
+                    <p className="mb-6 text-sm text-gray-500">{description ?? copy.description}</p>
 
                     <form onSubmit={handleSubmit} className="w-full">
                         <input
@@ -93,7 +97,7 @@ export function ActionOtpModal({
                             {isSubmitting ? (
                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                             ) : (
-                                "Xác nhận"
+                                copy.confirm
                             )}
                         </button>
                     </form>
@@ -108,7 +112,7 @@ export function ActionOtpModal({
                             className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 transition-colors hover:text-blue-600 disabled:opacity-50"
                         >
                             <EnvelopeIcon className="h-4 w-4" />
-                            Gửi mã OTP qua Email
+                            {copy.sendEmailOtp}
                         </button>
                     )}
 
@@ -118,7 +122,7 @@ export function ActionOtpModal({
                             disabled={isSubmitting}
                             className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 transition-colors hover:text-blue-600 disabled:opacity-50"
                         >
-                            Gửi lại mã OTP
+                            {copy.resendEmailOtp}
                         </button>
                     )}
                 </div>

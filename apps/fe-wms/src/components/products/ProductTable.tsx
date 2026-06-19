@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import type { Product } from "@bduck/shared-types";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useTranslation } from "@/lib/i18n";
+import { PRODUCT_TABLE_TEXT } from "@/lib/i18n/componentTranslations";
 
 interface ProductTableProps {
   products: Product[];
@@ -26,6 +28,8 @@ export function ProductTable({
   onDelete,
   onAddNew,
 }: ProductTableProps) {
+  const { lang } = useTranslation();
+  const copy = PRODUCT_TABLE_TEXT[lang === "zh" ? "zh" : "vi"];
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredProducts = products.filter(
@@ -46,7 +50,7 @@ export function ProductTable({
           />
           <input
             type="text"
-            placeholder="Tìm kiếm theo Tên, Mã SKU hoặc Barcode..."
+            placeholder={copy.searchPlaceholder}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-white border border-[var(--color-border-subtle)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] focus:border-[var(--color-border-focus)] transition-all text-sm"
@@ -58,7 +62,7 @@ export function ProductTable({
           className="w-full sm:w-auto px-5 py-2.5 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
         >
           <Plus size={18} />
-          Thêm Sản phẩm
+          {copy.addProduct}
         </button>
       </div>
 
@@ -67,12 +71,12 @@ export function ProductTable({
         <table className="w-full text-left min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-              <th className="px-4 py-4">Sản phẩm</th>
-              <th className="px-4 py-4">Mã SKU / Barcode</th>
-              <th className="px-4 py-4">Phân loại</th>
-              <th className="px-4 py-4 text-center">ĐVT</th>
-              <th className="px-4 py-4 text-center">Serial Tracking</th>
-              <th className="px-4 py-4 text-right">Thao tác</th>
+              <th className="px-4 py-4">{copy.columns.product}</th>
+              <th className="px-4 py-4">{copy.columns.skuBarcode}</th>
+              <th className="px-4 py-4">{copy.columns.category}</th>
+              <th className="px-4 py-4 text-center">{copy.columns.unit}</th>
+              <th className="px-4 py-4 text-center">{copy.columns.serialTracking}</th>
+              <th className="px-4 py-4 text-right">{copy.columns.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -112,12 +116,12 @@ export function ProductTable({
                       <Package size={28} className="text-gray-400" />
                     </div>
                     <p className="text-lg font-medium text-gray-900 mb-1">
-                      Không tìm thấy sản phẩm nào
+                      {copy.emptyTitle}
                     </p>
                     <p className="w-full text-sm text-gray-500">
                       {searchTerm
-                        ? "Thử tìm kiếm với từ khóa khác."
-                        : "Chưa có dữ liệu sản phẩm trên hệ thống. Hãy thêm mới."}
+                        ? copy.emptySearchHint
+                        : copy.emptyHint}
                     </p>
                   </div>
                 </td>
@@ -148,7 +152,7 @@ export function ProductTable({
                           {product.name}
                         </p>
                         <p className="text-xs text-gray-500 line-clamp-1">
-                          {product.description || "Không có mô tả"}
+                          {product.description || copy.noDescription}
                         </p>
                       </div>
                     </div>
@@ -182,11 +186,11 @@ export function ProductTable({
                   <td className="px-4 py-4 text-center">
                     {product.is_serialized ? (
                       <span className="inline-flex px-2 py-1 bg-[var(--color-status-completed-bg-muted)] text-[var(--color-status-completed-text)] text-xs font-semibold rounded-full">
-                        Có
+                        {copy.yes}
                       </span>
                     ) : (
                       <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
-                        Không
+                        {copy.no}
                       </span>
                     )}
                   </td>
@@ -195,7 +199,7 @@ export function ProductTable({
                       <button
                         onClick={() => onEdit(product)}
                         className="p-1.5 text-[var(--color-status-approved-text)] hover:bg-[var(--color-status-approved-bg)] rounded-md transition-colors"
-                        title="Chỉnh sửa"
+                        title={copy.edit}
                       >
                         <Edit2 size={16} />
                       </button>
@@ -203,14 +207,14 @@ export function ProductTable({
                         onClick={() => {
                           if (
                             confirm(
-                              `Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`,
+                              copy.confirmDelete.replace("{{name}}", product.name),
                             )
                           ) {
                             onDelete(product.id);
                           }
                         }}
                         className="p-1.5 text-[var(--color-error-icon)] hover:bg-[var(--color-error-bg)] rounded-md transition-colors"
-                        title="Xóa"
+                        title={copy.delete}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -226,7 +230,7 @@ export function ProductTable({
       {/* Pagination Footer */}
       {!loading && filteredProducts.length > 0 && (
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
-          <span>Hiển thị {filteredProducts.length} sản phẩm</span>
+          <span>{copy.visibleCount.replace("{{count}}", String(filteredProducts.length))}</span>
           {/* Implement real pagination controls here later if needed */}
         </div>
       )}

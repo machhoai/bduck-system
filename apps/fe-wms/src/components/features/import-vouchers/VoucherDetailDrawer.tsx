@@ -31,6 +31,8 @@ import {
     Loader2,
     Copy,
     Edit,
+    CheckCircle2,
+    ClipboardSignature,
 } from "lucide-react";
 import {
     doc,
@@ -38,10 +40,12 @@ import {
     query as fsQuery,
     onSnapshot,
     getDoc,
+    where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { gooeyToast } from "goey-toast";
 import { useTranslation } from "@/lib/i18n";
+import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
 import { useUserStore } from "@/stores/useUserStore";
 import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
 import { useProcessConfig } from "@/hooks/useProcessConfig";
@@ -156,7 +160,8 @@ export default function VoucherDetailDrawer({
     onClone,
     onEdit,
 }: VoucherDetailDrawerProps) {
-    const { t } = useTranslation();
+    const { t, lang } = useTranslation();
+    const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
     const currentUser = useUserStore((s) => s.user);
     const hasPermission = useUserStore((s) => s.hasPermission);
 
@@ -166,6 +171,8 @@ export default function VoucherDetailDrawer({
     const [warehouseName, setWarehouseName] = useState("");
     const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [legacyApproverName, setLegacyApproverName] = useState("");
+    const [approvers, setApprovers] = useState<{ id: string; name: string; approved_at: Date | null }[]>([]);
 
     const entityType = useMemo(() => getEntityType(voucher), [voucher]);
     const { config: processConfig } = useProcessConfig(entityType, voucher.warehouse_id);
@@ -178,7 +185,7 @@ export default function VoucherDetailDrawer({
     const canForceCancel = hasPermission("vouchers.force_cancel") && !TERMINAL_STATUSES.has(voucher.status);
     const canEdit = isCreator && ["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(voucher.status) && !!onEdit;
 
-    // ── Resolve creator + warehouse names ──
+    // ── Resolve creator + warehouse + legacy approver names ──
     useEffect(() => {
         if (voucher.creator_id) {
             getDoc(doc(db, "users", voucher.creator_id))
@@ -199,7 +206,53 @@ export default function VoucherDetailDrawer({
                 })
                 .catch(() => setWarehouseName(voucher.warehouse_id));
         }
-    }, [voucher.creator_id, voucher.warehouse_id]);
+        if (voucher.approver_id) {
+            getDoc(doc(db, "users", voucher.approver_id))
+                .then((snap) => {
+                    if (snap.exists()) {
+                        const u = snap.data();
+                        setLegacyApproverName(u?.full_name || u?.email || voucher.approver_id);
+                    }
+                })
+                .catch(() => setLegacyApproverName(voucher.approver_id!));
+        }
+    }, [voucher.creator_id, voucher.warehouse_id, voucher.approver_id]);
+
+    // ── Load approvers from pending_approvals ──
+    useEffect(() => {
+        const approvalsQuery = fsQuery(
+            collection(db, "pending_approvals"),
+            where("entity_id", "==", voucher.id),
+            where("status", "==", "APPROVED")
+        );
+
+        const unsub = onSnapshot(approvalsQuery, async (snap) => {
+            const records = snap.docs.map(d => d.data());
+            records.sort((a, b) => (a.level || 0) - (b.level || 0));
+            
+            const approverData = await Promise.all(records.map(async (record) => {
+                let name = record.approver_id;
+                if (record.approver_id) {
+                    try {
+                        const uSnap = await getDoc(doc(db, "users", record.approver_id));
+                        if (uSnap.exists()) {
+                            const u = uSnap.data();
+                            name = u?.full_name || u?.email || record.approver_id;
+                        }
+                    } catch {}
+                }
+                return {
+                    id: record.approver_id,
+                    name,
+                    approved_at: record.approved_at
+                };
+            }));
+            
+            setApprovers(approverData);
+        });
+
+        return () => unsub();
+    }, [voucher.id]);
 
     // ── Load items + resolve products ──
     useEffect(() => {
@@ -323,7 +376,7 @@ export default function VoucherDetailDrawer({
         if (isSubmitting) return;
         if (!cancelReason.trim()) {
             gooeyToast.error(t.tasks.selfApproval.cancelError, {
-                description: "Vui lòng nhập lý do hủy trước khi tiếp tục.",
+                description: misc.cancelReasonRequired,
                 preset: "snappy",
                 timing: { displayDuration: 4000 },
             });
@@ -462,6 +515,34 @@ export default function VoucherDetailDrawer({
                         ) : null}
                         <Field icon={User} label={t.tasks.detail.creator} value={creatorName || voucher.creator_id} />
                         <Field icon={Calendar} label={t.tasks.detail.createdAt} value={formatDate(voucher.created_at)} />
+                        
+                        {voucher.status === "COMPLETED" && (
+                            <Field icon={CheckCircle2} label={(t as any).tasks?.detail?.completedAt || "Ngày hoàn thành"} value={formatDate(voucher.updated_at)} />
+                        )}
+                        
+                        {approvers.length > 0 ? (
+                            <div className="flex flex-col gap-1 py-2.5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
+                                        <ClipboardSignature className="h-4 w-4" />
+                                    </div>
+                                    <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                                        {(t as any).tasks?.detail?.approvers || "Người duyệt"}
+                                    </p>
+                                </div>
+                                <div className="pl-11 mt-1 space-y-1">
+                                    {approvers.map((appr, idx) => (
+                                        <div key={idx} className="flex items-center justify-between text-sm">
+                                            <span className="font-medium text-[var(--color-text-primary)]">{appr.name}</span>
+                                            <span className="text-xs text-[var(--color-text-muted)]">{formatDate(appr.approved_at)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            voucher.approver_id && <Field icon={ClipboardSignature} label={(t as any).tasks?.detail?.approver || "Người duyệt"} value={legacyApproverName || voucher.approver_id} />
+                        )}
+
                         {voucher.notes && <Field icon={FileText} label={t.tasks.detail.notes} value={voucher.notes} />}
                     </div>
 
@@ -520,7 +601,7 @@ export default function VoucherDetailDrawer({
                                         {(item.warehouse_location_name || item.source_location_name || item.destination_location_name) && (
                                             <div className="mt-1 flex flex-col gap-0.5 text-xs text-[var(--color-text-secondary)]">
                                                 {entityType === "IMPORT_VOUCHER" && item.warehouse_location_name && (
-                                                    <span>Vị trí nhập: <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
+                                                    <span>{misc.importLocation} <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
                                                 )}
                                                 {entityType === "TRANSFER_ORDER" && (item.source_location_name || item.destination_location_name) && (
                                                     <span>
@@ -530,7 +611,7 @@ export default function VoucherDetailDrawer({
                                                     </span>
                                                 )}
                                                 {entityType === "EXPORT_VOUCHER" && item.warehouse_location_name && (
-                                                    <span>Vị trí xuất: <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
+                                                    <span>{misc.exportLocation} <span className="font-medium text-[var(--color-text-primary)]">{item.warehouse_location_name}</span></span>
                                                 )}
                                             </div>
                                         )}

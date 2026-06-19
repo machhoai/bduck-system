@@ -17,6 +17,8 @@ import { useState, useCallback, useMemo } from "react";
 import { MapPin, Wand2, ChevronDown, Zap } from "lucide-react";
 import type { Product, WarehouseLocation } from "@bduck/shared-types";
 import { ProductType } from "@bduck/shared-types";
+import { useTranslation } from "@/lib/i18n";
+import { QUICK_LOCATION_ASSIGN_TEXT } from "@/lib/i18n/componentTranslations";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -42,46 +44,25 @@ interface QuickLocationAssignProps {
 
 const STRATEGY_OPTIONS: {
     id: Strategy;
-    label: string;
-    labelZh: string;
     icon: typeof MapPin;
-    description: string;
 }[] = [
     {
         id: "all-one",
-        label: "Gán tất cả một vị trí",
-        labelZh: "全部分配到一个库位",
         icon: MapPin,
-        description: "Chọn 1 vị trí → gán cho tất cả sản phẩm chưa có vị trí",
     },
     {
         id: "by-type",
-        label: "Theo loại sản phẩm",
-        labelZh: "按产品类型",
         icon: Wand2,
-        description: "Mỗi loại sản phẩm → một vị trí riêng",
     },
     {
         id: "even-odd",
-        label: "Mã chẵn / lẻ",
-        labelZh: "偶数/奇数编码",
         icon: Zap,
-        description: "SKU cuối cùng chẵn → vị trí A, lẻ → vị trí B",
     },
     {
         id: "by-stock",
-        label: "Tự động theo tồn kho",
-        labelZh: "按库存自动分配",
         icon: Wand2,
-        description: "Mỗi sản phẩm → vị trí đã có tồn kho (ATP cao nhất)",
     },
 ];
-
-const PRODUCT_TYPE_LABELS: Record<string, string> = {
-    [ProductType.EQUIPMENT]: "Thiết bị",
-    [ProductType.SOUVENIR_SALE]: "Lưu niệm (bán)",
-    [ProductType.SOUVENIR_GIFT]: "Lưu niệm (tặng)",
-};
 
 function LocationSelect({
     value,
@@ -124,6 +105,8 @@ export function QuickLocationAssign({
     onAssign,
     disabled,
 }: QuickLocationAssignProps) {
+    const { lang } = useTranslation();
+    const copy = QUICK_LOCATION_ASSIGN_TEXT[lang === "zh" ? "zh" : "vi"];
     const [isOpen, setIsOpen] = useState(false);
     const [strategy, setStrategy] = useState<Strategy>("all-one");
 
@@ -228,11 +211,11 @@ export function QuickLocationAssign({
                     <Wand2 size={11} />
                 </div>
                 <span className="flex-1 text-xs font-semibold text-[var(--color-status-intra-text)]">
-                    Phân vị trí nhanh
+                    {copy.title}
                 </span>
                 {unassignedCount > 0 && (
                     <span className="rounded-full bg-[var(--color-status-pending-bg-muted)] px-1.5 py-0.5 text-xxs font-bold text-[var(--color-status-pending-text)]">
-                        {unassignedCount} chưa có vị trí
+                        {unassignedCount} {copy.unassigned}
                     </span>
                 )}
                 <ChevronDown
@@ -257,7 +240,7 @@ export function QuickLocationAssign({
                                         : "bg-white text-[var(--color-status-intra-text)] hover:bg-[var(--color-status-intra-bg)]"
                                 }`}
                             >
-                                {opt.label}
+                                {copy.strategies[opt.id].label}
                             </button>
                         ))}
                     </div>
@@ -265,7 +248,7 @@ export function QuickLocationAssign({
                     {/* Strategy description */}
                     {selectedStrategy && (
                         <p className="text-xxs text-[var(--color-status-intra-text)]">
-                            {selectedStrategy.description}
+                            {copy.strategies[selectedStrategy.id].description}
                         </p>
                     )}
 
@@ -276,14 +259,14 @@ export function QuickLocationAssign({
                                 value={allOneLocationId}
                                 onChange={setAllOneLocationId}
                                 locations={locations}
-                                placeholder="Chọn vị trí..."
+                                placeholder={copy.chooseLocation}
                                 className="w-full"
                             />
                         )}
 
                         {strategy === "by-type" && (
                             <div className="grid gap-2 sm:grid-cols-3">
-                                {Object.entries(PRODUCT_TYPE_LABELS).map(([type, label]) => (
+                                {Object.entries(copy.productTypes).map(([type, label]) => (
                                     <label key={type} className="block">
                                         <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
                                             {label}
@@ -294,7 +277,7 @@ export function QuickLocationAssign({
                                                 setTypeMap((prev) => ({ ...prev, [type]: v }))
                                             }
                                             locations={locations}
-                                            placeholder="Chọn..."
+                                            placeholder={copy.choose}
                                             className="w-full"
                                         />
                                     </label>
@@ -306,25 +289,25 @@ export function QuickLocationAssign({
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="block">
                                     <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
-                                        Mã chẵn (0, 2, 4, 6, 8)
+                                        {copy.evenCode}
                                     </span>
                                     <LocationSelect
                                         value={evenLocationId}
                                         onChange={setEvenLocationId}
                                         locations={locations}
-                                        placeholder="Vị trí A..."
+                                        placeholder={copy.locationA}
                                         className="w-full"
                                     />
                                 </label>
                                 <label className="block">
                                     <span className="mb-1 block text-xxs font-semibold text-[var(--color-status-intra-text)]">
-                                        Mã lẻ (1, 3, 5, 7, 9)
+                                        {copy.oddCode}
                                     </span>
                                     <LocationSelect
                                         value={oddLocationId}
                                         onChange={setOddLocationId}
                                         locations={locations}
-                                        placeholder="Vị trí B..."
+                                        placeholder={copy.locationB}
                                         className="w-full"
                                     />
                                 </label>
@@ -333,8 +316,7 @@ export function QuickLocationAssign({
 
                         {strategy === "by-stock" && (
                             <p className="rounded-[var(--radius-xs)] bg-white/80 px-2.5 py-2 text-xs text-[var(--color-status-intra-text)]">
-                                Hệ thống sẽ tự động gán vào vị trí đã có tồn kho cho mỗi sản phẩm (ATP cao nhất).
-                                Sản phẩm chưa từng nhập kho sẽ được bỏ qua.
+                                {copy.stockHint}
                             </p>
                         )}
                     </div>
@@ -348,7 +330,7 @@ export function QuickLocationAssign({
                             className="flex h-7 items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-status-intra-icon)] px-3 text-xs font-semibold text-white transition-all hover:bg-[var(--color-status-intra-text)] active:scale-[0.98] disabled:opacity-40"
                         >
                             <Zap size={12} />
-                            Áp dụng
+                            {copy.apply}
                         </button>
                     </div>
                 </div>

@@ -19,13 +19,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { STATUS_BADGE_TEXT } from "@/lib/i18n/componentTranslations";
 
 // ────────────────────────────────────────────────
 // Status Config — ánh xạ status → token CSS var
 // ────────────────────────────────────────────────
 
 type StatusConfig = {
-  label: { vi: string; zh: string };
+  labelKey: keyof typeof STATUS_BADGE_TEXT.vi;
   style: string;     // Tailwind classes dùng [var(--...)]
   iconStyle: string; // class màu cho icon
   Icon: LucideIcon;
@@ -34,7 +35,7 @@ type StatusConfig = {
 const STATUS_MAP: Record<string, StatusConfig> = {
   // ── Nháp ─────────────────────────────────────
   DRAFT: {
-    label: { vi: "Nháp", zh: "草稿" },
+    labelKey: "DRAFT",
     style:
       "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] border-[var(--color-status-draft-border)]",
     iconStyle: "text-[var(--color-status-draft-text)]",
@@ -43,7 +44,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Chờ duyệt ─────────────────────────────────
   PENDING_APPROVAL: {
-    label: { vi: "Chờ duyệt", zh: "待审批" },
+    labelKey: "PENDING_APPROVAL",
     style:
       "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)] border-[var(--color-status-pending-border)]",
     iconStyle: "text-[var(--color-status-pending-icon)]",
@@ -52,7 +53,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Đã duyệt ─────────────────────────────────
   APPROVED: {
-    label: { vi: "Đã duyệt", zh: "已审批" },
+    labelKey: "APPROVED",
     style:
       "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] border-[var(--color-status-approved-border)]",
     iconStyle: "text-[var(--color-status-approved-icon)]",
@@ -61,7 +62,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Đang nhận hàng ────────────────────────────
   RECEIVING: {
-    label: { vi: "Đang nhận", zh: "收货中" },
+    labelKey: "RECEIVING",
     style:
       "bg-[var(--color-status-receiving-bg)] text-[var(--color-status-receiving-text)] border-[var(--color-status-receiving-border)]",
     iconStyle: "text-[var(--color-status-receiving-icon)]",
@@ -70,7 +71,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Hoàn thành ────────────────────────────────
   COMPLETED: {
-    label: { vi: "Hoàn thành", zh: "已完成" },
+    labelKey: "COMPLETED",
     style:
       "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)] border-[var(--color-status-completed-border)]",
     iconStyle: "text-[var(--color-status-completed-icon)]",
@@ -79,7 +80,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Từ chối ───────────────────────────────────
   REJECTED: {
-    label: { vi: "Từ chối", zh: "已拒绝" },
+    labelKey: "REJECTED",
     style:
       "bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] border-[var(--color-status-rejected-border)]",
     iconStyle: "text-[var(--color-status-rejected-icon)]",
@@ -88,7 +89,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Huỷ bỏ ───────────────────────────────────
   CANCELLED: {
-    label: { vi: "Huỷ", zh: "已取消" },
+    labelKey: "CANCELLED",
     style:
       "bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] border-[var(--color-status-rejected-border)]",
     iconStyle: "text-[var(--color-status-rejected-icon)]",
@@ -97,7 +98,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Đang picking (xuất kho) ───────────────────
   PICKING: {
-    label: { vi: "Đang lấy hàng", zh: "拣货中" },
+    labelKey: "PICKING",
     style:
       "bg-[var(--color-status-picking-bg)] text-[var(--color-status-picking-text)] border-[var(--color-status-picking-border)]",
     iconStyle: "text-[var(--color-status-picking-icon)]",
@@ -106,7 +107,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Đang vận chuyển ───────────────────────────
   IN_TRANSIT: {
-    label: { vi: "Đang vận chuyển", zh: "运输中" },
+    labelKey: "IN_TRANSIT",
     style:
       "bg-[var(--color-status-transit-bg)] text-[var(--color-status-transit-text)] border-[var(--color-status-transit-border)]",
     iconStyle: "text-[var(--color-status-transit-icon)]",
@@ -115,7 +116,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Chờ xuất (export pending) ─────────────────
   EXPORT_PENDING: {
-    label: { vi: "Chờ xuất", zh: "待出库" },
+    labelKey: "EXPORT_PENDING",
     style:
       "bg-[var(--color-status-export-bg)] text-[var(--color-status-export-text)] border-[var(--color-status-export-border)]",
     iconStyle: "text-[var(--color-status-export-icon)]",
@@ -124,7 +125,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // ── Nội bộ (intra) ────────────────────────────
   INTRA: {
-    label: { vi: "Nội bộ", zh: "内部" },
+    labelKey: "INTRA",
     style:
       "bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)] border-[var(--color-status-intra-border)]",
     iconStyle: "text-[var(--color-status-intra-icon)]",
@@ -134,7 +135,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
 // ── Fallback cho status chưa map ───────────────
 const FALLBACK_STATUS: StatusConfig = {
-  label: { vi: "Không xác định", zh: "未知" },
+  labelKey: "fallback",
   style:
     "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)] border-[var(--color-status-draft-border)]",
   iconStyle: "text-[var(--color-status-draft-text)]",
@@ -176,7 +177,7 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const config = STATUS_MAP[status] ?? FALLBACK_STATUS;
   const { Icon, style, iconStyle } = config;
-  const displayLabel = label ?? config.label[lang];
+  const displayLabel = label ?? STATUS_BADGE_TEXT[lang][config.labelKey];
 
   const sizeClasses =
     size === "sm"
@@ -219,7 +220,8 @@ export function getStatusIconStyle(status: string): string {
 }
 
 export function getStatusLabel(status: string, lang: BadgeLang = "vi"): string {
-  return (STATUS_MAP[status] ?? FALLBACK_STATUS).label[lang];
+  const config = STATUS_MAP[status] ?? FALLBACK_STATUS;
+  return STATUS_BADGE_TEXT[lang][config.labelKey];
 }
 
 export { STATUS_MAP };

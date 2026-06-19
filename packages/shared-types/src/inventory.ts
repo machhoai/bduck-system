@@ -14,8 +14,14 @@ import {
 /**
  * Inventory per location-product pair.
  *
- * ATP formula: total_quantity = atp_quantity + on_hold_quantity
- *              + in_transit_quantity + quarantine_quantity
+ * Bucket policy:
+ * - atp_quantity: good stock, the only bucket counted as Available To Promise.
+ * - on_hold_quantity: stock locked while a quantity discrepancy is reviewed.
+ * - in_transit_quantity: stock moving between warehouses.
+ * - quarantine_quantity: quality-isolated stock such as damaged/expired goods.
+ *
+ * Formula: total_quantity = atp_quantity + on_hold_quantity
+ *          + in_transit_quantity + quarantine_quantity
  *
  * UNIQUE(warehouse_location_id, product_id)
  * All export/transfer operations deduct from atp_quantity only.
@@ -34,6 +40,40 @@ export interface Inventory {
   last_count_at: Date | null;
   last_updated_at: Date;
   is_deleted?: boolean;
+}
+
+export const INVENTORY_QUANTITY_BUCKET_FIELDS = [
+  "atp_quantity",
+  "on_hold_quantity",
+  "in_transit_quantity",
+  "quarantine_quantity",
+] as const;
+
+export type InventoryQuantityBucketField =
+  (typeof INVENTORY_QUANTITY_BUCKET_FIELDS)[number];
+
+export type InventoryQuantityBuckets = Pick<
+  Inventory,
+  InventoryQuantityBucketField
+>;
+
+export const INVENTORY_ATP_BUCKET_FIELDS = ["atp_quantity"] as const;
+
+export function calculateInventoryTotalQuantity(
+  buckets: InventoryQuantityBuckets,
+): number {
+  return (
+    buckets.atp_quantity +
+    buckets.on_hold_quantity +
+    buckets.in_transit_quantity +
+    buckets.quarantine_quantity
+  );
+}
+
+export function calculateInventoryAtpQuantity(
+  buckets: Pick<Inventory, "atp_quantity">,
+): number {
+  return buckets.atp_quantity;
 }
 
 export interface InventoryStockPolicy {

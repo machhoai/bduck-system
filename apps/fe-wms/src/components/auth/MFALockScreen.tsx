@@ -4,13 +4,15 @@ import { useUserStore } from "../../stores/useUserStore";
 import { useTranslation } from "../../lib/i18n";
 import { LockClosedIcon, EnvelopeIcon, KeyIcon } from "@heroicons/react/24/outline";
 import { gooeyToast } from "goey-toast";
+import { MFA_LOCK_TEXT } from "../../lib/i18n/componentTranslations";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 export const MFALockScreen = () => {
     const { isLocked, unlockScreen } = useMFA();
     const { user } = useUserStore();
-    const { t } = useTranslation();
+    const { lang } = useTranslation();
+    const copy = MFA_LOCK_TEXT[lang === "zh" ? "zh" : "vi"];
 
     const [code, setCode] = useState("");
     const [method, setMethod] = useState<"totp" | "email">("totp");
@@ -34,13 +36,13 @@ export const MFALockScreen = () => {
                     credentials: "include",
                     headers: { "Content-Type": "application/json" }
                 }).then(async res => {
-                    if (!res.ok) throw new Error("Gửi email thất bại");
+                    if (!res.ok) throw new Error(copy.sendEmailFailed);
                     return res.json();
                 }),
                 {
-                    loading: "Đang gửi mã OTP qua email...",
-                    success: "Mã OTP đã được gửi đến email của bạn",
-                    error: "Đã xảy ra lỗi khi gửi mã"
+                    loading: copy.sendingEmailOtp,
+                    success: copy.emailOtpSent,
+                    error: copy.sendOtpError
                 }
             );
         } catch (e) {
@@ -60,17 +62,17 @@ export const MFALockScreen = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token: code })
                 }).then(async res => {
-                    if (!res.ok) throw new Error("Mã không hợp lệ");
+                    if (!res.ok) throw new Error(copy.invalidCode);
                     return res.json();
                 }),
                 {
-                    loading: "Đang xác thực...",
+                    loading: copy.verifying,
                     success: () => {
                         unlockScreen();
                         setCode("");
-                        return "Mở khóa thành công";
+                        return copy.unlockSuccess;
                     },
-                    error: "Mã xác thực không đúng"
+                    error: copy.verifyError
                 }
             );
         } catch (error) {
@@ -87,11 +89,11 @@ export const MFALockScreen = () => {
                     <LockClosedIcon className="w-8 h-8 text-blue-600" />
                 </div>
 
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Hệ thống đã khóa</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">{copy.title}</h2>
                 <p className="text-sm text-gray-500 text-center mb-6">
                     {method === "totp"
-                        ? "Nhập mã từ ứng dụng Google Authenticator để tiếp tục."
-                        : "Nhập mã OTP 6 số đã được gửi đến email của bạn để tiếp tục."}
+                        ? copy.totpInstruction
+                        : copy.emailInstruction}
                 </p>
 
                 <form onSubmit={handleVerify} className="w-full">
@@ -110,7 +112,7 @@ export const MFALockScreen = () => {
                         disabled={code.length !== 6}
                         className="w-full h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-medium text-sm transition-colors"
                     >
-                        Mở khóa
+                        {copy.unlock}
                     </button>
                 </form>
 
@@ -123,7 +125,7 @@ export const MFALockScreen = () => {
                         className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors w-full p-2"
                     >
                         <EnvelopeIcon className="w-4 h-4" />
-                        Sử dụng mã OTP qua Email
+                        {copy.useEmailOtp}
                     </button>
                 )}
 
@@ -132,7 +134,7 @@ export const MFALockScreen = () => {
                         onClick={sendEmailOtp}
                         className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors w-full p-2"
                     >
-                        Gửi lại mã OTP
+                        {copy.resendOtp}
                     </button>
                 )}
             </div>

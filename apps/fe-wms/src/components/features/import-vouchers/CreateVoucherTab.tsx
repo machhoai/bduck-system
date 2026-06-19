@@ -35,8 +35,12 @@ import { VoucherExcelImportPanel } from "./VoucherExcelImportPanel";
 import { QuickLocationAssign } from "./QuickLocationAssign";
 import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { ActionOtpModal } from "../../shared/ActionOtpModal";
+import {
+    IMPORT_VOUCHER_CREATE_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 
-type Locale = "vi" | "zh";
+type Locale = ComponentLocale;
 
 interface CreateVoucherTabProps {
     cloneData?: Record<string, unknown> | null;
@@ -67,84 +71,6 @@ interface VoucherItemData {
 }
 
 type StepId = 0 | 1 | 2 | 3;
-
-const COPY = {
-    vi: {
-        uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
-        supplierPlaceholder: "Nhập tên nhà cung cấp",
-        poPlaceholder: "Tuỳ chọn, dùng để đối chiếu đơn mua",
-        notesPlaceholder:
-            "Ghi chú ca nhập, điều kiện giao hàng, yêu cầu kiểm đếm...",
-        searchProduct: "Tìm theo tên, SKU hoặc barcode",
-        chooseFromCatalog: "Chọn sản phẩm từ danh mục",
-        selectedItems: "Danh sách nhập kho",
-        emptyItems: "Chọn sản phẩm từ danh mục để thêm vào phiếu nhập.",
-        noProducts: "Không tìm thấy sản phẩm phù hợp.",
-        loadingProducts: "Đang tải sản phẩm...",
-        addProduct: "Thêm vào phiếu",
-        added: "Đã thêm",
-        expectedQty: "SL dự kiến",
-        unitPrice: "Đơn giá",
-        location: "Vị trí kho",
-        condition: "Tình trạng",
-        good: "Tốt",
-        damaged: "Hư hỏng",
-        missing: "Thiếu",
-        itemNote: "Ghi chú cho sản phẩm này",
-        summary: "Tóm tắt phiếu nhập",
-        attachments: "Tệp đính kèm",
-        products: "Mặt hàng",
-        totalQty: "Tổng số lượng",
-        totalValue: "Tổng giá trị",
-        noWarehouse: "Chưa chọn kho",
-        noPo: "Không có",
-        noNotes: "Không có ghi chú",
-        selectLocation: "Chọn vị trí",
-        selectWarehouseFirst: "Chọn kho trước",
-        loadingLocations: "Đang tải vị trí...",
-        noLocations: "Kho chưa có vị trí",
-        upload: "Tải chứng từ",
-        info: "Thông tin",
-        confirm: "Xác nhận",
-    },
-    zh: {
-        uploadHint: "PDF、DOCX、XLSX、CSV - 每个文件最多 20MB - 最多 5 个文件",
-        supplierPlaceholder: "输入供应商名称",
-        poPlaceholder: "可选，用于采购单对账",
-        notesPlaceholder: "入库班次备注、交货条件、清点要求...",
-        searchProduct: "按名称、SKU 或条码搜索",
-        chooseFromCatalog: "从目录选择产品",
-        selectedItems: "入库清单",
-        emptyItems: "请从目录中选择产品加入入库单。",
-        noProducts: "未找到匹配产品。",
-        loadingProducts: "正在加载产品...",
-        addProduct: "加入单据",
-        added: "已添加",
-        expectedQty: "预计数量",
-        unitPrice: "单价",
-        location: "库位",
-        condition: "状态",
-        good: "良好",
-        damaged: "损坏",
-        missing: "缺少",
-        itemNote: "此产品备注",
-        summary: "入库单摘要",
-        attachments: "附件",
-        products: "商品",
-        totalQty: "总数量",
-        totalValue: "总价值",
-        noWarehouse: "未选择仓库",
-        noPo: "无",
-        noNotes: "无备注",
-        selectLocation: "选择库位",
-        selectWarehouseFirst: "请先选择仓库",
-        loadingLocations: "正在加载库位...",
-        noLocations: "此仓库暂无库位",
-        upload: "上传文件",
-        info: "信息",
-        confirm: "确认",
-    },
-} as const;
 
 const STEPS = [
     { id: 0 as StepId, icon: Warehouse, key: "info", fallback: "Thông tin" },
@@ -215,7 +141,7 @@ export default function CreateVoucherTab({
 }: CreateVoucherTabProps) {
     const { t, lang } = useTranslation();
     const locale = (lang || "vi") as Locale;
-    const copy = COPY[locale];
+    const copy = IMPORT_VOUCHER_CREATE_TEXT[locale];
     const user = useUserStore((state) => state.user);
     const { warehouses, loading: warehousesLoading } = useWarehouses();
     const { locations: allLocations } = useWarehouseLocations();
@@ -584,7 +510,7 @@ export default function CreateVoucherTab({
                 (t as any).importVoucher?.toast?.createSuccess ??
                 "Đã tạo phiếu nhập kho"
             ),
-            error: (err: any) => err?.message || ((t as any).importVoucher?.toast?.createError ?? "Lỗi khi xử lý phiếu nhập kho"),
+            error: (t as any).importVoucher?.toast?.createError ?? "Lỗi khi xử lý phiếu nhập kho",
             description: {
                 success: isEdit ? "Phiếu đã được cập nhật." : (
                     (t as any).importVoucher?.toast?.createSuccessDesc ??

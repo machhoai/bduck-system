@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useUserStore } from "../../stores/useUserStore";
 import { gooeyToast } from "goey-toast";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "@/lib/i18n";
+import { MFA_SETUP_TEXT } from "@/lib/i18n/componentTranslations";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+    const { lang } = useTranslation();
+    const copy = MFA_SETUP_TEXT[lang === "zh" ? "zh" : "vi"];
     const { user } = useUserStore();
     const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
     const [secret, setSecret] = useState<string | null>(null);
@@ -26,7 +30,7 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
             setSecret(data.secret);
             setStep("scan");
         } catch (e) {
-            gooeyToast.error("Không thể tải cấu hình mã hóa.");
+            gooeyToast.error(copy.setupLoadError);
         } finally {
             setIsLoading(false);
         }
@@ -44,20 +48,20 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token: code, secret })
                 }).then(async res => {
-                    if (!res.ok) throw new Error("Mã không hợp lệ");
+                    if (!res.ok) throw new Error(copy.invalidCode);
                     return res.json();
                 }),
                 {
-                    loading: "Đang xác thực...",
+                    loading: copy.verifying,
                     success: () => {
                         if (user) {
                             // Update local state optimistic
                             useUserStore.setState({ user: { ...user, mfa_enabled: true } });
                         }
                         setTimeout(onClose, 500);
-                        return "Liên kết thành công!";
+                        return copy.linked;
                     },
-                    error: "Mã xác nhận không hợp lệ"
+                    error: copy.invalidConfirmCode
                 }
             );
         } catch (error) {
@@ -75,20 +79,20 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 </button>
 
                 <h2 className="text-xl font-bold text-gray-900 mb-4">
-                    Google Authenticator
+                    {copy.title}
                 </h2>
 
                 {step === "start" && (
                     <div className="flex flex-col gap-4">
                         <p className="text-sm text-gray-600">
-                            Thiết lập xác thực 2 lớp (2FA) bằng ứng dụng Google Authenticator để bảo vệ tài khoản của bạn.
+                            {copy.intro}
                         </p>
                         <button
                             onClick={handleStartSetup}
                             disabled={isLoading}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
                         >
-                            Bắt đầu thiết lập
+                            {copy.start}
                         </button>
                     </div>
                 )}
@@ -96,20 +100,24 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 {step === "scan" && qrCodeUrl && (
                     <div className="flex flex-col gap-4 items-center">
                         <p className="text-sm text-gray-600 text-center">
-                            1. Mở ứng dụng Google Authenticator.<br />
-                            2. Quét mã QR dưới đây.
+                            {copy.scanInstruction.split("\n").map((line) => (
+                                <span key={line}>
+                                    {line}
+                                    <br />
+                                </span>
+                            ))}
                         </p>
                         <div className="bg-gray-100 p-2 rounded-lg">
-                            <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                            <img src={qrCodeUrl} alt={copy.qrAlt} className="w-48 h-48" />
                         </div>
                         <p className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
-                            Khóa dự phòng: {secret}
+                            {copy.backupKey} {secret}
                         </p>
                         <button
                             onClick={() => setStep("verify")}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors mt-2"
                         >
-                            Tiếp tục
+                            {copy.continue}
                         </button>
                     </div>
                 )}
@@ -117,7 +125,7 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 {step === "verify" && (
                     <div className="flex flex-col gap-4">
                         <p className="text-sm text-gray-600 text-center">
-                            Nhập mã 6 số hiện trên ứng dụng Google Authenticator của bạn để hoàn tất liên kết.
+                            {copy.verifyInstruction}
                         </p>
                         <form onSubmit={handleVerify} className="w-full flex flex-col gap-4">
                             <input
@@ -134,7 +142,7 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                                 disabled={code.length !== 6}
                                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2 rounded-lg transition-colors"
                             >
-                                Xác nhận
+                                {copy.confirm}
                             </button>
                         </form>
                     </div>

@@ -199,16 +199,22 @@ export async function downloadProductMassEditTemplate(
   const headerRow = productSheet.getRow(1);
   headerRow.height = 34;
   PRODUCT_COLUMNS.forEach((key, index) => {
+    const columnText = text.columns[key];
     const cell = headerRow.getCell(index + 1);
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
     cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: text.columns[key].required ? "FFDC2626" : "FF2563EB" },
+      fgColor: {
+        argb:
+          "required" in columnText && columnText.required
+            ? "FFDC2626"
+            : "FF2563EB",
+      },
     };
     cell.border = thinBorder("FFCBD5E1");
-    cell.note = text.columns[key].note;
+    cell.note = columnText.note;
   });
 
   // Hide ID column

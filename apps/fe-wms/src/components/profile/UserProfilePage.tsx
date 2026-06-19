@@ -6,6 +6,7 @@ import { useRoles } from "@/hooks/useRoles";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation, type Language } from "@/lib/i18n";
+import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
 import { useState } from "react";
 import { MFASetupModal } from "./MFASetupModal";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
@@ -30,6 +31,7 @@ function formatDate(dateVal: any, lang: Language) {
 
 export default function UserProfilePage() {
   const { t, lang } = useTranslation();
+  const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
   const authUser = useUserStore((s) => s.user);
   const { resetPassword, isLoading: authLoading } = useAuth();
   const { users, isLoading: usersLoading } = useUsers();
@@ -140,9 +142,9 @@ export default function UserProfilePage() {
           <div className="flex items-center gap-3">
             <ShieldCheckIcon className={`w-6 h-6 ${currentUser.mfa_enabled ? 'text-green-500' : 'text-gray-400'}`} />
             <div className="flex flex-col flex-1">
-              <span className="text-sm font-semibold text-gray-900">Xác thực 2 lớp (2FA)</span>
+              <span className="text-sm font-semibold text-gray-900">{misc.mfa2fa}</span>
               <span className="text-xs text-gray-500">
-                {currentUser.mfa_enabled ? "Đã liên kết Google Authenticator" : "Chưa thiết lập"}
+                {currentUser.mfa_enabled ? misc.mfaLinked : misc.mfaNotSetup}
               </span>
             </div>
             {!currentUser.mfa_enabled && (
@@ -150,12 +152,12 @@ export default function UserProfilePage() {
                 onClick={() => setIsMfaModalOpen(true)}
                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors"
               >
-                Liên kết
+                {misc.link}
               </button>
             )}
             {currentUser.mfa_enabled && (
               <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-md">
-                Đã bật
+                {misc.enabled}
               </span>
             )}
           </div>

@@ -29,6 +29,7 @@ import {
   type SheetColumnInfo,
   type SheetPreview,
   type VoucherColumnMapping,
+  type VoucherItemParseResult,
   type ExcelSheetInfo,
   getExcelSheets,
   parseVoucherRows,
@@ -36,6 +37,11 @@ import {
   summarizeVoucherResults,
 } from "@/utils/voucherExcelImport";
 import type { SelectedFile } from "@/components/shared/FileUploadField";
+import { useTranslation } from "@/lib/i18n";
+import {
+  EXCEL_PREVIEW_TEXT,
+  VOUCHER_EXCEL_IMPORT_TEXT,
+} from "@/lib/i18n/componentTranslations";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -56,13 +62,13 @@ type PanelPhase = "upload" | "mapping" | "preview";
 const REQUIRED_SLOTS = ["productName", "quantity"] as const;
 const OPTIONAL_SLOTS = ["sku", "unitPrice", "location", "notes"] as const;
 
-const SLOT_LABELS: Record<string, { label: string; labelZh: string; required: boolean }> = {
-  productName: { label: "Tên sản phẩm", labelZh: "产品名称", required: true },
-  quantity: { label: "Số lượng", labelZh: "数量", required: true },
-  sku: { label: "SKU / Mã SP", labelZh: "SKU", required: false },
-  unitPrice: { label: "Đơn giá", labelZh: "单价", required: false },
-  location: { label: "Vị trí kho", labelZh: "库位", required: false },
-  notes: { label: "Ghi chú", labelZh: "备注", required: false },
+const SLOT_REQUIRED: Record<string, boolean> = {
+  productName: true,
+  quantity: true,
+  sku: false,
+  unitPrice: false,
+  location: false,
+  notes: false,
 };
 
 const EMPTY_MAPPING: VoucherColumnMapping = {
@@ -119,6 +125,7 @@ function MappingSlot({
   mappedCol,
   columns,
   dragOverSlot,
+  copy,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -130,6 +137,7 @@ function MappingSlot({
   mappedCol: string | null;
   columns: SheetColumnInfo[];
   dragOverSlot: string | null;
+  copy: (typeof VOUCHER_EXCEL_IMPORT_TEXT)[keyof typeof VOUCHER_EXCEL_IMPORT_TEXT];
   onDragOver: (key: string) => void;
   onDragLeave: () => void;
   onDrop: (slotKey: string) => void;
@@ -172,7 +180,7 @@ function MappingSlot({
             {mappedColInfo.key}
           </span>
           <span className="max-w-[100px] truncate text-xs text-[var(--color-text-secondary)]">
-            {mappedColInfo.sampleValue || "(trống)"}
+            {mappedColInfo.sampleValue || copy.emptyValue}
           </span>
           <button
             type="button"
@@ -184,7 +192,7 @@ function MappingSlot({
         </div>
       ) : (
         <p className="text-xs text-[var(--color-text-muted)]">
-          {isOver ? "Thả vào đây" : "Kéo cột vào đây"}
+          {isOver ? copy.dropHere : copy.dragColumnHere}
         </p>
       )}
     </div>
@@ -196,20 +204,22 @@ function MappingSlot({
 // ─────────────────────────────────────────────
 
 function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
+  const { lang } = useTranslation();
+  const copy = EXCEL_PREVIEW_TEXT[lang === "zh" ? "zh" : "vi"];
   return (
     <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)]">
       <div className="max-h-56 overflow-auto">
         <table className="w-full min-w-[600px] text-left text-xs">
           <thead className="sticky top-0 bg-[var(--color-surface-card)] text-xxs uppercase text-[var(--color-text-muted)]">
             <tr>
-              <th className="px-3 py-2">Dòng</th>
-              <th className="px-3 py-2">Trạng thái</th>
-              <th className="px-3 py-2">Sản phẩm (catalog)</th>
-              <th className="px-3 py-2">SKU</th>
-              <th className="px-3 py-2">Vị trí</th>
-              <th className="px-3 py-2 text-right">SL</th>
-              <th className="px-3 py-2 text-right">Đơn giá</th>
-              <th className="px-3 py-2">Lỗi / Cảnh báo</th>
+              <th className="px-3 py-2">{copy.row}</th>
+              <th className="px-3 py-2">{copy.status}</th>
+              <th className="px-3 py-2">{copy.catalogProduct}</th>
+              <th className="px-3 py-2">{copy.sku}</th>
+              <th className="px-3 py-2">{copy.location}</th>
+              <th className="px-3 py-2 text-right">{copy.quantityShort}</th>
+              <th className="px-3 py-2 text-right">{copy.unitPrice}</th>
+              <th className="px-3 py-2">{copy.errorsWarnings}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border-soft)]">
@@ -229,15 +239,15 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
                   <td className="px-3 py-2">
                     {hasError ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xxs font-medium text-red-700">
-                        <AlertCircle size={10} /> Lỗi
+                        <AlertCircle size={10} /> {copy.error}
                       </span>
                     ) : hasWarn ? (
                       <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xxs font-medium text-amber-700">
-                        Cảnh báo
+                        {copy.warning}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xxs font-medium text-emerald-700">
-                        <CheckCircle2 size={10} /> Hợp lệ
+                        <CheckCircle2 size={10} /> {copy.valid}
                       </span>
                     )}
                   </td>
@@ -299,6 +309,8 @@ export function VoucherExcelImportPanel({
   onImport,
 }: VoucherExcelImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { lang } = useTranslation();
+  const copy = VOUCHER_EXCEL_IMPORT_TEXT[lang === "zh" ? "zh" : "vi"];
 
   const [phase, setPhase] = useState<PanelPhase>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -324,14 +336,14 @@ export function VoucherExcelImportPanel({
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      gooeyToast.error("Chỉ hỗ trợ file .xlsx", {
-        description: "Vui lòng chọn file Excel định dạng .xlsx.",
+      gooeyToast.error(copy.onlyXlsx, {
+        description: copy.chooseXlsx,
       });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      gooeyToast.error("File quá lớn", {
-        description: "Kích thước tối đa là 10MB.",
+      gooeyToast.error(copy.fileTooLarge, {
+        description: copy.maxSize,
       });
       return;
     }
@@ -346,13 +358,13 @@ export function VoucherExcelImportPanel({
       setSelectedSheetIndex(0);
     } catch (err) {
       console.error("[VoucherExcelImportPanel] getExcelSheets:", err);
-      gooeyToast.error("Không thể đọc danh sách sheet", {
-        description: "Vui lòng kiểm tra lại file Excel.",
+      gooeyToast.error(copy.sheetListReadFailed, {
+        description: copy.checkExcelAgain,
       });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [copy]);
 
   const handleReadColumns = useCallback(async () => {
     if (!selectedFile) return;
@@ -364,14 +376,14 @@ export function VoucherExcelImportPanel({
       setMapping(EMPTY_MAPPING);
     } catch (err) {
       console.error("[VoucherExcelImportPanel] readSheetPreview:", err);
-      gooeyToast.error("Không thể đọc file Excel", {
+      gooeyToast.error(copy.fileReadFailed, {
         description:
-          err instanceof Error ? err.message : "Vui lòng kiểm tra lại file.",
+          err instanceof Error ? err.message : copy.checkExcelAgain,
       });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile, selectedSheetIndex, startRow]);
+  }, [copy, selectedFile, selectedSheetIndex, startRow]);
 
   // ─── Bước 2: Kéo thả map cột ───
 
@@ -407,14 +419,14 @@ export function VoucherExcelImportPanel({
       setPhase("preview");
     } catch (err) {
       console.error("[VoucherExcelImportPanel] parseVoucherRows:", err);
-      gooeyToast.error("Lỗi khi đọc dữ liệu", {
+      gooeyToast.error(copy.parseFailed, {
         description:
-          err instanceof Error ? err.message : "Vui lòng thử lại.",
+          err instanceof Error ? err.message : copy.tryAgain,
       });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile, selectedSheetIndex, mapping, startRow, products, canParse]);
+  }, [copy, selectedFile, selectedSheetIndex, mapping, startRow, products, canParse]);
 
   // ─── Bước 3: Import ───
 
@@ -432,14 +444,17 @@ export function VoucherExcelImportPanel({
       }));
 
     if (validItems.length === 0) {
-      gooeyToast.error("Không có dòng hợp lệ nào để thêm.");
+      gooeyToast.error(copy.noValidRows);
       return;
     }
 
     onImport(validItems);
-    gooeyToast.success(`Đã thêm ${validItems.length} sản phẩm vào phiếu`, {
-      preset: "snappy",
-    });
+    gooeyToast.success(
+      copy.addedItems.replace("{{count}}", String(validItems.length)),
+      {
+        preset: "snappy",
+      },
+    );
     // Reset về phase upload
     setPhase("upload");
     setSelectedFile(null);
@@ -448,7 +463,7 @@ export function VoucherExcelImportPanel({
     setPreview(null);
     setMapping(EMPTY_MAPPING);
     setParseResults([]);
-  }, [parseResults, onImport]);
+  }, [copy, parseResults, onImport]);
 
   const handleReset = useCallback(() => {
     setPhase("upload");
@@ -473,10 +488,10 @@ export function VoucherExcelImportPanel({
         <FileSpreadsheet size={16} className="shrink-0 text-[var(--color-accent-success)]" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Nhập từ file Excel
+            {copy.headerTitle}
           </p>
           <p className="text-xs text-[var(--color-text-muted)]">
-            Đọc danh sách sản phẩm từ file .xlsx và tự động thêm vào phiếu
+            {copy.headerSubtitle}
           </p>
         </div>
         {phase !== "upload" && (
@@ -486,7 +501,7 @@ export function VoucherExcelImportPanel({
             className="flex h-7 items-center gap-1.5 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] px-2.5 text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-card)]"
           >
             <RotateCcw size={12} />
-            Bắt đầu lại
+            {copy.restart}
           </button>
         )}
       </div>
@@ -499,7 +514,7 @@ export function VoucherExcelImportPanel({
             {xlsxFromStep1.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-                  File Excel từ bước 1:
+                  {copy.filesFromStep1}
                 </p>
                 {xlsxFromStep1.map((f) => (
                   <button
@@ -528,7 +543,7 @@ export function VoucherExcelImportPanel({
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1 bg-[var(--color-border-soft)]" />
                   <span className="text-xxs text-[var(--color-text-muted)]">
-                    hoặc tải file khác
+                    {copy.uploadOther}
                   </span>
                   <div className="h-px flex-1 bg-[var(--color-border-soft)]" />
                 </div>
@@ -560,7 +575,7 @@ export function VoucherExcelImportPanel({
                     ✓ {selectedFile.name}
                   </span>
                 ) : (
-                  "Kéo thả hoặc nhấn để chọn file .xlsx"
+                  copy.dropzonePlaceholder
                 )}
               </p>
             </div>
@@ -581,7 +596,7 @@ export function VoucherExcelImportPanel({
               <div className="flex flex-col gap-3">
                 {availableSheets.length > 0 && (
                   <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
-                    Chọn Sheet cần đọc:
+                    {copy.selectSheet}
                     <select
                       value={selectedSheetIndex}
                       onChange={(e) => setSelectedSheetIndex(Number(e.target.value))}
@@ -598,7 +613,7 @@ export function VoucherExcelImportPanel({
                 
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
-                    Dữ liệu bắt đầu từ hàng số:
+                    {copy.startRow}
                     <input
                       type="number"
                       min={1}
@@ -621,7 +636,7 @@ export function VoucherExcelImportPanel({
                     ) : (
                       <ChevronRight size={14} />
                     )}
-                    Đọc file
+                    {copy.readFile}
                   </button>
                 </div>
               </div>
@@ -635,15 +650,15 @@ export function VoucherExcelImportPanel({
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <FileSpreadsheet size={13} />
               <span>
-                Sheet: <strong>{preview.sheetName}</strong> ·{" "}
-                {preview.totalDataRows} hàng · Hàng mẫu #{startRow}
+                {copy.sheet}: <strong>{preview.sheetName}</strong> ·{" "}
+                {preview.totalDataRows} {copy.rows} · {copy.sampleRow} #{startRow}
               </span>
             </div>
 
             {/* Các cột từ file */}
             <div>
               <p className="mb-2 text-xs font-semibold text-[var(--color-text-secondary)]">
-                Cột trong file — kéo vào slot bên dưới:
+                {copy.fileColumns}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {preview.columns.map((col) => (
@@ -660,18 +675,19 @@ export function VoucherExcelImportPanel({
             {/* Slots */}
             <div>
               <p className="mb-2 text-xs font-semibold text-[var(--color-text-secondary)]">
-                Thông tin hệ thống cần:
+                {copy.systemFields}
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {[...REQUIRED_SLOTS, ...OPTIONAL_SLOTS].map((slotKey) => (
                   <MappingSlot
                     key={slotKey}
                     slotKey={slotKey}
-                    label={SLOT_LABELS[slotKey].label}
-                    required={SLOT_LABELS[slotKey].required}
+                    label={copy.slots[slotKey as keyof typeof copy.slots]}
+                    required={SLOT_REQUIRED[slotKey]}
                     mappedCol={mapping[slotKey as keyof VoucherColumnMapping]}
                     columns={preview.columns}
                     dragOverSlot={dragOverSlot}
+                    copy={copy}
                     onDragOver={setDragOverSlot}
                     onDragLeave={() => setDragOverSlot(null)}
                     onDrop={handleDrop}
@@ -683,7 +699,7 @@ export function VoucherExcelImportPanel({
 
             {!canParse && (
               <p className="text-xs text-[var(--color-accent-warning)]">
-                ⚠ Cần kéo ít nhất "Tên sản phẩm" và "Số lượng" vào slot.
+                ⚠ {copy.requiredMappingWarning}
               </p>
             )}
 
@@ -699,7 +715,7 @@ export function VoucherExcelImportPanel({
                 ) : (
                   <ChevronRight size={14} />
                 )}
-                Đọc dữ liệu
+                {copy.readData}
               </button>
             </div>
           </div>
@@ -712,22 +728,22 @@ export function VoucherExcelImportPanel({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
                 {
-                  label: "Tổng dòng đọc",
+                  label: copy.stats.totalRows,
                   value: stats.totalRows,
                   tone: "neutral",
                 },
                 {
-                  label: "Hợp lệ",
+                  label: copy.stats.validRows,
                   value: stats.validRows,
                   tone: "success",
                 },
                 {
-                  label: "Lỗi",
+                  label: copy.stats.errorRows,
                   value: stats.errorRows,
                   tone: "error",
                 },
                 {
-                  label: "Cảnh báo",
+                  label: copy.stats.warningRows,
                   value: stats.warningRows,
                   tone: "warning",
                 },
@@ -768,7 +784,7 @@ export function VoucherExcelImportPanel({
                 className="flex h-8 items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-accent-success)] px-5 text-sm font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50"
               >
                 <CheckCircle2 size={15} />
-                Thêm {stats.validRows} sản phẩm hợp lệ vào phiếu
+                {copy.addValidItems.replace("{{count}}", String(stats.validRows))}
               </button>
             </div>
           </div>

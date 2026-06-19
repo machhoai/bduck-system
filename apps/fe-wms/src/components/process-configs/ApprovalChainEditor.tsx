@@ -3,6 +3,7 @@
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import type { ApprovalLevel, Role } from "@bduck/shared-types";
 import type { Locale, TEXT } from "./processConfigMeta";
+import { formatApprovalLevelLabel } from "@/lib/i18n/componentTranslations";
 
 type Copy = (typeof TEXT)[Locale];
 
@@ -73,8 +74,8 @@ export function ApprovalChainEditor({
         level: chain.length,
         role_id: "",
         label: {
-          vi: `Cấp duyệt ${nextLevel}`,
-          zh: `审批级别 ${nextLevel}`,
+          vi: formatApprovalLevelLabel("vi", nextLevel),
+          zh: formatApprovalLevelLabel("zh", nextLevel),
         },
         required: false,
         enabled: true,

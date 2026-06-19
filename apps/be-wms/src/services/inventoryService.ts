@@ -1,4 +1,7 @@
-import { AuditAction } from "@bduck/shared-types";
+import {
+  AuditAction,
+  calculateInventoryTotalQuantity,
+} from "@bduck/shared-types";
 import type { Inventory } from "@bduck/shared-types";
 import type { z } from "zod";
 import { randomUUID } from "crypto";
@@ -16,17 +19,6 @@ type UpdateInventoryInput = z.infer<typeof updateInventorySchema>;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Recalculate total_quantity from its 4 buckets.
- * ATP formula: total = atp + on_hold + in_transit + quarantine
- */
-const calculateTotal = (
-  atp: number,
-  onHold: number,
-  inTransit: number,
-  quarantine: number,
-): number => atp + onHold + inTransit + quarantine;
 
 const notFoundError = {
   statusCode: 404,
@@ -66,12 +58,12 @@ export const createInventory = async (
   }
 
   const id = randomUUID();
-  const totalQty = calculateTotal(
-    input.atp_quantity,
-    input.on_hold_quantity,
-    input.in_transit_quantity,
-    input.quarantine_quantity,
-  );
+  const totalQty = calculateInventoryTotalQuantity({
+    atp_quantity: input.atp_quantity,
+    on_hold_quantity: input.on_hold_quantity,
+    in_transit_quantity: input.in_transit_quantity,
+    quarantine_quantity: input.quarantine_quantity,
+  });
 
   const record = await inventoryRepo.create(id, {
     id,
@@ -144,7 +136,12 @@ export const updateInventory = async (
   const newQuarantine =
     input.quarantine_quantity ?? existing.quarantine_quantity;
 
-  const totalQty = calculateTotal(newAtp, newOnHold, newInTransit, newQuarantine);
+  const totalQty = calculateInventoryTotalQuantity({
+    atp_quantity: newAtp,
+    on_hold_quantity: newOnHold,
+    in_transit_quantity: newInTransit,
+    quarantine_quantity: newQuarantine,
+  });
 
   await inventoryRepo.update(id, {
     atp_quantity: newAtp,
@@ -276,12 +273,12 @@ export const deductAtp = async (
   }
 
   const docRef = db.collection("inventory").doc(existing.id);
-  const newTotal = calculateTotal(
-    newAtp,
-    existing.on_hold_quantity,
-    existing.in_transit_quantity,
-    existing.quarantine_quantity,
-  );
+  const newTotal = calculateInventoryTotalQuantity({
+    atp_quantity: newAtp,
+    on_hold_quantity: existing.on_hold_quantity,
+    in_transit_quantity: existing.in_transit_quantity,
+    quarantine_quantity: existing.quarantine_quantity,
+  });
 
   txn.update(docRef, {
     atp_quantity: newAtp,

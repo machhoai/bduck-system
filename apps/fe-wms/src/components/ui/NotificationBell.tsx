@@ -18,9 +18,11 @@ import { Bell, BellDot, CheckCheck, Clock, ExternalLink } from "lucide-react";
 import { useNotifications, resolveTemplate } from "@/hooks/useNotifications";
 import type { InAppNotification } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
+import { NOTIFICATION_BELL_TEXT } from "@/lib/i18n/componentTranslations";
 
 export default function NotificationBell() {
   const { lang } = useTranslation();
+  const copy = NOTIFICATION_BELL_TEXT[lang === "zh" ? "zh" : "vi"];
   const router = useRouter();
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading } =
     useNotifications();
@@ -65,11 +67,11 @@ export default function NotificationBell() {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "Vừa xong";
-    if (minutes < 60) return `${minutes} phút trước`;
-    if (hours < 24) return `${hours} giờ trước`;
-    if (days < 7) return `${days} ngày trước`;
-    return date.toLocaleDateString("vi-VN");
+    if (minutes < 1) return copy.justNow;
+    if (minutes < 60) return copy.minutesAgo.replace("{{count}}", String(minutes));
+    if (hours < 24) return copy.hoursAgo.replace("{{count}}", String(hours));
+    if (days < 7) return copy.daysAgo.replace("{{count}}", String(days));
+    return date.toLocaleDateString(lang === "zh" ? "zh-CN" : "vi-VN");
   };
 
   return (
@@ -83,7 +85,7 @@ export default function NotificationBell() {
         onClick={() => setIsOpen(!isOpen)}
         className="relative flex h-full aspect-square items-center justify-center rounded-full
           text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        aria-label="Thông báo"
+        aria-label={copy.title}
       >
         {unreadCount > 0 ? (
           <BellDot className="h-5 w-5" />
@@ -112,7 +114,7 @@ export default function NotificationBell() {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h3 className="text-sm font-bold text-gray-900">Thông báo</h3>
+            <h3 className="text-sm font-bold text-gray-900">{copy.title}</h3>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -121,7 +123,7 @@ export default function NotificationBell() {
                   transition-colors hover:text-[var(--color-brand-primary-hover)]"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Đánh dấu tất cả đã đọc
+                {copy.markAllRead}
               </button>
             )}
           </div>
@@ -143,7 +145,7 @@ export default function NotificationBell() {
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10">
                 <Bell className="h-8 w-8 text-gray-300" />
-                <p className="text-xs text-gray-400">Chưa có thông báo nào</p>
+                <p className="text-xs text-gray-400">{copy.empty}</p>
               </div>
             ) : (
               notifications.slice(0, 20).map((notif) => (
@@ -201,8 +203,8 @@ export default function NotificationBell() {
           {notifications.length > 0 && (
             <div className="border-t border-gray-100 px-4 py-2.5">
               <p className="text-center text-xxs text-gray-400">
-                {notifications.length} thông báo
-                {unreadCount > 0 && ` · ${unreadCount} chưa đọc`}
+                {notifications.length} {copy.total}
+                {unreadCount > 0 && ` · ${unreadCount} ${copy.unread}`}
               </p>
             </div>
           )}

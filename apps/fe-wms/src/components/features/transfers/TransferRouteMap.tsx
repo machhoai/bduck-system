@@ -18,51 +18,29 @@ import {
     Warehouse as WarehouseIcon,
 } from "lucide-react";
 import type { Warehouse } from "@bduck/shared-types";
+import {
+    TRANSFER_ROUTE_MAP_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 /** Default center: Ho Chi Minh City */
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769 };
 
-type Locale = "vi" | "zh";
-
-const COPY = {
-    vi: {
-        routePreview: "Lộ trình chuyển kho",
-        from: "Từ",
-        to: "Đến",
-        distance: "Khoảng cách",
-        duration: "Thời gian",
-        waiting: "Chọn kho nguồn và kho đích để xem lộ trình",
-        waitingSource: "Chọn kho nguồn",
-        waitingDest: "Chọn kho đích",
-        noCoordinates: "Kho chưa có toạ độ bản đồ",
-        loadingRoute: "Đang tải lộ trình...",
-        routeError: "Không thể tải lộ trình đường đi",
-        webGlError: "Trình duyệt không hỗ trợ WebGL.",
-    },
-    zh: {
-        routePreview: "调拨路线",
-        from: "从",
-        to: "到",
-        distance: "距离",
-        duration: "时间",
-        waiting: "选择源仓库和目标仓库以查看路线",
-        waitingSource: "选择源仓库",
-        waitingDest: "选择目标仓库",
-        noCoordinates: "仓库尚未配置地图坐标",
-        loadingRoute: "正在加载路线...",
-        routeError: "无法加载行驶路线",
-        webGlError: "浏览器不支持 WebGL。",
-    },
-} as const;
+type Locale = ComponentLocale;
 
 /** Format duration in minutes/hours */
-function formatDuration(seconds: number): string {
-    if (seconds < 3600) return `${Math.round(seconds / 60)} phút`;
-    const h = Math.floor(seconds / 3600);
-    const m = Math.round((seconds % 3600) / 60);
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+function formatDuration(
+    seconds: number,
+    copy: (typeof TRANSFER_ROUTE_MAP_TEXT)[Locale],
+): string {
+    if (seconds < 3600) return `${Math.round(seconds / 60)} ${copy.minute}`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    return minutes > 0
+        ? `${hours} ${copy.hour} ${minutes} ${copy.minute}`
+        : `${hours} ${copy.hour}`;
 }
 
 /** Format distance */
@@ -95,7 +73,7 @@ export default function TransferRouteMap({
     const [routeError, setRouteError] = useState(false);
     const [animProgress, setAnimProgress] = useState(0);
     const animRef = useRef<number>(0);
-    const copy = COPY[locale];
+    const copy = TRANSFER_ROUTE_MAP_TEXT[locale];
 
     const srcCoord = sourceWarehouse?.coordinate;
     const dstCoord = destinationWarehouse?.coordinate;
@@ -237,7 +215,7 @@ export default function TransferRouteMap({
                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.routePreview}</p>
                 </div>
                 <div className="flex h-48 items-center justify-center bg-[var(--color-surface-subtle)] text-xs text-[var(--color-text-muted)]">
-                    {webGlError ? copy.webGlError : "Missing NEXT_PUBLIC_MAPBOX_TOKEN"}
+                    {webGlError ? copy.webGlError : copy.missingMapboxToken}
                 </div>
             </section>
         );
@@ -383,7 +361,7 @@ export default function TransferRouteMap({
                                 {formatDistance(route.distance)}
                             </span>
                             <span className="rounded-full bg-[var(--color-status-completed-bg)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-status-completed-text)]">
-                                ~{formatDuration(route.duration)}
+                                ~{formatDuration(route.duration, copy)}
                             </span>
                         </div>
                     )}

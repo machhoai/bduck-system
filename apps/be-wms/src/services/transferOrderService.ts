@@ -33,6 +33,7 @@ import {
   ExportVoucherStatus,
   ExportReferenceType,
   AuditAction,
+  calculateInventoryTotalQuantity,
 } from "@bduck/shared-types";
 import type {
   TransferOrder,
@@ -590,7 +591,12 @@ async function executeIntraTransfer(
 
       if (activeRecord) {
         const newAtp = activeRecord.data.atp_quantity + entry.deltaQuantity;
-        const newTotal = activeRecord.data.total_quantity + entry.deltaQuantity;
+        const newTotal = calculateInventoryTotalQuantity({
+          atp_quantity: newAtp,
+          on_hold_quantity: activeRecord.data.on_hold_quantity,
+          in_transit_quantity: activeRecord.data.in_transit_quantity,
+          quarantine_quantity: activeRecord.data.quarantine_quantity,
+        });
 
         if (newAtp < 0 || newTotal < 0) {
           throw createError(
@@ -620,11 +626,16 @@ async function executeIntraTransfer(
           warehouse_id: entry.warehouseId,
           warehouse_location_id: entry.locationId,
           product_id: entry.productId,
-          total_quantity: entry.deltaQuantity,
           atp_quantity: entry.deltaQuantity,
           on_hold_quantity: 0,
           in_transit_quantity: 0,
           quarantine_quantity: 0,
+          total_quantity: calculateInventoryTotalQuantity({
+            atp_quantity: entry.deltaQuantity,
+            on_hold_quantity: 0,
+            in_transit_quantity: 0,
+            quarantine_quantity: 0,
+          }),
           last_count_at: null,
           last_updated_at: now,
           is_deleted: false,

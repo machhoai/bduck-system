@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../stores/useUserStore';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '../../lib/i18n';
+import { LOGIN_FORM_TEXT } from '../../lib/i18n/componentTranslations';
 
 /**
  * LoginForm — Clean Enterprise Light Theme
@@ -17,6 +19,8 @@ export default function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [mounted, setMounted] = useState(false);
     const { login, resetPassword, isLoading } = useAuth();
+    const { lang } = useTranslation();
+    const copy = LOGIN_FORM_TEXT[lang === "zh" ? "zh" : "vi"];
 
     const isAuthenticated = useUserStore(state => state.isAuthenticated);
     const permissions = useUserStore(state => state.permissions);
@@ -46,8 +50,8 @@ export default function LoginForm() {
     const handleForgotPassword = async () => {
         if (!email) {
             import("goey-toast").then(({ gooeyToast }) => {
-                gooeyToast.error("Vui lòng nhập email", {
-                    description: "Bạn cần nhập email vào ô trên để nhận liên kết khôi phục mật khẩu.",
+                gooeyToast.error(copy.emailRequired, {
+                    description: copy.emailRequiredDescription,
                 });
             });
             return;
@@ -95,7 +99,7 @@ export default function LoginForm() {
                     {/* Status indicators */}
                     <div className="mt-1 flex items-center justify-end gap-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-[var(--color-text-muted)]">Phiên bản</span>
+                            <span className="text-xs text-[var(--color-text-muted)]">{copy.version}</span>
                         </div>
                         <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
                         <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
@@ -123,7 +127,7 @@ export default function LoginForm() {
                             {/* Status indicators */}
                             <div className="mb-1 flex items-center justify-start gap-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-[var(--color-text-muted)]">Phiên bản</span>
+                                    <span className="text-xs text-[var(--color-text-muted)]">{copy.version}</span>
                                 </div>
                                 <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
                                 <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
@@ -137,7 +141,7 @@ export default function LoginForm() {
                             className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)]"
                             style={{ fontFamily: 'var(--font-display)' }}
                         >
-                            Đăng nhập
+                            {copy.title}
                         </h2>
                     </div>
 
@@ -180,7 +184,7 @@ export default function LoginForm() {
                                     htmlFor="login-password"
                                     className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]"
                                 >
-                                    Mật khẩu
+                                    {copy.password}
                                 </label>
                                 <button
                                     type="button"
@@ -188,7 +192,7 @@ export default function LoginForm() {
                                     disabled={isLoading}
                                     className="text-xs font-medium text-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary-hover)] transition-colors"
                                 >
-                                    Quên mật khẩu?
+                                    {copy.forgotPassword}
                                 </button>
                             </div>
                             <div className="relative">
@@ -220,7 +224,7 @@ export default function LoginForm() {
                     text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]
                     transition-colors cursor-pointer
                   "
-                                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                                 >
                                     {showPassword ? (
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -260,10 +264,10 @@ export default function LoginForm() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Đang xác thực...
+                                    {copy.authenticating}
                                 </span>
                             ) : (
-                                'Đăng nhập hệ thống'
+                                copy.submit
                             )}
                         </button>
                     </form>

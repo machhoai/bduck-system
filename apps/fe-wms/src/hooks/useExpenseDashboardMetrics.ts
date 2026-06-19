@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { type ExpenseCostCenter } from "@bduck/shared-types";
 import { fetchDashboardMetrics } from "./useExpenseApi";
+import { getDetailedErrorMessage } from "@/utils/apiError";
 
 export interface DashboardKPI {
   value: number;
@@ -117,8 +118,7 @@ export function useExpenseDashboardMetrics(
       setMetrics({ ...EMPTY_METRICS, ...data });
     } catch (err) {
       console.error("[useExpenseDashboardMetrics] fetch error:", err);
-      const apiErr = err as { messages?: { vi?: string } };
-      setError(apiErr.messages?.vi || "Lỗi tải dữ liệu dashboard");
+      setError(getDetailedErrorMessage(err, "Lỗi tải dữ liệu dashboard"));
       setMetrics(EMPTY_METRICS);
     } finally {
       setLoading(false);

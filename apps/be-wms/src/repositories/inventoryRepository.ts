@@ -1,4 +1,5 @@
 import { db } from "../config/firebase.js";
+import { calculateInventoryTotalQuantity } from "@bduck/shared-types";
 import type { Inventory } from "@bduck/shared-types";
 
 /**
@@ -179,7 +180,12 @@ export const upsertQuantityInTransaction = async (
       on_hold_quantity: onHoldQty,
       in_transit_quantity: inTransitQty,
       quarantine_quantity: quarantineQty,
-      total_quantity: atpQty + onHoldQty + inTransitQty + quarantineQty,
+      total_quantity: calculateInventoryTotalQuantity({
+        atp_quantity: atpQty,
+        on_hold_quantity: onHoldQty,
+        in_transit_quantity: inTransitQty,
+        quarantine_quantity: quarantineQty,
+      }),
       last_count_at: null,
       last_updated_at: now,
       is_deleted: false,
@@ -203,7 +209,12 @@ export const upsertQuantityInTransaction = async (
       on_hold_quantity: newOnHold,
       in_transit_quantity: newInTransit,
       quarantine_quantity: newQuarantine,
-      total_quantity: newAtp + newOnHold + newInTransit + newQuarantine,
+      total_quantity: calculateInventoryTotalQuantity({
+        atp_quantity: newAtp,
+        on_hold_quantity: newOnHold,
+        in_transit_quantity: newInTransit,
+        quarantine_quantity: newQuarantine,
+      }),
       last_updated_at: now,
     });
   }

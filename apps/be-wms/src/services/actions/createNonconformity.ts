@@ -1,30 +1,30 @@
 /**
- * CREATE_NONCONFORMITY — System Action Handler
- *
- * Compares actual_quantity vs expected_quantity for each item.
- * If ANY item has a discrepancy, creates a NonconformityReport.
- *
- * Per rules.md:
- * - DAMAGED items → auto quarantine (atp -= qty, quarantine += qty)
- * - Auto status lock to QUARANTINE for discrepant products
- * - Evidence is NOT required at auto-creation time (reporter = SYSTEM)
- *
- * IDEMPOTENCY: Checks if NC report already exists for this voucher.
+ * CREATE_NONCONFORMITY - system action for post-receiving exceptions.
  */
 
-import { db } from "../../config/firebase.js";
 import { randomUUID } from "crypto";
+import { db } from "../../config/firebase.js";
 import {
   AuditAction,
   NonconformitySourceType,
-  IssueType,
-  NonconformityStatus,
+  QuarantineStatus,
 } from "@bduck/shared-types";
 import { logAudit } from "../auditService.js";
+import {
+  aggregateInventoryLocks,
+  applyInventoryLocksInTransaction,
+  buildImportExceptions,
+} from "./nonconformityImportHelpers.js";
 import type {
   SystemActionContext,
   SystemActionResult,
 } from "./updateInventoryATP.js";
+
+function buildReportNumber(now: Date, index: number): string {
+  const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix = String(index + 1).padStart(3, "0");
+  return `NC-${datePart}-${suffix}-${randomUUID().slice(0, 8).toUpperCase()}`;
+}
 
 export async function createNonconformity(
   _params: Record<string, unknown>,
@@ -35,7 +35,6 @@ export async function createNonconformity(
     return { skipped: true, reason: "missing_voucher_id" };
   }
 
-  // Check idempotency: NC report already exists for this source
   const existingSnap = await db
     .collection("nonconformity_reports")
     .where("source_type", "==", NonconformitySourceType.IMPORT)
@@ -48,16 +47,18 @@ export async function createNonconformity(
     return { skipped: true, reason: "nc_report_already_exists" };
   }
 
-  // Read voucher + items
-  const voucherSnap = await db
-    .collection("import_vouchers")
-    .doc(voucherId)
-    .get();
+  const voucherSnap = await db.collection("import_vouchers").doc(voucherId).get();
   if (!voucherSnap.exists) {
     return { skipped: true, reason: "voucher_not_found" };
   }
 
   const voucher = voucherSnap.data()!;
+  const warehouseId =
+    typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : "";
+  if (!warehouseId) {
+    return { skipped: true, reason: "missing_warehouse_id" };
+  }
+
   const itemsSnap = await db
     .collection("import_vouchers")
     .doc(voucherId)
@@ -65,80 +66,92 @@ export async function createNonconformity(
     .where("is_deleted", "==", false)
     .get();
 
-  // Find items with discrepancies
-  const discrepantItems = itemsSnap.docs
-    .map((d) => d.data())
-    .filter((item) => {
-      const expected = (item.expected_quantity as number) || 0;
-      const actual = (item.actual_quantity as number) || 0;
-      return expected !== actual;
-    });
-
-  if (discrepantItems.length === 0) {
-    return { skipped: true, reason: "no_discrepancy_found" };
+  const exceptions = buildImportExceptions(itemsSnap.docs.map((doc) => doc.data()));
+  if (exceptions.length === 0) {
+    return { skipped: true, reason: "no_exception_found" };
   }
 
-  // Create NC reports for each discrepant item
-  const batch = db.batch();
-  const reportIds: string[] = [];
+  const inventoryLocks = aggregateInventoryLocks(warehouseId, exceptions);
   const now = new Date();
+  const reportPlans = exceptions.map((exception, index) => ({
+    exception,
+    reportId: randomUUID(),
+    reportNumber: buildReportNumber(now, index),
+    quarantineId:
+      exception.bucketLock === "QUARANTINE" ? randomUUID() : null,
+  }));
+  const reportIds = reportPlans.map((plan) => plan.reportId);
+  const quarantineRecordsCreated = reportPlans.filter(
+    (plan) => plan.quarantineId,
+  ).length;
 
-  for (const item of discrepantItems) {
-    const reportId = randomUUID();
-    const reportNumber = `NC-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 900) + 100)}`;
+  await db.runTransaction(async (txn) => {
+    await applyInventoryLocksInTransaction(txn, inventoryLocks);
 
-    const expected = (item.expected_quantity as number) || 0;
-    const actual = (item.actual_quantity as number) || 0;
-    const discrepancy = Math.abs(expected - actual);
-    const issueType =
-      actual < expected ? IssueType.DISCREPANCY : IssueType.DISCREPANCY;
+    reportPlans.forEach((plan) => {
+      const { exception } = plan;
+      txn.set(db.collection("nonconformity_reports").doc(plan.reportId), {
+        id: plan.reportId,
+        report_number: plan.reportNumber,
+        source_type: NonconformitySourceType.IMPORT,
+        source_id: voucherId,
+        warehouse_id: warehouseId,
+        warehouse_location_id: exception.locationId,
+        product_id: exception.productId,
+        quantity_affected: exception.quantity,
+        issue_type: exception.issueType,
+        status: exception.status,
+        reporter_id: ctx.userId,
+        reviewer_id: null,
+        resolved_by: null,
+        resolution_type: null,
+        resolution_notes: null,
+        requires_evidence: true,
+        action_time: now,
+        sync_time: now,
+        is_deleted: false,
+        created_at: now,
+        updated_at: now,
+      });
 
-    batch.set(db.collection("nonconformity_reports").doc(reportId), {
-      id: reportId,
-      report_number: reportNumber,
-      source_type: NonconformitySourceType.IMPORT,
-      source_id: voucherId,
-      warehouse_id: voucher.warehouse_id,
-      warehouse_location_id: item.warehouse_location_id,
-      product_id: item.product_id,
-      quantity_affected: discrepancy,
-      issue_type: issueType,
-      status: NonconformityStatus.OPEN,
-      reporter_id: ctx.userId,
-      reviewer_id: null,
-      resolved_by: null,
-      resolution_type: null,
-      resolution_notes: null,
-      requires_evidence: true,
-      action_time: now,
-      sync_time: now,
-      is_deleted: false,
-      created_at: now,
-      updated_at: now,
+      if (!plan.quarantineId) return;
+
+      txn.set(db.collection("quarantine_records").doc(plan.quarantineId), {
+        id: plan.quarantineId,
+        nonconformity_report_id: plan.reportId,
+        product_id: exception.productId,
+        warehouse_location_id: exception.locationId,
+        quantity: exception.quantity,
+        quarantine_reason: exception.reason,
+        quarantined_at: now,
+        released_at: null,
+        released_by: null,
+        release_notes: null,
+        status: QuarantineStatus.QUARANTINED,
+        is_deleted: false,
+      });
     });
+  });
 
-    reportIds.push(reportId);
-  }
-
-  await batch.commit();
-
-  // Audit trail
   await logAudit({
     entity_type: "NONCONFORMITY_REPORT",
     entity_id: reportIds.join(","),
-    warehouse_id: voucher.warehouse_id as string,
+    warehouse_id: warehouseId,
     action: AuditAction.CREATE,
     user_id: ctx.userId,
     old_value: null,
     new_value: {
       source_voucher_id: voucherId,
-      discrepant_items: discrepantItems.length,
+      reports_created: reportIds.length,
+      quarantine_records_created: quarantineRecordsCreated,
+      inventory_locks: inventoryLocks,
       report_ids: reportIds,
     },
   });
 
   return {
     reports_created: reportIds.length,
+    quarantine_records_created: quarantineRecordsCreated,
     report_ids: reportIds,
   };
 }

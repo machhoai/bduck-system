@@ -12,47 +12,14 @@ import {
 } from "lucide-react";
 import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
 import { ActiveStatus } from "@bduck/shared-types";
+import {
+    WAREHOUSE_SELECTION_PANEL_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-type Locale = "vi" | "zh";
-
-const COPY = {
-    vi: {
-        warehouse: "Kho nhận hàng",
-        chooseWarehouse: "Chọn kho nhận",
-        mapTitle: "Vị trí kho",
-        noWarehouse:
-            "Chọn một kho để xem vị trí và khu vực lưu trữ.",
-        noCoordinate: "Kho này chưa có toạ độ bản đồ.",
-        noMapToken:
-            "Chưa cấu hình Mapbox token, đang hiển thị bản đồ tĩnh.",
-        active: "Đang hoạt động",
-        inactive: "Ngưng hoạt động",
-        locations: "vị trí",
-        address: "Địa chỉ",
-        coordinates: "Toạ độ",
-        webGlErrorTitle: "Không thể tải bản đồ",
-        webGlErrorMessage:
-            "Trình duyệt không hỗ trợ WebGL hoặc tăng tốc phần cứng đang bị tắt.",
-    },
-    zh: {
-        warehouse: "收货仓库",
-        chooseWarehouse: "选择收货仓库",
-        mapTitle: "仓库位置",
-        noWarehouse: "请选择仓库以查看位置和库位。",
-        noCoordinate: "此仓库尚未配置地图坐标。",
-        noMapToken: "尚未配置 Mapbox token，正在显示静态地图。",
-        active: "启用",
-        inactive: "停用",
-        locations: "个库位",
-        address: "地址",
-        coordinates: "坐标",
-        webGlErrorTitle: "无法加载地图",
-        webGlErrorMessage:
-            "您的浏览器不支持 WebGL，或已禁用硬件加速。",
-    },
-} as const;
+type Locale = ComponentLocale;
 
 interface WarehouseSelectionPanelProps {
     warehouses: Warehouse[];
@@ -75,7 +42,7 @@ function WarehouseMapPreview({
     locale: Locale;
 }) {
     const [webGlError, setWebGlError] = useState(false);
-    const copy = COPY[locale];
+    const copy = WAREHOUSE_SELECTION_PANEL_TEXT[locale];
     const coordinate = warehouse?.coordinate;
 
     return (
@@ -190,7 +157,7 @@ export function WarehouseSelectionPanel({
     locale,
     onSelect,
 }: WarehouseSelectionPanelProps) {
-    const copy = COPY[locale];
+    const copy = WAREHOUSE_SELECTION_PANEL_TEXT[locale];
     const selectedWarehouse =
         warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) ?? null;
 

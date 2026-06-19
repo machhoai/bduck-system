@@ -21,6 +21,7 @@ import {
   saveCustomExpenseItem,
   deleteCustomExpenseItem,
 } from "./useExpenseApi";
+import { getDetailedErrorMessage } from "@/utils/apiError";
 
 interface UseExpensesReturn {
   data: ExpenseDocument | null;
@@ -65,8 +66,7 @@ export function useExpenses(
       setData(result as ExpenseDocument);
     } catch (err) {
       console.error("[useExpenses] fetch error:", err);
-      const apiErr = err as { messages?: { vi?: string } };
-      setError(apiErr.messages?.vi || "Lỗi tải dữ liệu chi phí");
+      setError(getDetailedErrorMessage(err, "Lỗi tải dữ liệu chi phí"));
     } finally {
       setLoading(false);
     }

@@ -19,6 +19,7 @@ import { vi } from "date-fns/locale";
 import { gooeyToast } from "goey-toast";
 import type { UnifiedVoucher } from "../../../types/unified-voucher";
 import { useTranslation } from "../../../lib/i18n";
+import { MISC_COMPONENT_TEXT } from "../../../lib/i18n/componentTranslations";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useUsers } from "../../../hooks/useUsers";
 import { useUserStore } from "../../../stores/useUserStore";
@@ -93,18 +94,21 @@ function formatVoucherDateTime(value: unknown): string {
     return format(date, "dd/MM/yyyy HH:mm", { locale: vi });
 }
 
-function getVoucherDateGroup(voucher: UnifiedVoucher): { key: string; label: string } {
+function getVoucherDateGroup(
+    voucher: UnifiedVoucher,
+    unknownDateLabel: string,
+): { key: string; label: string } {
     const date = parseVoucherDate(voucher.created_at);
-    if (!date) return { key: "unknown", label: "Không xác định ngày" };
+    if (!date) return { key: "unknown", label: unknownDateLabel };
     return {
         key: format(date, "yyyy-MM-dd"),
         label: format(date, "EEEE, dd/MM/yyyy", { locale: vi }),
     };
 }
 
-function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
+function groupVouchersByDate(vouchers: UnifiedVoucher[], unknownDateLabel: string) {
     return vouchers.reduce<Array<{ key: string; label: string; items: UnifiedVoucher[] }>>((groups, voucher) => {
-        const groupInfo = getVoucherDateGroup(voucher);
+        const groupInfo = getVoucherDateGroup(voucher, unknownDateLabel);
         const existing = groups.find((group) => group.key === groupInfo.key);
         if (existing) existing.items.push(voucher);
         else groups.push({ ...groupInfo, items: [voucher] });
@@ -113,7 +117,8 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
 }
 
 export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initialTypeFilter }: UnifiedInProgressTabProps) {
-    const { t } = useTranslation();
+    const { t, lang } = useTranslation();
+    const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
     const exportText = t.exportVoucher as any;
     const transferText = t.transfer as any;
     const { warehouses } = useWarehouses();
@@ -221,7 +226,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
         return list;
     }, [vouchers, search, typeFilter, statusFilter, sort]);
 
-    const groupedVouchers = useMemo(() => groupVouchersByDate(filteredVouchers), [filteredVouchers]);
+    const groupedVouchers = useMemo(
+        () => groupVouchersByDate(filteredVouchers, misc.unknownDate),
+        [filteredVouchers, misc.unknownDate],
+    );
 
     if (vouchers.length === 0) {
         return (
@@ -266,19 +274,19 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                         onClick={() => setTypeFilter("IMPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "IMPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {(t as any).vouchers?.inProgressTab?.filterImport || "Nhập kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterImport || misc.importWarehouse}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("EXPORT")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "EXPORT" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {(t as any).vouchers?.inProgressTab?.filterExport || "Xuất kho"}
+                        {(t as any).vouchers?.inProgressTab?.filterExport || misc.exportWarehouse}
                     </button>
                     <button
                         onClick={(e) => setTypeFilter("TRANSFER")}
                         className={`h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)] ${typeFilter === "TRANSFER" ? "bg-blue-50 text-blue-700" : ""}`}
                     >
-                        {(t as any).vouchers?.inProgressTab?.filterTransfer || "Điều chuyển"}
+                        {(t as any).vouchers?.inProgressTab?.filterTransfer || misc.transfer}
                     </button>
                 </div>
                 {/* <select
@@ -286,10 +294,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                     onChange={(e) => setTypeFilter(e.target.value)}
                     className="h-8 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs outline-none focus:border-[var(--color-border-focus)]"
                 >
-                    <option value="">Tất cả loại</option>
-                    <option value="IMPORT">Nhập kho</option>
-                    <option value="EXPORT">Xuất kho</option>
-                    <option value="TRANSFER">Điều chuyển</option>
+                    <option value="">{misc.allTypes}</option>
+                    <option value="IMPORT">{misc.importWarehouse}</option>
+                    <option value="EXPORT">{misc.exportWarehouse}</option>
+                    <option value="TRANSFER">{misc.transfer}</option>
                 </select> */}
 
                 <select
@@ -366,10 +374,10 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                                                 }
                                             }}
                                             className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
-                                            title="Tiếp tục"
+                                            title={misc.continue}
                                         >
                                             <Play size={12} />
-                                            <span>Tiếp tục</span>
+                                            <span>{misc.continue}</span>
                                         </button>
                                     )}
                                     {voucher.type === "EXPORT" && voucher.status === "SHIPPED" && (

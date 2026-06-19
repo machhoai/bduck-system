@@ -64,14 +64,10 @@ export const useAuth = () => {
       await gooeyToast.promise(loginAction(), {
         loading: "Đang xác thực thông tin...",
         success: (msgs) => msgs?.vi || "Đăng nhập thành công",
-        error: (err: unknown) =>
-          err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập",
+        error: "Đã xảy ra lỗi khi đăng nhập",
         description: {
           success: "Hệ thống đang tải dữ liệu của bạn.",
-          error: (err: unknown) =>
-            err instanceof Error
-              ? err.message
-              : "Vui lòng kiểm tra lại thông tin và thử lại.",
+          error: "Vui lòng kiểm tra lại thông tin và thử lại.",
         },
         action: {
           error: {

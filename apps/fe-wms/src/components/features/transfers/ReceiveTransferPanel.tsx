@@ -20,45 +20,8 @@ import {
   useWarehouseLocations,
   useWarehouses,
 } from "../../../hooks/useWarehouses";
-
-const COPY = {
-  title: "Nhận hàng điều chuyển",
-  sourceFallback: "Kho nguồn",
-  destinationFallback: "Kho đích",
-  readyText:
-    "Hàng đã đến kho đích. Bấm để bắt đầu kiểm nhận.",
-  startReceiving: "Bắt đầu nhận hàng",
-  chooseLocations: "Chọn vị trí kho cho từng mặt hàng",
-  products: "sản phẩm",
-  receivedQty: "SL nhận",
-  expected: "Dự kiến",
-  destinationLocation: "Vị trí nhập kho",
-  loading: "Đang tải...",
-  selectLocation: "Chọn vị trí kho đích",
-  mismatch:
-    "SL nhận ({received}) khác với dự kiến ({expected}).",
-  confirmReceive: "Xác nhận nhận hàng",
-  confirmQuestion: "Xác nhận nhận hàng?",
-  confirmDesc:
-    "Hàng hóa sẽ được nhập vào kho {warehouse}. Hành động này không thể hoàn tác.",
-  product: "Sản phẩm",
-  location: "Vị trí",
-  cancel: "Hủy",
-  confirm: "Xác nhận",
-  processing: "Đang xử lý...",
-  starting: "Đang bắt đầu nhận hàng...",
-  started: "Đã bắt đầu nhận hàng",
-  startError: "Lỗi khi bắt đầu nhận hàng",
-  startedDesc:
-    "Bạn có thể kiểm đếm và xác nhận từng mặt hàng.",
-  completing: "Đang xác nhận nhận hàng...",
-  completed: "Nhận hàng hoàn tất",
-  completeError: "Lỗi khi nhận hàng",
-  completedDesc:
-    "Hàng hóa đã được nhập vào kho đích.",
-  errorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
-  retry: "Thử lại",
-} as const;
+import { useTranslation } from "../../../lib/i18n";
+import { TRANSFER_RECEIVING_TEXT } from "../../../lib/i18n/componentTranslations";
 
 interface TransferItemInput {
   id: string;
@@ -86,6 +49,8 @@ export default function ReceiveTransferPanel({
   orderItems,
   onCompleted,
 }: Props) {
+  const { lang } = useTranslation();
+  const copy = TRANSFER_RECEIVING_TEXT[lang === "zh" ? "zh" : "vi"];
   const { warehouses } = useWarehouses();
   const { products } = useProducts();
   const { locations: destLocations, loading: locLoading } =
@@ -144,16 +109,16 @@ export default function ReceiveTransferPanel({
   const handleStartReceiving = useCallback(async () => {
     try {
       await gooeyToast.promise(startReceiving(order.id), {
-        loading: COPY.starting,
-        success: COPY.started,
-        error: COPY.startError,
+        loading: copy.starting,
+        success: copy.started,
+        error: copy.startError,
         description: {
-          success: COPY.startedDesc,
-          error: COPY.errorDesc,
+          success: copy.startedDesc,
+          error: copy.errorDesc,
         },
         action: {
           error: {
-            label: COPY.retry,
+            label: copy.retry,
             onClick: () => void handleStartReceiving(),
           },
         },
@@ -183,16 +148,16 @@ export default function ReceiveTransferPanel({
       const promise = submitAction();
       
       gooeyToast.promise(promise, {
-        loading: COPY.completing,
-        success: COPY.completed,
-        error: COPY.completeError,
+        loading: copy.completing,
+        success: copy.completed,
+        error: copy.completeError,
         description: {
-          success: COPY.completedDesc,
-          error: COPY.errorDesc,
+          success: copy.completedDesc,
+          error: copy.errorDesc,
         },
         action: {
           error: {
-            label: COPY.retry,
+            label: copy.retry,
             onClick: () => void handleCompleteReceiving(),
           },
         },
@@ -214,10 +179,10 @@ export default function ReceiveTransferPanel({
           <ArrowDownRight size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-[var(--color-status-transit-text)]">{COPY.title}</h3>
+          <h3 className="text-sm font-bold text-[var(--color-status-transit-text)]">{copy.title}</h3>
           <p className="text-xs text-[var(--color-status-transit-text)]">
-            {srcWarehouse?.name || COPY.sourceFallback} {"->"}{" "}
-            {destWarehouse?.name || COPY.destinationFallback}
+            {srcWarehouse?.name || copy.sourceFallback} {"->"}{" "}
+            {destWarehouse?.name || copy.destinationFallback}
           </p>
         </div>
         <span className="rounded-full bg-[var(--color-status-transit-bg-muted)] px-2.5 py-1 text-xxs font-semibold text-[var(--color-status-transit-text)]">
@@ -228,14 +193,14 @@ export default function ReceiveTransferPanel({
       {isPendingReceive && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--color-neutral-300)] py-4">
           <Package size={32} className="text-[var(--color-text-muted)]" />
-          <p className="text-sm text-[var(--color-neutral-600)]">{COPY.readyText}</p>
+          <p className="text-sm text-[var(--color-neutral-600)]">{copy.readyText}</p>
           <button
             type="button"
             onClick={handleStartReceiving}
             className="flex items-center gap-2 rounded-lg bg-[var(--color-status-transit-icon)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
           >
             <ArrowDownRight size={16} />
-            {COPY.startReceiving}
+            {copy.startReceiving}
           </button>
         </div>
       )}
@@ -244,9 +209,9 @@ export default function ReceiveTransferPanel({
         <>
           <div className="space-y-2">
             <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-              {COPY.chooseLocations}{" "}
+              {copy.chooseLocations}{" "}
               <span className="text-xs text-[var(--color-text-muted)]">
-                ({items.length} {COPY.products})
+                ({items.length} {copy.products})
               </span>
             </p>
 
@@ -273,7 +238,7 @@ export default function ReceiveTransferPanel({
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label>
                       <span className="mb-0.5 block text-xxs text-[var(--color-text-muted)]">
-                        {COPY.receivedQty} ({COPY.expected}:{" "}
+                        {copy.receivedQty} ({copy.expected}:{" "}
                         {item.expected_quantity})
                       </span>
                       <input
@@ -295,7 +260,7 @@ export default function ReceiveTransferPanel({
                     <label>
                       <span className="mb-0.5 flex items-center gap-1 text-xxs text-[var(--color-text-muted)]">
                         <MapPin size={10} className="text-[var(--color-status-transit-icon)]" />
-                        {COPY.destinationLocation} *
+                        {copy.destinationLocation} *
                       </span>
                       <select
                         value={item.destination_location_id}
@@ -314,7 +279,7 @@ export default function ReceiveTransferPanel({
                         }`}
                       >
                         <option value="">
-                          {locLoading ? COPY.loading : COPY.selectLocation}
+                          {locLoading ? copy.loading : copy.selectLocation}
                         </option>
                         {destLocations.map((location) => (
                           <option key={location.id} value={location.id}>
@@ -330,7 +295,7 @@ export default function ReceiveTransferPanel({
                       <div className="mt-2 flex items-center gap-1.5 rounded-md bg-[var(--color-status-pending-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-status-pending-text)]">
                         <AlertTriangle size={12} className="shrink-0" />
                         <span>
-                          {COPY.mismatch
+                          {copy.mismatch
                             .replace(
                               "{received}",
                               String(item.received_quantity),
@@ -354,7 +319,7 @@ export default function ReceiveTransferPanel({
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-status-transit-icon)] px-5 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
           >
             <CheckCircle2 size={16} />
-            {isSubmitting ? COPY.completing : COPY.confirmReceive}
+            {isSubmitting ? copy.completing : copy.confirmReceive}
           </button>
         </>
       )}
@@ -363,12 +328,12 @@ export default function ReceiveTransferPanel({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-[500px] rounded-2xl bg-white p-4 shadow-2xl">
             <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-              {COPY.confirmQuestion}
+              {copy.confirmQuestion}
             </h3>
             <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-              {COPY.confirmDesc.replace(
+              {copy.confirmDesc.replace(
                 "{warehouse}",
-                destWarehouse?.name || COPY.destinationFallback,
+                destWarehouse?.name || copy.destinationFallback,
               )}
             </p>
             <div className="mt-4 max-h-32 overflow-y-auto rounded-lg border border-[var(--color-border-soft)] text-xs">
@@ -376,13 +341,13 @@ export default function ReceiveTransferPanel({
                 <thead className="bg-[var(--color-surface-subtle)]">
                   <tr>
                     <th className="px-2 py-1 text-left font-medium text-[var(--color-text-muted)]">
-                      {COPY.product}
+                      {copy.product}
                     </th>
                     <th className="px-2 py-1 text-right font-medium text-[var(--color-text-muted)]">
                       SL
                     </th>
                     <th className="px-2 py-1 text-right font-medium text-[var(--color-text-muted)]">
-                      {COPY.location}
+                      {copy.location}
                     </th>
                   </tr>
                 </thead>
@@ -414,7 +379,7 @@ export default function ReceiveTransferPanel({
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-lg border border-[var(--color-neutral-200)] px-4 py-2.5 text-sm font-medium text-[var(--color-neutral-600)] transition-all hover:bg-[var(--color-neutral-50)]"
               >
-                {COPY.cancel}
+                {copy.cancel}
               </button>
               <button
                 type="button"
@@ -422,7 +387,7 @@ export default function ReceiveTransferPanel({
                 disabled={isSubmitting}
                 className="flex-1 rounded-lg bg-[var(--color-status-transit-icon)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
               >
-                {isSubmitting ? COPY.processing : COPY.confirm}
+                {isSubmitting ? copy.processing : copy.confirm}
               </button>
             </div>
           </div>

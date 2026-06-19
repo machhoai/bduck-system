@@ -26,6 +26,7 @@ import type {
 import { ProductType } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useProductPermissions } from "@/hooks/useProductPermissions";
+import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,8 @@ function PriceCell({
 
 export function ProductCard(props: ProductCardProps) {
   const { product } = props;
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+  const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
   const { canViewPrice, canWrite } = useProductPermissions();
 
   const primaryImage = product.product_image_url?.[0] ?? null;
@@ -186,7 +188,7 @@ export function ProductCard(props: ProductCardProps) {
             <div className="rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-pearl)] p-2">
               <div className="mb-1.5 flex items-center gap-1.5 text-xxs font-semibold text-[var(--color-text-secondary)]">
                 <MapPin size={12} />
-                <span>Vị trí lưu trữ</span>
+                <span>{misc.storageLocation}</span>
               </div>
               <div className="flex flex-col gap-1">
                 {visibleLocations.map((location) => (

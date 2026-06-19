@@ -5,17 +5,24 @@ import type {
   ProductImportPreviewRow,
   summarizeProductImportRows,
 } from "@/utils/productExcelImport";
+import { useTranslation } from "@/lib/i18n";
+import { EXCEL_PREVIEW_TEXT } from "@/lib/i18n/componentTranslations";
+
+type ExcelPreviewCopy =
+  (typeof EXCEL_PREVIEW_TEXT)[keyof typeof EXCEL_PREVIEW_TEXT];
 
 export function ProductImportStats({
   summary,
 }: {
   summary: ReturnType<typeof summarizeProductImportRows>;
 }) {
+  const { lang } = useTranslation();
+  const copy = EXCEL_PREVIEW_TEXT[lang === "zh" ? "zh" : "vi"];
   const items = [
-    { label: "Sản phẩm đọc được", value: summary.totalRows, tone: "neutral" },
-    { label: "Dòng hợp lệ", value: summary.validRows, tone: "success" },
-    { label: "Dòng lỗi", value: summary.errorRows, tone: "error" },
-    { label: "Cảnh báo trùng lặp", value: summary.warningRows, tone: "warning" },
+    { label: copy.productsRead, value: summary.totalRows, tone: "neutral" },
+    { label: copy.validRows, value: summary.validRows, tone: "success" },
+    { label: copy.errorRows, value: summary.errorRows, tone: "error" },
+    { label: copy.duplicateWarnings, value: summary.warningRows, tone: "warning" },
   ];
 
   return (
@@ -50,26 +57,28 @@ export function ProductImportPreviewTable({
 }: {
   rows: ProductImportPreviewRow[];
 }) {
+  const { lang } = useTranslation();
+  const copy = EXCEL_PREVIEW_TEXT[lang === "zh" ? "zh" : "vi"];
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)]">
       <div className="max-h-[360px] overflow-auto">
         <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--color-surface-card)] text-xs uppercase text-[var(--color-text-muted)]">
             <tr>
-              <th className="px-3 py-3">Dòng</th>
-              <th className="px-3 py-3">Trạng thái</th>
-              <th className="px-3 py-3">Danh mục</th>
-              <th className="px-3 py-3">Tên</th>
-              <th className="px-3 py-3">SKU</th>
-              <th className="px-3 py-3">Barcode</th>
-              <th className="px-3 py-3">ĐVT</th>
-              <th className="px-3 py-3">Loại</th>
-              <th className="px-3 py-3">Nguyên nhân</th>
+              <th className="px-3 py-3">{copy.row}</th>
+              <th className="px-3 py-3">{copy.status}</th>
+              <th className="px-3 py-3">{copy.category}</th>
+              <th className="px-3 py-3">{copy.name}</th>
+              <th className="px-3 py-3">{copy.sku}</th>
+              <th className="px-3 py-3">{copy.barcode}</th>
+              <th className="px-3 py-3">{copy.unit}</th>
+              <th className="px-3 py-3">{copy.type}</th>
+              <th className="px-3 py-3">{copy.reason}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border-soft)]">
             {rows.map((row) => (
-              <PreviewRow key={row.rowNumber} row={row} />
+              <PreviewRow key={row.rowNumber} row={row} copy={copy} />
             ))}
           </tbody>
         </table>
@@ -91,6 +100,8 @@ export function ConfirmSkipInvalidRowsModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { lang } = useTranslation();
+  const copy = EXCEL_PREVIEW_TEXT[lang === "zh" ? "zh" : "vi"];
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-[500px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-xl">
@@ -100,11 +111,12 @@ export function ConfirmSkipInvalidRowsModal({
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-              Bỏ qua dòng lỗi?
+              {copy.skipInvalidTitle}
             </h3>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Có {errorCount} dòng lỗi sẽ không được tạo. Hệ thống chỉ tạo{" "}
-              {validCount} sản phẩm hợp lệ.
+              {copy.createSkipInvalidDescription
+                .replace("{{errorCount}}", String(errorCount))
+                .replace("{{validCount}}", String(validCount))}
             </p>
           </div>
           <button
@@ -122,7 +134,7 @@ export function ConfirmSkipInvalidRowsModal({
             disabled={isSubmitting}
             className="rounded-full border border-[var(--color-border-subtle)] px-4 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-card)] disabled:opacity-50"
           >
-            Kiểm tra lại
+            {copy.reviewAgain}
           </button>
           <button
             type="button"
@@ -131,7 +143,7 @@ export function ConfirmSkipInvalidRowsModal({
             className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 py-2 text-sm text-white transition-colors hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            Tiếp tục tạo
+            {copy.continueCreate}
           </button>
         </div>
       </div>
@@ -139,7 +151,13 @@ export function ConfirmSkipInvalidRowsModal({
   );
 }
 
-function PreviewRow({ row }: { row: ProductImportPreviewRow }) {
+function PreviewRow({
+  row,
+  copy,
+}: {
+  row: ProductImportPreviewRow;
+  copy: ExcelPreviewCopy;
+}) {
   const hasErrors = row.errors.length > 0;
   const hasWarnings = row.warnings.length > 0;
 
@@ -155,7 +173,7 @@ function PreviewRow({ row }: { row: ProductImportPreviewRow }) {
     >
       <td className="px-3 py-3 font-medium">{row.rowNumber}</td>
       <td className="px-3 py-3">
-        <StatusBadge hasErrors={hasErrors} hasWarnings={hasWarnings} />
+        <StatusBadge hasErrors={hasErrors} hasWarnings={hasWarnings} copy={copy} />
       </td>
       <td className="px-3 py-3">{row.raw.category_code || "-"}</td>
       <td className="px-3 py-3">{row.raw.name || "-"}</td>
@@ -171,7 +189,7 @@ function PreviewRow({ row }: { row: ProductImportPreviewRow }) {
             ))}
           </ul>
         ) : (
-          "Hợp lệ"
+          copy.valid
         )}
       </td>
     </tr>
@@ -181,14 +199,16 @@ function PreviewRow({ row }: { row: ProductImportPreviewRow }) {
 function StatusBadge({
   hasErrors,
   hasWarnings,
+  copy,
 }: {
   hasErrors: boolean;
   hasWarnings: boolean;
+  copy: ExcelPreviewCopy;
 }) {
   if (hasErrors) {
     return (
       <span className="inline-flex items-center rounded-full bg-[var(--color-error-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-error-text)]">
-        Lỗi
+        {copy.error}
       </span>
     );
   }
@@ -196,14 +216,14 @@ function StatusBadge({
   if (hasWarnings) {
     return (
       <span className="inline-flex items-center rounded-full bg-[var(--color-status-pending-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-status-pending-text)]">
-        Cảnh báo
+        {copy.warning}
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center rounded-full bg-[var(--color-status-completed-bg-muted)] px-2 py-1 text-xs font-normal text-[var(--color-status-completed-text)]">
-      Hợp lệ
+      {copy.valid}
     </span>
   );
 }

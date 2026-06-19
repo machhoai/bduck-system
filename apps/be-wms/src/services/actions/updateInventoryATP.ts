@@ -20,7 +20,10 @@
  */
 
 import { db } from "../../config/firebase.js";
-import { AuditAction } from "@bduck/shared-types";
+import {
+  AuditAction,
+  calculateInventoryTotalQuantity,
+} from "@bduck/shared-types";
 import type { Inventory } from "@bduck/shared-types";
 import { logAudit } from "../auditService.js";
 import { randomUUID } from "crypto";
@@ -184,7 +187,12 @@ export async function updateInventoryATP(
 
         txn.update(docRef, {
           atp_quantity: newAtp,
-          total_quantity: newAtp + newOnHold + newInTransit + newQuarantine,
+          total_quantity: calculateInventoryTotalQuantity({
+            atp_quantity: newAtp,
+            on_hold_quantity: newOnHold,
+            in_transit_quantity: newInTransit,
+            quarantine_quantity: newQuarantine,
+          }),
           last_updated_at: now,
         });
       }
@@ -224,4 +232,3 @@ export async function updateInventoryATP(
 
   return { items_updated: totalUpdated, warehouse_id: warehouseId };
 }
-

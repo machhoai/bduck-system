@@ -32,8 +32,12 @@ import {
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
 import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { ActionOtpModal } from "../../shared/ActionOtpModal";
+import {
+    EXPORT_VOUCHER_CREATE_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 
-type Locale = "vi" | "zh";
+type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
 
 interface Props {
@@ -53,111 +57,6 @@ interface ExportItemData {
     unit_price: number;
     notes: string;
 }
-
-const COPY = {
-    vi: {
-        info: "Thông tin",
-        upload: "Tải chứng từ",
-        products: "Sản phẩm",
-        confirm: "Xác nhận",
-        transfer: "Điều chuyển",
-        adjustment: "Điều chỉnh",
-        exportType: "Loại xuất",
-        sourceWarehouse: "Kho nguồn (xuất)",
-        destinationWarehouse: "Kho đích (nhận)",
-        executionWarehouse: "Kho thực hiện",
-        chooseSource: "Chọn kho nguồn",
-        chooseDestination: "Chọn kho đích",
-        chooseWarehouse: "Chọn kho",
-        loading: "Đang tải...",
-        sameWarehouse: "Kho nguồn và kho đích không được trùng nhau",
-        adjustmentReason: "Lý do điều chỉnh",
-        notes: "Ghi chú",
-        reasonPlaceholder: "Nhập lý do điều chỉnh...",
-        notesPlaceholder: "Ghi chú bổ sung...",
-        reasonRequired:
-            "Bắt buộc nhập lý do khi loại xuất là điều chỉnh",
-        uploadLabel: "Tải chứng từ xuất kho đính kèm (tuỳ chọn)",
-        uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
-        searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
-        chooseFromCatalog: "Chọn từ danh mục",
-        added: "Đã thêm",
-        addProduct: "Thêm vào phiếu",
-        noProducts: "Không tìm thấy",
-        selectedProducts: "Sản phẩm xuất kho",
-        emptyProducts: "Chọn sản phẩm để thêm vào phiếu xuất.",
-        delete: "Xóa",
-        quantity: "SL xuất",
-        unitPrice: "Đơn giá",
-        location: "Vị trí kho",
-        selectWarehouseFirst: "Chọn kho trước",
-        noLocationForProduct:
-            "Không có vị trí nào chứa sản phẩm này",
-        selectLocation: "Chọn vị trí",
-        available: "Khả dụng",
-        atpWarning:
-            "SL xuất ({quantity}) vượt quá khả dụng ({atp}). Phiếu sẽ bị từ chối khi duyệt.",
-        addLocationLine: "Thêm dòng",
-        confirmTitle: "Xác nhận thông tin xuất kho",
-        attachments: "Tệp đính kèm",
-        itemCount: "mặt hàng",
-        fileCount: "tệp",
-        back: "Quay lại",
-        next: "Tiếp theo",
-        submitting: "Đang tạo...",
-        submit: "Gửi duyệt",
-    },
-    zh: {
-        info: "信息",
-        upload: "上传凭证",
-        products: "产品",
-        confirm: "确认",
-        transfer: "调拨",
-        adjustment: "调整",
-        exportType: "出库类型",
-        sourceWarehouse: "源仓库（出库）",
-        destinationWarehouse: "目标仓库（收货）",
-        executionWarehouse: "执行仓库",
-        chooseSource: "选择源仓库",
-        chooseDestination: "选择目标仓库",
-        chooseWarehouse: "选择仓库",
-        loading: "正在加载...",
-        sameWarehouse: "源仓库和目标仓库不能相同",
-        adjustmentReason: "调整原因",
-        notes: "备注",
-        reasonPlaceholder: "请输入调整原因...",
-        notesPlaceholder: "补充备注...",
-        reasonRequired: "调整出库必须填写原因",
-        uploadLabel: "上传出库凭证（可选）",
-        uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
-        searchProduct: "按名称、SKU 或条码搜索产品...",
-        chooseFromCatalog: "从目录中选择",
-        added: "已添加",
-        addProduct: "添加",
-        noProducts: "未找到",
-        selectedProducts: "出库产品",
-        emptyProducts: "选择产品以添加到出库单。",
-        delete: "删除",
-        quantity: "出库数量",
-        unitPrice: "单价",
-        location: "库位",
-        selectWarehouseFirst: "请先选择仓库",
-        noLocationForProduct: "没有包含此产品的库位",
-        selectLocation: "选择库位",
-        available: "可用",
-        atpWarning:
-            "出库数量 ({quantity}) 超过可用数量 ({atp})，审批时将被拒绝。",
-        addLocationLine: "添加行",
-        confirmTitle: "确认出库信息",
-        attachments: "附件",
-        itemCount: "项",
-        fileCount: "个文件",
-        back: "返回",
-        next: "下一步",
-        submitting: "正在创建...",
-        submit: "提交审批",
-    },
-} as const;
 
 const EXPORT_TYPES = [
     { value: "TRANSFER", labelKey: "transfer" },
@@ -235,7 +134,7 @@ export default function CreateExportTab({
 }: Props) {
     const { t, lang } = useTranslation();
     const locale = (lang || "vi") as Locale;
-    const copy = COPY[locale];
+    const copy = EXPORT_VOUCHER_CREATE_TEXT[locale];
     const exportText = t.exportVoucher as any;
     const user = useUserStore((s) => s.user);
     const { warehouses, loading: warehousesLoading } = useWarehouses();
@@ -634,7 +533,7 @@ export default function CreateExportTab({
         gooeyToast.promise(promise, {
             loading: isEdit ? "\u0110ang c\u1eadp nh\u1eadt phi\u1ebfu xu\u1ea5t kho..." : exportText.toast.creating,
             success: isEdit ? "C\u1eadp nh\u1eadt th\u00e0nh c\u00f4ng" : exportText.toast.createSuccess,
-            error: (err: any) => err?.message || exportText.toast.createError,
+            error: exportText.toast.createError,
             description: {
                 success: isEdit ? "Phi\u1ebfu xu\u1ea5t kho \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt." : exportText.toast.createSuccessDesc,
                 error: exportText.toast.createErrorDesc,

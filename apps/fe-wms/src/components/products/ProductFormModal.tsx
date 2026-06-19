@@ -16,6 +16,8 @@ import { useProducts } from "@/hooks/useProducts";
 import { useProductBOM } from "@/hooks/useProductBOM";
 import { ProductExcelImportTab } from "./ProductExcelImportTab";
 import type { ProductImportPayload } from "@/utils/productExcelImport";
+import { useTranslation } from "@/lib/i18n";
+import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -39,6 +41,8 @@ export function ProductFormModal({
   onSave,
 }: ProductFormModalProps) {
   const isEdit = !!product;
+  const { lang } = useTranslation();
+  const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
   const { categories } = useCategories();
   // Tải toàn bộ products (để lọc ra danh sách có thể làm BOM)
   const { products: allProducts, loading: loadingAllProducts } = useProducts();
@@ -658,10 +662,10 @@ export function ProductFormModal({
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-12 gap-3 border-b border-[var(--color-border-soft)] px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    <div className="col-span-5">Phụ tùng (Mã SKU)</div>
-                    <div className="col-span-2">Số lượng</div>
-                    <div className="col-span-4">Ghi chú lắp ráp</div>
-                    <div className="col-span-1 text-right">Xóa</div>
+                    <div className="col-span-5">{misc.componentSku}</div>
+                    <div className="col-span-2">{misc.quantity}</div>
+                    <div className="col-span-4">{misc.assemblyNotes}</div>
+                    <div className="col-span-1 text-right">{misc.delete}</div>
                   </div>
 
                   {bomList.map((item, index) => (

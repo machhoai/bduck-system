@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { WAREHOUSE_EXPORT_MODAL_TEXT } from "@/lib/i18n/componentTranslations";
 import type {
   ExportDataKind,
   ExportDateMode,
@@ -29,45 +30,6 @@ interface WarehouseExportModalProps {
 const today = () => new Date().toISOString().slice(0, 10);
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
-const TEXT = {
-  vi: {
-    data: "Dữ liệu",
-    time: "Thời gian",
-    inventory: "Tồn kho ATP",
-    movement: "Xuất nhập tồn",
-    dailySummary: "Tổng theo ngày",
-    imports: "Nhập kho",
-    exports: "Xuất kho",
-    date: "Ngày",
-    month: "Tháng",
-    range: "Tùy chỉnh",
-    from: "Từ ngày",
-    to: "Đến ngày",
-    cancel: "Đóng",
-    export: "Xuất Excel",
-    exporting: "Đang xuất...",
-    noDateNeeded: "Tồn kho ATP dùng dữ liệu hiện tại.",
-  },
-  zh: {
-    data: "数据",
-    time: "时间",
-    inventory: "ATP 库存",
-    movement: "进销存",
-    dailySummary: "每日汇总",
-    imports: "入库",
-    exports: "出库",
-    date: "日期",
-    month: "月份",
-    range: "自定义",
-    from: "开始日期",
-    to: "结束日期",
-    cancel: "关闭",
-    export: "导出 Excel",
-    exporting: "正在导出...",
-    noDateNeeded: "ATP 库存使用当前数据。",
-  },
-};
-
 export function WarehouseExportModal({
   isOpen,
   config,
@@ -76,7 +38,7 @@ export function WarehouseExportModal({
   onSubmit,
 }: WarehouseExportModalProps) {
   const { lang } = useTranslation();
-  const copy = TEXT[(lang === "zh" ? "zh" : "vi") as keyof typeof TEXT];
+  const copy = WAREHOUSE_EXPORT_MODAL_TEXT[lang === "zh" ? "zh" : "vi"];
   const defaults = config.defaultOptions;
   const [dataKind, setDataKind] = useState<ExportDataKind>(
     defaults?.dataKind ?? "movement",

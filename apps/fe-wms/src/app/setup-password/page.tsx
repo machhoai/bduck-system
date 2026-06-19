@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, LockKeyhole } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { getLocalizedMessage } from "@/utils/apiError";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -73,7 +74,7 @@ export default function SetupPasswordPage() {
 
       if (!response.ok || !body?.success || !body.data) {
         throw new Error(
-          body?.messages?.vi || "Liên kết đã hết hạn hoặc không còn hiệu lực.",
+          getLocalizedMessage(body?.messages) || "Liên kết đã hết hạn hoặc không còn hiệu lực.",
         );
       }
 
@@ -110,13 +111,13 @@ export default function SetupPasswordPage() {
 
       if (!response.ok || !body?.success) {
         throw new Error(
-          body?.messages?.vi ||
+          getLocalizedMessage(body?.messages) ||
             "Không thể đặt mật khẩu. Vui lòng yêu cầu admin gửi lại liên kết.",
         );
       }
 
       setPageState("success");
-      setMessage(body.messages?.vi || "Đã đặt mật khẩu thành công.");
+      setMessage(getLocalizedMessage(body?.messages) || "Đã đặt mật khẩu thành công.");
     } catch (error) {
       setMessage(
         error instanceof Error

@@ -18,6 +18,8 @@ import {
     getFileTypeLabel,
     formatFileSize,
 } from "../../lib/uploadFile";
+import { useTranslation } from "@/lib/i18n";
+import { FILE_UPLOAD_FIELD_TEXT } from "@/lib/i18n/componentTranslations";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -85,6 +87,8 @@ export function FileUploadField({
     label,
     hint,
 }: FileUploadFieldProps) {
+    const { lang } = useTranslation();
+    const copy = FILE_UPLOAD_FIELD_TEXT[lang === "zh" ? "zh" : "vi"];
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -231,11 +235,11 @@ export function FileUploadField({
                     )}
                     <span className="text-center">
                         {files.length === 0
-                            ? "Nhấn để chọn hoặc kéo thả tệp vào đây"
-                            : `Thêm tệp (${files.length}/${maxFiles})`}
+                            ? copy.chooseOrDrop
+                            : `${copy.addFile} (${files.length}/${maxFiles})`}
                     </span>
                     <span className="text-xxs opacity-60">
-                        PDF, DOCX, XLSX, CSV · tối đa 20MB
+                        {copy.supportHint}
                     </span>
                 </div>
             )}
@@ -295,7 +299,7 @@ export function FileUploadField({
                                         handleRemove(f.id);
                                     }}
                                     className="shrink-0 rounded-full p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-border-subtle)] hover:text-[var(--color-accent-error)]"
-                                    aria-label="Remove file"
+                                    aria-label={copy.removeFile}
                                 >
                                     <X size={16} />
                                 </button>

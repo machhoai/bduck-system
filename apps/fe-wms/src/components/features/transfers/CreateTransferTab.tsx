@@ -35,8 +35,12 @@ import {
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
 import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { ActionOtpModal } from "../../shared/ActionOtpModal";
+import {
+    TRANSFER_CREATE_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 
-type Locale = "vi" | "zh";
+type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
 type TransferTypeValue = "INTRA_WAREHOUSE" | "INTER_WAREHOUSE";
 
@@ -56,143 +60,6 @@ interface TransferItemData {
     destination_location_id: string;
     quantity: number;
 }
-
-const COPY = {
-    vi: {
-        info: "Thông tin",
-        upload: "Chứng từ",
-        products: "Sản phẩm",
-        confirm: "Xác nhận",
-        intra: "Trong kho",
-        inter: "Liên kho",
-        intraDesc: "Di chuyển hàng giữa các vị trí trong cùng 1 kho",
-        interDesc: "Chuyển hàng từ kho này sang kho khác",
-        transferType: "Loại điều chuyển",
-        executionWarehouse: "Kho thực hiện",
-        sourceWarehouse: "Kho nguồn",
-        destinationWarehouse: "Kho đích",
-        chooseWarehouse: "Chọn kho",
-        chooseSource: "Chọn kho nguồn",
-        chooseDestination: "Chọn kho đích",
-        loading: "Đang tải...",
-        sameWarehouse: "Kho nguồn và kho đích không được trùng nhau",
-        notes: "Ghi chú",
-        notesPlaceholder: "Ghi chú bổ sung...",
-        uploadLabel: "Tải chứng từ điều chuyển đính kèm (tuỳ chọn)",
-        uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
-        searchProduct: "Tìm sản phẩm theo tên, SKU hoặc barcode...",
-        chooseFromCatalog: "Chọn từ danh mục",
-        added: "Đã thêm",
-        addProduct: "Thêm vào phiếu",
-        noProducts: "Không tìm thấy",
-        selectedProducts: "Sản phẩm điều chuyển",
-        emptyProducts: "Chọn sản phẩm để thêm vào phiếu điều chuyển.",
-        delete: "Xóa",
-        quantity: "Số lượng",
-        sourceLocation: "Vị trí nguồn",
-        destinationLocation: "Vị trí đích",
-        selectWarehouseFirst: "Chọn kho trước",
-        noLocation: "Không có vị trí",
-        selectLocation: "Chọn vị trí",
-        selectDestinationLocation: "Chọn vị trí đích",
-        sameLocation: "Vị trí nguồn và đích không được trùng",
-        atpWarning: "SL chuyển ({quantity}) vượt quá khả dụng ({atp}).",
-        addLocationLine: "Thêm dòng",
-        confirmTitle: "Xác nhận thông tin điều chuyển",
-        attachments: "Tệp đính kèm",
-        itemCount: "mặt hàng",
-        fileCount: "tệp",
-        noteTitle: "Lưu ý",
-        intraNotice: "Điều chuyển trong kho sẽ được thực hiện ngay sau khi xác nhận. Hàng hóa sẽ được di chuyển mà không cần phê duyệt.",
-        confirmIntraTitle: "Xác nhận điều chuyển?",
-        confirmInterTitle: "Xác nhận tạo phiếu?",
-        confirmIntraDesc: "Hàng hóa sẽ được di chuyển ngay lập tức. Hành động này không thể hoàn tác.",
-        confirmInterDesc: "Phiếu sẽ được gửi vào quy trình duyệt. Bạn có muốn tiếp tục?",
-        cancel: "Hủy",
-        back: "Quay lại",
-        next: "Tiếp theo",
-        processing: "Đang xử lý...",
-        submitIntra: "Xác nhận điều chuyển",
-        submitInter: "Gửi duyệt",
-        retry: "Thử lại",
-        intraLoading: "Đang điều chuyển trong kho...",
-        interLoading: "Đang tạo phiếu điều chuyển...",
-        intraSuccess: "Điều chuyển trong kho thành công",
-        interSuccess: "Đã tạo phiếu điều chuyển",
-        createError: "Lỗi khi tạo phiếu điều chuyển",
-        intraSuccessDesc: "Hàng hóa đã được di chuyển ngay lập tức.",
-        interSuccessDesc: "Phiếu đã được gửi vào quy trình duyệt.",
-        errorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
-        totalQty: "Tổng số lượng",
-    },
-    zh: {
-        info: "信息",
-        upload: "凭证",
-        products: "产品",
-        confirm: "确认",
-        intra: "库内",
-        inter: "跨库",
-        intraDesc: "在同一仓库内的库位间移动货品",
-        interDesc: "将货品从一个仓库调拨到另一个仓库",
-        transferType: "调拨类型",
-        executionWarehouse: "执行仓库",
-        sourceWarehouse: "源仓库",
-        destinationWarehouse: "目标仓库",
-        chooseWarehouse: "选择仓库",
-        chooseSource: "选择源仓库",
-        chooseDestination: "选择目标仓库",
-        loading: "正在加载...",
-        sameWarehouse: "源仓库和目标仓库不能相同",
-        notes: "备注",
-        notesPlaceholder: "补充备注...",
-        uploadLabel: "上传调拨凭证（可选）",
-        uploadHint: "PDF, DOCX, XLSX, CSV - 每个文件最多 20MB - 最多 5 个文件",
-        searchProduct: "按名称、SKU 或条码搜索产品...",
-        chooseFromCatalog: "从目录中选择",
-        added: "已添加",
-        addProduct: "添加",
-        noProducts: "未找到",
-        selectedProducts: "调拨产品",
-        emptyProducts: "选择产品以添加到调拨单。",
-        delete: "删除",
-        quantity: "数量",
-        sourceLocation: "源库位",
-        destinationLocation: "目标库位",
-        selectWarehouseFirst: "请先选择仓库",
-        noLocation: "没有库位",
-        selectLocation: "选择库位",
-        selectDestinationLocation: "选择目标库位",
-        sameLocation: "源库位和目标库位不能相同",
-        atpWarning: "调拨数量 ({quantity}) 超过可用数量 ({atp})。",
-        addLocationLine: "添加行",
-        confirmTitle: "确认调拨信息",
-        attachments: "附件",
-        itemCount: "项",
-        fileCount: "个文件",
-        noteTitle: "注意",
-        intraNotice: "库内调拨将在确认后立即执行，无需审批。",
-        confirmIntraTitle: "确认调拨？",
-        confirmInterTitle: "确认创建调拨单？",
-        confirmIntraDesc: "货品将立即移动，此操作不可撤销。",
-        confirmInterDesc: "调拨单将进入审批流程。是否继续？",
-        cancel: "取消",
-        back: "返回",
-        next: "下一步",
-        processing: "正在处理...",
-        submitIntra: "确认调拨",
-        submitInter: "提交审批",
-        retry: "重试",
-        intraLoading: "正在执行库内调拨...",
-        interLoading: "正在创建调拨单...",
-        intraSuccess: "库内调拨成功",
-        interSuccess: "已创建调拨单",
-        createError: "创建调拨单失败",
-        intraSuccessDesc: "货品已立即移动。",
-        interSuccessDesc: "调拨单已提交审批流程。",
-        errorDesc: "请重试或联系管理员。",
-        totalQty: "总数量",
-    },
-} as const;
 
 const TRANSFER_TYPES = [
     {
@@ -280,7 +147,7 @@ export default function CreateTransferTab({
 }: Props) {
     const { lang } = useTranslation();
     const locale = (lang || "vi") as Locale;
-    const copy = COPY[locale];
+    const copy = TRANSFER_CREATE_TEXT[locale];
     const user = useUserStore((s) => s.user);
     const { warehouses, loading: warehousesLoading } = useWarehouses();
     const { products, loading: productsLoading } = useProducts();

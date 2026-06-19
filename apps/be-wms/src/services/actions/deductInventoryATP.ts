@@ -21,7 +21,10 @@
  */
 
 import { db } from "../../config/firebase.js";
-import { AuditAction } from "@bduck/shared-types";
+import {
+  AuditAction,
+  calculateInventoryTotalQuantity,
+} from "@bduck/shared-types";
 import type { Inventory } from "@bduck/shared-types";
 import { logAudit } from "../auditService.js";
 
@@ -218,11 +221,12 @@ export async function deductInventoryATP(
         ? existing.in_transit_quantity + deductQty
         : existing.in_transit_quantity;
 
-      const newTotal =
-        newAtp +
-        existing.on_hold_quantity +
-        newInTransit +
-        existing.quarantine_quantity;
+      const newTotal = calculateInventoryTotalQuantity({
+        atp_quantity: newAtp,
+        on_hold_quantity: existing.on_hold_quantity,
+        in_transit_quantity: newInTransit,
+        quarantine_quantity: existing.quarantine_quantity,
+      });
 
       const updatePayload: Record<string, unknown> = {
         atp_quantity: newAtp,
