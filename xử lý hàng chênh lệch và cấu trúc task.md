@@ -50,7 +50,7 @@ Nếu xác nhận cần điều chỉnh tồn:
 tạo AdjustmentVoucher
 reference về NONCONFORMITY hoặc STOCK_COUNT
 
-Giai Đoạn 3: Backend API / Service
+(Đang thực hiện đến đây) Giai Đoạn 3: Backend API / Service
 Cần bổ sung hoặc hoàn thiện các nhóm service sau:
 Nonconformity service
 tạo report từ import/export/stock count/manual
