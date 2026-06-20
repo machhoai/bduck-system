@@ -17,12 +17,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRightLeft,
-  CheckCircle,
-  Clock,
+  Ban,
+  Loader2,
   Package,
-  Truck,
+  ShieldAlert,
   X,
 } from "lucide-react";
+import { gooeyToast } from "goey-toast";
 import {
   collection,
   doc,
@@ -39,6 +40,10 @@ import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
 import ReceiveTransferPanel from "./ReceiveTransferPanel";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
+import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
+import { useProcessConfig } from "@/hooks/useProcessConfig";
+import { useUserStore } from "@/stores/useUserStore";
+import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 
 interface TransferItemInput {
   id: string;
@@ -49,7 +54,13 @@ interface TransferItemInput {
 interface TransferDetailDrawerProps {
   orderId: string;
   onClose: () => void;
+  readOnly?: boolean;
 }
+
+const TERMINAL_STATUSES = new Set<string>([
+  TransferOrderStatus.CANCELLED,
+  TransferOrderStatus.COMPLETED,
+]);
 
 function DetailSkeleton() {
   return (
@@ -100,12 +111,24 @@ function formatDate(val: unknown): string {
 export default function TransferDetailDrawer({
   orderId,
   onClose,
+  readOnly = false,
 }: TransferDetailDrawerProps) {
   const { t } = useTranslation();
   const { warehouses } = useWarehouses();
+  const currentUser = useUserStore((s) => s.user);
+  const hasPermission = useUserStore((s) => s.hasPermission);
   const [order, setOrder] = useState<TransferOrder | null>(null);
   const [items, setItems] = useState<TransferItemInput[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+  const [otpAction, setOtpAction] = useState<"cancel" | "forceCancel" | null>(
+    null,
+  );
+  const { config: processConfig } = useProcessConfig(
+    "TRANSFER_ORDER",
+    order?.source_warehouse_id,
+  );
 
   // Realtime listener for order document
   useEffect(() => {
@@ -157,6 +180,15 @@ export default function TransferDetailDrawer({
     order?.status === TransferOrderStatus.PENDING_RECEIVE ||
     order?.status === TransferOrderStatus.RECEIVING;
 
+  const canCreatorCancel =
+    order?.creator_id === currentUser?.id &&
+    order?.status === TransferOrderStatus.PENDING_APPROVAL;
+  const canForceCancel =
+    !!order &&
+    hasPermission("vouchers.force_cancel") &&
+    !TERMINAL_STATUSES.has(order.status);
+  const showCancelSection = !!order && (canCreatorCancel || canForceCancel);
+
   const transferText = t.transfer as any;
 
   const statusLabel =
@@ -167,6 +199,93 @@ export default function TransferDetailDrawer({
       : "";
 
   const statusColor = getStatusStyle(order?.status ?? "DRAFT");
+
+  const handleCreatorCancel = useCallback(
+    async (otp?: string) => {
+      if (!order || isSubmittingCancel) return;
+      if (processConfig?.require_otp && !otp) {
+        setOtpAction("cancel");
+        return;
+      }
+
+      setOtpAction(null);
+      setIsSubmittingCancel(true);
+      const submitAction = async () => {
+        await cancelApproval("TRANSFER_ORDER", order.id, cancelReason || undefined, otp);
+      };
+
+      try {
+        const promise = submitAction();
+        gooeyToast.promise(promise, {
+          loading: t.tasks.selfApproval.cancelling,
+          success: t.tasks.selfApproval.cancelSuccess,
+          error: t.tasks.selfApproval.cancelError,
+          description: {
+            success: t.tasks.selfApproval.cancelSuccessDesc,
+            error: t.tasks.selfApproval.cancelErrorDesc,
+          },
+          action: {
+            error: {
+              label: t.tasks.approval.retry,
+              onClick: () => undefined,
+            },
+          },
+        });
+        await promise;
+        onClose();
+      } finally {
+        setIsSubmittingCancel(false);
+      }
+    },
+    [cancelReason, isSubmittingCancel, onClose, order, processConfig, t],
+  );
+
+  const handleForceCancel = useCallback(
+    async (otp?: string) => {
+      if (!order || isSubmittingCancel) return;
+      if (!cancelReason.trim()) {
+        gooeyToast.error(t.tasks.selfApproval.forceCancelReasonRequired, {
+          preset: "snappy",
+        });
+        return;
+      }
+
+      if (processConfig?.require_otp && !otp) {
+        setOtpAction("forceCancel");
+        return;
+      }
+
+      setOtpAction(null);
+      setIsSubmittingCancel(true);
+      const submitAction = async () => {
+        await forceCancelApproval("TRANSFER_ORDER", order.id, cancelReason, otp);
+      };
+
+      try {
+        const promise = submitAction();
+        gooeyToast.promise(promise, {
+          loading: t.tasks.selfApproval.cancelling,
+          success: t.tasks.selfApproval.cancelSuccess,
+          error: t.tasks.selfApproval.cancelError,
+          description: {
+            success: t.tasks.selfApproval.cancelSuccessDesc,
+            error: t.tasks.selfApproval.cancelErrorDesc,
+          },
+          action: {
+            error: {
+              label: t.tasks.approval.retry,
+              onClick: () => undefined,
+            },
+          },
+        });
+        await promise;
+        onClose();
+      } finally {
+        setIsSubmittingCancel(false);
+      }
+    },
+    [cancelReason, isSubmittingCancel, onClose, order, processConfig, t],
+  );
 
   return (
     <>
@@ -292,7 +411,7 @@ export default function TransferDetailDrawer({
               </div>
 
               {/* Receive panel — only when PENDING_RECEIVE or RECEIVING */}
-              {isReceivePhase && (
+              {isReceivePhase && !readOnly && (
                 <div className="mt-4 border-t border-[var(--color-border-soft)] px-4 pt-4 pb-4">
                   <ReceiveTransferPanel
                     order={order}
@@ -304,7 +423,96 @@ export default function TransferDetailDrawer({
             </>
           )}
         </div>
+
+        {showCancelSection && (
+          <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
+            <div className="space-y-3">
+              <div
+                className={`flex items-start gap-3 rounded-xl border p-3 ${
+                  canForceCancel && !canCreatorCancel
+                    ? "border-[var(--color-error-border)] bg-[var(--color-error-bg)]"
+                    : "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)]"
+                }`}
+              >
+                <ShieldAlert
+                  className={`h-5 w-5 flex-shrink-0 ${
+                    canForceCancel && !canCreatorCancel
+                      ? "text-[var(--color-error-text)]"
+                      : "text-[var(--color-status-pending-icon)]"
+                  }`}
+                />
+                <p
+                  className={`text-xs leading-relaxed ${
+                    canForceCancel && !canCreatorCancel
+                      ? "text-[var(--color-error-text)]"
+                      : "text-[var(--color-status-pending-text)]"
+                  }`}
+                >
+                  {canForceCancel && !canCreatorCancel
+                    ? t.tasks.selfApproval.forceCancelDescription
+                    : t.tasks.selfApproval.description}
+                </p>
+              </div>
+
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={2}
+                placeholder={
+                  canForceCancel && !canCreatorCancel
+                    ? t.tasks.selfApproval.forceCancelReason
+                    : t.tasks.selfApproval.cancelReason
+                }
+                className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+              />
+
+              <div className="flex items-center gap-2">
+                {canCreatorCancel && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCreatorCancel()}
+                    disabled={isSubmittingCancel}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg)] active:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSubmittingCancel ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Ban className="h-4 w-4" />
+                    )}
+                    {t.tasks.selfApproval.cancelButton}
+                  </button>
+                )}
+                {canForceCancel && (
+                  <button
+                    type="button"
+                    onClick={() => void handleForceCancel()}
+                    disabled={isSubmittingCancel || !cancelReason.trim()}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSubmittingCancel ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="h-4 w-4" />
+                    )}
+                    {t.tasks.selfApproval.forceCancelButton}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {!!otpAction && (
+        <ActionOtpModal
+          onConfirm={(code) => {
+            if (otpAction === "cancel") void handleCreatorCancel(code);
+            if (otpAction === "forceCancel") void handleForceCancel(code);
+          }}
+          onCancel={() => setOtpAction(null)}
+          isSubmitting={isSubmittingCancel}
+        />
+      )}
     </>
   );
 }

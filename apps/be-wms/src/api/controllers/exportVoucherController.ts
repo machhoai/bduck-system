@@ -18,6 +18,7 @@ import {
 import {
   savePickingActuals,
   savePickingActualsSchema,
+  validatePickingAssignment,
 } from "../../services/pickingSessionService.js";
 import {
   fetchActiveVouchers,
@@ -171,6 +172,7 @@ export async function savePickingHandler(
     const user = {
       id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
       roleIds: (req as any).user?.roleIds || [],
+      roleAssignments: (req as any).user?.roleAssignments || [],
     };
 
     const parseResult = savePickingActualsSchema.safeParse(req.body);
@@ -209,8 +211,22 @@ export async function completePickingHandler(
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
+    const authUser = (req as any).user;
+    const userId = authUser?.id || authUser?.uid || "UNKNOWN";
     const voucherId = req.params.id as string;
+    const { db } = await import("../../config/firebase.js");
+    const voucherSnap = await db.collection("export_vouchers").doc(voucherId).get();
+    const voucherData = voucherSnap.data() || {};
+
+    await validatePickingAssignment(
+      typeof voucherData.warehouse_id === "string" ? voucherData.warehouse_id : null,
+      {
+        id: userId,
+        roleIds: authUser?.roleIds || [],
+        roleAssignments: authUser?.roleAssignments || [],
+      },
+      typeof voucherData.creator_id === "string" ? voucherData.creator_id : "",
+    );
 
     await startPicking(voucherId);
     await completePicking(voucherId, userId);

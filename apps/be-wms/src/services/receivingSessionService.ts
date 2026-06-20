@@ -25,6 +25,7 @@ import { AuditAction } from "@bduck/shared-types";
 import type { ProcessEntityType } from "@bduck/shared-types";
 import { logAudit } from "./auditService.js";
 import { getConfigForEntity } from "./processConfigService.js";
+import { canPerformRoleStep, type ScopedUser } from "./scopedRoleAccess.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMA — Input validation
@@ -47,10 +48,7 @@ export type SaveActualsInput = z.infer<typeof saveActualsSchema>;
 // TYPES — User context from controller
 // ─────────────────────────────────────────────
 
-export interface StepUser {
-  id: string;
-  roleIds: string[];
-}
+export type StepUser = ScopedUser;
 
 // ─────────────────────────────────────────────
 // STEP ASSIGNMENT VALIDATION
@@ -96,15 +94,15 @@ export async function validateStepAssignment(
       throw err;
     }
   } else if (assignment_mode === "ROLE") {
-    if (!assigned_role_id || !user.roleIds.includes(assigned_role_id)) {
+    if (!assigned_role_id || !canPerformRoleStep(user, stepOption, warehouseId)) {
       const err = new Error("Unauthorized step assignment") as Error & {
         statusCode: number;
         messages: Record<string, string>;
       };
       err.statusCode = 403;
       err.messages = {
-        vi: "Bạn không có quyền thực hiện bước này. Cần role được chỉ định.",
-        zh: "您没有权限执行此步骤。需要指定角色。",
+        vi: "Bạn không có đúng role trong phạm vi kho của bước này. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên.",
+        zh: "您没有此步骤仓库范围内的正确角色。请检查仓库权限或联系管理员。",
       };
       throw err;
     }

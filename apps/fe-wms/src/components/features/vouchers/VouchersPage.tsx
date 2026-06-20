@@ -12,7 +12,6 @@ import UnifiedInProgressTab from "./UnifiedInProgressTab";
 import { IonIcon } from "@/components/ui/IonIcon";
 import { playForward, checkmarkCircle, time } from "ionicons/icons";
 import ImportVoucherSkeleton from "../import-vouchers/ImportVoucherSkeleton";
-import { EditImportVoucherModal } from "../import-vouchers/EditImportVoucherModal";
 
 type TabId = "create" | "inProgress" | "history";
 type VoucherType = "IMPORT" | "EXPORT" | "TRANSFER";
@@ -84,12 +83,6 @@ export default function VouchersPage() {
     const [activeTab, setActiveTab] = useState<TabId>(
         prefillWarehouseId ? "create" : "inProgress",
     );
-    const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
-        null,
-    );
-    const [editData, setEditData] = useState<Record<string, unknown> | null>(
-        null,
-    );
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
@@ -116,18 +109,8 @@ export default function VouchersPage() {
         (voucher) => voucher.status === "PENDING_APPROVAL",
     ).length;
 
-    const handleCloneToCreate = (voucherData: Record<string, unknown>) => {
-        setActiveTab("create");
-        setCloneData(voucherData);
-    };
-
-    const handleEditVoucher = (voucherData: Record<string, unknown>) => {
-        setEditData(voucherData);
-    };
-
     const handleTabSwitch = (tabId: TabId) => {
         setActiveTab(tabId);
-        if (tabId !== "create") setCloneData(null);
     };
 
     if (loading) {
@@ -224,11 +207,9 @@ export default function VouchersPage() {
                 <div className="flex flex-col flex-1">
                     {effectiveTab === "create" && (
                         <UnifiedCreateTab
-                            cloneData={cloneData}
                             prefillWarehouseId={prefillWarehouseId}
                             prefillVoucherType={prefillVoucherType}
                             onCreated={() => {
-                                setCloneData(null);
                                 setActiveTab("inProgress");
                             }}
                         />
@@ -237,8 +218,6 @@ export default function VouchersPage() {
                     {effectiveTab === "inProgress" && (
                         <UnifiedInProgressTab
                             vouchers={activeVouchers}
-                            onClone={handleCloneToCreate}
-                            onEdit={handleEditVoucher}
                             initialTypeFilter={prefillVoucherType}
                         />
                     )}
@@ -246,19 +225,11 @@ export default function VouchersPage() {
                     {effectiveTab === "history" && (
                         <UnifiedHistoryTab
                             vouchers={completedVouchers}
-                            onClone={handleCloneToCreate}
                             initialTypeFilter={prefillVoucherType}
                         />
                     )}
                 </div>
             </div>
-            
-            {editData && (
-                <EditImportVoucherModal
-                    editData={editData}
-                    onClose={() => setEditData(null)}
-                />
-            )}
         </div>
     );
 }

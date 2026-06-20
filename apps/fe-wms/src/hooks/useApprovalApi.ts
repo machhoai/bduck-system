@@ -136,8 +136,15 @@ export async function updateProcessConfig(configId: string, payload: unknown) {
   return result;
 }
 
-export async function seedProcessConfig(entityType: string) {
-  const result = await configApi(`/seed/${entityType}`, "POST");
+export async function seedProcessConfig(
+  entityType: string,
+  warehouseId?: string | null,
+) {
+  const result = await configApi(
+    `/seed/${entityType}`,
+    "POST",
+    warehouseId ? { warehouse_id: warehouseId } : undefined,
+  );
   emitDataMutation(["process_configs"]);
   return result;
 }

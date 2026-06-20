@@ -277,6 +277,10 @@ export async function createTransferOrder(
       order.source_warehouse_id,
       userId,
       { voucher_number: orderNumber, creator_name: creatorName },
+      {
+        sourceWarehouseId: order.source_warehouse_id,
+        destinationWarehouseId: order.destination_warehouse_id,
+      },
     );
     if (approvals.length === 0 && !isIntra) {
       await onApprovalCompleted(orderId, "SYSTEM_AUTO_APPROVE");
@@ -448,6 +452,10 @@ export async function updateTransferOrder(
       input.source_warehouse_id,
       userId,
       { voucher_number: oldOrder.order_number, creator_name: creatorName },
+      {
+        sourceWarehouseId: input.source_warehouse_id,
+        destinationWarehouseId: input.destination_warehouse_id,
+      },
     );
 
     if (approvals.length === 0 && !isIntra) {
@@ -958,6 +966,11 @@ async function createExportFromTransferInternal(
       exportId,
       order.source_warehouse_id,
       order.creator_id,
+      undefined,
+      {
+        sourceWarehouseId: order.source_warehouse_id,
+        destinationWarehouseId: order.destination_warehouse_id,
+      },
     );
   } catch (error) {
     console.error(

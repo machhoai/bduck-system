@@ -29,6 +29,11 @@ const approvalLevelSchema = z.object({
   required: z.boolean(),
   enabled: z.boolean(),
   min_approvers: z.number().int().min(1).default(1),
+  approval_scope: z
+    .enum(["ENTITY_WAREHOUSE", "SOURCE_WAREHOUSE", "DESTINATION_WAREHOUSE", "GLOBAL"])
+    .default("ENTITY_WAREHOUSE")
+    .optional(),
+  allow_global_fallback: z.boolean().default(false).optional(),
 });
 
 const stepOptionSchema = z.object({
@@ -40,6 +45,11 @@ const stepOptionSchema = z.object({
       zh: z.string().min(1),
     })
     .nullable(),
+  assignment_scope: z
+    .enum(["ENTITY_WAREHOUSE", "SOURCE_WAREHOUSE", "DESTINATION_WAREHOUSE", "GLOBAL"])
+    .default("ENTITY_WAREHOUSE")
+    .optional(),
+  allow_global_fallback: z.boolean().default(false).optional(),
 }).superRefine((data, ctx) => {
   // When assignment_mode is ROLE, assigned_role_id is required
   if (data.assignment_mode === "ROLE" && (!data.assigned_role_id || data.assigned_role_id.trim() === "")) {
@@ -78,6 +88,8 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
   },
   EXPORT_VOUCHER: {
@@ -85,6 +97,8 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
   },
   TRANSFER_ORDER: {
@@ -92,16 +106,22 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "SOURCE_WAREHOUSE",
+      allow_global_fallback: false,
     },
     picking: {
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "SOURCE_WAREHOUSE",
+      allow_global_fallback: false,
     },
     receiving: {
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "DESTINATION_WAREHOUSE",
+      allow_global_fallback: false,
     },
   },
   TRANSFER_INTRA: {
@@ -109,6 +129,8 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       assignment_mode: "CREATOR",
       assigned_role_id: null,
       label: null,
+      assignment_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
   },
 };
@@ -119,6 +141,8 @@ const DEFAULT_STEP_OPTIONS: Record<string, StepOption> = {
     assignment_mode: "CREATOR",
     assigned_role_id: null,
     label: null,
+    assignment_scope: "ENTITY_WAREHOUSE",
+    allow_global_fallback: false,
   },
 };
 
@@ -142,6 +166,8 @@ const DEFAULT_CHAINS: Partial<
       required: true,
       enabled: true,
       min_approvers: 1,
+      approval_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
     {
       level: 1,
@@ -150,6 +176,8 @@ const DEFAULT_CHAINS: Partial<
       required: false,
       enabled: false,
       min_approvers: 1,
+      approval_scope: "GLOBAL",
+      allow_global_fallback: false,
     },
   ],
   EXPORT_VOUCHER: [
@@ -160,6 +188,8 @@ const DEFAULT_CHAINS: Partial<
       required: true,
       enabled: true,
       min_approvers: 1,
+      approval_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
     {
       level: 1,
@@ -168,6 +198,8 @@ const DEFAULT_CHAINS: Partial<
       required: false,
       enabled: false,
       min_approvers: 1,
+      approval_scope: "GLOBAL",
+      allow_global_fallback: false,
     },
   ],
   TRANSFER_ORDER: [
@@ -178,6 +210,8 @@ const DEFAULT_CHAINS: Partial<
       required: true,
       enabled: true,
       min_approvers: 1,
+      approval_scope: "SOURCE_WAREHOUSE",
+      allow_global_fallback: false,
     },
   ],
   TRANSFER_INTRA: [
@@ -188,6 +222,8 @@ const DEFAULT_CHAINS: Partial<
       required: false,
       enabled: false,
       min_approvers: 1,
+      approval_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
     },
   ],
 };
@@ -288,10 +324,33 @@ export async function updateConfig(
  */
 export async function seedConfigIfMissing(
   entityType: ProcessEntityType,
+  warehouseId?: string | null,
 ): Promise<ProcessConfig> {
-  const existing = await repo.findByEntityType(entityType);
+  const exactWarehouseId = warehouseId?.trim() || null;
+  const existing = await repo.findExactByEntityType(
+    entityType,
+    exactWarehouseId,
+  );
 
   if (existing) return existing;
+
+  if (exactWarehouseId) {
+    const baseConfig = await seedConfigIfMissing(entityType, null);
+    const now = new Date();
+
+    return repo.create({
+      entity_type: entityType,
+      warehouse_id: exactWarehouseId,
+      approval_chain: baseConfig.approval_chain,
+      auto_approve: baseConfig.auto_approve,
+      require_evidence: baseConfig.require_evidence ?? false,
+      require_otp: baseConfig.require_otp ?? false,
+      step_options: baseConfig.step_options,
+      is_deleted: false,
+      created_at: now,
+      updated_at: now,
+    });
+  }
 
   // Resolve hardcoded role names → actual Firestore doc IDs
   const defaultChain = DEFAULT_CHAINS[entityType] ?? [];

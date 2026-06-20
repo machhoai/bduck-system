@@ -47,12 +47,12 @@ export const useAuth = () => {
       }
 
       const { data, messages } = await response.json();
-      // Extract unique role_ids from user_warehouse_roles for task matching
-      const roleIds = (data.roles || [])
-        .filter((r: any) => r.is_active)
+      const activeAssignments = (data.roles || []).filter((r: any) => r.is_active);
+      // Keep unique role_ids for compatibility with existing Firestore queries.
+      const roleIds = activeAssignments
         .map((r: any) => r.role_id)
         .filter((id: string, i: number, arr: string[]) => arr.indexOf(id) === i);
-      setAuthData(data.user, data.permissions, roleIds);
+      setAuthData(data.user, data.permissions, roleIds, activeAssignments);
 
       // Lock screen on login
       useMfaStore.getState().lockScreen();

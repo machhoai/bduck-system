@@ -1,7 +1,7 @@
 "use client";
 
 import { BadgeCheck, UserRoundCog } from "lucide-react";
-import type { Role, StepOption } from "@bduck/shared-types";
+import type { ApprovalScopeMode, Role, StepOption } from "@bduck/shared-types";
 import type { StepAssignmentMode } from "@bduck/shared-types";
 import type { EntityStepMeta, Locale, TEXT } from "./processConfigMeta";
 import { DEFAULT_STEP_OPTION } from "./processConfigMeta";
@@ -17,7 +17,22 @@ type Props = {
   onChange: (stepOptions: Record<string, StepOption>) => void;
 };
 
+const SCOPE_OPTIONS: ApprovalScopeMode[] = [
+  "ENTITY_WAREHOUSE",
+  "SOURCE_WAREHOUSE",
+  "DESTINATION_WAREHOUSE",
+  "GLOBAL",
+];
 
+function getScopeLabel(copy: Copy, scope: ApprovalScopeMode) {
+  const labels: Record<ApprovalScopeMode, string> = {
+    ENTITY_WAREHOUSE: copy.entityWarehouseScope,
+    SOURCE_WAREHOUSE: copy.sourceWarehouseScope,
+    DESTINATION_WAREHOUSE: copy.destinationWarehouseScope,
+    GLOBAL: copy.globalRoleScope,
+  };
+  return labels[scope];
+}
 
 export function StepOptionsEditor({
   steps,
@@ -96,28 +111,74 @@ export function StepOptionsEditor({
                     </label>
 
                     {option.assignment_mode === "ROLE" && (
-                      <label className="block">
-                        <span className="text-xxs font-semibold uppercase text-gray-400">
-                          {copy.role}
-                        </span>
-                        <select
-                          value={option.assigned_role_id ?? ""}
-                          onChange={(event) =>
-                            updateStep(step.key, {
-                              ...option,
-                              assigned_role_id: event.target.value || null,
-                            })
-                          }
-                          className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
-                        >
-                          <option value="">{copy.selectRole}</option>
-                          {roles.map((role) => (
-                            <option key={role.id} value={role.id}>
-                              {role.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <>
+                        <label className="block">
+                          <span className="text-xxs font-semibold uppercase text-gray-400">
+                            {copy.role}
+                          </span>
+                          <select
+                            value={option.assigned_role_id ?? ""}
+                            onChange={(event) =>
+                              updateStep(step.key, {
+                                ...option,
+                                assigned_role_id: event.target.value || null,
+                              })
+                            }
+                            className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
+                          >
+                            <option value="">{copy.selectRole}</option>
+                            {roles.map((role) => (
+                              <option key={role.id} value={role.id}>
+                                {role.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="text-xxs font-semibold uppercase text-gray-400">
+                            {copy.assignmentScope}
+                          </span>
+                          <select
+                            value={option.assignment_scope ?? "ENTITY_WAREHOUSE"}
+                            onChange={(event) =>
+                              updateStep(step.key, {
+                                ...option,
+                                assignment_scope: event.target.value as ApprovalScopeMode,
+                                allow_global_fallback:
+                                  event.target.value === "GLOBAL"
+                                    ? false
+                                    : option.allow_global_fallback === true,
+                              })
+                            }
+                            className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
+                          >
+                            {SCOPE_OPTIONS.map((scope) => (
+                              <option key={scope} value={scope}>
+                                {getScopeLabel(copy, scope)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="flex min-h-8 items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-600">
+                          <input
+                            type="checkbox"
+                            checked={option.allow_global_fallback === true}
+                            disabled={
+                              (option.assignment_scope ?? "ENTITY_WAREHOUSE") === "GLOBAL"
+                            }
+                            onChange={(event) =>
+                              updateStep(step.key, {
+                                ...option,
+                                allow_global_fallback: event.target.checked,
+                              })
+                            }
+                            className="h-4 w-4"
+                          />
+                          <span>{copy.allowGlobalFallback}</span>
+                        </label>
+                      </>
                     )}
                   </div>
                 </div>

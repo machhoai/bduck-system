@@ -83,6 +83,8 @@ export const DEFAULT_STEP_OPTION: StepOption = {
   assignment_mode: "CREATOR",
   assigned_role_id: null,
   label: null,
+  assignment_scope: "ENTITY_WAREHOUSE",
+  allow_global_fallback: false,
 };
 
 export const TEXT = PROCESS_CONFIG_TEXT;

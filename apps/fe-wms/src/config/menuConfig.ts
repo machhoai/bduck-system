@@ -96,7 +96,7 @@ export const menuItems: MenuItem[] = [
     },
     {
         id: "vouchers",
-        labelKey: "importVoucher", // Reusing this key temporarily or we can create 'vouchers'
+        labelKey: "vouchers",
         icon: PackagePlus,
         href: "/vouchers",
         permissionsAny: ["vouchers.read", "transfers.read"],

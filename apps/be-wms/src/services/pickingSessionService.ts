@@ -16,6 +16,7 @@ import { AuditAction } from "@bduck/shared-types";
 import type { ProcessEntityType } from "@bduck/shared-types";
 import { logAudit } from "./auditService.js";
 import { getConfigForEntity } from "./processConfigService.js";
+import { canPerformRoleStep, type ScopedUser } from "./scopedRoleAccess.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMA
@@ -38,10 +39,7 @@ export type SavePickingActualsInput = z.infer<typeof savePickingActualsSchema>;
 // TYPES
 // ─────────────────────────────────────────────
 
-export interface StepUser {
-  id: string;
-  roleIds: string[];
-}
+export type StepUser = ScopedUser;
 
 // ─────────────────────────────────────────────
 // STEP ASSIGNMENT VALIDATION
@@ -70,12 +68,12 @@ export async function validatePickingAssignment(
       });
     }
   } else if (assignment_mode === "ROLE") {
-    if (!assigned_role_id || !user.roleIds.includes(assigned_role_id)) {
+    if (!assigned_role_id || !canPerformRoleStep(user, stepOption, warehouseId)) {
       throw Object.assign(new Error("Unauthorized"), {
         statusCode: 403,
         messages: {
-          vi: "Bạn không có quyền soạn hàng. Cần role được chỉ định.",
-          zh: "您没有拣货权限。需要指定角色。",
+          vi: "Bạn không có đúng role trong phạm vi kho để soạn hàng. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên.",
+          zh: "您没有此仓库范围内的正确拣货角色。请检查仓库权限或联系管理员。",
         },
       });
     }

@@ -5,12 +5,14 @@ import {
   getRoleById,
 } from "../repositories/userRepository.js";
 import type { User, UserWarehouseRole } from "@bduck/shared-types";
+import { activeRoleAssignments, uniqueRoleIds } from "./scopedRoleAccess.js";
 
 export interface AuthSessionResult {
   cookie: string;
   expiresIn: number;
   user: User;
   roles: UserWarehouseRole[];
+  roleIds: string[];
   permissions: Record<string, unknown>;
 }
 
@@ -38,8 +40,9 @@ export const createSessionLogin = async (
   // 6. Merge all permissions from assigned roles
   const mergedPermissions: Record<string, unknown> = {};
 
-  for (const userRole of userRoles) {
-    if (!userRole.is_active) continue;
+  const activeRoles = activeRoleAssignments(userRoles);
+
+  for (const userRole of activeRoles) {
 
     const roleDef = await getRoleById(userRole.role_id);
     if (!roleDef) continue;
@@ -62,6 +65,7 @@ export const createSessionLogin = async (
     expiresIn,
     user,
     roles: userRoles,
+    roleIds: uniqueRoleIds(activeRoles),
     permissions: mergedPermissions,
   };
 };

@@ -73,6 +73,7 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
   const [loading, setLoading] = useState(true);
   const user = useUserStore((s) => s.user);
   const userRoleIds = useUserStore((s) => s.roleIds);
+  const hasScopedRole = useUserStore((s) => s.hasScopedRole);
 
   useEffect(() => {
     if (!user?.id || userRoleIds.length === 0) {
@@ -108,7 +109,20 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
           return toTime(b.created_at) - toTime(a.created_at);
         });
 
-        setAllRecords(records);
+        setAllRecords(
+          records.filter((record) =>
+            hasScopedRole(
+              record.role_id,
+              record.approval_warehouse_id === undefined
+                ? record.warehouse_id
+                : record.approval_warehouse_id,
+              {
+                allowGlobalFallback: record.allow_global_fallback === true,
+                requireGlobal: record.approval_scope === "GLOBAL",
+              },
+            ),
+          ),
+        );
         setLoading(false);
       },
       (error) => {
@@ -118,7 +132,7 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
     );
 
     return () => unsubscribe();
-  }, [user?.id, userRoleIds]);
+  }, [hasScopedRole, user?.id, userRoleIds]);
 
   // Self-Approval Block: identify tasks where current user is the creator
   // These tasks are still VISIBLE but approval actions are DISABLED

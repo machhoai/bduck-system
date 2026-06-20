@@ -1,6 +1,7 @@
 import type {
   InAppNotification,
   NotificationDispatch,
+  Role,
 } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import { db } from "../config/firebase.js";
@@ -142,6 +143,7 @@ class NotificationRepository {
   async findActiveUserIdsByRoleIds(
     roleIds: string[],
     warehouseId?: string | null,
+    options: { allowGlobalFallback?: boolean } = {},
   ): Promise<string[]> {
     if (roleIds.length === 0) return [];
 
@@ -156,10 +158,12 @@ class NotificationRepository {
 
       snapshot.docs.forEach((docSnap) => {
         const data = docSnap.data();
+        const assignmentWarehouseId =
+          typeof data.warehouse_id === "string" ? data.warehouse_id : null;
         if (
           warehouseId !== undefined &&
-          data.warehouse_id &&
-          data.warehouse_id !== warehouseId
+          assignmentWarehouseId !== warehouseId &&
+          !(options.allowGlobalFallback === true && assignmentWarehouseId === null)
         ) {
           return;
         }
@@ -168,6 +172,45 @@ class NotificationRepository {
           userIds.add(data.user_id);
         }
       });
+    }
+
+    return Array.from(userIds);
+  }
+
+  async findActiveUserIdsByPermission(
+    permissionKey: string,
+    warehouseId: string,
+    excludeUserId?: string,
+  ): Promise<string[]> {
+    const snapshot = await db
+      .collection(USER_ROLES_COLLECTION)
+      .where("is_active", "==", true)
+      .get();
+
+    const roleCache = new Map<string, Role | null>();
+    const userIds = new Set<string>();
+
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const userId = typeof data.user_id === "string" ? data.user_id : "";
+      const roleId = typeof data.role_id === "string" ? data.role_id : "";
+      const assignmentWarehouseId =
+        typeof data.warehouse_id === "string" ? data.warehouse_id : null;
+
+      if (!userId || !roleId || userId === excludeUserId) continue;
+      if (assignmentWarehouseId && assignmentWarehouseId !== warehouseId) continue;
+
+      let role = roleCache.get(roleId);
+      if (role === undefined) {
+        const roleSnap = await db.collection("roles").doc(roleId).get();
+        role = roleSnap.exists ? (roleSnap.data() as Role) : null;
+        roleCache.set(roleId, role);
+      }
+
+      if (!role || role.is_deleted) continue;
+      if (role.permissions["*"] === true || role.permissions[permissionKey] === true) {
+        userIds.add(userId);
+      }
     }
 
     return Array.from(userIds);

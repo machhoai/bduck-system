@@ -24,9 +24,13 @@ export async function getPendingApprovals(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const userRoleIds = (req as any).user?.roleIds ?? [];
+    const user = (req as any).user;
 
-    const records = await approvalService.getPendingTasksForRoles(userRoleIds);
+    const records = await approvalService.getPendingTasksForUser({
+      id: user?.id || user?.uid || "UNKNOWN",
+      roleIds: user?.roleIds || [],
+      roleAssignments: user?.roleAssignments || [],
+    });
 
     res.json({
       success: true,
@@ -85,7 +89,8 @@ export async function approveHandler(
 ): Promise<void> {
   try {
     const approvalId = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const authUser = (req as any).user;
+    const userId = authUser?.id;
     const { comments, otp } = req.body ?? {};
 
     if (!userId) {
@@ -105,6 +110,11 @@ export async function approveHandler(
       userId,
       comments,
       otp,
+      {
+        id: userId,
+        roleIds: authUser?.roleIds || [],
+        roleAssignments: authUser?.roleAssignments || [],
+      },
     );
 
     res.json({
@@ -148,7 +158,8 @@ export async function rejectHandler(
 ): Promise<void> {
   try {
     const approvalId = req.params.id as string;
-    const userId = (req as any).user?.id;
+    const authUser = (req as any).user;
+    const userId = authUser?.id;
     const { reason, otp } = req.body ?? {};
 
     if (!userId) {
@@ -163,7 +174,11 @@ export async function rejectHandler(
       return;
     }
 
-    await approvalService.rejectApproval(approvalId, userId, reason, otp);
+    await approvalService.rejectApproval(approvalId, userId, reason, otp, {
+      id: userId,
+      roleIds: authUser?.roleIds || [],
+      roleAssignments: authUser?.roleAssignments || [],
+    });
 
     res.json({
       success: true,

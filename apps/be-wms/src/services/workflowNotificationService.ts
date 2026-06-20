@@ -10,6 +10,7 @@ import { notificationRepository } from "../repositories/notificationRepository.j
 import * as userRepository from "../repositories/userRepository.js";
 import * as approvalRepository from "../repositories/approvalRepository.js";
 import { sendEmailNotification } from "./notificationService.js";
+import { getApprovalWarehouseId } from "./scopedRoleAccess.js";
 
 const ENTITY_LABELS: Record<ProcessEntityType, string> = {
     IMPORT_VOUCHER: "phiếu nhập kho",
@@ -204,15 +205,20 @@ async function notifyApproversForRecords(
     if (records.length === 0) return;
 
     const sample = records[0];
-    const roleIds = uniqueValues(records.map((record) => record.role_id));
-    const approverUserIds = (
-        await notificationRepository.findActiveUserIdsByRoleIds(
-            roleIds,
-            sample.warehouse_id,
-        )
-    ).filter((userId) => userId !== sample.creator_id);
+    const approverUserIds = new Set<string>();
 
-    const users = await userRepository.getUsersByIds(approverUserIds);
+    for (const record of records) {
+        const userIds = await notificationRepository.findActiveUserIdsByRoleIds(
+            [record.role_id],
+            getApprovalWarehouseId(record),
+            { allowGlobalFallback: record.allow_global_fallback === true },
+        );
+        userIds
+            .filter((userId) => userId !== record.creator_id)
+            .forEach((userId) => approverUserIds.add(userId));
+    }
+
+    const users = await userRepository.getUsersByIds(Array.from(approverUserIds));
     const recipientUserIds = users.map((user) => user.id);
     if (recipientUserIds.length === 0) return;
 

@@ -5,6 +5,10 @@ import {
   getUserWarehouseRoles,
   getRoleById,
 } from "../../repositories/userRepository.js";
+import {
+  activeRoleAssignments,
+  uniqueRoleIds,
+} from "../../services/scopedRoleAccess.js";
 
 export const requireAuth = async (
   req: Request,
@@ -60,8 +64,9 @@ export const requireAuth = async (
     const mergedPermissions: Record<string, unknown> = {};
     const roleNames: string[] = [];
 
-    for (const userRole of userRoles) {
-      if (!userRole.is_active) continue;
+    const activeRoles = activeRoleAssignments(userRoles);
+
+    for (const userRole of activeRoles) {
       const roleDef = await getRoleById(userRole.role_id);
       if (!roleDef) continue;
       roleNames.push(roleDef.name);
@@ -81,6 +86,8 @@ export const requireAuth = async (
     (req as any).user = {
       ...user,
       permissions: mergedPermissions,
+      roleAssignments: activeRoles,
+      roleIds: uniqueRoleIds(activeRoles),
       roleNames,
     };
 

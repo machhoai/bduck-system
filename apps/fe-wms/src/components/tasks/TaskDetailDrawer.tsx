@@ -38,8 +38,9 @@ import { gooeyToast } from "goey-toast";
 import type { ApprovalRecord } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useTaskDetailData } from "@/hooks/useTaskDetailData";
-import { approveRecord, rejectRecord, cancelApproval } from "@/hooks/useApprovalApi";
+import { approveRecord, rejectRecord, cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
 import { useProcessConfig } from "@/hooks/useProcessConfig";
+import { useUserStore } from "@/stores/useUserStore";
 import AttachmentSection from "./AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
@@ -119,16 +120,24 @@ function DetailSkeleton() {
 export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: TaskDetailDrawerProps) {
     const { t } = useTranslation();
     const { voucher, items, creatorName, warehouseName, loadingVoucher, loadingItems } = useTaskDetailData(approval);
+    const hasPermission = useUserStore((s) => s.hasPermission);
 
     const { config: processConfig } = useProcessConfig(approval.entity_type, approval.warehouse_id);
     const [comment, setComment] = useState("");
     const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [otpAction, setOtpAction] = useState<"approve" | "reject" | "cancel" | null>(null);
+    const [otpAction, setOtpAction] = useState<"approve" | "reject" | "cancel" | "forceCancel" | null>(null);
 
     const isLoading = loadingVoucher;
 
     const isExport = approval.entity_type === "EXPORT_VOUCHER";
+    const canForceCancel = useMemo(() => {
+        if (!voucher) return false;
+        return (
+            hasPermission("vouchers.force_cancel") &&
+            !["CANCELLED", "COMPLETED"].includes(voucher.status)
+        );
+    }, [hasPermission, voucher]);
 
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
@@ -234,6 +243,62 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                         error: {
                             label: t.tasks.approval.retry,
                             onClick: () => handleCancel(otp),
+                        },
+                    },
+                });
+
+                await promise;
+                onClose();
+            } finally {
+                setIsSubmitting(false);
+            }
+        },
+        [isSubmitting, cancelReason, approval, onClose, t, processConfig],
+    );
+
+    const handleForceCancel = useCallback(
+        async (otp?: string) => {
+            if (isSubmitting) return;
+            if (!cancelReason.trim()) {
+                gooeyToast.error(t.tasks.selfApproval.forceCancelReasonRequired, {
+                    preset: "snappy",
+                    timing: { displayDuration: 4000 },
+                });
+                return;
+            }
+
+            if (processConfig?.require_otp && !otp) {
+                setOtpAction("forceCancel");
+                return;
+            }
+
+            setOtpAction(null);
+            setIsSubmitting(true);
+
+            const submitAction = async () => {
+                return forceCancelApproval(
+                    approval.entity_type,
+                    approval.entity_id,
+                    cancelReason,
+                    otp,
+                );
+            };
+
+            try {
+                const promise = submitAction();
+
+                gooeyToast.promise(promise, {
+                    loading: t.tasks.selfApproval.cancelling,
+                    success: t.tasks.selfApproval.cancelSuccess,
+                    error: t.tasks.selfApproval.cancelError,
+                    description: {
+                        success: t.tasks.selfApproval.cancelSuccessDesc,
+                        error: t.tasks.selfApproval.cancelErrorDesc,
+                    },
+                    action: {
+                        error: {
+                            label: t.tasks.approval.retry,
+                            onClick: () => undefined,
                         },
                     },
                 });
@@ -430,6 +495,17 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                                     {(t.tasks as any).selfApproval?.cancelButton ?? "Hủy lệnh"}
                                 </button>
+                                {canForceCancel && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleForceCancel()}
+                                        disabled={isSubmitting || !cancelReason.trim()}
+                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                                        {t.tasks.selfApproval.forceCancelButton}
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             /* Normal approval actions */
@@ -461,6 +537,32 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                         {t.tasks.approval.approve}
                                     </button>
                                 </div>
+                                {canForceCancel && (
+                                    <div className="mt-3 space-y-3 border-t border-[var(--color-border-soft)] pt-3">
+                                        <div className="flex items-start gap-3 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] p-3">
+                                            <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-error-text)]" />
+                                            <p className="text-xs leading-relaxed text-[var(--color-error-text)]">
+                                                {t.tasks.selfApproval.forceCancelDescription}
+                                            </p>
+                                        </div>
+                                        <textarea
+                                            value={cancelReason}
+                                            onChange={(e) => setCancelReason(e.target.value)}
+                                            rows={2}
+                                            placeholder={t.tasks.selfApproval.forceCancelReason}
+                                            className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleForceCancel()}
+                                            disabled={isSubmitting || !cancelReason.trim()}
+                                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition-all hover:bg-[var(--color-error-bg-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                                            {t.tasks.selfApproval.forceCancelButton}
+                                        </button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -473,6 +575,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                         if (otpAction === "approve") handleDecision(true, code);
                         else if (otpAction === "reject") handleDecision(false, code);
                         else if (otpAction === "cancel") handleCancel(code);
+                        else if (otpAction === "forceCancel") handleForceCancel(code);
                     }}
                     onCancel={() => setOtpAction(null)}
                     isSubmitting={isSubmitting}

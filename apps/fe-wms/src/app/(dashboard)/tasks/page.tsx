@@ -1,9 +1,9 @@
-import TaskInbox from "@/components/tasks/TaskInbox";
+import TaskWorkspace from "@/components/tasks/TaskWorkspace";
 
 export default function TasksPage() {
     return (
         <div className="">
-            <TaskInbox />
+            <TaskWorkspace />
         </div>
     );
 }

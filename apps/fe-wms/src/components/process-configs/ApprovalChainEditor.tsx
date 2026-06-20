@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
-import type { ApprovalLevel, Role } from "@bduck/shared-types";
+import type { ApprovalLevel, ApprovalScopeMode, Role } from "@bduck/shared-types";
 import type { Locale, TEXT } from "./processConfigMeta";
 import { formatApprovalLevelLabel } from "@/lib/i18n/componentTranslations";
 
@@ -14,6 +14,23 @@ type Props = {
   copy: Copy;
   onChange: (chain: ApprovalLevel[]) => void;
 };
+
+const SCOPE_OPTIONS: ApprovalScopeMode[] = [
+  "ENTITY_WAREHOUSE",
+  "SOURCE_WAREHOUSE",
+  "DESTINATION_WAREHOUSE",
+  "GLOBAL",
+];
+
+function getScopeLabel(copy: Copy, scope: ApprovalScopeMode) {
+  const labels: Record<ApprovalScopeMode, string> = {
+    ENTITY_WAREHOUSE: copy.entityWarehouseScope,
+    SOURCE_WAREHOUSE: copy.sourceWarehouseScope,
+    DESTINATION_WAREHOUSE: copy.destinationWarehouseScope,
+    GLOBAL: copy.globalRoleScope,
+  };
+  return labels[scope];
+}
 
 function ToggleButton({
   active,
@@ -80,6 +97,8 @@ export function ApprovalChainEditor({
         required: false,
         enabled: true,
         min_approvers: 1,
+        approval_scope: "ENTITY_WAREHOUSE",
+        allow_global_fallback: false,
       },
     ]);
   };
@@ -124,7 +143,7 @@ export function ApprovalChainEditor({
               key={`approval-level-${index}`}
               className="rounded-lg border border-gray-100 bg-gray-50/40 p-3"
             >
-              <div className="grid gap-3 lg:grid-cols-[56px_minmax(170px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_116px_88px_40px] lg:items-end">
+              <div className="grid gap-3 lg:grid-cols-[56px_minmax(170px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_116px_140px_88px_40px] lg:items-end">
                 <div className="flex items-center justify-between lg:block">
                   <p className="text-xxs font-semibold uppercase text-gray-400">
                     Level
@@ -212,6 +231,49 @@ export function ApprovalChainEditor({
                     }
                     className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   />
+                </label>
+
+                <label className="block">
+                  <span className="text-xxs font-semibold uppercase text-gray-400">
+                    {copy.approvalScope}
+                  </span>
+                  <select
+                    value={level.approval_scope ?? "ENTITY_WAREHOUSE"}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      updateLevel(index, {
+                        ...level,
+                        approval_scope: event.target.value as ApprovalScopeMode,
+                        allow_global_fallback:
+                          event.target.value === "GLOBAL"
+                            ? false
+                            : level.allow_global_fallback === true,
+                      })
+                    }
+                    className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
+                  >
+                    {SCOPE_OPTIONS.map((scope) => (
+                      <option key={scope} value={scope}>
+                        {getScopeLabel(copy, scope)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex min-h-8 items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-600 lg:mt-5">
+                  <input
+                    type="checkbox"
+                    checked={level.allow_global_fallback === true}
+                    disabled={disabled || (level.approval_scope ?? "ENTITY_WAREHOUSE") === "GLOBAL"}
+                    onChange={(event) =>
+                      updateLevel(index, {
+                        ...level,
+                        allow_global_fallback: event.target.checked,
+                      })
+                    }
+                    className="h-4 w-4"
+                  />
+                  <span className="line-clamp-2">{copy.allowGlobalFallback}</span>
                 </label>
 
                 <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 lg:block lg:bg-transparent lg:px-0 lg:py-0">

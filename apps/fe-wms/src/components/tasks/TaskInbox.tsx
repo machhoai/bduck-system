@@ -29,6 +29,10 @@ import { useApprovalTasks } from "@/hooks/useApprovalTasks";
 import TaskCard from "./TaskCard";
 import TaskDetailDrawer from "./TaskDetailDrawer";
 
+interface TaskInboxProps {
+  compact?: boolean;
+}
+
 const ENTITY_FILTERS = [
   { key: "ALL", icon: Sparkles },
   { key: "IMPORT_VOUCHER", icon: PackagePlus },
@@ -150,7 +154,7 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
   );
 }
 
-export default function TaskInbox() {
+export default function TaskInbox({ compact = false }: TaskInboxProps) {
   const { t } = useTranslation();
   const { myTasks, selfCreatedIds, loading } = useApprovalTasks();
   const [selectedTask, setSelectedTask] = useState<ApprovalRecord | null>(null);
@@ -231,44 +235,46 @@ export default function TaskInbox() {
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-14 aspect-square shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-1 ring-[var(--color-status-approved-border)]">
-            <ClipboardCheck className="h-6 w-6" />
+      {!compact && (
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 aspect-square shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)] ring-1 ring-[var(--color-status-approved-border)]">
+              <ClipboardCheck className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
+                {t.tasks.workspaceLabel}
+              </p>
+              <h1 className="text-lg font-bold text-[var(--color-text-primary)]">
+                {t.tasks.title}
+              </h1>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                {loading
+                  ? t.tasks.loading
+                  : `${taskStats.total} ${t.tasks.pendingCount}`}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
-              {t.tasks.workspaceLabel}
-            </p>
-            <h1 className="text-lg font-bold text-[var(--color-text-primary)]">
-              {t.tasks.title}
-            </h1>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {loading
-                ? t.tasks.loading
-                : `${taskStats.total} ${t.tasks.pendingCount}`}
-            </p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:w-[420px]">
-          <StatTile
-            label={t.tasks.stats.total}
-            value={taskStats.total}
-            tone="blue"
-          />
-          <StatTile
-            label={t.tasks.stats.imports}
-            value={taskStats.importCount}
-            tone="emerald"
-          />
-          <StatTile
-            label={t.tasks.stats.exports}
-            value={taskStats.exportCount}
-            tone="amber"
-          />
+          <div className="grid grid-cols-3 gap-2 lg:w-[420px]">
+            <StatTile
+              label={t.tasks.stats.total}
+              value={taskStats.total}
+              tone="blue"
+            />
+            <StatTile
+              label={t.tasks.stats.imports}
+              value={taskStats.importCount}
+              tone="emerald"
+            />
+            <StatTile
+              label={t.tasks.stats.exports}
+              value={taskStats.exportCount}
+              tone="amber"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex w-full gap-2 overflow-x-auto pb-1">
         {ENTITY_FILTERS.map((filter) => (

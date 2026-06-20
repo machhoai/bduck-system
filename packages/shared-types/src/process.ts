@@ -83,7 +83,30 @@ export interface ApprovalLevel {
    * Default = 1. Set to 2 if e.g. "2 Directors must approve".
    */
   min_approvers: number;
+  /**
+   * Which warehouse scope this approval belongs to.
+   *
+   * ENTITY_WAREHOUSE = the primary warehouse on the voucher.
+   * SOURCE_WAREHOUSE = transfer source warehouse.
+   * DESTINATION_WAREHOUSE = transfer destination warehouse.
+   * GLOBAL = only users assigned to this role globally may approve.
+   *
+   * Optional for backward compatibility; omitted values are treated as
+   * ENTITY_WAREHOUSE by services.
+   */
+  approval_scope?: ApprovalScopeMode;
+  /**
+   * When true, a user with this role at global scope may approve a
+   * warehouse-scoped task. Defaults to false.
+   */
+  allow_global_fallback?: boolean;
 }
+
+export type ApprovalScopeMode =
+  | 'ENTITY_WAREHOUSE'
+  | 'SOURCE_WAREHOUSE'
+  | 'DESTINATION_WAREHOUSE'
+  | 'GLOBAL';
 
 // ─────────────────────────────────────────────
 // STEP OPTION (config per pipeline step)
@@ -113,6 +136,16 @@ export interface StepOption {
   assigned_role_id: string | null;
   /** Custom label override (null = use default i18n) */
   label: { vi: string; zh: string } | null;
+  /**
+   * Which scope should be used when assignment_mode = ROLE.
+   * Defaults to ENTITY_WAREHOUSE for old configs.
+   */
+  assignment_scope?: ApprovalScopeMode;
+  /**
+   * Whether a global role assignment can perform this warehouse-scoped step.
+   * Defaults to false.
+   */
+  allow_global_fallback?: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -188,6 +221,16 @@ export interface ApprovalRecord {
   entity_id: string;
   /** FK → warehouses (denormalized for scoped queries) */
   warehouse_id: string;
+  /**
+   * Warehouse scope used for authorization.
+   * null means this is a global approval task.
+   * Missing values should be treated as warehouse_id for legacy records.
+   */
+  approval_warehouse_id?: string | null;
+  /** Scope resolver used when this record was created. */
+  approval_scope?: ApprovalScopeMode;
+  /** Whether global role assignment can approve this scoped record. */
+  allow_global_fallback?: boolean;
   /** Sequential level (0-based, matches ApprovalLevel.level) */
   level: number;
   /** Role required to approve (FK → roles.id) */

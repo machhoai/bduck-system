@@ -96,7 +96,7 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
     const exportText = t.exportVoucher as any;
     const { warehouses } = useWarehouses();
     const user = useUserStore((state) => state.user);
-    const roleIds = useUserStore((state) => state.roleIds);
+    const hasScopedRole = useUserStore((state) => state.hasScopedRole);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [pickingVoucherId, setPickingVoucherId] = useState<string | null>(null);
     const [processConfig, setProcessConfig] = useState<ProcessConfig | null>(
@@ -137,11 +137,14 @@ export default function ExportInProgressTab({ vouchers, onClone }: Props) {
                 return user?.id === voucher.creator_id;
             }
             if (step.assignment_mode === "ROLE") {
-                return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
+                return hasScopedRole(step.assigned_role_id, voucher.warehouse_id, {
+                    allowGlobalFallback: step.allow_global_fallback === true,
+                    requireGlobal: step.assignment_scope === "GLOBAL",
+                });
             }
             return true;
         },
-        [processConfig, roleIds, user?.id],
+        [hasScopedRole, processConfig, user?.id],
     );
 
     const handleCompleteExport = useCallback(

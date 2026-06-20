@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { UserStatus } from "@bduck/shared-types";
+import {
+  IssueType,
+  NonconformitySourceType,
+  NonconformityStatus,
+  ResolutionType,
+  UserStatus,
+} from "@bduck/shared-types";
 
 // ============================================================
 // BASE SCHEMAS
@@ -318,4 +324,23 @@ export const inventoryQuerySchema = z.object({
   warehouse_id: z.string().uuid().optional(),
   warehouse_location_id: z.string().uuid().optional(),
   product_id: z.string().uuid().optional(),
+});
+
+// ============================================================
+// NONCONFORMITY SCHEMAS
+// ============================================================
+
+export const nonconformityQuerySchema = z.object({
+  warehouse_id: z.string().uuid().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+  product_id: z.string().uuid().optional(),
+  source_type: z.nativeEnum(NonconformitySourceType).optional(),
+  issue_type: z.nativeEnum(IssueType).optional(),
+  status: z.nativeEnum(NonconformityStatus).optional(),
+});
+
+export const resolveNonconformitySchema = z.object({
+  resolution_type: z.nativeEnum(ResolutionType),
+  resolution_notes: z.string().max(1000).nullable().optional(),
+  action_time: z.string().datetime().optional(),
 });

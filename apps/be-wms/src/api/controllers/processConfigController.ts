@@ -142,7 +142,14 @@ export async function seedConfigHandler(
 ): Promise<void> {
   try {
     const entityType = req.params.entityType as ProcessEntityType;
-    const config = await configService.seedConfigIfMissing(entityType);
+    const warehouseId =
+      typeof req.body?.warehouse_id === "string" && req.body.warehouse_id.trim()
+        ? req.body.warehouse_id.trim()
+        : null;
+    const config = await configService.seedConfigIfMissing(
+      entityType,
+      warehouseId,
+    );
 
     res.json({
       success: true,
@@ -183,4 +190,3 @@ export async function reseedConfigHandler(
     next(error);
   }
 }
-

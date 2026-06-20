@@ -10,31 +10,19 @@ import {
     Calendar,
     User,
     ClipboardSignature,
-    Play,
-    CheckCircle,
-    ArrowDownRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { gooeyToast } from "goey-toast";
 import type { UnifiedVoucher } from "../../../types/unified-voucher";
 import { useTranslation } from "../../../lib/i18n";
 import { MISC_COMPONENT_TEXT } from "../../../lib/i18n/componentTranslations";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useUsers } from "../../../hooks/useUsers";
-import { useUserStore } from "../../../stores/useUserStore";
-import { fetchConfigByEntityType } from "../../../hooks/useApprovalApi";
-import { completeExportVoucher } from "../../../hooks/useExportVoucherApi";
-import type { ProcessConfig } from "@bduck/shared-types";
 import VoucherDetailDrawer from "../import-vouchers/VoucherDetailDrawer";
 import TransferDetailDrawer from "../transfers/TransferDetailDrawer";
-import ReceivingSessionDrawer from "../../tasks/ReceivingSessionDrawer";
-import PickingSessionDrawer from "../../tasks/PickingSessionDrawer";
 
 interface UnifiedInProgressTabProps {
     vouchers: UnifiedVoucher[];
-    onClone: (voucherData: Record<string, unknown>) => void;
-    onEdit?: (voucherData: Record<string, unknown>) => void;
     initialTypeFilter?: string;
 }
 
@@ -116,11 +104,9 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[], unknownDateLabel: strin
     }, []);
 }
 
-export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initialTypeFilter }: UnifiedInProgressTabProps) {
+export default function UnifiedInProgressTab({ vouchers, initialTypeFilter }: UnifiedInProgressTabProps) {
     const { t, lang } = useTranslation();
     const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
-    const exportText = t.exportVoucher as any;
-    const transferText = t.transfer as any;
     const { warehouses } = useWarehouses();
     const { users } = useUsers();
 
@@ -131,69 +117,9 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
     const [selectedVoucher, setSelectedVoucher] = useState<UnifiedVoucher | null>(null);
     const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
 
-    const user = useUserStore((state) => state.user);
-    const roleIds = useUserStore((state) => state.roleIds);
-    const hasPermission = useUserStore((state) => state.hasPermission);
-
-    const [importConfig, setImportConfig] = useState<ProcessConfig | null>(null);
-    const [exportConfig, setExportConfig] = useState<ProcessConfig | null>(null);
-    const [receivingVoucherId, setReceivingVoucherId] = useState<string | null>(null);
-    const [pickingVoucherId, setPickingVoucherId] = useState<string | null>(null);
-
-    useEffect(() => {
-        let disposed = false;
-        Promise.all([
-            fetchConfigByEntityType("IMPORT_VOUCHER").catch(() => null),
-            fetchConfigByEntityType("EXPORT_VOUCHER").catch(() => null)
-        ]).then(([importCfg, exportCfg]) => {
-            if (!disposed) {
-                if (importCfg) setImportConfig(importCfg as ProcessConfig);
-                if (exportCfg) setExportConfig(exportCfg as ProcessConfig);
-            }
-        });
-        return () => { disposed = true; };
-    }, []);
-
     useEffect(() => {
         setTypeFilter(initialTypeFilter ?? "");
     }, [initialTypeFilter]);
-
-    const canPerformSession = (voucher: UnifiedVoucher) => {
-        if (hasPermission("admin")) return true;
-
-        if (voucher.type === "IMPORT") {
-            if (!importConfig?.step_options?.receiving) return true;
-            const step = importConfig.step_options.receiving;
-            if (step.assignment_mode === "CREATOR") return user?.id === voucher.creator_id;
-            if (step.assignment_mode === "ROLE") return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
-            return true;
-        } else if (voucher.type === "EXPORT") {
-            if (!exportConfig?.step_options?.picking) return true;
-            const step = exportConfig.step_options.picking;
-            if (step.assignment_mode === "CREATOR") return user?.id === voucher.creator_id;
-            if (step.assignment_mode === "ROLE") return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
-            return true;
-        }
-        return false; // Transfer or other types not handled yet
-    };
-
-    const handleCompleteExport = async (voucherId: string) => {
-        await gooeyToast.promise(completeExportVoucher(voucherId), {
-            loading: exportText.toast?.completing ?? "Dang hoan thanh phieu xuat...",
-            success: exportText.toast?.completeSuccess ?? "Da hoan thanh phieu xuat",
-            error: exportText.toast?.completeError ?? "Khong the hoan thanh phieu xuat",
-            description: {
-                success: exportText.toast?.completeSuccessDesc ?? "Lenh xuat da duoc chuyen sang hoan thanh.",
-                error: t.common.retry,
-            },
-            action: {
-                error: {
-                    label: t.common.retry,
-                    onClick: () => void handleCompleteExport(voucherId),
-                },
-            },
-        });
-    };
 
     const warehouseById = useMemo(() => new Map(warehouses.map(w => [w.id, w])), [warehouses]);
     const userById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
@@ -358,57 +284,9 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
-                                        {(t as any).importVoucher?.status?.[voucher.status] || (t as any).exportVoucher?.status?.[voucher.status] || voucher.status}
-                                    </span>
-                                    {voucher.status === "APPROVED" && canPerformSession(voucher) && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (voucher.type === "IMPORT") {
-                                                    setReceivingVoucherId(voucher.id);
-                                                } else if (voucher.type === "EXPORT") {
-                                                    setPickingVoucherId(voucher.id);
-                                                }
-                                            }}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
-                                            title={misc.continue}
-                                        >
-                                            <Play size={12} />
-                                            <span>{misc.continue}</span>
-                                        </button>
-                                    )}
-                                    {voucher.type === "EXPORT" && voucher.status === "SHIPPED" && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                void handleCompleteExport(voucher.id);
-                                            }}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-success-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
-                                            title={exportText.actions?.complete ?? "Hoan thanh"}
-                                        >
-                                            <CheckCircle size={12} />
-                                            <span>{exportText.actions?.complete ?? "Hoan thanh"}</span>
-                                        </button>
-                                    )}
-                                    {voucher.type === "TRANSFER" && (voucher.status === "PENDING_RECEIVE" || voucher.status === "RECEIVING") && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedTransferId(voucher.id);
-                                            }}
-                                            className="flex h-6 items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-status-transit-icon)] px-2 text-xxs font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90"
-                                            title={transferText.actions?.receive ?? "Nhan hang"}
-                                        >
-                                            <ArrowDownRight size={12} />
-                                            <span>{transferText.actions?.receive ?? "Nhan hang"}</span>
-                                        </button>
-                                    )}
-                                </div>
+                                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
+                                    {(t as any).importVoucher?.status?.[voucher.status] || (t as any).exportVoucher?.status?.[voucher.status] || voucher.status}
+                                </span>
                             </div>
 
                             <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] p-2">
@@ -440,8 +318,6 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                 <VoucherDetailDrawer
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
-                    onClone={onClone}
-                    onEdit={onEdit}
                 />
             )}
 
@@ -449,44 +325,9 @@ export default function UnifiedInProgressTab({ vouchers, onClone, onEdit, initia
                 <TransferDetailDrawer
                     orderId={selectedTransferId}
                     onClose={() => setSelectedTransferId(null)}
+                    readOnly
                 />
             )}
-
-            {receivingVoucherId &&
-                (() => {
-                    const voucher = vouchers.find(
-                        (item) => item.id === receivingVoucherId,
-                    );
-                    if (!voucher) return null;
-                    return (
-                        <ReceivingSessionDrawer
-                            task={
-                                {
-                                    id: `receiving-${voucher.id}`,
-                                    instance_id: voucher.id,
-                                    entity_id: voucher.id,
-                                    entity_type: "IMPORT_VOUCHER",
-                                    voucher_id: voucher.id,
-                                } as any
-                            }
-                            onClose={() => setReceivingVoucherId(null)}
-                        />
-                    );
-                })()}
-
-            {pickingVoucherId &&
-                (() => {
-                    const voucher = vouchers.find(
-                        (item) => item.id === pickingVoucherId,
-                    );
-                    if (!voucher) return null;
-                    return (
-                        <PickingSessionDrawer
-                            voucherId={voucher.id}
-                            onClose={() => setPickingVoucherId(null)}
-                        />
-                    );
-                })()}
         </div>
     );
 }

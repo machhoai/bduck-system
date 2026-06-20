@@ -37,6 +37,11 @@ import {
   notifyInitialApprovalTasks,
   notifyNextApprovalLevel,
 } from "./workflowNotificationService.js";
+import {
+  canActOnApprovalRecord,
+  resolveStepWarehouseId,
+  type ScopedUser,
+} from "./scopedRoleAccess.js";
 
 // ─────────────────────────────────────────────
 // ERROR HELPERS
@@ -75,6 +80,10 @@ export async function createApprovalsForEntity(
   warehouseId: string,
   creatorId: string,
   displayInfo?: { voucher_number?: string; creator_name?: string },
+  scopeInfo?: {
+    sourceWarehouseId?: string | null;
+    destinationWarehouseId?: string | null;
+  },
 ): Promise<ApprovalRecord[]> {
   // ── Check auto_approve flag in ProcessConfig ──
   const config = await configRepo.findByEntityType(entityType, warehouseId);
@@ -128,6 +137,13 @@ export async function createApprovalsForEntity(
   const records: ApprovalRecord[] = [];
 
   for (const level of chain) {
+    const approvalScope = level.approval_scope ?? "ENTITY_WAREHOUSE";
+    const approvalWarehouseId = resolveStepWarehouseId(
+      approvalScope,
+      warehouseId,
+      scopeInfo?.sourceWarehouseId,
+      scopeInfo?.destinationWarehouseId,
+    );
     // Create min_approvers records per level (default 1)
     const count = Math.max(level.min_approvers || 1, 1);
     for (let i = 0; i < count; i++) {
@@ -136,6 +152,9 @@ export async function createApprovalsForEntity(
         entity_type: entityType,
         entity_id: entityId,
         warehouse_id: warehouseId,
+        approval_warehouse_id: approvalWarehouseId,
+        approval_scope: approvalScope,
+        allow_global_fallback: level.allow_global_fallback === true,
         level: level.level,
         role_id: level.role_id,
         status: "PENDING",
@@ -195,6 +214,7 @@ export async function approveLevel(
   approverId: string,
   comments?: string | null,
   otp?: string | null,
+  approver?: ScopedUser,
 ): Promise<ApprovalResult> {
   const record = await approvalRepo.findById(approvalId);
 
@@ -211,6 +231,14 @@ export async function approveLevel(
       400,
       "Bản ghi phê duyệt này đã được xử lý.",
       "该审批记录已处理。",
+    );
+  }
+
+  if (approver && !canActOnApprovalRecord(approver, record)) {
+    throw createError(
+      403,
+      "Bạn không có đúng role trong phạm vi kho của bước duyệt này. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên để được gán role phù hợp.",
+      "您没有此审批步骤仓库范围内的正确角色。请检查仓库权限或联系管理员分配合适角色。",
     );
   }
 
@@ -370,6 +398,7 @@ export async function rejectApproval(
   rejectorId: string,
   reason: string,
   otp?: string | null,
+  rejector?: ScopedUser,
 ): Promise<ApprovalRecord> {
   if (!reason || reason.trim().length === 0) {
     throw createError(
@@ -386,6 +415,14 @@ export async function rejectApproval(
       404,
       "Không tìm thấy bản ghi phê duyệt.",
       "未找到审批记录。",
+    );
+  }
+
+  if (rejector && !canActOnApprovalRecord(rejector, record)) {
+    throw createError(
+      403,
+      "Bạn không có đúng role trong phạm vi kho của bước duyệt này. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên để được gán role phù hợp.",
+      "您没有此审批步骤仓库范围内的正确角色。请检查仓库权限或联系管理员分配合适角色。",
     );
   }
 
@@ -488,10 +525,11 @@ export async function rejectApproval(
  * Get pending approval tasks for a user based on their role IDs.
  * Replaces the old useWorkflowTasks collectionGroup query.
  */
-export async function getPendingTasksForRoles(
-  roleIds: string[],
+export async function getPendingTasksForUser(
+  user: ScopedUser,
 ): Promise<ApprovalRecord[]> {
-  return approvalRepo.findPendingByRoleIds(roleIds);
+  const records = await approvalRepo.findPendingByRoleIds(user.roleIds || []);
+  return records.filter((record) => canActOnApprovalRecord(user, record));
 }
 
 /**

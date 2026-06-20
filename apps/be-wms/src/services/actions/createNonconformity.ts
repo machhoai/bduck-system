@@ -19,6 +19,7 @@ import type {
   SystemActionContext,
   SystemActionResult,
 } from "./updateInventoryATP.js";
+import { notifyNonconformityCreated } from "../nonconformityNotificationService.js";
 
 function buildReportNumber(now: Date, index: number): string {
   const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
@@ -147,6 +148,17 @@ export async function createNonconformity(
       inventory_locks: inventoryLocks,
       report_ids: reportIds,
     },
+  });
+
+  await notifyNonconformityCreated({
+    warehouseId,
+    reporterId: ctx.userId,
+    reports: reportPlans.map((plan) => ({
+      id: plan.reportId,
+      report_number: plan.reportNumber,
+      issue_type: plan.exception.issueType,
+      quantity_affected: plan.exception.quantity,
+    })),
   });
 
   return {

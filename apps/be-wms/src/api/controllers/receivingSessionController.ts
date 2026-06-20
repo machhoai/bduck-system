@@ -35,6 +35,7 @@ export async function saveActuals(
     const user = {
       id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
       roleIds: (req as any).user?.roleIds || [],
+      roleAssignments: (req as any).user?.roleAssignments || [],
     };
 
     // Validate input (Zod — LUẬT THÉP)
@@ -94,6 +95,7 @@ export async function completeReceivingHandler(
     const user = {
       id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
       roleIds: (req as any).user?.roleIds || [],
+      roleAssignments: (req as any).user?.roleAssignments || [],
     };
 
     // Validate step assignment in service layer

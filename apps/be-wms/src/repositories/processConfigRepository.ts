@@ -104,7 +104,39 @@ export async function create(
 /** Update an existing config */
 export async function update(
   id: string,
-  data: Partial<Pick<ProcessConfig, "approval_chain" | "auto_approve" | "step_options" | "updated_at">>,
+  data: Partial<
+    Pick<
+      ProcessConfig,
+      | "approval_chain"
+      | "auto_approve"
+      | "require_evidence"
+      | "require_otp"
+      | "step_options"
+      | "updated_at"
+    >
+  >,
 ): Promise<void> {
   await db.collection(COLLECTION).doc(id).update(data);
+}
+
+/**
+ * Find an exact config scope without falling back to global.
+ * Use this when creating/editing warehouse overrides.
+ */
+export async function findExactByEntityType(
+  entityType: ProcessEntityType,
+  warehouseId?: string | null,
+): Promise<ProcessConfig | null> {
+  const snap = await db
+    .collection(COLLECTION)
+    .where("entity_type", "==", entityType)
+    .where("warehouse_id", "==", warehouseId ?? null)
+    .where("is_deleted", "==", false)
+    .limit(1)
+    .get();
+
+  if (snap.empty) return null;
+
+  const doc = snap.docs[0];
+  return { id: doc.id, ...doc.data() } as ProcessConfig;
 }

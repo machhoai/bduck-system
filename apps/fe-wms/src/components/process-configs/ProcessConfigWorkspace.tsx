@@ -12,6 +12,7 @@ import {
     ScanLine,
     ShieldAlert,
     Sparkles,
+    Store,
     Zap,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
@@ -29,6 +30,7 @@ import {
     updateProcessConfig,
 } from "@/hooks/useApprovalApi";
 import { useRoles } from "@/hooks/useRoles";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { ApprovalChainEditor } from "./ApprovalChainEditor";
 import { ProcessConfigSkeleton } from "./ProcessConfigSkeleton";
 import { StepOptionsEditor } from "./StepOptionsEditor";
@@ -273,6 +275,129 @@ function MissingConfigPanel({
     );
 }
 
+function WarehouseOverridePanel({
+    locale,
+    warehouses,
+    configs,
+    creating,
+    selectedEntity,
+    selectedWarehouseId,
+    onEntityChange,
+    onWarehouseChange,
+    onSelectConfig,
+    onSeed,
+}: {
+    locale: Locale;
+    warehouses: ReturnType<typeof useWarehouses>["warehouses"];
+    configs: ProcessConfig[];
+    creating: boolean;
+    selectedEntity: ProcessEntityType;
+    selectedWarehouseId: string;
+    onEntityChange: (entityType: ProcessEntityType) => void;
+    onWarehouseChange: (warehouseId: string) => void;
+    onSelectConfig: (configId: string) => void;
+    onSeed: (
+        entityType: ProcessEntityType,
+        warehouseId: string | null,
+    ) => Promise<void>;
+}) {
+    const copy = TEXT[locale];
+    const selectedWarehouse = warehouses.find(
+        (warehouse) => warehouse.id === selectedWarehouseId,
+    );
+    const existingConfig = configs.find(
+        (config) =>
+            config.entity_type === selectedEntity &&
+            config.warehouse_id === selectedWarehouseId,
+    );
+
+    return (
+        <section className="mx-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm sm:mx-0">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]">
+                        <Store className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-950">
+                            {copy.createWarehouseConfig}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">
+                            {copy.createWarehouseConfigHint}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,220px)_minmax(0,240px)_auto]">
+                    <label className="space-y-1">
+                        <span className="text-xxs font-semibold uppercase text-gray-500">
+                            {copy.selectEntityType}
+                        </span>
+                        <select
+                            value={selectedEntity}
+                            onChange={(event) =>
+                                onEntityChange(event.target.value as ProcessEntityType)
+                            }
+                            className="h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 outline-none focus:border-[var(--color-brand-primary)]"
+                        >
+                            {ENTITY_ORDER.map((entityType) => {
+                                const meta = getEntityMeta(entityType);
+                                return (
+                                    <option key={entityType} value={entityType}>
+                                        {meta.label[locale]}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    </label>
+
+                    <label className="space-y-1">
+                        <span className="text-xxs font-semibold uppercase text-gray-500">
+                            {copy.selectWarehouse}
+                        </span>
+                        <select
+                            value={selectedWarehouseId}
+                            onChange={(event) => onWarehouseChange(event.target.value)}
+                            className="h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 outline-none focus:border-[var(--color-brand-primary)]"
+                        >
+                            <option value="">{copy.selectWarehouse}</option>
+                            {warehouses.map((warehouse) => (
+                                <option key={warehouse.id} value={warehouse.id}>
+                                    {warehouse.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <button
+                        type="button"
+                        disabled={!selectedWarehouseId || creating || !!existingConfig}
+                        onClick={() => onSeed(selectedEntity, selectedWarehouseId)}
+                        className="mt-4 inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:mt-5"
+                    >
+                        {creating ? (
+                            <Clock3 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4" />
+                        )}
+                        {copy.createWarehouseConfig}
+                    </button>
+                </div>
+            </div>
+
+            {existingConfig && selectedWarehouse && (
+                <button
+                    type="button"
+                    onClick={() => onSelectConfig(existingConfig.id)}
+                    className="mt-3 rounded-lg bg-[var(--color-status-pending-bg)] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--color-status-pending-text)]"
+                >
+                    {copy.warehouseConfigExists}: {selectedWarehouse.name}
+                </button>
+            )}
+        </section>
+    );
+}
+
 function ConfigDetailPanel({
     config,
     locale,
@@ -362,6 +487,8 @@ function ConfigDetailPanel({
                 assignment_mode: current.assignment_mode || "CREATOR",
                 assigned_role_id: current.assigned_role_id || null,
                 label: current.label || null,
+                assignment_scope: current.assignment_scope ?? "ENTITY_WAREHOUSE",
+                allow_global_fallback: current.allow_global_fallback === true,
             };
         }
 
@@ -571,12 +698,15 @@ export function ProcessConfigWorkspace() {
     const locale = (lang || "vi") as Locale;
     const copy = TEXT[locale];
     const { roles, isLoading: rolesLoading } = useRoles();
+    const { warehouses, loading: warehousesLoading } = useWarehouses();
     const [configs, setConfigs] = useState<ProcessConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeKey, setActiveKey] = useState("missing:IMPORT_VOUCHER");
     const [savingId, setSavingId] = useState<string | null>(null);
-    const [creatingEntity, setCreatingEntity] =
-        useState<ProcessEntityType | null>(null);
+    const [creatingKey, setCreatingKey] = useState<string | null>(null);
+    const [overrideEntity, setOverrideEntity] =
+        useState<ProcessEntityType>("IMPORT_VOUCHER");
+    const [overrideWarehouseId, setOverrideWarehouseId] = useState("");
 
     const loadConfigs = useCallback(async () => {
         try {
@@ -653,13 +783,23 @@ export function ProcessConfigWorkspace() {
         setActiveKey(`missing:${missingTypes[0] ?? "IMPORT_VOUCHER"}`);
     }, [activeKey, configs, missingTypes, sortedConfigs]);
 
+    useEffect(() => {
+        if (overrideWarehouseId || !warehouses[0]) return;
+        setOverrideWarehouseId(warehouses[0].id);
+    }, [overrideWarehouseId, warehouses]);
+
     const handleSeed = useCallback(
-        async (entityType: ProcessEntityType) => {
+        async (
+            entityType: ProcessEntityType,
+            warehouseId: string | null = null,
+        ) => {
+            const currentCreatingKey = `${entityType}:${warehouseId ?? "global"}`;
             const seedAction = async () => {
                 try {
-                    setCreatingEntity(entityType);
+                    setCreatingKey(currentCreatingKey);
                     const created = (await seedProcessConfig(
                         entityType,
+                        warehouseId,
                     )) as ProcessConfig;
                     setConfigs((current) => {
                         const rest = current.filter((config) => config.id !== created.id);
@@ -670,7 +810,7 @@ export function ProcessConfigWorkspace() {
                     console.error("[ProcessConfigWorkspace] seed error:", error);
                     throw error;
                 } finally {
-                    setCreatingEntity(null);
+                    setCreatingKey(null);
                 }
             };
 
@@ -684,7 +824,7 @@ export function ProcessConfigWorkspace() {
                 action: {
                     error: {
                         label: copy.retry,
-                        onClick: () => void handleSeed(entityType),
+                        onClick: () => void handleSeed(entityType, warehouseId),
                     },
                 },
             });
@@ -755,7 +895,7 @@ export function ProcessConfigWorkspace() {
         ],
     );
 
-    if (loading || rolesLoading) {
+    if (loading || rolesLoading || warehousesLoading) {
         return <ProcessConfigSkeleton />;
     }
 
@@ -780,6 +920,22 @@ export function ProcessConfigWorkspace() {
                 />
             </div>
 
+            <WarehouseOverridePanel
+                locale={locale}
+                warehouses={warehouses}
+                configs={configs}
+                creating={
+                    creatingKey ===
+                    `${overrideEntity}:${overrideWarehouseId || "global"}`
+                }
+                selectedEntity={overrideEntity}
+                selectedWarehouseId={overrideWarehouseId}
+                onEntityChange={setOverrideEntity}
+                onWarehouseChange={setOverrideWarehouseId}
+                onSelectConfig={(configId) => setActiveKey(`config:${configId}`)}
+                onSeed={handleSeed}
+            />
+
             <div className="grid gap-0 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-4">
                 <EntitySelector
                     activeKey={activeKey}
@@ -801,7 +957,9 @@ export function ProcessConfigWorkspace() {
                     <MissingConfigPanel
                         entityType={activeMissingEntity}
                         locale={locale}
-                        creating={creatingEntity === activeMissingEntity}
+                        creating={
+                            creatingKey === `${activeMissingEntity}:global`
+                        }
                         onSeed={handleSeed}
                     />
                 )}

@@ -82,7 +82,7 @@ export default function InProgressTab({
     const importText = t.importVoucher as any;
     const { warehouses } = useWarehouses();
     const user = useUserStore((state) => state.user);
-    const roleIds = useUserStore((state) => state.roleIds);
+    const hasScopedRole = useUserStore((state) => state.hasScopedRole);
     const hasPermission = useUserStore((state) => state.hasPermission);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [receivingVoucherId, setReceivingVoucherId] = useState<string | null>(
@@ -127,7 +127,10 @@ export default function InProgressTab({
             return user?.id === voucher.creator_id;
         }
         if (step.assignment_mode === "ROLE") {
-            return !!step.assigned_role_id && roleIds.includes(step.assigned_role_id);
+            return hasScopedRole(step.assigned_role_id, voucher.warehouse_id, {
+                allowGlobalFallback: step.allow_global_fallback === true,
+                requireGlobal: step.assignment_scope === "GLOBAL",
+            });
         }
         return true;
     };
