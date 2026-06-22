@@ -6,6 +6,7 @@ import {
 } from "@bduck/shared-types";
 import * as externalScanService from "../../services/externalScanService.js";
 import * as autoSubmitConfigService from "../../services/externalQueueAutoSubmitConfigService.js";
+import * as scannableProductService from "../../services/externalQueueScannableProductService.js";
 import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
 import { getUsersByIds } from "../../repositories/userRepository.js";
@@ -558,6 +559,121 @@ const autoSubmitSchema = z.object({
   older_than_minutes: z.number().int().min(1).max(1440).optional(),
 });
 
+const scannableProductsQuerySchema = z.object({
+  warehouse_id: z.string(),
+  warehouse_location_id: z.string(),
+});
+
+const scannableProductsUpdateSchema = z.object({
+  warehouse_id: z.string(),
+  warehouse_location_id: z.string(),
+  product_ids: z.array(z.string()).default([]),
+});
+
+export const getScannableProductsConfig = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const user = (req as any).user;
+    const parsed = scannableProductsQuerySchema.parse(req.query);
+
+    if (
+      !hasScopedPermission(
+        user,
+        "external_scan.manage_queue",
+        parsed.warehouse_id,
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Khong co quyen cau hinh san pham quet cho kho nay.",
+          zh: "No permission to configure this warehouse.",
+        },
+      });
+    }
+
+    const config = await scannableProductService.getConfigViewForLocation(
+      parsed.warehouse_id,
+      parsed.warehouse_location_id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: config,
+      messages: {
+        vi: "Da tai cau hinh san pham quet.",
+        zh: "Scan product configuration loaded.",
+      },
+    });
+  } catch (error: any) {
+    console.error("[getScannableProductsConfig]", error);
+    return res.status(400).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Loi khi tai cau hinh san pham quet: " + error.message,
+        zh: "Failed to load scan product configuration.",
+      },
+    });
+  }
+};
+
+export const updateScannableProductsConfig = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const user = (req as any).user;
+    const parsed = scannableProductsUpdateSchema.parse(req.body);
+
+    if (
+      !hasScopedPermission(
+        user,
+        "external_scan.manage_queue",
+        parsed.warehouse_id,
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Khong co quyen cau hinh san pham quet cho kho nay.",
+          zh: "No permission to configure this warehouse.",
+        },
+      });
+    }
+
+    const config = await scannableProductService.upsertConfigForLocation({
+      warehouseId: parsed.warehouse_id,
+      locationId: parsed.warehouse_location_id,
+      productIds: parsed.product_ids,
+      updatedBy: user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: config,
+      messages: {
+        vi: "Da luu cau hinh san pham quet.",
+        zh: "Scan product configuration saved.",
+      },
+    });
+  } catch (error: any) {
+    console.error("[updateScannableProductsConfig]", error);
+    return res.status(400).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Loi khi luu cau hinh san pham quet: " + error.message,
+        zh: "Failed to save scan product configuration.",
+      },
+    });
+  }
+};
+
 export const getAutoSubmitSchedule = async (_req: Request, res: Response) => {
   try {
     const schedule = await autoSubmitConfigService.getAutoSubmitSchedule();
@@ -798,6 +914,8 @@ export default {
   cancelScan,
   getAutoSubmitSchedule,
   updateAutoSubmitSchedule,
+  getScannableProductsConfig,
+  updateScannableProductsConfig,
   autoSubmitQueuedLocations,
   runScheduledAutoSubmit,
   rejectBatch,

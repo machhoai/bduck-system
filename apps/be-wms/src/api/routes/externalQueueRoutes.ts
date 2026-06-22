@@ -80,6 +80,21 @@ router.post(
   externalQueueController.autoSubmitQueuedLocations,
 );
 
+// /api/external-queue/scannable-products
+router.get(
+  "/scannable-products",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.getScannableProductsConfig,
+);
+
+router.put(
+  "/scannable-products",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.updateScannableProductsConfig,
+);
+
 // /api/external-queue/reject
 router.post(
   "/reject",

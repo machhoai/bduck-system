@@ -15,6 +15,25 @@ export type ExternalQueueAutoSubmitSchedule = {
   } | null;
 };
 
+export type ExternalQueueScannableProduct = {
+  id: string;
+  name: string;
+  code: string;
+  barcode?: string | null;
+  unit?: string | null;
+};
+
+export type ExternalQueueScannableProductConfig = {
+  id: string;
+  warehouse_id: string;
+  warehouse_location_id: string;
+  product_ids: string[];
+  products: ExternalQueueScannableProduct[];
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 async function apiFetch<T = unknown>(
   path: string,
   options?: RequestInit,
@@ -101,4 +120,28 @@ export const externalQueueApi = {
 
   rejectBatch: (data: { batch_id: string; reason: string }) =>
     apiFetch<any>("/reject", { method: "POST", body: JSON.stringify(data) }),
+
+  getScannableProductsConfig: (params: {
+    warehouse_id: string;
+    warehouse_location_id: string;
+  }) => {
+    const urlParams = new URLSearchParams(params).toString();
+    return apiFetch<{
+      success: boolean;
+      data: ExternalQueueScannableProductConfig | null;
+    }>(`/scannable-products?${urlParams}`);
+  },
+
+  updateScannableProductsConfig: (data: {
+    warehouse_id: string;
+    warehouse_location_id: string;
+    product_ids: string[];
+  }) =>
+    apiFetch<{
+      success: boolean;
+      data: ExternalQueueScannableProductConfig;
+    }>("/scannable-products", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };

@@ -1,5 +1,3 @@
-
-
 export enum ExternalScanQueueStatus {
   QUEUED = "QUEUED",
   SUBMITTED = "SUBMITTED",
@@ -47,4 +45,15 @@ export interface ExternalScanQueue {
   notes: string | null;
   is_deleted: boolean;
   created_at: Date;
+}
+
+export interface ExternalQueueScannableProductConfig {
+  id: string;
+  warehouse_id: string;
+  warehouse_location_id: string;
+  product_ids: string[];
+  updated_by: string | null;
+  is_deleted: boolean;
+  created_at: Date;
+  updated_at: Date;
 }

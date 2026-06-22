@@ -20,6 +20,7 @@ import {
   ExportVoucherStatus,
 } from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
+import * as scannableProductService from "./externalQueueScannableProductService.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
 async function resolveProduct(
@@ -110,6 +111,14 @@ export const scanProduct = async (
 
   if (!client.allowed_warehouse_ids.includes(warehouseId)) {
     throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  const isAllowed = await scannableProductService.isProductAllowedForLocation(
+    data.warehouse_location_id,
+    product.id,
+  );
+  if (!isAllowed) {
+    throw new Error("PRODUCT_NOT_ALLOWED_FOR_LOCATION");
   }
 
   // Generate ID
@@ -610,7 +619,7 @@ export const approveBatch = async (
             .limit(1),
         );
         return { scan, invSnapshot };
-      })
+      }),
     );
 
     // 2. Process writes and prepare voucher items
@@ -641,7 +650,12 @@ export const approveBatch = async (
         const invDoc = invSnapshot.docs[0];
         const path = invDoc.ref.path;
         if (!invMap.has(path)) {
-          invMap.set(path, { ref: invDoc.ref, oldData: invDoc.data(), atp_delta: 0, hold_delta: 0 });
+          invMap.set(path, {
+            ref: invDoc.ref,
+            oldData: invDoc.data(),
+            atp_delta: 0,
+            hold_delta: 0,
+          });
         }
         const state = invMap.get(path)!;
 
@@ -925,17 +939,25 @@ export const rejectBatch = async (
             .limit(1),
         );
         return { scan, invSnapshot };
-      })
+      }),
     );
 
-    const invMap = new Map<string, { ref: any, oldData: any, atp_delta: number, hold_delta: number }>();
+    const invMap = new Map<
+      string,
+      { ref: any; oldData: any; atp_delta: number; hold_delta: number }
+    >();
 
     for (const { scan, invSnapshot } of inventoryDocs) {
       if (!invSnapshot.empty) {
         const invDoc = invSnapshot.docs[0];
         const path = invDoc.ref.path;
         if (!invMap.has(path)) {
-          invMap.set(path, { ref: invDoc.ref, oldData: invDoc.data(), atp_delta: 0, hold_delta: 0 });
+          invMap.set(path, {
+            ref: invDoc.ref,
+            oldData: invDoc.data(),
+            atp_delta: 0,
+            hold_delta: 0,
+          });
         }
         const state = invMap.get(path)!;
         state.hold_delta -= scan.quantity;
@@ -952,7 +974,10 @@ export const rejectBatch = async (
 
     for (const state of invMap.values()) {
       tx.update(state.ref, {
-        on_hold_quantity: Math.max(0, state.oldData.on_hold_quantity + state.hold_delta),
+        on_hold_quantity: Math.max(
+          0,
+          state.oldData.on_hold_quantity + state.hold_delta,
+        ),
         atp_quantity: state.oldData.atp_quantity + state.atp_delta,
         last_updated_at: new Date(),
       });

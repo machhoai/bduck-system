@@ -5,6 +5,7 @@ import { productRepository } from "../../repositories/productRepository.js";
 import * as inventoryRepository from "../../repositories/inventoryRepository.js";
 import { z } from "zod";
 import { warehouseRepository } from "../../repositories/warehouseRepository.js";
+import * as scannableProductService from "../../services/externalQueueScannableProductService.js";
 
 const getWarehouses = async (req: Request, res: Response) => {
   try {
@@ -31,7 +32,6 @@ const getWarehouses = async (req: Request, res: Response) => {
   }
 };
 
-
 const getLocations = async (req: Request, res: Response) => {
   try {
     const client = (req as any).integrationClient!;
@@ -49,15 +49,15 @@ const getLocations = async (req: Request, res: Response) => {
     }
 
     const locations = await locationRepository.findByWarehouseId(warehouseId);
-    
+
     // Chỉ trả về ACTIVE
     const activeLocations = locations.filter(
-      l => l.status === "ACTIVE" && !l.is_deleted
+      (l) => l.status === "ACTIVE" && !l.is_deleted,
     );
 
     return res.status(200).json({
       success: true,
-      data: activeLocations.map(l => ({
+      data: activeLocations.map((l) => ({
         id: l.id,
         warehouse_id: l.warehouse_id,
         name: l.name,
@@ -68,7 +68,11 @@ const getLocations = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, data: null, messages: { vi: "Lỗi server", zh: "服务器错误" } });
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: "Lỗi server", zh: "服务器错误" },
+    });
   }
 };
 
@@ -76,14 +80,22 @@ const getProducts = async (req: Request, res: Response) => {
   try {
     const client = (req as any).integrationClient!;
     const warehouseId = req.query.warehouse_id as string;
-    const warehouseLocationId = req.query.warehouse_location_id as string | undefined;
+    const warehouseLocationId = req.query.warehouse_location_id as
+      | string
+      | undefined;
     const search = req.query.search as string;
 
     if (!warehouseId || !client.allowed_warehouse_ids.includes(warehouseId)) {
-      return res.status(403).json({ success: false, data: null, messages: { vi: "Kho không hợp lệ", zh: "无效的仓库" } });
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: { vi: "Kho không hợp lệ", zh: "无效的仓库" },
+      });
     }
 
     const atpByProductId = new Map<string, number>();
+    const allowedProductIds = new Set<string>();
+    let hasScannableConfig = false;
     if (warehouseLocationId) {
       const inventory = await inventoryRepository.findAll({
         warehouse_id: warehouseId,
@@ -96,14 +108,30 @@ const getProducts = async (req: Request, res: Response) => {
           atpByProductId.set(item.product_id, atpQuantity);
         }
       }
+
+      const scannableConfig =
+        await scannableProductService.getConfigForLocation(warehouseLocationId);
+      if (scannableConfig) {
+        hasScannableConfig = true;
+        scannableConfig.product_ids.forEach((productId) =>
+          allowedProductIds.add(productId),
+        );
+      }
     }
 
     const products = warehouseLocationId
       ? await productRepository.findByIds([...atpByProductId.keys()])
       : await productRepository.findAll();
-    
-    const activeProducts = products.filter(p => {
+
+    const activeProducts = products.filter((p) => {
       if (warehouseLocationId && !atpByProductId.has(p.id)) return false;
+      if (
+        warehouseLocationId &&
+        hasScannableConfig &&
+        !allowedProductIds.has(p.id)
+      ) {
+        return false;
+      }
       if (!search) return true;
       const lower = search.toLowerCase();
       return (
@@ -115,7 +143,7 @@ const getProducts = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      data: activeProducts.map(p => ({
+      data: activeProducts.map((p) => ({
         id: p.id,
         name: p.name,
         code: p.code,
@@ -123,13 +151,22 @@ const getProducts = async (req: Request, res: Response) => {
         unit: p.unit,
         product_type: p.product_type,
         unit_price: p.unit_price,
-        image_url: p.product_image_url && p.product_image_url.length > 0 ? p.product_image_url[0] : null,
-        atp_quantity: warehouseLocationId ? atpByProductId.get(p.id) ?? 0 : null,
+        image_url:
+          p.product_image_url && p.product_image_url.length > 0
+            ? p.product_image_url[0]
+            : null,
+        atp_quantity: warehouseLocationId
+          ? (atpByProductId.get(p.id) ?? 0)
+          : null,
       })),
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, data: null, messages: { vi: "Lỗi server", zh: "服务器错误" } });
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: "Lỗi server", zh: "服务器错误" },
+    });
   }
 };
 
@@ -151,7 +188,12 @@ const scan = async (req: Request, res: Response) => {
     const parsed = scanSchema.parse(req.body);
     const clientIp = req.ip || req.socket.remoteAddress || "";
 
-    const record = await externalScanService.scanProduct(client, parsed.warehouse_id, parsed, clientIp);
+    const record = await externalScanService.scanProduct(
+      client,
+      parsed.warehouse_id,
+      parsed,
+      clientIp,
+    );
 
     return res.status(201).json({
       success: true,
@@ -165,12 +207,24 @@ const scan = async (req: Request, res: Response) => {
     if (error.message === "PRODUCT_NOT_FOUND") {
       viMessage = "Sản phẩm không tồn tại.";
       zhMessage = "产品不存在。";
+    } else if (error.message === "PRODUCT_NOT_ALLOWED_FOR_LOCATION") {
+      viMessage =
+        "San pham khong nam trong danh sach duoc phep quet tai quay nay.";
+      zhMessage = "Product is not in the allowed scan list for this counter.";
     } else if (error.message === "INSUFFICIENT_ATP") {
       viMessage = "Tồn kho khả dụng (ATP) không đủ.";
       zhMessage = "可用库存 (ATP) 不足。";
-      return res.status(400).json({ success: false, data: null, messages: { vi: viMessage, zh: zhMessage } });
+      return res.status(400).json({
+        success: false,
+        data: null,
+        messages: { vi: viMessage, zh: zhMessage },
+      });
     } else if (error.message === "UNAUTHORIZED_WAREHOUSE") {
-      return res.status(403).json({ success: false, data: null, messages: { vi: "Sai kho.", zh: "错误" } });
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: { vi: "Sai kho.", zh: "错误" },
+      });
     }
 
     return res.status(400).json({
@@ -256,11 +310,17 @@ const getMyScans = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         data: null,
-        messages: { vi: "Thiếu operator_id_external", zh: "缺少 operator_id_external" },
+        messages: {
+          vi: "Thiếu operator_id_external",
+          zh: "缺少 operator_id_external",
+        },
       });
     }
 
-    const scans = await externalScanService.getMyScans(client, operatorIdExternal);
+    const scans = await externalScanService.getMyScans(
+      client,
+      operatorIdExternal,
+    );
 
     return res.status(200).json({
       success: true,
@@ -271,7 +331,10 @@ const getMyScans = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       data: null,
-      messages: { vi: "Không thể lấy danh sách quét.", zh: "无法获取扫描列表。" },
+      messages: {
+        vi: "Không thể lấy danh sách quét.",
+        zh: "无法获取扫描列表。",
+      },
     });
   }
 };
@@ -308,7 +371,10 @@ const getLocationScans = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       data: null,
-      messages: { vi: "Không thể lấy hàng chờ theo vị trí.", zh: "无法获取库位队列。" },
+      messages: {
+        vi: "Không thể lấy hàng chờ theo vị trí.",
+        zh: "无法获取库位队列。",
+      },
     });
   }
 };
