@@ -29,9 +29,12 @@ import type {
   ApprovalLevel,
 } from "@bduck/shared-types";
 import * as approvalRepo from "../repositories/approvalRepository.js";
-import * as configRepo from "../repositories/processConfigRepository.js";
 import { logAudit } from "./auditService.js";
 import { verifyMfa } from "./mfaService.js";
+import {
+  getActiveApprovalChainForEntity,
+  getConfigForEntity,
+} from "./processConfigService.js";
 import {
   notifyApprovalCompleted,
   notifyInitialApprovalTasks,
@@ -86,7 +89,7 @@ export async function createApprovalsForEntity(
   },
 ): Promise<ApprovalRecord[]> {
   // ── Check auto_approve flag in ProcessConfig ──
-  const config = await configRepo.findByEntityType(entityType, warehouseId);
+  const config = await getConfigForEntity(entityType, warehouseId);
 
   if (config?.auto_approve === true) {
     console.log(
@@ -111,7 +114,7 @@ export async function createApprovalsForEntity(
     return []; // Triggers auto-advance in importVoucherService
   }
 
-  const chain = await configRepo.getActiveApprovalChain(
+  const chain = await getActiveApprovalChainForEntity(
     entityType,
     warehouseId,
   );
@@ -252,7 +255,7 @@ export async function approveLevel(
   }
 
   // ── OTP VERIFICATION (If required by config) ──
-  const config = await configRepo.findByEntityType(
+  const config = await getConfigForEntity(
     record.entity_type,
     record.warehouse_id,
   );
@@ -328,7 +331,7 @@ export async function approveLevel(
   );
 
   // Get min_approvers from config
-  const chain = await configRepo.getActiveApprovalChain(
+  const chain = await getActiveApprovalChainForEntity(
     record.entity_type,
     record.warehouse_id,
   );
@@ -427,7 +430,7 @@ export async function rejectApproval(
   }
 
   // ── OTP VERIFICATION (If required by config) ──
-  const config = await configRepo.findByEntityType(
+  const config = await getConfigForEntity(
     record.entity_type,
     record.warehouse_id,
   );
@@ -687,7 +690,7 @@ export async function cancelByCreator(
   }
 
   // ── OTP VERIFICATION (If required by config) ──
-  const cancelConfig = await configRepo.findByEntityType(
+  const cancelConfig = await getConfigForEntity(
     entityType,
     firstRecord.warehouse_id,
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     AlertTriangle,
     Camera,
@@ -11,7 +11,6 @@ import {
     Save,
     ScanLine,
     ShieldAlert,
-    Sparkles,
     Store,
     Zap,
 } from "lucide-react";
@@ -25,7 +24,7 @@ import type {
 import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { useTranslation } from "@/lib/i18n";
 import {
-    fetchAllConfigs,
+    fetchConfigByEntityType,
     seedProcessConfig,
     updateProcessConfig,
 } from "@/hooks/useApprovalApi";
@@ -73,46 +72,34 @@ function StatTile({
 }
 
 function EntitySelector({
-    activeKey,
+    activeEntity,
     configs,
-    missingTypes,
     locale,
     onSelect,
 }: {
-    activeKey: string;
+    activeEntity: ProcessEntityType;
     configs: ProcessConfig[];
-    missingTypes: ProcessEntityType[];
     locale: Locale;
-    onSelect: (key: string) => void;
+    onSelect: (entityType: ProcessEntityType) => void;
 }) {
     const copy = TEXT[locale];
-    const items = [
-        ...configs.map((config) => ({
-            key: `config:${config.id}`,
-            entityType: config.entity_type,
-            config,
-        })),
-        ...missingTypes.map((entityType) => ({
-            key: `missing:${entityType}`,
-            entityType,
-            config: undefined,
-        })),
-    ];
 
     return (
         <aside className="sticky top-[86px] z-20 -mx-4 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur lg:top-4 lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0 lg:self-start">
             <div className="flex snap-x gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:block lg:space-y-2 lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
-                {items.map(({ key, entityType, config }) => {
+                {configs.map((config) => {
+                    const entityType = config.entity_type;
                     const meta = getEntityMeta(entityType);
                     const Icon = meta.icon;
                     const summary = getConfigSummary(config);
-                    const active = activeKey === key;
+                    const active = activeEntity === entityType;
+                    const isPersisted = !config.id.startsWith("default_");
 
                     return (
                         <button
-                            key={key}
+                            key={entityType}
                             type="button"
-                            onClick={() => onSelect(key)}
+                            onClick={() => onSelect(entityType)}
                             className={`min-w-40 snap-start rounded-lg border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] lg:min-w-0 lg:w-full ${active
                                 ? "border-[var(--color-brand-primary)] ring-2 ring-[var(--color-brand-primary-muted)]"
                                 : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
@@ -120,7 +107,7 @@ function EntitySelector({
                         >
                             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
                                 <div
-                                    className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${config
+                                    className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg ${isPersisted
                                         ? "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]"
                                         : "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]"
                                         }`}
@@ -142,23 +129,19 @@ function EntitySelector({
                                     </p>
                                     <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:mt-3 lg:gap-2">
                                         <span
-                                            className={`rounded-full px-2 py-1 text-xxs font-semibold ${config
+                                            className={`rounded-full px-2 py-1 text-xxs font-semibold ${isPersisted
                                                 ? "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]"
                                                 : "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
                                                 }`}
                                         >
-                                            {config ? copy.configured : copy.missing}
+                                            {isPersisted ? copy.configured : copy.missing}
                                         </span>
-                                        {config && (
-                                            <span className="rounded-full bg-gray-100 px-2 py-1 text-xxs font-semibold text-gray-600">
-                                                {summary.activeLevels} {copy.activeLevels}
-                                            </span>
-                                        )}
-                                        {config?.warehouse_id && (
-                                            <span className="rounded-full bg-[var(--color-status-approved-bg)] px-2 py-1 text-xxs font-semibold text-[var(--color-status-approved-text)]">
-                                                {copy.warehouseScope}
-                                            </span>
-                                        )}
+                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xxs font-semibold text-gray-600">
+                                            {summary.activeLevels} {copy.activeLevels}
+                                        </span>
+                                        <span className="rounded-full bg-[var(--color-status-approved-bg)] px-2 py-1 text-xxs font-semibold text-[var(--color-status-approved-text)]">
+                                            {copy.warehouseScope}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -223,181 +206,6 @@ function PipelinePreview({
     );
 }
 
-function MissingConfigPanel({
-    entityType,
-    locale,
-    creating,
-    onSeed,
-}: {
-    entityType: ProcessEntityType;
-    locale: Locale;
-    creating: boolean;
-    onSeed: (entityType: ProcessEntityType) => Promise<void>;
-}) {
-    const copy = TEXT[locale];
-    const meta = getEntityMeta(entityType);
-    const Icon = meta.icon;
-
-    return (
-        <div className="mx-4 mt-4 rounded-lg border border-dashed border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-5 lg:mx-0 lg:mt-0 lg:p-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)] text-[var(--color-status-pending-text)] shadow-sm">
-                        <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
-                            {meta.label[locale]}
-                        </p>
-                        <h2 className="mt-1 text-lg font-bold text-gray-950">
-                            {copy.missing}
-                        </h2>
-                        <p className="mt-2 text-sm leading-6 text-[var(--color-status-pending-text)]">
-                            {copy.createDefaultHint}
-                        </p>
-                    </div>
-                </div>
-                <button
-                    type="button"
-                    disabled={creating}
-                    onClick={() => onSeed(entityType)}
-                    className="inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:h-8"
-                >
-                    {creating ? (
-                        <Clock3 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Sparkles className="h-4 w-4" />
-                    )}
-                    {copy.createDefault}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-function WarehouseOverridePanel({
-    locale,
-    warehouses,
-    configs,
-    creating,
-    selectedEntity,
-    selectedWarehouseId,
-    onEntityChange,
-    onWarehouseChange,
-    onSelectConfig,
-    onSeed,
-}: {
-    locale: Locale;
-    warehouses: ReturnType<typeof useWarehouses>["warehouses"];
-    configs: ProcessConfig[];
-    creating: boolean;
-    selectedEntity: ProcessEntityType;
-    selectedWarehouseId: string;
-    onEntityChange: (entityType: ProcessEntityType) => void;
-    onWarehouseChange: (warehouseId: string) => void;
-    onSelectConfig: (configId: string) => void;
-    onSeed: (
-        entityType: ProcessEntityType,
-        warehouseId: string | null,
-    ) => Promise<void>;
-}) {
-    const copy = TEXT[locale];
-    const selectedWarehouse = warehouses.find(
-        (warehouse) => warehouse.id === selectedWarehouseId,
-    );
-    const existingConfig = configs.find(
-        (config) =>
-            config.entity_type === selectedEntity &&
-            config.warehouse_id === selectedWarehouseId,
-    );
-
-    return (
-        <section className="mx-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm sm:mx-0">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]">
-                        <Store className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-gray-950">
-                            {copy.createWarehouseConfig}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-gray-500">
-                            {copy.createWarehouseConfigHint}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,220px)_minmax(0,240px)_auto]">
-                    <label className="space-y-1">
-                        <span className="text-xxs font-semibold uppercase text-gray-500">
-                            {copy.selectEntityType}
-                        </span>
-                        <select
-                            value={selectedEntity}
-                            onChange={(event) =>
-                                onEntityChange(event.target.value as ProcessEntityType)
-                            }
-                            className="h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 outline-none focus:border-[var(--color-brand-primary)]"
-                        >
-                            {ENTITY_ORDER.map((entityType) => {
-                                const meta = getEntityMeta(entityType);
-                                return (
-                                    <option key={entityType} value={entityType}>
-                                        {meta.label[locale]}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </label>
-
-                    <label className="space-y-1">
-                        <span className="text-xxs font-semibold uppercase text-gray-500">
-                            {copy.selectWarehouse}
-                        </span>
-                        <select
-                            value={selectedWarehouseId}
-                            onChange={(event) => onWarehouseChange(event.target.value)}
-                            className="h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 outline-none focus:border-[var(--color-brand-primary)]"
-                        >
-                            <option value="">{copy.selectWarehouse}</option>
-                            {warehouses.map((warehouse) => (
-                                <option key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <button
-                        type="button"
-                        disabled={!selectedWarehouseId || creating || !!existingConfig}
-                        onClick={() => onSeed(selectedEntity, selectedWarehouseId)}
-                        className="mt-4 inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:mt-5"
-                    >
-                        {creating ? (
-                            <Clock3 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Sparkles className="h-4 w-4" />
-                        )}
-                        {copy.createWarehouseConfig}
-                    </button>
-                </div>
-            </div>
-
-            {existingConfig && selectedWarehouse && (
-                <button
-                    type="button"
-                    onClick={() => onSelectConfig(existingConfig.id)}
-                    className="mt-3 rounded-lg bg-[var(--color-status-pending-bg)] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--color-status-pending-text)]"
-                >
-                    {copy.warehouseConfigExists}: {selectedWarehouse.name}
-                </button>
-            )}
-        </section>
-    );
-}
-
 function ConfigDetailPanel({
     config,
     locale,
@@ -410,7 +218,7 @@ function ConfigDetailPanel({
     roles: ReturnType<typeof useRoles>["roles"];
     saving: boolean;
     onSave: (
-        configId: string,
+        config: ProcessConfig,
         payload: {
             approval_chain: ApprovalLevel[];
             auto_approve: boolean;
@@ -492,7 +300,7 @@ function ConfigDetailPanel({
             };
         }
 
-        await onSave(config.id, {
+        await onSave(config, {
             approval_chain: chain,
             auto_approve: autoApprove,
             require_evidence: requireEvidence,
@@ -699,148 +507,76 @@ export function ProcessConfigWorkspace() {
     const copy = TEXT[locale];
     const { roles, isLoading: rolesLoading } = useRoles();
     const { warehouses, loading: warehousesLoading } = useWarehouses();
-    const [configs, setConfigs] = useState<ProcessConfig[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [activeKey, setActiveKey] = useState("missing:IMPORT_VOUCHER");
+    const [selectedConfigs, setSelectedConfigs] = useState<ProcessConfig[]>([]);
+    const [configsLoading, setConfigsLoading] = useState(false);
+    const [activeEntity, setActiveEntity] =
+        useState<ProcessEntityType>("IMPORT_VOUCHER");
     const [savingId, setSavingId] = useState<string | null>(null);
     const [creatingKey, setCreatingKey] = useState<string | null>(null);
-    const [overrideEntity, setOverrideEntity] =
-        useState<ProcessEntityType>("IMPORT_VOUCHER");
-    const [overrideWarehouseId, setOverrideWarehouseId] = useState("");
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
 
-    const loadConfigs = useCallback(async () => {
-        try {
-            const data = (await fetchAllConfigs()) as ProcessConfig[];
-            setConfigs(data);
-        } catch (error) {
-            console.error("[ProcessConfigWorkspace] load error:", error);
-            gooeyToast.error(copy.loadError, {
-                preset: "snappy",
-                timing: { displayDuration: 5000 },
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [copy.loadError]);
+    const loadSelectedWarehouseConfigs = useCallback(
+        async (warehouseId: string) => {
+            if (!warehouseId) {
+                setSelectedConfigs([]);
+                return;
+            }
+
+            try {
+                setConfigsLoading(true);
+                const data = (await Promise.all(
+                    ENTITY_ORDER.map((entityType) =>
+                        fetchConfigByEntityType(entityType, warehouseId),
+                    ),
+                )) as ProcessConfig[];
+                setSelectedConfigs(data);
+            } catch (error) {
+                console.error("[ProcessConfigWorkspace] load warehouse configs error:", error);
+                gooeyToast.error(copy.loadError, {
+                    preset: "snappy",
+                    timing: { displayDuration: 5000 },
+                });
+            } finally {
+                setConfigsLoading(false);
+            }
+        },
+        [copy.loadError],
+    );
 
     useEffect(() => {
-        void loadConfigs();
         return subscribeDataMutation("process_configs", () => {
-            void loadConfigs();
+            if (selectedWarehouseId) {
+                void loadSelectedWarehouseConfigs(selectedWarehouseId);
+            }
         });
-    }, [loadConfigs]);
+    }, [loadSelectedWarehouseConfigs, selectedWarehouseId]);
 
-    const sortedConfigs = useMemo(
-        () =>
-            [...configs].sort((a, b) => {
-                const entityDiff =
-                    ENTITY_ORDER.indexOf(a.entity_type) -
-                    ENTITY_ORDER.indexOf(b.entity_type);
-                if (entityDiff !== 0) return entityDiff;
-                return (a.warehouse_id ?? "").localeCompare(b.warehouse_id ?? "");
-            }),
-        [configs],
-    );
+    useEffect(() => {
+        if (selectedWarehouseId || !warehouses[0]) return;
+        setSelectedWarehouseId(warehouses[0].id);
+    }, [selectedWarehouseId, warehouses]);
 
-    const configuredTypes = useMemo(
-        () => new Set(configs.map((config) => config.entity_type)),
-        [configs],
-    );
-    const missingTypes = useMemo(
-        () => ENTITY_ORDER.filter((entityType) => !configuredTypes.has(entityType)),
-        [configuredTypes],
-    );
+    useEffect(() => {
+        void loadSelectedWarehouseConfigs(selectedWarehouseId);
+    }, [loadSelectedWarehouseConfigs, selectedWarehouseId]);
 
-    const configuredCount = configs.length;
-    const missingCount = missingTypes.length;
-    const autoApproveCount = configs.filter(
+    const selectedWarehouse = warehouses.find(
+        (warehouse) => warehouse.id === selectedWarehouseId,
+    );
+    const configuredCount = selectedConfigs.filter(
+        (config) => !config.id.startsWith("default_"),
+    ).length;
+    const missingCount = Math.max(ENTITY_ORDER.length - configuredCount, 0);
+    const autoApproveCount = selectedConfigs.filter(
         (config) => config.auto_approve,
     ).length;
-    const activeConfig = configs.find(
-        (config) => activeKey === `config:${config.id}`,
-    );
-    const activeMissingEntity = activeKey.startsWith("missing:")
-        ? (activeKey.replace("missing:", "") as ProcessEntityType)
-        : (missingTypes[0] ?? "IMPORT_VOUCHER");
-
-    useEffect(() => {
-        const hasActiveConfig = configs.some(
-            (config) => activeKey === `config:${config.id}`,
-        );
-        const hasActiveMissing =
-            activeKey.startsWith("missing:") &&
-            missingTypes.includes(
-                activeKey.replace("missing:", "") as ProcessEntityType,
-            );
-
-        if (hasActiveConfig || hasActiveMissing) return;
-
-        if (sortedConfigs[0]) {
-            setActiveKey(`config:${sortedConfigs[0].id}`);
-            return;
-        }
-
-        setActiveKey(`missing:${missingTypes[0] ?? "IMPORT_VOUCHER"}`);
-    }, [activeKey, configs, missingTypes, sortedConfigs]);
-
-    useEffect(() => {
-        if (overrideWarehouseId || !warehouses[0]) return;
-        setOverrideWarehouseId(warehouses[0].id);
-    }, [overrideWarehouseId, warehouses]);
-
-    const handleSeed = useCallback(
-        async (
-            entityType: ProcessEntityType,
-            warehouseId: string | null = null,
-        ) => {
-            const currentCreatingKey = `${entityType}:${warehouseId ?? "global"}`;
-            const seedAction = async () => {
-                try {
-                    setCreatingKey(currentCreatingKey);
-                    const created = (await seedProcessConfig(
-                        entityType,
-                        warehouseId,
-                    )) as ProcessConfig;
-                    setConfigs((current) => {
-                        const rest = current.filter((config) => config.id !== created.id);
-                        return [...rest, created];
-                    });
-                    setActiveKey(`config:${created.id}`);
-                } catch (error) {
-                    console.error("[ProcessConfigWorkspace] seed error:", error);
-                    throw error;
-                } finally {
-                    setCreatingKey(null);
-                }
-            };
-
-            await gooeyToast.promise(seedAction(), {
-                loading: copy.creating,
-                success: copy.createSuccess,
-                error: copy.createError,
-                description: {
-                    error: copy.loadError,
-                },
-                action: {
-                    error: {
-                        label: copy.retry,
-                        onClick: () => void handleSeed(entityType, warehouseId),
-                    },
-                },
-            });
-        },
-        [
-            copy.createError,
-            copy.createSuccess,
-            copy.creating,
-            copy.loadError,
-            copy.retry,
-        ],
+    const activeConfig = selectedConfigs.find(
+        (config) => config.entity_type === activeEntity,
     );
 
     const handleSave = useCallback(
         async (
-            configId: string,
+            config: ProcessConfig,
             payload: {
                 approval_chain: ApprovalLevel[];
                 auto_approve: boolean;
@@ -851,14 +587,26 @@ export function ProcessConfigWorkspace() {
         ) => {
             const saveAction = async () => {
                 try {
-                    setSavingId(configId);
+                    setSavingId(config.id);
+                    let targetConfig = config;
+                    if (config.id.startsWith("default_")) {
+                        const creatingId = `${config.entity_type}:${config.warehouse_id ?? "global"}`;
+                        setCreatingKey(creatingId);
+                        targetConfig = (await seedProcessConfig(
+                            config.entity_type,
+                            config.warehouse_id,
+                        )) as ProcessConfig;
+                        setCreatingKey(null);
+                    }
+
                     const updated = (await updateProcessConfig(
-                        configId,
+                        targetConfig.id,
                         payload,
                     )) as ProcessConfig;
-                    setConfigs((current) =>
-                        current.map((config) =>
-                            config.id === configId ? { ...config, ...updated } : config,
+
+                    setSelectedConfigs((current) =>
+                        current.map((item) =>
+                            item.entity_type === updated.entity_type ? updated : item,
                         ),
                     );
                 } catch (error) {
@@ -866,6 +614,7 @@ export function ProcessConfigWorkspace() {
                     throw error;
                 } finally {
                     setSavingId(null);
+                    setCreatingKey(null);
                 }
             };
 
@@ -880,7 +629,7 @@ export function ProcessConfigWorkspace() {
                 action: {
                     error: {
                         label: copy.retry,
-                        onClick: () => void handleSave(configId, payload),
+                        onClick: () => void handleSave(config, payload),
                     },
                 },
             });
@@ -895,7 +644,11 @@ export function ProcessConfigWorkspace() {
         ],
     );
 
-    if (loading || rolesLoading || warehousesLoading) {
+    const waitingForWarehouseConfigs =
+        warehouses.length > 0 &&
+        (!selectedWarehouseId || configsLoading || selectedConfigs.length === 0);
+
+    if (rolesLoading || warehousesLoading || waitingForWarehouseConfigs) {
         return <ProcessConfigSkeleton />;
     }
 
@@ -920,29 +673,39 @@ export function ProcessConfigWorkspace() {
                 />
             </div>
 
-            <WarehouseOverridePanel
-                locale={locale}
-                warehouses={warehouses}
-                configs={configs}
-                creating={
-                    creatingKey ===
-                    `${overrideEntity}:${overrideWarehouseId || "global"}`
-                }
-                selectedEntity={overrideEntity}
-                selectedWarehouseId={overrideWarehouseId}
-                onEntityChange={setOverrideEntity}
-                onWarehouseChange={setOverrideWarehouseId}
-                onSelectConfig={(configId) => setActiveKey(`config:${configId}`)}
-                onSeed={handleSeed}
-            />
+            <section className="mx-4 rounded-lg border border-gray-100 bg-white p-2 shadow-sm sm:mx-0">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex shrink-0 items-start gap-3">
+                        <div className="flex h-10 aspect-square shrink-0 items-center justify-center rounded-lg bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]">
+                            <Store className="h-5 w-5" />
+                        </div>
+                    </div>
+
+                    <label className="w-full">
+                        <span className="text-xxs leading-none font-semibold uppercase text-gray-500">
+                            {copy.selectWarehouse}
+                        </span>
+                        <select
+                            value={selectedWarehouseId}
+                            onChange={(event) => setSelectedWarehouseId(event.target.value)}
+                            className="h-8 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 outline-none focus:border-[var(--color-brand-primary)]"
+                        >
+                            {warehouses.map((warehouse) => (
+                                <option key={warehouse.id} value={warehouse.id}>
+                                    {warehouse.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+            </section>
 
             <div className="grid gap-0 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-4">
                 <EntitySelector
-                    activeKey={activeKey}
-                    configs={sortedConfigs}
-                    missingTypes={missingTypes}
+                    activeEntity={activeEntity}
+                    configs={selectedConfigs}
                     locale={locale}
-                    onSelect={setActiveKey}
+                    onSelect={setActiveEntity}
                 />
 
                 {activeConfig ? (
@@ -950,19 +713,14 @@ export function ProcessConfigWorkspace() {
                         config={activeConfig}
                         locale={locale}
                         roles={roles}
-                        saving={savingId === activeConfig.id}
+                        saving={
+                            savingId === activeConfig.id ||
+                            creatingKey ===
+                            `${activeConfig.entity_type}:${activeConfig.warehouse_id ?? "global"}`
+                        }
                         onSave={handleSave}
                     />
-                ) : (
-                    <MissingConfigPanel
-                        entityType={activeMissingEntity}
-                        locale={locale}
-                        creating={
-                            creatingKey === `${activeMissingEntity}:global`
-                        }
-                        onSeed={handleSeed}
-                    />
-                )}
+                ) : null}
             </div>
         </div>
     );

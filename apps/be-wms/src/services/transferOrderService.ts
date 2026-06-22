@@ -45,9 +45,9 @@ import type {
 } from "@bduck/shared-types";
 import * as transferRepo from "../repositories/transferOrderRepository.js";
 import * as approvalService from "./approvalService.js";
-import * as configRepo from "../repositories/processConfigRepository.js";
 import { logAudit } from "./auditService.js";
 import { verifyMfa } from "./mfaService.js";
+import { getConfigForEntity } from "./processConfigService.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMAS — Input validation (LUẬT THÉP)
@@ -153,7 +153,7 @@ export async function createTransferOrder(
   const configEntityType: ProcessEntityType = isIntra
     ? "TRANSFER_INTRA"
     : "TRANSFER_ORDER";
-  const config = await configRepo.findByEntityType(
+  const config = await getConfigForEntity(
     configEntityType,
     input.source_warehouse_id,
   );
@@ -347,7 +347,7 @@ export async function updateTransferOrder(
   const configEntityType: ProcessEntityType = isIntra
     ? "TRANSFER_INTRA"
     : "TRANSFER_ORDER";
-  const config = await configRepo.findByEntityType(
+  const config = await getConfigForEntity(
     configEntityType,
     input.source_warehouse_id,
   );

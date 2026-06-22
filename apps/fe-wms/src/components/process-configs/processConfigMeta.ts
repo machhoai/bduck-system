@@ -39,9 +39,6 @@ export const ENTITY_ORDER: ProcessEntityType[] = [
   "EXPORT_VOUCHER",
   "TRANSFER_ORDER",
   "TRANSFER_INTRA",
-  "PURCHASE_ORDER",
-  "ADJUSTMENT_VOUCHER",
-  "GIFT_SESSION",
 ];
 
 export const ENTITY_META: Record<ProcessEntityType, EntityMeta> = {

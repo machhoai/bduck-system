@@ -233,6 +233,75 @@ function getDefaultStepOptions(entityType: ProcessEntityType): Record<string, St
   return DEFAULT_STEP_OPTIONS_BY_ENTITY[entityType] ?? DEFAULT_STEP_OPTIONS;
 }
 
+async function resolveDefaultChain(
+  entityType: ProcessEntityType,
+  logPrefix = "processConfig",
+): Promise<ApprovalLevel[]> {
+  const defaultChain = DEFAULT_CHAINS[entityType] ?? [];
+  const resolvedChain: ApprovalLevel[] = [];
+
+  for (const level of defaultChain) {
+    const role = await roleRepository.findByName(level.role_id);
+    if (role) {
+      resolvedChain.push({
+        ...level,
+        role_id: role.id,
+      });
+      console.log(
+        `[${logPrefix}] Resolved role "${level.role_id}" -> "${role.id}" (${role.name})`,
+      );
+    } else {
+      console.warn(
+        `[${logPrefix}] Role "${level.role_id}" not found in DB. Skipping level ${level.level}`,
+      );
+    }
+  }
+
+  return resolvedChain;
+}
+
+async function buildDefaultConfig(
+  entityType: ProcessEntityType,
+  warehouseId?: string | null,
+): Promise<ProcessConfig> {
+  const exactWarehouseId = warehouseId?.trim() || null;
+  const now = new Date();
+  const isWarehouseDefault = Boolean(exactWarehouseId);
+
+  return {
+    id: exactWarehouseId
+      ? `default_${entityType}_${exactWarehouseId}`
+      : `default_${entityType}`,
+    entity_type: entityType,
+    warehouse_id: exactWarehouseId,
+    approval_chain: await resolveDefaultChain(entityType, "defaultProcessConfig"),
+    auto_approve: isWarehouseDefault,
+    require_evidence: isWarehouseDefault,
+    require_otp: isWarehouseDefault,
+    step_options: getDefaultStepOptions(entityType),
+    is_deleted: false,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export function getActiveApprovalChainFromConfig(
+  config: ProcessConfig,
+): ApprovalLevel[] {
+  return config.approval_chain
+    .filter((level) => level.required || level.enabled)
+    .sort((a, b) => a.level - b.level);
+}
+
+export async function getActiveApprovalChainForEntity(
+  entityType: ProcessEntityType,
+  warehouseId?: string | null,
+): Promise<ApprovalLevel[]> {
+  return getActiveApprovalChainFromConfig(
+    await getConfigForEntity(entityType, warehouseId),
+  );
+}
+
 /** List all configs (admin view) */
 export async function getAllConfigs(): Promise<ProcessConfig[]> {
   return repo.findAll();
@@ -246,24 +315,12 @@ export async function getConfigForEntity(
   entityType: ProcessEntityType,
   warehouseId?: string | null,
 ): Promise<ProcessConfig> {
-  const config = await repo.findByEntityType(entityType, warehouseId);
+  const exactWarehouseId = warehouseId?.trim() || null;
+  const config = await repo.findExactByEntityType(entityType, exactWarehouseId);
 
   if (config) return config;
 
-  // Return hardcoded default (not persisted until admin saves)
-  return {
-    id: `default_${entityType}`,
-    entity_type: entityType,
-    warehouse_id: null,
-    approval_chain: DEFAULT_CHAINS[entityType] ?? [],
-    auto_approve: false,
-    require_evidence: false,
-    require_otp: false,
-    step_options: getDefaultStepOptions(entityType),
-    is_deleted: false,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
+  return buildDefaultConfig(entityType, exactWarehouseId);
 }
 
 /**
@@ -334,58 +391,20 @@ export async function seedConfigIfMissing(
 
   if (existing) return existing;
 
-  if (exactWarehouseId) {
-    const baseConfig = await seedConfigIfMissing(entityType, null);
-    const now = new Date();
-
-    return repo.create({
-      entity_type: entityType,
-      warehouse_id: exactWarehouseId,
-      approval_chain: baseConfig.approval_chain,
-      auto_approve: baseConfig.auto_approve,
-      require_evidence: baseConfig.require_evidence ?? false,
-      require_otp: baseConfig.require_otp ?? false,
-      step_options: baseConfig.step_options,
-      is_deleted: false,
-      created_at: now,
-      updated_at: now,
-    });
-  }
-
-  // Resolve hardcoded role names → actual Firestore doc IDs
-  const defaultChain = DEFAULT_CHAINS[entityType] ?? [];
-  const resolvedChain: ApprovalLevel[] = [];
-
-  for (const level of defaultChain) {
-    const role = await roleRepository.findByName(level.role_id);
-    if (role) {
-      resolvedChain.push({
-        ...level,
-        role_id: role.id, // Use actual Firestore doc ID
-      });
-      console.log(
-        `[seedConfig] Resolved role "${level.role_id}" → "${role.id}" (${role.name})`,
-      );
-    } else {
-      console.warn(
-        `[seedConfig] Role "${level.role_id}" not found in DB — skipping level ${level.level}`,
-      );
-    }
-  }
-
-  const now = new Date();
+  const defaultConfig = await buildDefaultConfig(entityType, exactWarehouseId);
   return repo.create({
     entity_type: entityType,
-    warehouse_id: null,
-    approval_chain: resolvedChain,
-    auto_approve: false,
-    require_evidence: false,
-    require_otp: false,
-    step_options: getDefaultStepOptions(entityType),
+    warehouse_id: exactWarehouseId,
+    approval_chain: defaultConfig.approval_chain,
+    auto_approve: defaultConfig.auto_approve,
+    require_evidence: defaultConfig.require_evidence,
+    require_otp: defaultConfig.require_otp,
+    step_options: defaultConfig.step_options,
     is_deleted: false,
-    created_at: now,
-    updated_at: now,
+    created_at: defaultConfig.created_at,
+    updated_at: defaultConfig.updated_at,
   });
+
 }
 
 /**
