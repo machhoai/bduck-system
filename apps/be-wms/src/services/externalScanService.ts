@@ -1,11 +1,18 @@
 import { db } from "../config/firebase.js";
 import { v4 as uuidv4 } from "uuid";
-import type { IntegrationClient, ExternalScanQueue } from "@bduck/shared-types";
-import { ExternalScanQueueStatus } from "@bduck/shared-types";
+import type {
+  ExportVoucher,
+  ExportVoucherItem,
+  IntegrationClient,
+  ExternalScanQueue,
+} from "@bduck/shared-types";
+import {
+  calculateInventoryTotalQuantity,
+  ExternalScanQueueStatus,
+} from "@bduck/shared-types";
 import { findByLocationAndProduct } from "../repositories/inventoryRepository.js";
 import * as externalScanRepo from "../repositories/externalScanRepository.js";
 import { productRepository as productRepo } from "../repositories/productRepository.js";
-import * as exportVoucherRepo from "../repositories/exportVoucherRepository.js";
 import { logAudit } from "./auditService.js";
 import {
   AuditAction,
@@ -607,8 +614,25 @@ export const approveBatch = async (
     );
 
     // 2. Process writes and prepare voucher items
-    const invMap = new Map<string, { ref: any, oldData: any, atp_delta: number, hold_delta: number }>();
-    const groupedVoucherItems = new Map<string, any>();
+    const invMap = new Map<
+      string,
+      {
+        ref: FirebaseFirestore.DocumentReference;
+        oldData: FirebaseFirestore.DocumentData;
+        atp_delta: number;
+        hold_delta: number;
+      }
+    >();
+    const groupedVoucherItems = new Map<
+      string,
+      {
+        product_id: string;
+        warehouse_location_id: string;
+        quantity: number;
+        picked_quantity: number;
+        unit_price: number;
+      }
+    >();
 
     for (const { scan, invSnapshot } of inventoryDocs) {
       const approvedQty = approvedByScanId.get(scan.id) ?? 0;
@@ -644,23 +668,35 @@ export const approveBatch = async (
           groupedVoucherItems.set(key, {
             product_id: scan.product_id,
             warehouse_location_id: scan.warehouse_location_id,
-            requested_quantity: 0,
-            actual_quantity: 0,
+            quantity: 0,
+            picked_quantity: 0,
             unit_price: scan.unit_price,
-            total_price: 0,
           });
         }
         const item = groupedVoucherItems.get(key)!;
-        item.requested_quantity += approvedQty;
-        item.total_price += approvedQty * scan.unit_price;
+        item.quantity += approvedQty;
+        item.picked_quantity += approvedQty;
       }
     }
 
     // Apply aggregated inventory updates
     for (const state of invMap.values()) {
+      const newAtp = state.oldData.atp_quantity + state.atp_delta;
+      const newOnHold = Math.max(
+        0,
+        state.oldData.on_hold_quantity + state.hold_delta,
+      );
+      const newTotal = calculateInventoryTotalQuantity({
+        atp_quantity: newAtp,
+        on_hold_quantity: newOnHold,
+        in_transit_quantity: state.oldData.in_transit_quantity,
+        quarantine_quantity: state.oldData.quarantine_quantity,
+      });
+
       tx.update(state.ref, {
-        on_hold_quantity: Math.max(0, state.oldData.on_hold_quantity + state.hold_delta),
-        atp_quantity: state.oldData.atp_quantity + state.atp_delta,
+        on_hold_quantity: newOnHold,
+        atp_quantity: newAtp,
+        total_quantity: newTotal,
         last_updated_at: new Date(),
       });
     }
@@ -669,25 +705,49 @@ export const approveBatch = async (
 
     // 3. Create Export Voucher
     if (voucherItems.length > 0) {
-      const voucher = {
+      const now = new Date();
+      const voucher: ExportVoucher = {
         id: voucherId,
         voucher_number: voucherNumber,
         warehouse_id: warehouseId,
         export_type: ExportType.SALE_POS,
-        status: ExportVoucherStatus.DRAFT,
+        status: ExportVoucherStatus.COMPLETED,
         creator_id: managerId,
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: now,
+        updated_at: now,
         approver_id: managerId,
-        approved_at: new Date(),
-        atp_deducted: true, // We already handled ATP
-        sync_time: new Date(),
+        approved_at: now,
+        reference_id: batchId,
+        reference_type: null,
+        recipient_name: "External Scan Queue",
+        recipient_department: "External Queue Approval",
+        attachment_urls: [],
+        action_time: now,
+        atp_deducted: true,
+        sync_time: now,
         is_deleted: false,
-        notes: `Tạo từ External Batch: ${batchId}. ${notes || ""}`,
-        items: voucherItems,
+        notes: `Created from external queue batch ${batchId}.${notes ? ` ${notes}` : ""}`,
       };
 
-      tx.set(db.collection("export_vouchers").doc(voucherId), voucher);
+      const voucherRef = db.collection("export_vouchers").doc(voucherId);
+      tx.set(voucherRef, voucher);
+
+      for (const item of voucherItems) {
+        const itemId = uuidv4();
+        const voucherItem: ExportVoucherItem = {
+          id: itemId,
+          export_voucher_id: voucherId,
+          product_id: item.product_id,
+          warehouse_location_id: item.warehouse_location_id,
+          quantity: item.quantity,
+          picked_quantity: item.picked_quantity,
+          unit_price: item.unit_price,
+          notes: "Auto-completed from external queue approval",
+          is_deleted: false,
+        };
+
+        tx.set(voucherRef.collection("items").doc(itemId), voucherItem);
+      }
     }
   });
 
