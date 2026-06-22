@@ -229,7 +229,7 @@ export default function VoucherDetailDrawer({
         const unsub = onSnapshot(approvalsQuery, async (snap) => {
             const records = snap.docs.map(d => d.data());
             records.sort((a, b) => (a.level || 0) - (b.level || 0));
-            
+
             const approverData = await Promise.all(records.map(async (record) => {
                 let name = record.approver_id;
                 if (record.approver_id) {
@@ -239,7 +239,7 @@ export default function VoucherDetailDrawer({
                             const u = uSnap.data();
                             name = u?.full_name || u?.email || record.approver_id;
                         }
-                    } catch {}
+                    } catch { }
                 }
                 return {
                     id: record.approver_id,
@@ -247,7 +247,7 @@ export default function VoucherDetailDrawer({
                     approved_at: record.approved_at
                 };
             }));
-            
+
             setApprovers(approverData);
         });
 
@@ -287,19 +287,19 @@ export default function VoucherDetailDrawer({
                         try {
                             const snap = await getDoc(doc(db, "warehouse_locations", item.warehouse_location_id));
                             if (snap.exists()) warehouse_location_name = snap.data()?.name || item.warehouse_location_id;
-                        } catch {}
+                        } catch { }
                     }
                     if (item.source_location_id) {
                         try {
                             const snap = await getDoc(doc(db, "warehouse_locations", item.source_location_id));
                             if (snap.exists()) source_location_name = snap.data()?.name || item.source_location_id;
-                        } catch {}
+                        } catch { }
                     }
                     if (item.destination_location_id) {
                         try {
                             const snap = await getDoc(doc(db, "warehouse_locations", item.destination_location_id));
                             if (snap.exists()) destination_location_name = snap.data()?.name || item.destination_location_id;
-                        } catch {}
+                        } catch { }
                     }
 
                     return {
@@ -440,7 +440,7 @@ export default function VoucherDetailDrawer({
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
                     <div>
                         <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-                            {t.importVoucher.detail.title}
+                            {t.vouchers.detail.title}
                         </h2>
                         <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                             {voucher.voucher_number}
@@ -515,11 +515,11 @@ export default function VoucherDetailDrawer({
                         ) : null}
                         <Field icon={User} label={t.tasks.detail.creator} value={creatorName || voucher.creator_id} />
                         <Field icon={Calendar} label={t.tasks.detail.createdAt} value={formatDate(voucher.created_at)} />
-                        
+
                         {voucher.status === "COMPLETED" && (
                             <Field icon={CheckCircle2} label={(t as any).tasks?.detail?.completedAt || "Ngày hoàn thành"} value={formatDate(voucher.updated_at)} />
                         )}
-                        
+
                         {approvers.length > 0 ? (
                             <div className="flex flex-col gap-1 py-2.5">
                                 <div className="flex items-center gap-3">
@@ -597,7 +597,7 @@ export default function VoucherDetailDrawer({
                                             {t.tasks.detail.quantity}: {formatCurrency(item.expected_quantity)}
                                             {item.unit_price > 0 && <> × {formatCurrency(item.unit_price)}đ</>}
                                         </div>
-                                        
+
                                         {(item.warehouse_location_name || item.source_location_name || item.destination_location_name) && (
                                             <div className="mt-1 flex flex-col gap-0.5 text-xs text-[var(--color-text-secondary)]">
                                                 {entityType === "IMPORT_VOUCHER" && item.warehouse_location_name && (
@@ -605,8 +605,8 @@ export default function VoucherDetailDrawer({
                                                 )}
                                                 {entityType === "TRANSFER_ORDER" && (item.source_location_name || item.destination_location_name) && (
                                                     <span>
-                                                        Từ: <span className="font-medium text-[var(--color-text-primary)]">{item.source_location_name || "—"}</span> 
-                                                        {" → "} 
+                                                        Từ: <span className="font-medium text-[var(--color-text-primary)]">{item.source_location_name || "—"}</span>
+                                                        {" → "}
                                                         Đến: <span className="font-medium text-[var(--color-text-primary)]">{item.destination_location_name || "—"}</span>
                                                     </span>
                                                 )}

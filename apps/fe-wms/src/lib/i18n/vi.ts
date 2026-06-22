@@ -140,6 +140,10 @@ const vi = {
             actionRequired: "Cần xử lý",
             noResults: "Không tìm thấy lệnh nào phù hợp với bộ lọc.",
         },
+        detail: {
+            title: "Chi tiết lệnh",
+            subtitle: "Xem và quản lý lệnh nhập kho",
+        }
     },
 
     fileLibrary: {
