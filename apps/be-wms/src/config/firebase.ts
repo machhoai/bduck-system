@@ -22,6 +22,7 @@ import {
 } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 
 // ---------------------------------------------------------------------------
 // 1. Parse Service Account từ Base64 Environment Variable
@@ -70,6 +71,7 @@ if (!getApps().length) {
 
   initializeApp({
     credential: cert(serviceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
   });
 
   // Log xác nhận kết nối thành công — hiển thị Project ID để dễ debug
@@ -88,5 +90,6 @@ if (!getApps().length) {
 // ---------------------------------------------------------------------------
 const db = getFirestore();
 const auth = getAuth();
+const storage = getStorage();
 
-export { db, auth };
+export { db, auth, storage };

@@ -79,16 +79,22 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 6,
   },
   {
+    id: "reports",
+    label: { vi: "Báo cáo", zh: "报表" },
+    icon: "FileSpreadsheet",
+    order: 7,
+  },
+  {
     id: "vouchers",
     label: { vi: "Phiếu nhập / xuất", zh: "入库/出库单" },
     icon: "FileText",
-    order: 7,
+    order: 8,
   },
   {
     id: "transfers",
     label: { vi: "Điều chuyển", zh: "调拨" },
     icon: "ArrowLeftRight",
-    order: 8,
+    order: 9,
   },
   {
     id: "workflows",
@@ -303,6 +309,44 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Cập nhật và xóa bản ghi tồn kho.",
       zh: "更新和删除库存记录。",
+    },
+  },
+
+  // ── Reports ──
+  {
+    key: "reports.templates.read",
+    group: "reports",
+    label: { vi: "Xem mẫu báo cáo", zh: "查看报表模板" },
+    description: {
+      vi: "Xem các mẫu báo cáo cá nhân và mẫu được chia sẻ.",
+      zh: "查看个人和共享报表模板。",
+    },
+  },
+  {
+    key: "reports.templates.write",
+    group: "reports",
+    label: { vi: "Quản lý mẫu báo cáo", zh: "管理报表模板" },
+    description: {
+      vi: "Tạo, sửa và lưu mapping cho mẫu báo cáo.",
+      zh: "创建、编辑并保存报表模板映射。",
+    },
+  },
+  {
+    key: "reports.templates.share",
+    group: "reports",
+    label: { vi: "Chia sẻ mẫu báo cáo", zh: "共享报表模板" },
+    description: {
+      vi: "Bật chế độ dùng chung mẫu báo cáo trên toàn hệ thống.",
+      zh: "将报表模板共享给全系统使用。",
+    },
+  },
+  {
+    key: "reports.export",
+    group: "reports",
+    label: { vi: "Xuất báo cáo", zh: "导出报表" },
+    description: {
+      vi: "Preview và xuất file báo cáo từ template đã lưu.",
+      zh: "预览并从已保存模板导出报表文件。",
     },
   },
 

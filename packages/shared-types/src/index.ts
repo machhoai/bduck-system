@@ -16,3 +16,4 @@ export * from './permissionRegistry.js';
 export * from './process.js';
 export * from './expenses.js';
 export * from './externalScan.js';
+export * from './reports.js';

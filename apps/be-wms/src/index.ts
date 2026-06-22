@@ -20,6 +20,7 @@ import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 import expenseRoutes from "./api/routes/expenseRoutes.js";
 import revenueSyncRoutes from "./api/routes/revenueSyncRoutes.js";
+import reportRoutes from "./api/routes/reportRoutes.js";
 import notificationRoutes from "./api/routes/notificationRoutes.js";
 import nonconformityRoutes from "./api/routes/nonconformityRoutes.js";
 import stockPolicyRoutes from "./api/routes/stockPolicyRoutes.js";
@@ -42,7 +43,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ app.use("/api/process-configs", processConfigRoutes);
 app.use("/api/transfer-orders", transferOrderRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/revenue", revenueSyncRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/nonconformities", nonconformityRoutes);
 app.use("/api/stock-policies", stockPolicyRoutes);

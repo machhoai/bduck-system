@@ -11,6 +11,7 @@ import {
     CircleDollarSign,
     ClipboardCheck,
     FileClock,
+    FileSpreadsheet,
     Files,
     Home,
     Package,
@@ -85,6 +86,13 @@ export const menuItems: MenuItem[] = [
         icon: Bell,
         href: "/notification",
         permissionsAny: notificationPermissions,
+    },
+    {
+        id: "reports",
+        labelKey: "reports",
+        icon: FileSpreadsheet,
+        href: "/reports",
+        permissionsAny: ["reports.templates.read", "reports.export"],
     },
     {
         id: "tasks",
