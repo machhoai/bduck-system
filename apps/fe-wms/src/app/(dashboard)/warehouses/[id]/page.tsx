@@ -10,7 +10,7 @@ import {
     PackageSearch,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { WarehouseLocation } from "@bduck/shared-types";
+import { LocationType, type WarehouseLocation } from "@bduck/shared-types";
 
 import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
 import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
@@ -29,6 +29,7 @@ import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useInventory } from "@/hooks/useInventory";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
+import { useLocationSlots } from "@/hooks/useLocationSlots";
 import { useUsers } from "@/hooks/useUsers";
 import { useExportVouchers } from "@/hooks/useExportVouchers";
 import { useImportVouchers } from "@/hooks/useImportVouchers";
@@ -45,7 +46,11 @@ import {
     buildWarehouseInventoryExportConfig,
     buildWarehouseMovementExportConfig,
 } from "@/utils/warehouseMovementExport";
-import type { ExportConfig, ExportRequestOptions } from "@/utils/exportExcel";
+import type {
+    ExportConfig,
+    ExportRequestOptions,
+    ExportSelectOption,
+} from "@/utils/exportExcel";
 
 type PageTab = "overview" | "products" | "locations";
 type InventoryTab = "products" | "locations";
@@ -73,6 +78,7 @@ export default function WarehouseDetailPage() {
     const { products, loading: prodLoading } = useProducts();
     const { categories, isLoading: categoriesLoading } = useCategories();
     const { users, isLoading: usersLoading } = useUsers();
+    const { slots, mappings: slotMappings } = useLocationSlots(warehouseId);
     const { allVouchers: importVouchers } = useImportVouchers();
     const {
         activeVouchers: activeExportVouchers,
@@ -120,6 +126,8 @@ export default function WarehouseDetailPage() {
             products,
             categories,
             locations,
+            slots,
+            slotMappings,
             importVouchers,
             exportVouchers,
             canViewPrice,
@@ -131,11 +139,63 @@ export default function WarehouseDetailPage() {
             importVouchers,
             inventory,
             locations,
+            slotMappings,
+            slots,
             products,
             warehouse?.name,
             warehouseId,
         ],
     );
+
+    const warehouseExportFilterOptions = useMemo(() => {
+        const uniqueOptions = (values: Array<string | null | undefined>) =>
+            Array.from(new Set(values.filter(Boolean) as string[]))
+                .sort((a, b) => a.localeCompare(b, "vi"))
+                .map((value) => ({ value, label: value }));
+
+        const counterLocations = locations.filter(
+            (location) =>
+                location.type === LocationType.COUNTER &&
+                location.is_deleted !== true,
+        );
+        const counterLocationIds = new Set(
+            counterLocations.map((location) => location.id),
+        );
+
+        return {
+            categories: categories
+                .filter((category) => category.is_deleted !== true)
+                .map((category) => ({
+                    value: category.id,
+                    label: `${category.code} - ${category.name}`,
+                })),
+            locations: counterLocations.map((location) => ({
+                value: location.id,
+                label: `${location.code} - ${location.name}`,
+            })),
+            slots: slots
+                .filter(
+                    (slot) =>
+                        slot.is_deleted !== true &&
+                        counterLocationIds.has(slot.warehouse_location_id),
+                )
+                .map((slot) => ({
+                    value: slot.id,
+                    label: `${slot.code} - ${slot.name}`,
+                    parentId: slot.warehouse_location_id,
+                })),
+            units: uniqueOptions(products.map((product) => product.unit)),
+            materials: uniqueOptions(
+                products.map((product) => product.product_material),
+            ),
+        } satisfies {
+            categories: ExportSelectOption[];
+            locations: ExportSelectOption[];
+            slots: ExportSelectOption[];
+            units: ExportSelectOption[];
+            materials: ExportSelectOption[];
+        };
+    }, [categories, locations, products, slots]);
 
     const warehouseExportConfig = useMemo<ExportConfig | null>(() => {
         if (!warehouse) return null;
@@ -151,17 +211,18 @@ export default function WarehouseDetailPage() {
                     dateMode: "month" as const,
                     month: new Date().toISOString().slice(0, 7),
                 },
+                filterOptions: warehouseExportFilterOptions,
             },
             prepare: (options: ExportRequestOptions) => {
                 if (options.dataKind === "inventory") {
                     return Promise.resolve(
-                        buildWarehouseInventoryExportConfig(exportContext),
+                        buildWarehouseInventoryExportConfig(exportContext, options),
                     );
                 }
                 return buildWarehouseMovementExportConfig(exportContext, options);
             },
         };
-    }, [exportContext, warehouse]);
+    }, [exportContext, warehouse, warehouseExportFilterOptions]);
 
     useExportRegistration(warehouseExportConfig);
 

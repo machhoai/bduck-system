@@ -21,8 +21,23 @@ export type ExportDataKind =
   | "imports"
   | "exports"
   | "movement"
-  | "dailySummary";
+  | "dailySummary"
+  | "counterDailySummary";
 export type ExportDateMode = "date" | "month" | "range";
+
+export interface ExportSelectOption {
+  value: string;
+  label: string;
+  parentId?: string | null;
+}
+
+export interface ExportFilterOptions {
+  categories?: ExportSelectOption[];
+  locations?: ExportSelectOption[];
+  slots?: ExportSelectOption[];
+  units?: ExportSelectOption[];
+  materials?: ExportSelectOption[];
+}
 
 export interface ExportRequestOptions {
   dataKind?: ExportDataKind;
@@ -31,6 +46,15 @@ export interface ExportRequestOptions {
   month?: string;
   dateFrom?: string;
   dateTo?: string;
+  productSearch?: string;
+  categoryId?: string;
+  productType?: string;
+  productOrigin?: string;
+  serialized?: "all" | "serialized" | "standard";
+  productUnit?: string;
+  productMaterial?: string;
+  locationId?: string;
+  slotId?: string;
 }
 
 export interface ExportDialogConfig {
@@ -38,6 +62,7 @@ export interface ExportDialogConfig {
   title: string;
   description?: string;
   defaultOptions?: ExportRequestOptions;
+  filterOptions?: ExportFilterOptions;
 }
 
 export interface ExportConfig {
