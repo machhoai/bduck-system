@@ -9,6 +9,7 @@ import {
   activeRoleAssignments,
   uniqueRoleIds,
 } from "../../services/scopedRoleAccess.js";
+import { getEffectiveRolePermissions } from "../../services/rolePermissionUtils.js";
 
 export const requireAuth = async (
   req: Request,
@@ -39,7 +40,7 @@ export const requireAuth = async (
     }
 
     // Verify the token
-    const decodedClaims = isSessionCookie 
+    const decodedClaims = isSessionCookie
       ? await auth.verifySessionCookie(token, true)
       : await auth.verifyIdToken(token, true);
 
@@ -78,7 +79,7 @@ export const requireAuth = async (
 
       mergedPermissions[scope] = {
         ...(mergedPermissions[scope] as Record<string, unknown>),
-        ...roleDef.permissions,
+        ...getEffectiveRolePermissions(roleDef),
       };
     }
 

@@ -142,6 +142,10 @@ const zh: Dictionary = {
             actionRequired: "需要处理",
             noResults: "没有找到符合过滤条件的凭证。",
         },
+        detail: {
+            title: "订单详情",
+            subtitle: "查看并管理入库订单",
+        },
     },
 
     fileLibrary: {
@@ -447,7 +451,8 @@ const zh: Dictionary = {
         mappingSuccessDesc: "产品已分配到正确的货架槽。",
         mappingErrorDesc: "请重试或检查操作权限。",
         mapLoadError: "无法加载地图",
-        webglErrorDesc: "您的浏览器不支持 WebGL 或硬件加速已关闭。请在浏览器设置中开启以查看地图。",
+        webglErrorDesc:
+            "您的浏览器不支持 WebGL 或硬件加速已关闭。请在浏览器设置中开启以查看地图。",
         enterWarehouse: "进入仓库",
         totalLower: "总计",
     },

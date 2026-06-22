@@ -6,6 +6,7 @@ import {
 } from "../repositories/userRepository.js";
 import type { User, UserWarehouseRole } from "@bduck/shared-types";
 import { activeRoleAssignments, uniqueRoleIds } from "./scopedRoleAccess.js";
+import { getEffectiveRolePermissions } from "./rolePermissionUtils.js";
 
 export interface AuthSessionResult {
   cookie: string;
@@ -43,7 +44,6 @@ export const createSessionLogin = async (
   const activeRoles = activeRoleAssignments(userRoles);
 
   for (const userRole of activeRoles) {
-
     const roleDef = await getRoleById(userRole.role_id);
     if (!roleDef) continue;
 
@@ -56,7 +56,7 @@ export const createSessionLogin = async (
     // Merge role permissions into the scope
     mergedPermissions[scope] = {
       ...(mergedPermissions[scope] as Record<string, unknown>),
-      ...roleDef.permissions,
+      ...getEffectiveRolePermissions(roleDef),
     };
   }
 
