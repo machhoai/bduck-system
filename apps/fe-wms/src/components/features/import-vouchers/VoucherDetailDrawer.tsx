@@ -53,6 +53,7 @@ import type { ImportVoucher, ProcessEntityType } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
+import TaskProductThumb from "@/components/tasks/TaskProductThumb";
 
 interface VoucherDetailDrawerProps {
     voucher: ImportVoucher;
@@ -68,6 +69,7 @@ interface EnrichedItem {
     product_name: string;
     product_code: string;
     barcode: string | null;
+    product_image_url: string | null;
     unit: string;
     expected_quantity: number;
     actual_quantity: number;
@@ -109,6 +111,18 @@ function formatDate(val: unknown): string {
 
 function formatCurrency(val: number): string {
     return new Intl.NumberFormat("vi-VN").format(val);
+}
+
+function getFirstImageUrl(value: unknown): string | null {
+    if (Array.isArray(value)) {
+        return value.find((item) => typeof item === "string" && item.trim()) ?? null;
+    }
+
+    if (typeof value === "string" && value.trim()) {
+        return value;
+    }
+
+    return null;
 }
 
 function Field({
@@ -266,6 +280,7 @@ export default function VoucherDetailDrawer({
                     let productName = item.product_id || "";
                     let productCode = "";
                     let barcode: string | null = null;
+                    let productImageUrl = getFirstImageUrl(item.product_image_url);
                     let unit = "";
                     if (item.product_id) {
                         try {
@@ -275,6 +290,7 @@ export default function VoucherDetailDrawer({
                                 productName = p?.name || item.product_id;
                                 productCode = p?.code || "";
                                 barcode = p?.barcode || null;
+                                productImageUrl = getFirstImageUrl(item.product_image_url) || getFirstImageUrl(p?.product_image_url);
                                 unit = p?.unit || "";
                             }
                         } catch { /* fallback to ID */ }
@@ -308,6 +324,7 @@ export default function VoucherDetailDrawer({
                         product_name: productName,
                         product_code: productCode,
                         barcode,
+                        product_image_url: productImageUrl,
                         unit,
                         expected_quantity: item.expected_quantity || item.quantity || 0,
                         actual_quantity: item.actual_quantity || item.picked_quantity || item.received_quantity || 0,
@@ -566,7 +583,13 @@ export default function VoucherDetailDrawer({
                             <div className="space-y-2">
                                 {items.map((item, idx) => (
                                     <div key={item.id || idx} className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-4 py-3">
-                                        <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <TaskProductThumb
+                                                imageUrl={item.product_image_url}
+                                                name={item.product_name}
+                                                sku={item.product_code}
+                                                className="h-16 w-16 rounded-xl"
+                                            />
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.product_name}</p>
                                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">

@@ -1,26 +1,30 @@
 "use client";
 
-/**
- * TransferDetailDrawer — Slide-over drawer for transfer order detail
- *
- * Renders:
- * - Transfer order info (source/dest warehouse, status, timestamps)
- * - Item list
- * - ReceiveTransferPanel when status = PENDING_RECEIVE or RECEIVING
- *
- * LUẬT THÉP:
- * - Realtime via onSnapshot for the order doc
- * - Skeleton loading
- * - Light theme only
- */
-
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ElementType,
+  type ReactNode,
+} from "react";
 import {
   ArrowRightLeft,
   Ban,
+  Barcode,
+  Calendar,
+  CheckCircle2,
+  ClipboardSignature,
+  FileText,
+  Hash,
   Loader2,
+  MapPin,
   Package,
+  Ruler,
   ShieldAlert,
+  Truck,
+  User,
+  Warehouse,
   X,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
@@ -28,7 +32,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
   query,
   where,
@@ -44,11 +47,43 @@ import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
 import { useProcessConfig } from "@/hooks/useProcessConfig";
 import { useUserStore } from "@/stores/useUserStore";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
+import AttachmentSection from "@/components/tasks/AttachmentSection";
+import TaskProductThumb from "@/components/tasks/TaskProductThumb";
 
 interface TransferItemInput {
   id: string;
   product_id: string;
   quantity: number;
+}
+
+interface EnrichedTransferItem extends TransferItemInput {
+  product_name: string;
+  product_code: string;
+  barcode: string | null;
+  product_image_url: string | null;
+  unit: string;
+  source_location_id: string | null;
+  destination_location_id: string | null;
+  source_location_name: string | null;
+  destination_location_name: string | null;
+  received_quantity: number | null;
+  status: string;
+}
+
+interface EmbeddedTransferItem {
+  id?: unknown;
+  product_id?: unknown;
+  product_name?: unknown;
+  product_code?: unknown;
+  product_sku?: unknown;
+  barcode?: unknown;
+  product_image_url?: unknown;
+  unit?: unknown;
+  source_location_id?: unknown;
+  destination_location_id?: unknown;
+  quantity?: unknown;
+  received_quantity?: unknown;
+  status?: unknown;
 }
 
 interface TransferDetailDrawerProps {
@@ -105,7 +140,76 @@ function formatDate(val: unknown): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
   });
+}
+
+function formatNumber(val: number): string {
+  return new Intl.NumberFormat("vi-VN").format(val);
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asNullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function getFirstImageUrl(value: unknown, fallback?: unknown): string | null {
+  if (Array.isArray(value)) {
+    const first = value.find((item) => typeof item === "string" && item.trim());
+    if (first) return first;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  if (Array.isArray(fallback)) {
+    return fallback.find((item) => typeof item === "string" && item.trim()) ?? null;
+  }
+
+  return typeof fallback === "string" && fallback.trim() ? fallback : null;
+}
+
+function Field({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ElementType;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 py-2.5">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+        <p className="mt-0.5 break-all text-sm font-medium text-[var(--color-text-primary)]">
+          {value || "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+async function resolveUserName(userId: string) {
+  try {
+    const snap = await getDoc(doc(db, "users", userId));
+    if (!snap.exists()) return userId;
+    const user = snap.data();
+    return asString(user.full_name) || asString(user.email) || userId;
+  } catch {
+    return userId;
+  }
 }
 
 export default function TransferDetailDrawer({
@@ -118,8 +222,14 @@ export default function TransferDetailDrawer({
   const currentUser = useUserStore((s) => s.user);
   const hasPermission = useUserStore((s) => s.hasPermission);
   const [order, setOrder] = useState<TransferOrder | null>(null);
-  const [items, setItems] = useState<TransferItemInput[]>([]);
+  const [items, setItems] = useState<EnrichedTransferItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [creatorName, setCreatorName] = useState("");
+  const [legacyApproverName, setLegacyApproverName] = useState("");
+  const [approvers, setApprovers] = useState<
+    { id: string; name: string; approved_at: unknown }[]
+  >([]);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
   const [otpAction, setOtpAction] = useState<"cancel" | "forceCancel" | null>(
@@ -130,43 +240,184 @@ export default function TransferDetailDrawer({
     order?.source_warehouse_id,
   );
 
-  // Realtime listener for order document
   useEffect(() => {
     const unsubscribe = onSnapshot(
       doc(db, "transfer_orders", orderId),
       (snap) => {
-        if (snap.exists()) {
-          setOrder({ id: snap.id, ...snap.data() } as TransferOrder);
-        }
+        setOrder(snap.exists() ? ({ id: snap.id, ...snap.data() } as TransferOrder) : null);
         setLoading(false);
       },
       (error) => {
         console.error("[TransferDetailDrawer] Order snapshot error:", error);
+        setOrder(null);
         setLoading(false);
       },
     );
     return () => unsubscribe();
   }, [orderId]);
 
-  // Load items once
   useEffect(() => {
-    async function loadItems() {
-      try {
-        const itemsRef = collection(db, "transfer_orders", orderId, "items");
-        const itemsSnap = await getDocs(
-          query(itemsRef, where("is_deleted", "==", false)),
-        );
-        const loaded: TransferItemInput[] = itemsSnap.docs.map((d) => ({
-          id: d.id,
-          product_id: d.data().product_id,
-          quantity: d.data().quantity || 0,
-        }));
-        setItems(loaded);
-      } catch (err) {
-        console.error("[TransferDetailDrawer] Items load error:", err);
-      }
+    if (!order?.creator_id) {
+      setCreatorName("");
+      return;
     }
-    loadItems();
+
+    void resolveUserName(order.creator_id).then(setCreatorName);
+  }, [order?.creator_id]);
+
+  useEffect(() => {
+    if (!order?.approver_id) {
+      setLegacyApproverName("");
+      return;
+    }
+
+    void resolveUserName(order.approver_id).then(setLegacyApproverName);
+  }, [order?.approver_id]);
+
+  useEffect(() => {
+    const approvalsQuery = query(
+      collection(db, "pending_approvals"),
+      where("entity_id", "==", orderId),
+      where("status", "==", "APPROVED"),
+    );
+
+    const unsub = onSnapshot(approvalsQuery, async (snap) => {
+      const records = snap.docs.map((approvalDoc) => approvalDoc.data());
+      records.sort((a, b) => asNumber(a.level) - asNumber(b.level));
+
+      const approverData = await Promise.all(
+        records.map(async (record) => {
+          const approverId = asString(record.approver_id);
+          return {
+            id: approverId,
+            name: approverId ? await resolveUserName(approverId) : "—",
+            approved_at: record.approved_at,
+          };
+        }),
+      );
+
+      setApprovers(approverData);
+    });
+
+    return () => unsub();
+  }, [orderId]);
+
+  useEffect(() => {
+    setLoadingItems(true);
+
+    const enrichItems = async (rawItems: EmbeddedTransferItem[]) => {
+      const enriched = await Promise.all(
+        rawItems.map(async (item, index): Promise<EnrichedTransferItem> => {
+          const productId = asString(item.product_id);
+          let productName = asString(item.product_name) || productId;
+          let productCode = asString(item.product_code) || asString(item.product_sku);
+          let barcode = asNullableString(item.barcode);
+          let productImageUrl = getFirstImageUrl(item.product_image_url);
+          let unit = asString(item.unit);
+
+          if (productId) {
+            try {
+              const productSnap = await getDoc(doc(db, "products", productId));
+              if (productSnap.exists()) {
+                const product = productSnap.data();
+                productName = asString(product.name) || productName;
+                productCode = asString(product.code) || productCode;
+                barcode = asNullableString(product.barcode) || barcode;
+                productImageUrl = getFirstImageUrl(
+                  item.product_image_url,
+                  product.product_image_url,
+                );
+                unit = asString(product.unit) || unit;
+              }
+            } catch {
+              // Fall back to denormalized item fields.
+            }
+          }
+
+          const sourceLocationId = asNullableString(item.source_location_id);
+          const destinationLocationId = asNullableString(item.destination_location_id);
+          let sourceLocationName: string | null = null;
+          let destinationLocationName: string | null = null;
+
+          if (sourceLocationId) {
+            try {
+              const locationSnap = await getDoc(
+                doc(db, "warehouse_locations", sourceLocationId),
+              );
+              sourceLocationName = locationSnap.exists()
+                ? asString(locationSnap.data().name) || sourceLocationId
+                : sourceLocationId;
+            } catch {
+              sourceLocationName = sourceLocationId;
+            }
+          }
+
+          if (destinationLocationId) {
+            try {
+              const locationSnap = await getDoc(
+                doc(db, "warehouse_locations", destinationLocationId),
+              );
+              destinationLocationName = locationSnap.exists()
+                ? asString(locationSnap.data().name) || destinationLocationId
+                : destinationLocationId;
+            } catch {
+              destinationLocationName = destinationLocationId;
+            }
+          }
+
+          return {
+            id: asString(item.id) || `${orderId}-${index}`,
+            product_id: productId,
+            product_name: productName,
+            product_code: productCode,
+            barcode,
+            product_image_url: productImageUrl,
+            unit,
+            source_location_id: sourceLocationId,
+            destination_location_id: destinationLocationId,
+            source_location_name: sourceLocationName,
+            destination_location_name: destinationLocationName,
+            quantity: asNumber(item.quantity),
+            received_quantity:
+              typeof item.received_quantity === "number"
+                ? item.received_quantity
+                : null,
+            status: asString(item.status),
+          };
+        }),
+      );
+
+      setItems(enriched);
+      setLoadingItems(false);
+    };
+
+    const itemsRef = collection(db, "transfer_orders", orderId, "items");
+    const unsubscribe = onSnapshot(
+      query(itemsRef, where("is_deleted", "==", false)),
+      async (itemsSnap) => {
+        let rawItems = itemsSnap.docs.map((itemDoc) => ({
+          id: itemDoc.id,
+          ...itemDoc.data(),
+        })) as EmbeddedTransferItem[];
+
+        if (rawItems.length === 0) {
+          const orderSnap = await getDoc(doc(db, "transfer_orders", orderId));
+          const embeddedItems = orderSnap.data()?.items;
+          rawItems = Array.isArray(embeddedItems)
+            ? (embeddedItems as EmbeddedTransferItem[])
+            : [];
+        }
+
+        await enrichItems(rawItems);
+      },
+      (error) => {
+        console.error("[TransferDetailDrawer] Items snapshot error:", error);
+        setItems([]);
+        setLoadingItems(false);
+      },
+    );
+
+    return () => unsubscribe();
   }, [orderId]);
 
   const srcWarehouse = warehouses.find(
@@ -189,16 +440,29 @@ export default function TransferDetailDrawer({
     !TERMINAL_STATUSES.has(order.status);
   const showCancelSection = !!order && (canCreatorCancel || canForceCancel);
 
-  const transferText = t.transfer as any;
-
+  const transferDetail =
+    (t.transfer as { detail?: Record<string, string> }).detail ?? {};
+  const taskDetail = t.tasks.detail as Record<string, string>;
   const statusLabel =
     order?.status
       ? (t.transfer.status[
           order.status as keyof typeof t.transfer.status
         ] ?? order.status)
       : "";
-
   const statusColor = getStatusStyle(order?.status ?? "DRAFT");
+  const attachmentUrls = order?.attachment_urls || [];
+  const totalQuantity = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items],
+  );
+  const receivedQuantity = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + (typeof item.received_quantity === "number" ? item.received_quantity : 0),
+        0,
+      ),
+    [items],
+  );
 
   const handleCreatorCancel = useCallback(
     async (otp?: string) => {
@@ -289,26 +553,23 @@ export default function TransferDetailDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       />
 
-      {/* Drawer */}
-      <div className="fixed top-0 right-0 z-50 flex h-[calc(100dvh-68px)] w-[90%] flex-col bg-white shadow-2xl md:h-full lg:w-2/3">
-        {/* Header */}
+      <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] flex-col bg-white shadow-2xl lg:w-2/3">
         <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]">
               <ArrowRightLeft className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[var(--color-text-primary)]">
-                {transferText.detail?.title ?? "Chi tiết chuyển kho"}
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
+                {transferDetail.title ?? "Chi tiết chuyển kho"}
               </h2>
-              <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
-                {order?.order_number ?? orderId.slice(0, 12) + "..."}
+              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                {order?.order_number ?? `${orderId.slice(0, 12)}...`}
               </p>
             </div>
           </div>
@@ -321,7 +582,6 @@ export default function TransferDetailDrawer({
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <DetailSkeleton />
@@ -329,15 +589,14 @@ export default function TransferDetailDrawer({
             <div className="flex flex-col items-center justify-center p-12 text-center">
               <Package className="h-8 w-12 text-[var(--color-neutral-300)]" />
               <p className="mt-3 text-sm font-medium text-[var(--color-text-muted)]">
-                {transferText.detail?.notFound ?? "Không tìm thấy phiếu"}
+                {transferDetail.notFound ?? "Không tìm thấy phiếu"}
               </p>
             </div>
           ) : (
             <>
-              {/* Status + Type badges */}
-              <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
+              <div className="flex flex-wrap items-center gap-2 px-4 pt-5">
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}
                 >
                   {statusLabel}
                 </span>
@@ -354,63 +613,231 @@ export default function TransferDetailDrawer({
                 </span>
               </div>
 
-              {/* Info fields */}
-              <div className="space-y-2 px-4 pt-3">
-                <InfoRow
-                  label={transferText.detail?.source ?? "Kho nguồn"}
+              <div className="px-4 pt-2">
+                <Field icon={Hash} label="Mã phiếu" value={order.order_number} />
+                <Field
+                  icon={Warehouse}
+                  label={transferDetail.source ?? "Kho nguồn"}
                   value={srcWarehouse?.name ?? order.source_warehouse_id}
                 />
-                <InfoRow
-                  label={transferText.detail?.destination ?? "Kho đích"}
+                <Field
+                  icon={Truck}
+                  label={transferDetail.destination ?? "Kho đích"}
                   value={dstWarehouse?.name ?? order.destination_warehouse_id}
                 />
-                <InfoRow
-                  label={transferText.detail?.createdAt ?? "Ngày tạo"}
+                <Field
+                  icon={User}
+                  label={taskDetail.creator ?? "Người tạo"}
+                  value={creatorName || order.creator_id}
+                />
+                <Field
+                  icon={Calendar}
+                  label={taskDetail.createdAt ?? "Ngày tạo"}
                   value={formatDate(order.created_at)}
                 />
+                {order.approved_at && (
+                  <Field
+                    icon={CheckCircle2}
+                    label="Ngày duyệt"
+                    value={formatDate(order.approved_at)}
+                  />
+                )}
                 {order.dispatched_at && (
-                  <InfoRow
-                    label={transferText.detail?.dispatchedAt ?? "Ngày xuất kho"}
+                  <Field
+                    icon={Truck}
+                    label={transferDetail.dispatchedAt ?? "Ngày xuất kho"}
                     value={formatDate(order.dispatched_at)}
                   />
                 )}
+                {order.received_at && (
+                  <Field
+                    icon={CheckCircle2}
+                    label="Ngày nhận"
+                    value={formatDate(order.received_at)}
+                  />
+                )}
+                {order.status === TransferOrderStatus.COMPLETED && (
+                  <Field
+                    icon={CheckCircle2}
+                    label={taskDetail.completedAt ?? "Ngày hoàn thành"}
+                    value={formatDate(order.updated_at)}
+                  />
+                )}
+                {order.export_voucher_id && (
+                  <Field
+                    icon={FileText}
+                    label="Phiếu xuất liên quan"
+                    value={order.export_voucher_id}
+                  />
+                )}
+
+                {approvers.length > 0 ? (
+                  <div className="flex flex-col gap-1 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-neutral-50)] text-[var(--color-text-muted)]">
+                        <ClipboardSignature className="h-4 w-4" />
+                      </div>
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {taskDetail.approvers ?? "Người duyệt"}
+                      </p>
+                    </div>
+                    <div className="mt-1 space-y-1 pl-11">
+                      {approvers.map((approver, idx) => (
+                        <div key={`${approver.id}-${idx}`} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="font-medium text-[var(--color-text-primary)]">
+                            {approver.name}
+                          </span>
+                          <span className="text-xs text-[var(--color-text-muted)]">
+                            {formatDate(approver.approved_at)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  order.approver_id && (
+                    <Field
+                      icon={ClipboardSignature}
+                      label={taskDetail.approver ?? "Người duyệt"}
+                      value={legacyApproverName || order.approver_id}
+                    />
+                  )
+                )}
+
                 {order.notes && (
-                  <InfoRow
-                    label={transferText.detail?.notes ?? "Ghi chú"}
+                  <Field
+                    icon={FileText}
+                    label={taskDetail.notes ?? "Ghi chú"}
                     value={order.notes}
                   />
                 )}
               </div>
 
-              {/* Items summary */}
               <div className="mt-4 px-4">
-                <h3 className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                  {transferText.detail?.items ?? "Danh sách hàng"} ({items.length})
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                 </h3>
-                {items.length === 0 ? (
-                  <p className="py-3 text-center text-xs text-[var(--color-text-muted)]">
-                    {transferText.detail?.noItems ?? "Không có sản phẩm"}
+                {loadingItems ? (
+                  <div className="animate-pulse space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 p-3"
+                      >
+                        <div className="h-4 w-40 rounded bg-[var(--color-skeleton-base)]" />
+                        <div className="mt-2 h-3 w-24 rounded bg-[var(--color-neutral-100)]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : items.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
+                    {t.tasks.items.empty}
                   </p>
                 ) : (
-                  <div className="space-y-1.5">
-                    {items.map((item) => (
+                  <div className="space-y-2">
+                    {items.map((item, idx) => (
                       <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-3 py-2"
+                        key={item.id || idx}
+                        className="rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)]/50 px-4 py-3"
                       >
-                        <span className="truncate text-sm text-[var(--color-text-secondary)]">
-                          {item.product_id.slice(0, 8)}...
-                        </span>
-                        <span className="text-sm font-semibold text-[var(--color-text-primary)] tabular-nums">
-                          x{item.quantity}
-                        </span>
+                        <div className="flex items-start gap-3">
+                          <TaskProductThumb
+                            imageUrl={item.product_image_url}
+                            name={item.product_name}
+                            sku={item.product_code}
+                            className="h-16 w-16 rounded-xl"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                  {item.product_name || item.product_id}
+                                </p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                  {item.product_code && (
+                                    <span className="flex items-center gap-0.5">
+                                      <Ruler className="h-3 w-3" />
+                                      {taskDetail.sku ?? "SKU"}: {item.product_code}
+                                    </span>
+                                  )}
+                                  {item.barcode && (
+                                    <span className="flex items-center gap-0.5">
+                                      <Barcode className="h-3 w-3" />
+                                      {item.barcode}
+                                    </span>
+                                  )}
+                                  {item.unit && (
+                                    <span className="rounded bg-[var(--color-neutral-100)] px-1.5 py-0.5 text-xxs font-medium text-[var(--color-neutral-600)]">
+                                      {item.unit}
+                                    </span>
+                                  )}
+                                  {item.status && (
+                                    <span className="rounded bg-[var(--color-status-transit-bg)] px-1.5 py-0.5 text-xxs font-medium text-[var(--color-status-transit-text)]">
+                                      {item.status}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                                x{formatNumber(item.quantity)}
+                              </p>
+                            </div>
+
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]">
+                              <span>
+                                {taskDetail.quantity ?? "Số lượng"}:{" "}
+                                <span className="font-medium text-[var(--color-text-primary)]">
+                                  {formatNumber(item.quantity)}
+                                </span>
+                              </span>
+                              {item.received_quantity !== null && (
+                                <span>
+                                  Đã nhận:{" "}
+                                  <span className="font-medium text-[var(--color-text-primary)]">
+                                    {formatNumber(item.received_quantity)}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+
+                            {(item.source_location_name || item.destination_location_name) && (
+                              <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+                                <MapPin className="h-3 w-3 shrink-0 text-[var(--color-status-transit-icon)]" />
+                                <span className="min-w-0 truncate">
+                                  Từ:{" "}
+                                  <span className="font-medium text-[var(--color-text-primary)]">
+                                    {item.source_location_name || "—"}
+                                  </span>
+                                  {" -> "}
+                                  Đến:{" "}
+                                  <span className="font-medium text-[var(--color-text-primary)]">
+                                    {item.destination_location_name || "—"}
+                                  </span>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {items.length > 0 && (
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-status-approved-bg)] px-4 py-3">
+                    <span className="text-sm font-medium text-[var(--color-status-approved-text)]">
+                      Tổng số lượng
+                    </span>
+                    <span className="text-base font-bold text-[var(--color-brand-primary)]">
+                      {formatNumber(totalQuantity)}
+                      {receivedQuantity > 0 && ` / đã nhận ${formatNumber(receivedQuantity)}`}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Receive panel — only when PENDING_RECEIVE or RECEIVING */}
+              <AttachmentSection urls={attachmentUrls} t={t} />
+
               {isReceivePhase && !readOnly && (
                 <div className="mt-4 border-t border-[var(--color-border-soft)] px-4 pt-4 pb-4">
                   <ReceiveTransferPanel
@@ -420,6 +847,8 @@ export default function TransferDetailDrawer({
                   />
                 </div>
               )}
+
+              <div className="h-6" />
             </>
           )}
         </div>
@@ -514,14 +943,5 @@ export default function TransferDetailDrawer({
         />
       )}
     </>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2">
-    <span className="w-28 shrink-0 text-xs text-[var(--color-text-muted)]">{label}</span>
-      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{value}</span>
-    </div>
   );
 }

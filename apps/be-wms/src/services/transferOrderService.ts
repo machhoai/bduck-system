@@ -79,6 +79,14 @@ export type CreateTransferOrderInput = z.infer<
 export const updateTransferOrderSchema = createTransferOrderSchema;
 export type UpdateTransferOrderInput = CreateTransferOrderInput;
 
+type TransferOrderWrite = TransferOrder & {
+  items?: TransferOrderItem[];
+  items_count?: number;
+  total_quantity?: number;
+  inventory_moved?: boolean;
+  completed_at?: Date;
+};
+
 // ─────────────────────────────────────────────
 // ERROR HELPERS
 // ─────────────────────────────────────────────
@@ -481,6 +489,19 @@ async function executeIntraTransfer(
   now: Date,
   configSnapshot: TransferOrder["config_snapshot"],
 ): Promise<TransferOrder> {
+  const orderItems: TransferOrderItem[] = input.items.map((item) => ({
+    id: randomUUID(),
+    transfer_order_id: orderId,
+    product_id: item.product_id,
+    source_location_id: item.source_location_id,
+    destination_location_id: item.destination_location_id ?? null,
+    quantity: item.quantity,
+    received_quantity: item.quantity,
+    status: TransferItemStatus.COMPLETED,
+    is_deleted: false,
+  }));
+  const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+
   // Execute in a Firestore Transaction for atomicity
   const order = await db.runTransaction(async (txn) => {
     const inventoryKey = (
@@ -652,7 +673,7 @@ async function executeIntraTransfer(
     }
 
     // 3. Create transfer order (status=COMPLETED)
-    const transferOrder: TransferOrder = {
+    const transferOrder: TransferOrderWrite = {
       id: orderId,
       order_number: orderNumber,
       transfer_type: TransferType.INTRA_WAREHOUSE,
@@ -663,9 +684,9 @@ async function executeIntraTransfer(
       approver_id: "SYSTEM_AUTO_APPROVE",
       approved_at: now,
       export_voucher_id: null,
-      received_by: null,
-      received_at: null,
-      dispatched_at: null,
+      received_by: userId,
+      received_at: now,
+      dispatched_at: now,
       attachment_urls: input.attachment_urls ?? [],
       config_snapshot: configSnapshot,
       requires_reauth: false,
@@ -677,29 +698,23 @@ async function executeIntraTransfer(
       is_deleted: false,
       created_at: now,
       updated_at: now,
+      completed_at: now,
+      inventory_moved: true,
+      items_count: orderItems.length,
+      total_quantity: totalQuantity,
+      items: orderItems,
     };
     txn.set(db.collection("transfer_orders").doc(orderId), transferOrder);
 
     // 4. Create items
-    for (const item of input.items) {
-      const itemId = randomUUID();
+    for (const item of orderItems) {
       txn.set(
         db
           .collection("transfer_orders")
           .doc(orderId)
           .collection("items")
-          .doc(itemId),
-        {
-          id: itemId,
-          transfer_order_id: orderId,
-          product_id: item.product_id,
-          source_location_id: item.source_location_id,
-          destination_location_id: item.destination_location_id ?? null,
-          quantity: item.quantity,
-          received_quantity: item.quantity, // Same as quantity for intra
-          status: TransferItemStatus.COMPLETED,
-          is_deleted: false,
-        } satisfies TransferOrderItem,
+          .doc(item.id),
+        item,
       );
     }
 

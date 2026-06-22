@@ -42,6 +42,14 @@ export async function getTransferOrderById(
   const order = await transferRepo.findById(id);
   if (!order) return null;
 
-  const items = await transferRepo.findItemsByOrderId(id);
+  let items = await transferRepo.findItemsByOrderId(id);
+  if (
+    items.length === 0 &&
+    "items" in order &&
+    Array.isArray((order as TransferOrder & { items?: unknown }).items)
+  ) {
+    items = (order as TransferOrder & { items: TransferOrderItem[] }).items;
+  }
+
   return { order, items };
 }
