@@ -227,6 +227,8 @@ export default function TransferDetailDrawer({
   const [loadingItems, setLoadingItems] = useState(true);
   const [creatorName, setCreatorName] = useState("");
   const [legacyApproverName, setLegacyApproverName] = useState("");
+  const [receivedByName, setReceivedByName] = useState("");
+  const [reauthByName, setReauthByName] = useState("");
   const [approvers, setApprovers] = useState<
     { id: string; name: string; approved_at: unknown }[]
   >([]);
@@ -273,6 +275,24 @@ export default function TransferDetailDrawer({
 
     void resolveUserName(order.approver_id).then(setLegacyApproverName);
   }, [order?.approver_id]);
+
+  useEffect(() => {
+    if (!order?.received_by) {
+      setReceivedByName("");
+      return;
+    }
+
+    void resolveUserName(order.received_by).then(setReceivedByName);
+  }, [order?.received_by]);
+
+  useEffect(() => {
+    if (!order?.reauth_confirmed_by) {
+      setReauthByName("");
+      return;
+    }
+
+    void resolveUserName(order.reauth_confirmed_by).then(setReauthByName);
+  }, [order?.reauth_confirmed_by]);
 
   useEffect(() => {
     const approvalsQuery = query(
@@ -654,6 +674,31 @@ export default function TransferDetailDrawer({
                     icon={CheckCircle2}
                     label="Ngày nhận"
                     value={formatDate(order.received_at)}
+                  />
+                )}
+                {order.received_by && (
+                  <Field
+                    icon={User}
+                    label="Người nhận"
+                    value={receivedByName || order.received_by}
+                  />
+                )}
+                {order.requires_reauth && (
+                  <Field
+                    icon={ShieldAlert}
+                    label="Xác thực lại"
+                    value={
+                      order.reauth_confirmed_by
+                        ? reauthByName || order.reauth_confirmed_by
+                        : "Chưa xác nhận"
+                    }
+                  />
+                )}
+                {order.reauth_confirmed_at && (
+                  <Field
+                    icon={Calendar}
+                    label="Ngày xác thực lại"
+                    value={formatDate(order.reauth_confirmed_at)}
                   />
                 )}
                 {order.status === TransferOrderStatus.COMPLETED && (
