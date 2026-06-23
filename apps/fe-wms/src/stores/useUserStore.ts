@@ -101,15 +101,17 @@ export const useUserStore = create<UserState>()(
         const { roleAssignments } = get();
         return roleAssignments.filter((assignment) => isAssignmentActive(assignment)).some((assignment) => {
           if (assignment.role_id !== roleId) return false;
-          if (options.requireGlobal) return assignment.warehouse_id === null;
-          if (warehouseId) {
+          const isAssignmentGlobal = assignment.warehouse_id == null || assignment.warehouse_id === "";
+
+          if (options.requireGlobal) return isAssignmentGlobal;
+          
+          if (warehouseId != null && warehouseId !== "") {
             return (
               assignment.warehouse_id === warehouseId ||
-              (options.allowGlobalFallback === true &&
-                assignment.warehouse_id === null)
+              (options.allowGlobalFallback === true && isAssignmentGlobal)
             );
           }
-          return assignment.warehouse_id === null;
+          return isAssignmentGlobal;
         });
       },
     }),

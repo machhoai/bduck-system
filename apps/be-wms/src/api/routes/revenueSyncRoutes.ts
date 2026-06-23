@@ -11,12 +11,14 @@ import {
   syncRevenueHandler,
   getCachedRevenueHandler,
 } from "../controllers/revenueSyncController.js";
+import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
+router.get("/dashboard", getRevenueDashboardHandler);
 router.get("/sync/:period", syncRevenueHandler);
 router.get("/cached/:period", getCachedRevenueHandler);
 

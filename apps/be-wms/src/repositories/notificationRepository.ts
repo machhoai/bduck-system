@@ -158,12 +158,21 @@ class NotificationRepository {
 
       snapshot.docs.forEach((docSnap) => {
         const data = docSnap.data();
+
+        const now = new Date();
+        const validFrom = data.valid_from ? new Date(data.valid_from) : null;
+        if (validFrom && validFrom.getTime() > now.getTime()) return;
+        const validUntil = data.valid_until ? new Date(data.valid_until) : null;
+        if (validUntil && validUntil.getTime() < now.getTime()) return;
+
         const assignmentWarehouseId =
           typeof data.warehouse_id === "string" ? data.warehouse_id : null;
+        const isAssignmentGlobal = assignmentWarehouseId == null || assignmentWarehouseId === "";
+
         if (
-          warehouseId !== undefined &&
+          warehouseId != null && warehouseId !== "" &&
           assignmentWarehouseId !== warehouseId &&
-          !(options.allowGlobalFallback === true && assignmentWarehouseId === null)
+          !(options.allowGlobalFallback === true && isAssignmentGlobal)
         ) {
           return;
         }
@@ -192,13 +201,20 @@ class NotificationRepository {
 
     for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
+
+      const now = new Date();
+      const validFrom = data.valid_from ? new Date(data.valid_from) : null;
+      if (validFrom && validFrom.getTime() > now.getTime()) continue;
+      const validUntil = data.valid_until ? new Date(data.valid_until) : null;
+      if (validUntil && validUntil.getTime() < now.getTime()) continue;
+
       const userId = typeof data.user_id === "string" ? data.user_id : "";
       const roleId = typeof data.role_id === "string" ? data.role_id : "";
       const assignmentWarehouseId =
         typeof data.warehouse_id === "string" ? data.warehouse_id : null;
 
       if (!userId || !roleId || userId === excludeUserId) continue;
-      if (assignmentWarehouseId && assignmentWarehouseId !== warehouseId) continue;
+      if (warehouseId != null && warehouseId !== "" && assignmentWarehouseId !== warehouseId) continue;
 
       let role = roleCache.get(roleId);
       if (role === undefined) {

@@ -9,6 +9,7 @@ import {
     ArrowRightLeft,
     Bell,
     CircleDollarSign,
+    ChartNoAxesCombined,
     ClipboardCheck,
     FileClock,
     FileSpreadsheet,
@@ -79,6 +80,13 @@ export const menuItems: MenuItem[] = [
         icon: CircleDollarSign,
         href: "/expenses",
         permission: "expenses.read",
+    },
+    {
+        id: "revenueManagement",
+        labelKey: "revenueManagement",
+        icon: ChartNoAxesCombined,
+        href: "/revenue-management",
+        permission: "revenue.read",
     },
     {
         id: "notification",

@@ -52,18 +52,20 @@ export function hasRoleInScope(
   return activeAssignments.some((assignment) => {
     if (assignment.role_id !== roleId) return false;
 
+    const isAssignmentGlobal = assignment.warehouse_id == null || assignment.warehouse_id === "";
+
     if (options.requireGlobal) {
-      return assignment.warehouse_id === null;
+      return isAssignmentGlobal;
     }
 
-    if (warehouseId) {
+    if (warehouseId != null && warehouseId !== "") {
       return (
         assignment.warehouse_id === warehouseId ||
-        (options.allowGlobalFallback && assignment.warehouse_id === null)
+        (options.allowGlobalFallback === true && isAssignmentGlobal)
       );
     }
 
-    return assignment.warehouse_id === null;
+    return isAssignmentGlobal;
   });
 }
 

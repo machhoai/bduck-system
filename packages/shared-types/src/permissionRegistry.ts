@@ -127,16 +127,22 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 13,
   },
   {
+    id: "revenue",
+    label: { vi: "Quản lý doanh thu", zh: "营收管理" },
+    icon: "ChartNoAxesCombined",
+    order: 14,
+  },
+  {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
-    order: 14,
+    order: 15,
   },
   {
     id: "external",
     label: { vi: "Tích hợp ngoài", zh: "外部集成" },
     icon: "ScanBarcode",
-    order: 15,
+    order: 16,
   },
 ];
 
@@ -588,6 +594,17 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Quyền mở lại kỳ kế toán đã chốt",
       zh: "重新开放已结账的会计期间",
+    },
+  },
+
+  // Revenue
+  {
+    key: "revenue.read",
+    group: "revenue",
+    label: { vi: "Xem doanh thu", zh: "查看营收" },
+    description: {
+      vi: "Xem dashboard doanh thu JoyWorld cho cửa hàng B.Duck Cityfuns Landmark 81.",
+      zh: "查看 B.Duck Cityfuns Landmark 81 门店的 JoyWorld 营收仪表板。",
     },
   },
 
