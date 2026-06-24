@@ -316,7 +316,7 @@ export async function getConfigForEntity(
   warehouseId?: string | null,
 ): Promise<ProcessConfig> {
   const exactWarehouseId = warehouseId?.trim() || null;
-  const config = await repo.findExactByEntityType(entityType, exactWarehouseId);
+  const config = await repo.findByEntityType(entityType, exactWarehouseId);
 
   if (config) return config;
 

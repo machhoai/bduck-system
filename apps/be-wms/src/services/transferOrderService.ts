@@ -310,7 +310,8 @@ export async function createTransferOrder(
     new_value: { order_number: orderNumber, status: order.status },
   });
 
-  return order;
+  const latestOrder = await transferRepo.findById(orderId);
+  return latestOrder ?? order;
 }
 
 export async function updateTransferOrder(
@@ -473,7 +474,8 @@ export async function updateTransferOrder(
     console.error("[transferOrderService] Approval recreation failed:", error);
   }
 
-  return { ...oldOrder, ...newOrder } as TransferOrder;
+  const latestOrder = await transferRepo.findById(orderId);
+  return latestOrder ?? ({ ...oldOrder, ...newOrder } as TransferOrder);
 }
 
 // ─────────────────────────────────────────────
@@ -976,7 +978,7 @@ async function createExportFromTransferInternal(
 
   // Create approval records for the export voucher
   try {
-    await approvalService.createApprovalsForEntity(
+    const approvals = await approvalService.createApprovalsForEntity(
       "EXPORT_VOUCHER",
       exportId,
       order.source_warehouse_id,
@@ -987,6 +989,12 @@ async function createExportFromTransferInternal(
         destinationWarehouseId: order.destination_warehouse_id,
       },
     );
+
+    if (approvals.length === 0) {
+      const { onApprovalCompleted: onExportApproved } =
+        await import("./exportVoucherService.js");
+      await onExportApproved(exportId, "SYSTEM_AUTO_APPROVE");
+    }
   } catch (error) {
     console.error(
       "[transferOrderService] Export approval creation failed:",
