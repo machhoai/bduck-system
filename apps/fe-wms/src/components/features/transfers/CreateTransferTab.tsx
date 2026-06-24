@@ -205,7 +205,7 @@ export default function CreateTransferTab({
             (dataSource?.destination_warehouse_id as string) || "",
         );
         setNotes((dataSource?.notes as string) || "");
-        
+
         if (Array.isArray(dataSource?.items)) {
             setItems(
                 (dataSource?.items as any[]).map((item) => ({
@@ -234,7 +234,7 @@ export default function CreateTransferTab({
                 };
             }));
         }
-        
+
         setStep(0);
     }, [cloneData, editData]);
 
@@ -276,23 +276,20 @@ export default function CreateTransferTab({
     }, [products, productSearch, getTotalAtpForProduct]);
 
     const getAvailableSourceLocations = useCallback(
-        (productId: string, currentItemId?: string) => {
-            const usedLocationIds = new Set(
-                items
-                    .filter(
-                        (item) =>
-                            item.product_id === productId &&
-                            item.id !== currentItemId &&
-                            item.source_location_id,
-                    )
-                    .map((item) => item.source_location_id),
-            );
-
-            return getLocationsForProduct(productId).filter(
-                (location) => !usedLocationIds.has(location.locationId),
-            );
+        (productId: string, _currentItemId?: string) => {
+            return getLocationsForProduct(productId);
         },
-        [items, getLocationsForProduct],
+        [getLocationsForProduct],
+    );
+
+    /** Compute total quantity allocated from a specific product+source_location across all lines */
+    const getAggregatedQtyForLocation = useCallback(
+        (productId: string, sourceLocationId: string) => {
+            return items
+                .filter((i) => i.product_id === productId && i.source_location_id === sourceLocationId)
+                .reduce((sum, i) => sum + (i.quantity || 0), 0);
+        },
+        [items],
     );
 
     const selectedProductGroups = useMemo(() => {
@@ -331,33 +328,27 @@ export default function CreateTransferTab({
             case 1:
                 if (processConfig === null) return false;
                 return processConfig?.require_evidence ? files.length > 0 : true;
-            case 2:
-                return (
-                    items.length > 0 &&
-                    items.length <= 150 &&
-                    items.every((item) => {
-                        if (!item.product_id || item.quantity <= 0 || !item.source_location_id) {
-                            return false;
-                        }
-                        if (item.quantity > getAtp(item.product_id, item.source_location_id)) {
-                            return false;
-                        }
-                        if (isIntra && !item.destination_location_id) return false;
-                        if (
-                            isIntra &&
-                            item.source_location_id === item.destination_location_id
-                        ) {
-                            return false;
-                        }
-                        return true;
-                    }) &&
-                    new Set(
-                        items.map(
-                            (item) =>
-                                `${item.product_id}:${item.source_location_id}`,
-                        ),
-                    ).size === items.length
-                );
+            case 2: {
+                if (items.length === 0 || items.length > 150) return false;
+
+                // Aggregate total quantity per product+source_location
+                const aggMap = new Map<string, number>();
+                for (const item of items) {
+                    if (!item.product_id || item.quantity <= 0 || !item.source_location_id) return false;
+                    if (isIntra && !item.destination_location_id) return false;
+                    if (isIntra && item.source_location_id === item.destination_location_id) return false;
+                    const key = `${item.product_id}:${item.source_location_id}`;
+                    aggMap.set(key, (aggMap.get(key) || 0) + item.quantity);
+                }
+
+                // Check aggregated quantity does not exceed ATP for each source location
+                for (const [key, totalQty] of aggMap) {
+                    const [productId, locationId] = key.split(":");
+                    if (totalQty > getAtp(productId, locationId)) return false;
+                }
+
+                return true;
+            }
             default:
                 return true;
         }
@@ -388,9 +379,11 @@ export default function CreateTransferTab({
     const addSourceLocationLine = useCallback(
         (productId: string) => {
             const product = products.find((p) => p.id === productId);
-            const sourceLocationId =
-                getAvailableSourceLocations(productId)[0]?.locationId;
-            if (!product || !sourceLocationId) return;
+            const allLocations = getAvailableSourceLocations(productId);
+            if (!product || allLocations.length === 0) return;
+
+            // Default to empty so user can pick; or pre-select the first location
+            const sourceLocationId = allLocations[0]?.locationId ?? "";
 
             setItems((prev) => [
                 ...prev,
@@ -930,8 +923,12 @@ export default function CreateTransferTab({
 
                         {/* Right column: Selected products */}
                         <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-                            <div className="mb-3 flex items-center justify-between">
-                                <div>
+                            <div className="mb-3 flex items-center justify-start gap-3">
+
+                                <Package
+                                    size={25}
+                                    className="text-[var(--color-brand-primary)]"
+                                />                                <div>
                                     <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
                                         {copy.selectedProducts}
                                     </h2>
@@ -939,10 +936,7 @@ export default function CreateTransferTab({
                                         {selectedProductGroups.length} {copy.products.toLowerCase()}
                                     </p>
                                 </div>
-                                <Package
-                                    size={18}
-                                    className="text-[var(--color-brand-primary)]"
-                                />
+
                             </div>
 
                             {selectedProductGroups.length === 0 ? (
@@ -965,7 +959,7 @@ export default function CreateTransferTab({
                                             (g) => g.product_id === item.product_id,
                                         );
                                         const canAddLine =
-                                            getAvailableSourceLocations(item.product_id).length > 0;
+                                            getLocationsForProduct(item.product_id).length > 0;
                                         const productLocations = getAvailableSourceLocations(
                                             item.product_id,
                                             item.id,
@@ -998,7 +992,7 @@ export default function CreateTransferTab({
                                                         className="flex h-7 shrink-0 items-center justify-center gap-1 rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] px-2 text-xxs font-semibold text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-border-focus)] hover:text-[var(--color-brand-primary)] disabled:opacity-40"
                                                     >
                                                         <Plus size={12} />
-                                                        {copy.addLocationLine}
+                                                        <p className="leading-none">{copy.addLocationLine}</p>
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1012,14 +1006,14 @@ export default function CreateTransferTab({
                                                         }
                                                         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
                                                     >
-                                                        <Trash2 size={13} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
 
                                                 {/* Card Body */}
                                                 <div className="px-3 py-2.5">
                                                     <div
-                                                        className={`grid gap-2 ${isIntra ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                                                        className={`grid gap-2 ${isIntra ? "sm:sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]"
                                                             }`}
                                                     >
                                                         <label className="block">
@@ -1146,7 +1140,11 @@ export default function CreateTransferTab({
                                                                 item.product_id,
                                                                 item.source_location_id,
                                                             );
-                                                            if (item.quantity <= atp) return null;
+                                                            const aggQty = getAggregatedQtyForLocation(
+                                                                item.product_id,
+                                                                item.source_location_id,
+                                                            );
+                                                            if (aggQty <= atp) return null;
                                                             return (
                                                                 <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
                                                                     <AlertTriangle
@@ -1157,7 +1155,7 @@ export default function CreateTransferTab({
                                                                         {copy.atpWarning
                                                                             .replace(
                                                                                 "{quantity}",
-                                                                                String(item.quantity),
+                                                                                String(aggQty),
                                                                             )
                                                                             .replace("{atp}", String(atp))}
                                                                     </span>
@@ -1174,19 +1172,44 @@ export default function CreateTransferTab({
                                                             lineLocations.length > 0;
                                                         const lineAtp = line.source_location_id
                                                             ? getAtp(
-                                                                  line.product_id,
-                                                                  line.source_location_id,
-                                                              )
+                                                                line.product_id,
+                                                                line.source_location_id,
+                                                            )
+                                                            : 0;
+                                                        const lineAggQty = line.source_location_id
+                                                            ? getAggregatedQtyForLocation(
+                                                                line.product_id,
+                                                                line.source_location_id,
+                                                            )
                                                             : 0;
 
                                                         return (
                                                             <div
                                                                 key={line.id}
-                                                                className="mt-2 rounded-[var(--radius-xs)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-2"
+                                                                className="mt-2 rounded-[var(--radius-xs)] "
                                                             >
                                                                 <div
-                                                                    className={`grid gap-2 ${isIntra ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_90px_32px]" : "sm:grid-cols-[minmax(0,1fr)_90px_32px]"}`}
+                                                                    className={`grid gap-2 ${isIntra ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]"}`}
                                                                 >
+                                                                    <label className="block">
+                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                                                                            {copy.quantity} *
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={line.quantity || ""}
+                                                                            onChange={(e) =>
+                                                                                updateItem(
+                                                                                    line.id,
+                                                                                    "quantity",
+                                                                                    Number(e.target.value),
+                                                                                )
+                                                                            }
+                                                                            min={1}
+                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                                                                        />
+                                                                    </label>
+
                                                                     <label className="block">
                                                                         <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                                                                             {copy.sourceLocation} *
@@ -1211,10 +1234,10 @@ export default function CreateTransferTab({
                                                                                 {!sourceWarehouseId
                                                                                     ? copy.selectWarehouseFirst
                                                                                     : isLocLoading
-                                                                                      ? copy.loading
-                                                                                      : !lineHasLocations
-                                                                                        ? copy.noLocation
-                                                                                        : copy.selectLocation}
+                                                                                        ? copy.loading
+                                                                                        : !lineHasLocations
+                                                                                            ? copy.noLocation
+                                                                                            : copy.selectLocation}
                                                                             </option>
                                                                             {lineLocations.map((pl) => {
                                                                                 const loc = srcLocations.find(
@@ -1278,34 +1301,16 @@ export default function CreateTransferTab({
                                                                         </label>
                                                                     )}
 
-                                                                    <label className="block">
-                                                                        <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                                            {copy.quantity} *
-                                                                        </span>
-                                                                        <input
-                                                                            type="number"
-                                                                            value={line.quantity || ""}
-                                                                            onChange={(e) =>
-                                                                                updateItem(
-                                                                                    line.id,
-                                                                                    "quantity",
-                                                                                    Number(e.target.value),
-                                                                                )
-                                                                            }
-                                                                            min={1}
-                                                                            className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
-                                                                        />
-                                                                    </label>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => removeItem(line.id)}
                                                                         className="mt-4 flex h-8 w-7 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-error-bg)] hover:text-[var(--color-accent-error)]"
                                                                     >
-                                                                        <Trash2 size={13} />
+                                                                        <Trash2 size={16} />
                                                                     </button>
                                                                 </div>
                                                                 {line.source_location_id &&
-                                                                    line.quantity > lineAtp && (
+                                                                    lineAggQty > lineAtp && (
                                                                         <div className="mt-2 flex items-center gap-1.5 rounded-[var(--radius-xs)] bg-[var(--color-warning-bg)] px-2.5 py-1.5 text-xxs text-[var(--color-warning-text)]">
                                                                             <AlertTriangle
                                                                                 size={12}
@@ -1315,7 +1320,7 @@ export default function CreateTransferTab({
                                                                                 {copy.atpWarning
                                                                                     .replace(
                                                                                         "{quantity}",
-                                                                                        String(line.quantity),
+                                                                                        String(lineAggQty),
                                                                                     )
                                                                                     .replace(
                                                                                         "{atp}",
