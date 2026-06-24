@@ -6,12 +6,17 @@ import type {
 import { db } from "../config/firebase.js";
 
 export const ACCOUNT_INVITATION_PURPOSE = "INITIAL_PASSWORD_SETUP" as const;
+export const PASSWORD_RESET_PURPOSE = "PASSWORD_RESET" as const;
+
+export type AccountInvitationPurpose = 
+  | typeof ACCOUNT_INVITATION_PURPOSE 
+  | typeof PASSWORD_RESET_PURPOSE;
 
 export interface AccountInvitation {
   id: string;
   user_id: string;
   token_hash: string;
-  purpose: typeof ACCOUNT_INVITATION_PURPOSE;
+  purpose: AccountInvitationPurpose;
   expires_at: Date;
   used_at: Date | null;
   revoked_at: Date | null;
@@ -65,6 +70,36 @@ export const findAccountInvitationByTokenHash = async (
 
   if (snapshot.empty) return null;
   return fromDoc(snapshot.docs[0]);
+};
+
+export const findActiveInvitationForUser = async (
+  userId: string,
+  purpose: AccountInvitationPurpose,
+): Promise<AccountInvitation | null> => {
+  const snapshot = await db
+    .collection(COLLECTION)
+    .where("user_id", "==", userId)
+    .where("purpose", "==", purpose)
+    .get();
+
+  const activeDocs = snapshot.docs.filter((doc) => {
+    const data = doc.data() as AccountInvitation;
+    if (data.used_at || data.revoked_at) return false;
+    
+    let expiresTime = 0;
+    if (data.expires_at instanceof Date) {
+      expiresTime = data.expires_at.getTime();
+    } else if (data.expires_at && typeof (data.expires_at as any).toDate === "function") {
+      expiresTime = (data.expires_at as any).toDate().getTime();
+    } else {
+      expiresTime = new Date(String(data.expires_at)).getTime();
+    }
+    
+    return expiresTime > Date.now();
+  });
+
+  if (activeDocs.length === 0) return null;
+  return fromDoc(activeDocs[0]);
 };
 
 export const revokeActiveAccountInvitations = async (

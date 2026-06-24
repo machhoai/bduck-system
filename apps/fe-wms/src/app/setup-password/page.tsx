@@ -21,6 +21,7 @@ interface InvitationInfo {
   email: string;
   full_name: string;
   expires_at: string;
+  purpose?: string;
 }
 
 type PageState = "loading" | "valid" | "invalid" | "success";
@@ -34,17 +35,21 @@ export default function SetupPasswordPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [purpose, setPurpose] = useState("");
+
   useEffect(() => {
-    const currentToken = new URLSearchParams(window.location.search).get(
-      "token",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const currentToken = params.get("token");
+    const currentPurpose = params.get("purpose");
+    
     if (!currentToken) {
       setPageState("invalid");
-      setMessage("Liên kết khởi tạo tài khoản không hợp lệ.");
+      setMessage("Liên kết không hợp lệ.");
       return;
     }
 
     setToken(currentToken);
+    setPurpose(currentPurpose || "");
     void verifyInvitation(currentToken);
   }, []);
 
@@ -78,6 +83,9 @@ export default function SetupPasswordPage() {
         );
       }
 
+      if (body.data?.purpose === "PASSWORD_RESET") {
+        setPurpose("reset");
+      }
       setInvitation(body.data);
       setPageState("valid");
       setMessage("");
@@ -151,7 +159,7 @@ export default function SetupPasswordPage() {
           </span>
           <div>
             <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Khởi tạo tài khoản
+              {purpose === "reset" ? "Đặt lại mật khẩu" : "Khởi tạo tài khoản"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)]">
               Joy World Cityfuns WMS

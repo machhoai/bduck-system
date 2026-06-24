@@ -4,23 +4,28 @@ import { createHash, randomBytes } from "crypto";
 import { auth } from "../config/firebase.js";
 import {
     ACCOUNT_INVITATION_PURPOSE,
+    PASSWORD_RESET_PURPOSE,
+    type AccountInvitationPurpose,
     createAccountInvitation,
     findAccountInvitationByTokenHash,
+    findActiveInvitationForUser,
     markAccountInvitationUsed,
     revokeAccountInvitation,
     revokeActiveAccountInvitations,
     type AccountInvitation,
 } from "../repositories/accountInvitationRepository.js";
-import { getUserById } from "../repositories/userRepository.js";
+import { getUserById, findUserByField } from "../repositories/userRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { sendBrevoEmail } from "./brevoEmailService.js";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 
 interface InvitationPublicInfo {
     email: string;
     full_name: string;
     expires_at: Date;
+    purpose: AccountInvitationPurpose;
 }
 
 const invalidInvitationError = {
@@ -100,8 +105,8 @@ const getAppBaseUrl = () => {
     return (firstCorsOrigin || "http://app.wms.localhost").replace(/\/+$/, "");
 };
 
-const buildSetupUrl = (token: string) =>
-    `${getAppBaseUrl()}/setup-password?token=${encodeURIComponent(token)}`;
+const buildSetupUrl = (token: string, purpose: string = "setup") =>
+    `${getAppBaseUrl()}/setup-password?token=${encodeURIComponent(token)}&purpose=${encodeURIComponent(purpose)}`;
 
 const assertInvitationUsable = async (
     token: string,
@@ -210,7 +215,98 @@ export const verifyAccountInvitation = async (
         email: user.email,
         full_name: user.full_name,
         expires_at: invitation.expires_at,
+        purpose: invitation.purpose,
     };
+};
+
+export const sendPasswordResetEmail = async (
+    email: string,
+    auditMetadata?: AuditMetadata,
+): Promise<void> => {
+    const user = await findUserByField("email", email);
+    
+    // For security, do not reveal if the user exists or not.
+    // If user is not found, or not active, just return successfully.
+    if (!user || user.is_deleted || user.status !== UserStatus.ACTIVE) {
+        return;
+    }
+
+    const activeInvitation = await findActiveInvitationForUser(user.id, PASSWORD_RESET_PURPOSE);
+    if (activeInvitation) {
+        throw {
+            statusCode: 429,
+            messages: {
+                vi: "Yêu cầu khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư hoặc chờ ít phút trước khi yêu cầu lại.",
+                zh: "密码重置请求已发送。请检查邮箱或稍候重试。",
+            },
+        };
+    }
+
+    await revokeActiveAccountInvitations(user.id, PASSWORD_RESET_PURPOSE);
+
+    const token = createToken();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    const invitation = await createAccountInvitation({
+        user_id: user.id,
+        token_hash: hashToken(token),
+        purpose: PASSWORD_RESET_PURPOSE,
+        expires_at: expiresAt,
+        created_by: user.id,
+    });
+
+    const setupUrl = buildSetupUrl(token, "reset");
+    const safeName = escapeHtml(user.full_name);
+
+    try {
+        await sendBrevoEmail({
+            to: [user.email],
+            subject: "Yêu cầu khôi phục mật khẩu - Joy World Cityfuns ERP",
+            htmlContent: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+          <h2>Yêu cầu khôi phục mật khẩu</h2>
+          <p>Xin chào ${safeName},</p>
+          <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Joy World Cityfuns ERP.</p>
+          <p>
+            <a href="${setupUrl}" style="display:inline-block;background:#f5a400;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">
+              Đặt lại mật khẩu
+            </a>
+          </p>
+          <p>Liên kết này có hiệu lực trong 30 phút. Nếu liên kết hết hạn, bạn có thể gửi yêu cầu mới.</p>
+          <p>Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này để đảm bảo an toàn cho tài khoản.</p>
+        </div>
+      `,
+            textContent: [
+                `Xin chào ${user.full_name},`,
+                "Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Joy World Cityfuns ERP.",
+                `Đặt lại mật khẩu tại: ${setupUrl}`,
+                "Liên kết này có hiệu lực trong 30 phút.",
+                "Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.",
+            ].join("\n"),
+        });
+    } catch (error) {
+        await revokeAccountInvitation(invitation.id).catch(() => undefined);
+        throw error;
+    }
+
+    await logAudit({
+        entity_type: "account_invitations",
+        entity_id: invitation.id,
+        action: AuditAction.CREATE,
+        user_id: user.id,
+        old_value: null,
+        new_value: {
+            user_id: user.id,
+            email: user.email,
+            purpose: PASSWORD_RESET_PURPOSE,
+            expires_at: expiresAt.toISOString(),
+        },
+        ...auditMetadata,
+    }).catch((auditError) => {
+        console.error("[accountInvitationService] Failed to write audit log:", {
+            invitationId: invitation.id,
+            error: auditError,
+        });
+    });
 };
 
 export const completeAccountInvitation = async (

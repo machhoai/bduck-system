@@ -6,6 +6,7 @@ import {
 } from "../../services/authService.js";
 import {
   completeAccountInvitation,
+  sendPasswordResetEmail,
   verifyAccountInvitation,
 } from "../../services/accountInvitationService.js";
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
@@ -166,6 +167,29 @@ export const completeAccountInvitationHandler = async (
       messages: {
         vi: "Đã đặt mật khẩu thành công. Vui lòng đăng nhập.",
         zh: "密码设置成功。请登录。",
+      },
+    });
+  } catch (error) {
+    return handleAccountInvitationError(res, error);
+  }
+};
+
+export const requestPasswordResetHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    await sendPasswordResetEmail(email, {
+      ip_address: req.ip,
+      user_agent: req.headers["user-agent"],
+    });
+    return res.status(200).json({
+      success: true,
+      data: null,
+      messages: {
+        vi: "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu. Vui lòng kiểm tra hộp thư.",
+        zh: "如果该邮箱在系统中存在，我们已发送密码重置说明。请检查邮箱。",
       },
     });
   } catch (error) {

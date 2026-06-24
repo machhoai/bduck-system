@@ -3,6 +3,7 @@ import {
   checkMfa,
   completeAccountInvitationHandler,
   logout,
+  requestPasswordResetHandler,
   sendEmailOtp,
   sessionLogin,
   setupMfa,
@@ -17,6 +18,7 @@ router.post("/sessionLogin", sessionLogin);
 router.post("/logout", logout);
 router.post("/account-invitations/verify", verifyAccountInvitationHandler);
 router.post("/account-invitations/complete", completeAccountInvitationHandler);
+router.post("/password-reset/request", requestPasswordResetHandler);
 
 router.post("/mfa/setup", requireAuth, setupMfa);
 router.post("/mfa/verify-setup", requireAuth, verifySetupMfa);

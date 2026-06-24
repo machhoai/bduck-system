@@ -1,7 +1,6 @@
 import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { gooeyToast } from "goey-toast";
 import { useState } from "react";
@@ -127,17 +126,28 @@ export const useAuth = () => {
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     const resetAction = async () => {
-      await sendPasswordResetEmail(auth, email);
+      const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw createDetailedApiError(response, errorData, "Gửi email khôi phục thất bại");
+      }
+      const data = await response.json();
+      return data.messages;
     };
 
     try {
       await gooeyToast.promise(resetAction(), {
         loading: "Đang gửi email khôi phục...",
-        success: "Đã gửi email khôi phục",
-        error: "Lỗi gửi email",
+        success: (msgs) => msgs?.vi || "Đã gửi email khôi phục",
+        error: (err: any) => err?.statusCode === 429 ? "Yêu cầu đang chờ xử lý" : "Lỗi gửi email",
         description: {
           success: "Vui lòng kiểm tra hộp thư đến của bạn để đặt lại mật khẩu.",
-          error: "Không thể gửi email. Vui lòng kiểm tra lại địa chỉ email.",
+          error: (err: any) => err?.messages?.vi || "Không thể gửi email. Vui lòng kiểm tra lại hệ thống.",
         },
       });
     } finally {
