@@ -182,7 +182,6 @@ export const requestPasswordResetHandler = async (
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
     await sendPasswordResetEmail(email, {
       ip_address: req.ip,
-      user_agent: req.headers["user-agent"],
     });
     return res.status(200).json({
       success: true,
