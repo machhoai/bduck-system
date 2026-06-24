@@ -23,6 +23,9 @@ export interface NonconformityReport {
     warehouse_location_id: string; // FK → warehouse_locations
     product_id: string; // FK → products
     quantity_affected: number;
+    source_item_id?: string | null;
+    expected_quantity?: number | null;
+    actual_quantity?: number | null;
     issue_type: IssueType;
     status: NonconformityStatus;
     reporter_id: string; // FK → users

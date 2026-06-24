@@ -5,17 +5,27 @@ import {
   resolveNonconformityHandler,
 } from "../controllers/nonconformityController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import {
+  requireAnyScopedPermission,
+} from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requirePermission("inventory.read"), getNonconformitiesHandler);
-router.get("/:id", requirePermission("inventory.read"), getNonconformityByIdHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission(["inventory.read", "inventory.write"]),
+  getNonconformitiesHandler,
+);
+router.get(
+  "/:id",
+  requireAnyScopedPermission(["inventory.read", "inventory.write"]),
+  getNonconformityByIdHandler,
+);
 router.post(
   "/:id/resolve",
-  requirePermission("inventory.write"),
+  requireAnyScopedPermission("inventory.write"),
   resolveNonconformityHandler,
 );
 

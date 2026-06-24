@@ -21,6 +21,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { resolveNonconformityReport } from "@/hooks/useNonconformities";
+import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 
 interface NonconformityResolveDrawerProps {
   report: NonconformityReport;
@@ -60,6 +61,12 @@ function getAllowedResolutions(issueType: IssueType | string) {
     return [ResolutionType.REUSE, ResolutionType.ADJUST];
   }
   return [ResolutionType.REUSE, ResolutionType.RETURN, ResolutionType.DESTROY];
+}
+
+function formatQuantity(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toLocaleString("vi-VN")
+    : null;
 }
 
 function Field({
@@ -102,6 +109,7 @@ export default function NonconformityResolveDrawer({
   );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const copy = t.tasks.nonconformity;
   const issueLabel =
@@ -115,8 +123,35 @@ export default function NonconformityResolveDrawer({
   );
   const isReporter = currentUser?.id === report.reporter_id;
   const canResolve = hasPermission("inventory.write") && !isReporter;
+  const isDiscrepancy = report.issue_type === IssueType.DISCREPANCY;
+  const expectedQuantityLabel = formatQuantity(report.expected_quantity);
+  const actualQuantityLabel = formatQuantity(report.actual_quantity);
 
-  const handleResolve = async () => {
+  const getResolutionLabel = (option: ResolutionType) => {
+    if (isDiscrepancy && option === ResolutionType.REUSE) {
+      return actualQuantityLabel
+        ? `Nhập kho theo số kiểm đếm (${actualQuantityLabel})`
+        : "Nhập kho theo số kiểm đếm";
+    }
+    if (isDiscrepancy && option === ResolutionType.ADJUST) {
+      return expectedQuantityLabel
+        ? `Nhập kho theo số phiếu (${expectedQuantityLabel})`
+        : "Nhập kho theo số phiếu";
+    }
+    return copy.resolutionType[option];
+  };
+
+  const getResolutionHint = (option: ResolutionType) => {
+    if (isDiscrepancy && option === ResolutionType.REUSE) {
+      return "Chấp nhận toàn bộ số kiểm đếm thực tế; phần chênh lệch đang tạm giữ sẽ được đưa vào ATP.";
+    }
+    if (isDiscrepancy && option === ResolutionType.ADJUST) {
+      return "Không nhập phần chênh lệch vào ATP; tồn kho giữ theo số lượng trên phiếu.";
+    }
+    return copy.resolutionHint[option];
+  };
+
+  const handleResolve = async (otp: string) => {
     if (isSubmitting || !resolutionType) return;
     setIsSubmitting(true);
 
@@ -124,6 +159,7 @@ export default function NonconformityResolveDrawer({
       await resolveNonconformityReport(report.id, {
         resolution_type: resolutionType,
         resolution_notes: notes.trim() || null,
+        otp,
         action_time: new Date().toISOString(),
       });
     };
@@ -146,6 +182,7 @@ export default function NonconformityResolveDrawer({
         },
       });
       await promise;
+      setShowOtpModal(false);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -230,10 +267,10 @@ export default function NonconformityResolveDrawer({
                     }`}
                   >
                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                      {copy.resolutionType[option]}
+                      {getResolutionLabel(option)}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-                      {copy.resolutionHint[option]}
+                      {getResolutionHint(option)}
                     </p>
                   </button>
                 );
@@ -259,7 +296,7 @@ export default function NonconformityResolveDrawer({
         <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
           <button
             type="button"
-            onClick={handleResolve}
+            onClick={() => setShowOtpModal(true)}
             disabled={!canResolve || !resolutionType || isSubmitting}
             className="flex h-10 w-fit items-center justify-center gap-2 rounded-xl bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-[var(--color-text-on-dark)] transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -268,6 +305,15 @@ export default function NonconformityResolveDrawer({
           </button>
         </div>
       </div>
+      {showOtpModal && (
+        <ActionOtpModal
+          title="Xác thực OTP"
+          description="Chức năng xử lý hàng hỏng/chênh lệch bắt buộc xác thực OTP."
+          isSubmitting={isSubmitting}
+          onCancel={() => setShowOtpModal(false)}
+          onConfirm={(otp) => void handleResolve(otp)}
+        />
+      )}
     </>
   );
 }

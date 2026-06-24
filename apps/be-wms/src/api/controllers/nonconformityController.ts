@@ -57,7 +57,10 @@ export const getNonconformitiesHandler = async (
 ) => {
   try {
     const filters = nonconformityQuerySchema.parse(req.query);
-    const records = await fetchNonconformities(filters);
+    const records = await fetchNonconformities(
+      filters,
+      (req as any).user?.permissions,
+    );
 
     return sendSuccess(res, records, {
       vi: "Lay danh sach bao cao ngoai le thanh cong.",
@@ -74,7 +77,10 @@ export const getNonconformityByIdHandler = async (
 ) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const detail = await fetchNonconformityDetail(id);
+    const detail = await fetchNonconformityDetail(
+      id,
+      (req as any).user?.permissions,
+    );
 
     return sendSuccess(res, detail, {
       vi: "Lay chi tiet bao cao ngoai le thanh cong.",
@@ -98,10 +104,12 @@ export const resolveNonconformityHandler = async (
       {
         resolution_type: data.resolution_type,
         resolution_notes: data.resolution_notes ?? null,
+        otp: data.otp,
         action_time: data.action_time,
       },
       getRequestUserId(req),
       getAuditRequestMetadata(req),
+      (req as any).user?.permissions,
     );
 
     return sendSuccess(res, null, {

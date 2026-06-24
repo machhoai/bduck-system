@@ -17,6 +17,7 @@ import {
   countActionableNonconformities,
   useNonconformities,
 } from "@/hooks/useNonconformities";
+import { useUserStore } from "@/stores/useUserStore";
 import NonconformityTaskTab from "./NonconformityTaskTab";
 import TaskInbox from "./TaskInbox";
 import TaskVoucherActionTab from "./TaskVoucherActionTab";
@@ -78,34 +79,61 @@ function StatTile({
 export default function TaskWorkspace() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
+  const hasPermission = useUserStore((state) => state.hasPermission);
+  const canResolveNonconformities = hasPermission("inventory.write");
   const { myTasks, loading: loadingApprovals } = useApprovalTasks();
   const { activeVouchers, loading: loadingVouchers } = useUnifiedVouchers();
-  const { reports, loading: loadingNonconformities } = useNonconformities();
+  const { reports, loading: loadingNonconformities } = useNonconformities({
+    enabled: canResolveNonconformities,
+  });
   const [activeTab, setActiveTab] = useState<WorkbenchTab>(
-    parseWorkbenchTab(searchParams.get("tab")) ||
-      (searchParams.get("reportId") ? "nonconformities" : "approvals"),
+    (() => {
+      const tabFromUrl = parseWorkbenchTab(searchParams.get("tab"));
+      if (tabFromUrl === "nonconformities" && !canResolveNonconformities) {
+        return "approvals";
+      }
+      return (
+        tabFromUrl ||
+        (searchParams.get("reportId") && canResolveNonconformities
+          ? "nonconformities"
+          : "approvals")
+      );
+    })(),
   );
   const initialReportId = searchParams.get("reportId");
+  const visibleTabs = useMemo(
+    () =>
+      TABS.filter(
+        (tab) => tab.id !== "nonconformities" || canResolveNonconformities,
+      ),
+    [canResolveNonconformities],
+  );
 
   useEffect(() => {
     const tabFromUrl = parseWorkbenchTab(searchParams.get("tab"));
+    if (tabFromUrl === "nonconformities" && !canResolveNonconformities) {
+      setActiveTab("approvals");
+      return;
+    }
     if (tabFromUrl) {
       setActiveTab(tabFromUrl);
       return;
     }
-    if (searchParams.get("reportId")) {
+    if (searchParams.get("reportId") && canResolveNonconformities) {
       setActiveTab("nonconformities");
     }
-  }, [searchParams]);
+  }, [canResolveNonconformities, searchParams]);
 
   const counts = useMemo(
     () => ({
       approvals: myTasks.length,
       sessions: countSessionVouchers(activeVouchers),
       completions: countCompletionVouchers(activeVouchers),
-      nonconformities: countActionableNonconformities(reports),
+      nonconformities: canResolveNonconformities
+        ? countActionableNonconformities(reports)
+        : 0,
     }),
-    [activeVouchers, myTasks.length, reports],
+    [activeVouchers, canResolveNonconformities, myTasks.length, reports],
   );
 
   const total =
@@ -113,7 +141,10 @@ export default function TaskWorkspace() {
     counts.sessions +
     counts.completions +
     counts.nonconformities;
-  const loading = loadingApprovals || loadingVouchers || loadingNonconformities;
+  const loading =
+    loadingApprovals ||
+    loadingVouchers ||
+    (canResolveNonconformities && loadingNonconformities);
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -162,7 +193,7 @@ export default function TaskWorkspace() {
       </div>
 
       <div className="flex w-full gap-2 overflow-x-auto border-b border-[var(--color-border-soft)] pb-0">
-        {TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -214,7 +245,7 @@ export default function TaskWorkspace() {
           loading={loadingVouchers}
         />
       )}
-      {activeTab === "nonconformities" && (
+      {activeTab === "nonconformities" && canResolveNonconformities && (
         <NonconformityTaskTab
           reports={reports}
           loading={loadingNonconformities}

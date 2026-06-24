@@ -14,6 +14,8 @@ export interface ImportException {
   productId: string;
   locationId: string;
   quantity: number;
+  expectedQuantity: number;
+  actualQuantity: number;
   issueType: IssueType;
   status: NonconformityStatus;
   bucketLock: BucketLock;
@@ -69,6 +71,8 @@ export function buildImportExceptions(
         productId,
         locationId,
         quantity: actual,
+        expectedQuantity: expected,
+        actualQuantity: actual,
         issueType: IssueType.DAMAGED,
         status: NonconformityStatus.QUARANTINED,
         bucketLock: "QUARANTINE",
@@ -88,6 +92,8 @@ export function buildImportExceptions(
           productId,
           locationId,
           quantity: missingQuantity,
+          expectedQuantity: expected,
+          actualQuantity: actual,
           issueType: IssueType.MISSING,
           status: NonconformityStatus.UNDER_REVIEW,
           bucketLock: null,
@@ -102,6 +108,8 @@ export function buildImportExceptions(
         productId,
         locationId,
         quantity: actual - expected,
+        expectedQuantity: expected,
+        actualQuantity: actual,
         issueType: IssueType.DISCREPANCY,
         status: NonconformityStatus.UNDER_REVIEW,
         bucketLock: "ON_HOLD",

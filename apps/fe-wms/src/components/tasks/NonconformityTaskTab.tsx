@@ -16,7 +16,7 @@ import type { NonconformityReport } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useProducts } from "@/hooks/useProducts";
 import { useUsers } from "@/hooks/useUsers";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { isActionableNonconformity } from "@/hooks/useNonconformities";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
 import NonconformityResolveDrawer from "./NonconformityResolveDrawer";
@@ -77,6 +77,7 @@ export default function NonconformityTaskTab({
   const { t } = useTranslation();
   const { products } = useProducts();
   const { warehouses } = useWarehouses();
+  const { locations } = useWarehouseLocations();
   const { users } = useUsers();
   const [selectedReport, setSelectedReport] =
     useState<NonconformityReport | null>(null);
@@ -89,6 +90,10 @@ export default function NonconformityTaskTab({
   const warehouseById = useMemo(
     () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
     [warehouses],
+  );
+  const locationById = useMemo(
+    () => new Map(locations.map((location) => [location.id, location])),
+    [locations],
   );
   const userById = useMemo(
     () => new Map(users.map((user) => [user.id, user])),
@@ -228,6 +233,7 @@ export default function NonconformityTaskTab({
           report={selectedReport}
           productName={productById.get(selectedReport.product_id)?.name || selectedReport.product_id}
           warehouseName={warehouseById.get(selectedReport.warehouse_id)?.name || selectedReport.warehouse_id}
+          locationName={locationById.get(selectedReport.warehouse_location_id)?.name || selectedReport.warehouse_location_id}
           reporterName={
             userById.get(selectedReport.reporter_id)?.full_name ||
             userById.get(selectedReport.reporter_id)?.email ||

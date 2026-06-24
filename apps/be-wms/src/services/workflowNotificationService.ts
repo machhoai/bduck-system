@@ -10,7 +10,11 @@ import { notificationRepository } from "../repositories/notificationRepository.j
 import * as userRepository from "../repositories/userRepository.js";
 import * as approvalRepository from "../repositories/approvalRepository.js";
 import { sendEmailNotification } from "./notificationService.js";
-import { getApprovalWarehouseId } from "./scopedRoleAccess.js";
+import { getConfigForEntity } from "./processConfigService.js";
+import {
+    getApprovalWarehouseId,
+    resolveStepWarehouseId,
+} from "./scopedRoleAccess.js";
 
 const ENTITY_LABELS: Record<ProcessEntityType, string> = {
     IMPORT_VOUCHER: "phiếu nhập kho",
@@ -83,6 +87,55 @@ function getTaskActionUrl(record: ApprovalRecord): string {
 function getEntityActionUrl(record: ApprovalRecord): string {
     const basePath = ENTITY_ACTION_PATHS[record.entity_type] ?? "/tasks";
     return `${basePath}?entityId=${encodeURIComponent(record.entity_id)}`;
+}
+
+function getOperationalTaskUrl(record: ApprovalRecord, tab = "sessions"): string {
+    const params = new URLSearchParams({
+        tab,
+        entityType: record.entity_type,
+        entityId: record.entity_id,
+    });
+    return `/tasks?${params.toString()}`;
+}
+
+function getPostApprovalStepKey(
+    record: ApprovalRecord,
+): "receiving" | "picking" | null {
+    if (record.entity_type === "IMPORT_VOUCHER") return "receiving";
+    if (record.entity_type === "EXPORT_VOUCHER") return "picking";
+    return null;
+}
+
+async function getPostApprovalTaskUsers(record: ApprovalRecord): Promise<User[]> {
+    const stepKey = getPostApprovalStepKey(record);
+    if (!stepKey) return [];
+
+    const config = await getConfigForEntity(record.entity_type, record.warehouse_id);
+    const step = config.step_options?.[stepKey];
+    if (!step) return [];
+
+    if (step.assignment_mode === "CREATOR") {
+        const creator = await userRepository.getUserById(record.creator_id);
+        return creator && !creator.is_deleted && creator.status !== "INACTIVE"
+            ? [creator]
+            : [];
+    }
+
+    if (!step.assigned_role_id) return [];
+
+    const stepWarehouseId = resolveStepWarehouseId(
+        step.assignment_scope ?? "ENTITY_WAREHOUSE",
+        record.warehouse_id,
+    );
+    const userIds = await notificationRepository.findActiveUserIdsByRoleIds(
+        [step.assigned_role_id],
+        stepWarehouseId,
+        {
+            allowGlobalFallback: step.allow_global_fallback === true,
+            requireGlobal: step.assignment_scope === "GLOBAL",
+        },
+    );
+    return userRepository.getUsersByIds(userIds);
 }
 
 function escapeHtml(value: string): string {
@@ -211,7 +264,10 @@ async function notifyApproversForRecords(
         const userIds = await notificationRepository.findActiveUserIdsByRoleIds(
             [record.role_id],
             getApprovalWarehouseId(record),
-            { allowGlobalFallback: record.allow_global_fallback === true },
+            {
+                allowGlobalFallback: record.allow_global_fallback === true,
+                requireGlobal: record.approval_scope === "GLOBAL",
+            },
         );
         userIds
             .filter((userId) => userId !== record.creator_id)
@@ -323,22 +379,33 @@ export async function notifyApprovalCompleted(
     approverId: string,
 ): Promise<void> {
     try {
-        const creator = await userRepository.getUserById(record.creator_id);
-        if (!creator || creator.is_deleted || creator.status === "INACTIVE") return;
-
         const approver = await userRepository.getUserById(approverId);
         const approverName = approver?.full_name || approver?.email || approverId;
         const entityLabel = getEntityLabel(record.entity_type);
         const displayCode = getDisplayCode(record);
+        const taskUsers = await getPostApprovalTaskUsers(record);
+        const creator = await userRepository.getUserById(record.creator_id);
+        const users =
+            taskUsers.length > 0
+                ? taskUsers
+                : creator && !creator.is_deleted && creator.status !== "INACTIVE"
+                  ? [creator]
+                  : [];
+
+        if (users.length === 0) return;
+
+        const hasOperationalTask = taskUsers.length > 0;
         const title = `${entityLabel} ${displayCode} đã được duyệt xong`;
         const body = `${entityLabel} ${displayCode} đã hoàn tất toàn bộ luồng duyệt. Người duyệt cuối: ${approverName}.`;
         const nextStep =
             ENTITY_NEXT_STEPS[record.entity_type] ??
             "Mở công việc để thực hiện bước tiếp theo.";
-        const actionUrl = getEntityActionUrl(record);
+        const actionUrl = hasOperationalTask
+            ? getOperationalTaskUrl(record)
+            : getEntityActionUrl(record);
 
         await createInAppDispatch({
-            recipientUserIds: [creator.id],
+            recipientUserIds: users.map((user) => user.id),
             title,
             body: `${body} Bước tiếp theo: ${nextStep}`,
             actionUrl,
@@ -359,7 +426,7 @@ export async function notifyApprovalCompleted(
         });
 
         await sendEmailToUsers({
-            users: [creator],
+            users,
             subject: title,
             body,
             nextStep,

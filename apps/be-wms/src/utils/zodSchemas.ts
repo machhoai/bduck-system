@@ -342,5 +342,6 @@ export const nonconformityQuerySchema = z.object({
 export const resolveNonconformitySchema = z.object({
   resolution_type: z.nativeEnum(ResolutionType),
   resolution_notes: z.string().max(1000).nullable().optional(),
+  otp: z.string().trim().length(6).optional(),
   action_time: z.string().datetime().optional(),
 });

@@ -19,6 +19,7 @@ const API_BASE_URL =
 type ResolvePayload = {
   resolution_type: ResolutionType;
   resolution_notes?: string | null;
+  otp: string;
   action_time: string;
 };
 
@@ -49,7 +50,11 @@ function getAccessibleWarehouseIds(
   permissions: Record<string, Record<string, unknown>>,
 ) {
   const globalPerms = permissions.global || {};
-  if (globalPerms["*"] === true || globalPerms["inventory.read"] === true) {
+  if (
+    globalPerms["*"] === true ||
+    globalPerms["inventory.read"] === true ||
+    globalPerms["inventory.write"] === true
+  ) {
     return { isGlobal: true, ids: [] as string[] };
   }
 
@@ -60,7 +65,8 @@ function getAccessibleWarehouseIds(
         if (scope === "global") return false;
         return (
           scopedPermissions["*"] === true ||
-          scopedPermissions["inventory.read"] === true
+          scopedPermissions["inventory.read"] === true ||
+          scopedPermissions["inventory.write"] === true
         );
       })
       .map(([scope]) => scope),
@@ -92,7 +98,8 @@ export function countActionableNonconformities(reports: NonconformityReport[]) {
   return reports.filter((report) => isActionableNonconformity(report.status)).length;
 }
 
-export function useNonconformities() {
+export function useNonconformities(options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
   const permissions = useUserStore((state) => state.permissions);
   const [reports, setReports] = useState<NonconformityReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +111,13 @@ export function useNonconformities() {
   );
 
   useEffect(() => {
+    if (!enabled) {
+      setReports([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const abortController = new AbortController();
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
@@ -188,7 +202,7 @@ export function useNonconformities() {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [accessibleWarehouseIds]);
+  }, [accessibleWarehouseIds, enabled]);
 
   return { reports, loading, error };
 }

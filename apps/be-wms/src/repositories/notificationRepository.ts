@@ -143,7 +143,7 @@ class NotificationRepository {
   async findActiveUserIdsByRoleIds(
     roleIds: string[],
     warehouseId?: string | null,
-    options: { allowGlobalFallback?: boolean } = {},
+    options: { allowGlobalFallback?: boolean; requireGlobal?: boolean } = {},
   ): Promise<string[]> {
     if (roleIds.length === 0) return [];
 
@@ -168,6 +168,10 @@ class NotificationRepository {
         const assignmentWarehouseId =
           typeof data.warehouse_id === "string" ? data.warehouse_id : null;
         const isAssignmentGlobal = assignmentWarehouseId == null || assignmentWarehouseId === "";
+
+        if (options.requireGlobal === true && !isAssignmentGlobal) {
+          return;
+        }
 
         if (
           warehouseId != null && warehouseId !== "" &&

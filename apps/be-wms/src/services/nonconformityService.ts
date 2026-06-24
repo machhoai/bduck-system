@@ -17,20 +17,50 @@ import {
   type NonconformityFilters,
 } from "../repositories/nonconformityRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import { verifyMfa } from "./mfaService.js";
 
 export interface ResolveNonconformityInput {
   resolution_type: ResolutionType;
   resolution_notes: string | null;
+  otp?: string | null;
   action_time?: string;
 }
 
 type ServiceError = Error & { statusCode: number; messages: Record<string, string> };
+type PermissionMap = Record<string, Record<string, unknown>>;
 
 function createServiceError(statusCode: number, vi: string, zh: string): ServiceError {
   const error = new Error(vi) as ServiceError;
   error.statusCode = statusCode;
   error.messages = { vi, zh };
   return error;
+}
+
+function canWriteInventory(
+  permissions: PermissionMap | null | undefined,
+  warehouseId: string,
+) {
+  return canAccessInventory(permissions, warehouseId, ["inventory.write"]);
+}
+
+function canAccessInventory(
+  permissions: PermissionMap | null | undefined,
+  warehouseId: string,
+  actions: string[],
+) {
+  if (!permissions) return false;
+  const globalPerms = permissions.global || {};
+  if (
+    globalPerms["*"] === true ||
+    actions.some((action) => globalPerms[action] === true)
+  ) {
+    return true;
+  }
+  const warehousePerms = permissions[warehouseId] || {};
+  return (
+    warehousePerms["*"] === true ||
+    actions.some((action) => warehousePerms[action] === true)
+  );
 }
 
 function assertResolutionAllowed(
@@ -168,20 +198,43 @@ function buildInventoryUpdate(
 
 export const fetchNonconformities = async (
   filters: NonconformityFilters,
+  permissions?: PermissionMap,
 ): Promise<NonconformityReport[]> => {
   const reports = await findReports(filters);
-  return reports.sort((a, b) => {
-    return toTime(b.created_at) - toTime(a.created_at);
-  });
+  return reports
+    .filter((report) =>
+      canAccessInventory(permissions, report.warehouse_id, [
+        "inventory.read",
+        "inventory.write",
+      ]),
+    )
+    .sort((a, b) => {
+      return toTime(b.created_at) - toTime(a.created_at);
+    });
 };
 
-export const fetchNonconformityDetail = async (id: string) => {
+export const fetchNonconformityDetail = async (
+  id: string,
+  permissions?: PermissionMap,
+) => {
   const report = await findReportById(id);
   if (!report) {
     throw createServiceError(
       404,
       "Khong tim thay bao cao ngoai le.",
       "未找到异常报告。",
+    );
+  }
+  if (
+    !canAccessInventory(permissions, report.warehouse_id, [
+      "inventory.read",
+      "inventory.write",
+    ])
+  ) {
+    throw createServiceError(
+      403,
+      "Ban khong co quyen xem ngoai le tai kho nay.",
+      "您没有权限查看该仓库的异常。",
     );
   }
 
@@ -194,6 +247,7 @@ export const resolveNonconformity = async (
   input: ResolveNonconformityInput,
   userId: string,
   auditMetadata?: AuditMetadata,
+  permissions?: PermissionMap,
 ): Promise<void> => {
   const existing = await findReportById(id);
   if (!existing) {
@@ -215,6 +269,30 @@ export const resolveNonconformity = async (
       403,
       "Nguoi ghi nhan ngoai le khong duoc tu xu ly.",
       "异常记录人不得自行处理。",
+    );
+  }
+  if (!canWriteInventory(permissions, existing.warehouse_id)) {
+    throw createServiceError(
+      403,
+      "Ban khong co quyen xu ly ngoai le tai kho nay.",
+      "您没有权限处理该仓库的异常。",
+    );
+  }
+
+  if (!input.otp) {
+    throw createServiceError(
+      400,
+      "Ma xac thuc OTP la bat buoc.",
+      "验证码是必需的。",
+    );
+  }
+
+  const isOtpValid = await verifyMfa(userId, input.otp);
+  if (!isOtpValid) {
+    throw createServiceError(
+      400,
+      "Ma xac thuc OTP khong hop le hoac da het han.",
+      "验证码无效或已过期。",
     );
   }
 
