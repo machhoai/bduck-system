@@ -111,8 +111,8 @@ export function buildImportExceptions(
         expectedQuantity: expected,
         actualQuantity: actual,
         issueType: IssueType.DISCREPANCY,
-        status: NonconformityStatus.UNDER_REVIEW,
-        bucketLock: "ON_HOLD",
+        status: NonconformityStatus.QUARANTINED,
+        bucketLock: "QUARANTINE",
         reason: "SURPLUS_RECEIVED_STOCK",
       });
     }

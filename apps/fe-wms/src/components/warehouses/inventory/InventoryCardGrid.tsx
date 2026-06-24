@@ -13,6 +13,7 @@ import { Package } from "lucide-react";
 interface InventoryCardGridProps {
   rows: InventoryRow[];
   policyByProductId?: Map<string, InventoryStockPolicy>;
+  onViewDetails?: (row: InventoryRow) => void;
 }
 
 function CardSkeleton() {
@@ -32,6 +33,7 @@ function CardSkeleton() {
 export function InventoryCardGrid({
   rows,
   policyByProductId,
+  onViewDetails,
 }: InventoryCardGridProps) {
   const { t } = useTranslation();
   const d = t.warehouses.inventoryView as Record<string, string>;
@@ -53,6 +55,7 @@ export function InventoryCardGrid({
           key={row.productId}
           row={row}
           warehousePolicy={policyByProductId?.get(row.productId) ?? null}
+          onViewDetails={onViewDetails}
         />
       ))}
     </div>

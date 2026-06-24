@@ -16,9 +16,9 @@ import {
  *
  * Bucket policy:
  * - atp_quantity: good stock, the only bucket counted as Available To Promise.
- * - on_hold_quantity: stock locked while a quantity discrepancy is reviewed.
+ * - on_hold_quantity: stock temporarily locked for operational review flows.
  * - in_transit_quantity: stock moving between warehouses.
- * - quarantine_quantity: quality-isolated stock such as damaged/expired goods.
+ * - quarantine_quantity: isolated stock such as damaged/expired goods or receiving surplus.
  *
  * Formula: total_quantity = atp_quantity + on_hold_quantity
  *          + in_transit_quantity + quarantine_quantity

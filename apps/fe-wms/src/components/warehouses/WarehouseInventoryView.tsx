@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type {
+  ExportVoucher,
+  ImportVoucher,
   Inventory,
   Product,
+  ProductCategory,
+  Warehouse,
   WarehouseLocation,
+  WarehouseLocationSlot,
+  WarehouseLocationSlotProduct,
 } from "@bduck/shared-types";
 import { StockPolicyScope } from "@bduck/shared-types";
 import { useInventoryFilter } from "@/hooks/useInventoryFilter";
@@ -13,11 +19,18 @@ import { InventoryToolbar } from "./inventory/InventoryToolbar";
 import { InventoryTableView } from "./inventory/InventoryTableView";
 import { InventoryListView } from "./inventory/InventoryListView";
 import { InventoryCardGrid } from "./inventory/InventoryCardGrid";
+import { ProductDetailModal } from "@/components/products/ProductDetailModal";
 
 interface WarehouseInventoryViewProps {
   inventory: Inventory[];
   products: Product[];
+  categories?: ProductCategory[];
+  warehouses?: Warehouse[];
   locations: WarehouseLocation[];
+  slots?: WarehouseLocationSlot[];
+  slotMappings?: WarehouseLocationSlotProduct[];
+  importVouchers?: ImportVoucher[];
+  exportVouchers?: ExportVoucher[];
   warehouseId: string;
   loading?: boolean;
 }
@@ -62,10 +75,17 @@ function InventoryViewSkeleton() {
 export function WarehouseInventoryView({
   inventory,
   products,
+  categories = [],
+  warehouses = [],
   locations,
+  slots = [],
+  slotMappings = [],
+  importVouchers = [],
+  exportVouchers = [],
   warehouseId,
   loading = false,
 }: WarehouseInventoryViewProps) {
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const {
     filters,
     filteredRows,
@@ -81,6 +101,10 @@ export function WarehouseInventoryView({
   const policyByProductId = useMemo(
     () => new Map(policies.map((policy) => [policy.product_id, policy])),
     [policies],
+  );
+  const categoryById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
   );
 
   if (loading) {
@@ -106,8 +130,25 @@ export function WarehouseInventoryView({
         <InventoryCardGrid
           rows={filteredRows}
           policyByProductId={policyByProductId}
+          onViewDetails={(row) => setSelectedProduct(row.product)}
         />
       )}
+      <ProductDetailModal
+        isOpen={selectedProduct !== null}
+        product={selectedProduct}
+        category={
+          selectedProduct ? categoryById.get(selectedProduct.category_id) : null
+        }
+        inventory={inventory}
+        warehouses={warehouses}
+        locations={locations}
+        slots={slots}
+        slotMappings={slotMappings}
+        importVouchers={importVouchers}
+        exportVouchers={exportVouchers}
+        warehouseId={warehouseId}
+        onClose={() => setSelectedProduct(null)}
+      />
     </div>
   );
 }

@@ -405,7 +405,13 @@ export default function WarehouseDetailPage() {
                         <WarehouseInventoryView
                             inventory={inventory}
                             products={products}
+                            categories={categories}
+                            warehouses={warehouses}
                             locations={locations}
+                            slots={slots}
+                            slotMappings={slotMappings}
+                            importVouchers={importVouchers}
+                            exportVouchers={exportVouchers}
                             warehouseId={warehouseId}
                             loading={invLoading || prodLoading}
                         />

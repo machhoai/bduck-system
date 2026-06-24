@@ -11,6 +11,7 @@
  */
 
 import Image from "next/image";
+import type { KeyboardEvent } from "react";
 import {
   Edit2,
   Image as ImageIcon,
@@ -66,6 +67,7 @@ interface InventoryVariantProps {
 
 type ProductCardProps = {
   product: Product;
+  onViewDetails?: (product: Product) => void;
 } & (CatalogVariantProps | InventoryVariantProps);
 
 // ── Styles theo ProductType ─────────────────────────────────────────────────
@@ -127,6 +129,15 @@ export function ProductCard(props: ProductCardProps) {
     (t.inventoryDashboard.productTypes as Record<string, string>)[
       product.product_type
     ] ?? product.product_type;
+  const canOpenDetails = typeof props.onViewDetails === "function";
+  const openDetails = () => props.onViewDetails?.(product);
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!canOpenDetails) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetails();
+    }
+  };
 
   // Inventory variant
   if (props.variant === "inventory") {
@@ -139,7 +150,13 @@ export function ProductCard(props: ProductCardProps) {
     const d = t.warehouses.inventoryView as Record<string, string>;
 
     return (
-      <article className="group flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] transition-shadow hover:shadow-md">
+      <article
+        className={`group flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] transition-shadow hover:shadow-md ${canOpenDetails ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brand-primary)]" : ""}`}
+        role={canOpenDetails ? "button" : undefined}
+        tabIndex={canOpenDetails ? 0 : undefined}
+        onClick={openDetails}
+        onKeyDown={handleCardKeyDown}
+      >
         {/* Image */}
         <div
           className={`relative aspect-square w-full shrink-0 bg-gradient-to-br ${typeGradient}`}
@@ -270,7 +287,13 @@ export function ProductCard(props: ProductCardProps) {
 
   // Catalog variant (default) — hiển thị nút Edit/Delete cho user có quyền
   return (
-    <article className="group overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] transition-colors duration-200 hover:border-[var(--color-brand-primary)]/40">
+    <article
+      className={`group overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] transition-colors duration-200 hover:border-[var(--color-brand-primary)]/40 ${canOpenDetails ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brand-primary)]" : ""}`}
+      role={canOpenDetails ? "button" : undefined}
+      tabIndex={canOpenDetails ? 0 : undefined}
+      onClick={openDetails}
+      onKeyDown={handleCardKeyDown}
+    >
       <div className="relative aspect-square bg-[var(--color-surface-card)]">
         {primaryImage ? (
           <img
@@ -292,7 +315,10 @@ export function ProductCard(props: ProductCardProps) {
           <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <button
               type="button"
-              onClick={() => props.onEdit(product)}
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onEdit(product);
+              }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white text-[var(--color-brand-primary)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
               title={t.common.edit}
             >
@@ -300,7 +326,10 @@ export function ProductCard(props: ProductCardProps) {
             </button>
             <button
               type="button"
-              onClick={() => props.onDelete(product)}
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onDelete(product);
+              }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white text-[var(--color-accent-error)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
               title={t.common.delete}
             >
@@ -310,7 +339,7 @@ export function ProductCard(props: ProductCardProps) {
         )}
       </div>
 
-      <div className="space-y-3 p-3">
+      <div className="flex flex-col gap-3 p-3">
         <div className="min-h-[3.25rem]">
           <h3 className="line-clamp-2 text-sm font-semibold leading-[1.24] tracking-normal text-[var(--color-text-primary)]">
             {product.name}

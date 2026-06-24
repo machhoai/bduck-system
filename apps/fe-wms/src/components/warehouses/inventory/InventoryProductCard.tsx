@@ -14,11 +14,13 @@ import { ProductCard } from "@/components/products/ProductCard";
 interface InventoryProductCardProps {
   row: InventoryRow;
   warehousePolicy?: InventoryStockPolicy | null;
+  onViewDetails?: (row: InventoryRow) => void;
 }
 
 export function InventoryProductCard({
   row,
   warehousePolicy,
+  onViewDetails,
 }: InventoryProductCardProps) {
   return (
     <ProductCard
@@ -33,6 +35,7 @@ export function InventoryProductCard({
       }}
       stockLocations={row.locations}
       stockPolicy={warehousePolicy}
+      onViewDetails={onViewDetails ? () => onViewDetails(row) : undefined}
     />
   );
 }

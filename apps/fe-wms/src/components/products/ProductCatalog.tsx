@@ -12,7 +12,13 @@ import {
 import { ProductCard } from "./ProductCard";
 import { ProductFilterBar } from "./ProductFilterBar";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
+import { ProductDetailModal } from "./ProductDetailModal";
 import { useExportRegistration } from "@/hooks/useExportRegistration";
+import { useExportVouchers } from "@/hooks/useExportVouchers";
+import { useImportVouchers } from "@/hooks/useImportVouchers";
+import { useInventory } from "@/hooks/useInventory";
+import { useLocationSlots } from "@/hooks/useLocationSlots";
+import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { formatExportDate } from "@/utils/exportExcel";
 
 interface ProductCatalogProps {
@@ -36,9 +42,23 @@ export function ProductCatalog({
 }: ProductCatalogProps) {
     const { t } = useTranslation();
     const [filters, setFilters] = useState<ProductFilters>(defaultProductFilters);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const { inventory } = useInventory();
+    const { warehouses } = useWarehouses();
+    const { locations } = useWarehouseLocations();
+    const { slots, mappings: slotMappings } = useLocationSlots();
+    const { allVouchers: importVouchers } = useImportVouchers();
+    const {
+        activeVouchers: activeExportVouchers,
+        completedVouchers: completedExportVouchers,
+    } = useExportVouchers();
     const categoryById = useMemo(
         () => new Map(categories.map((category) => [category.id, category])),
         [categories],
+    );
+    const exportVouchers = useMemo(
+        () => [...activeExportVouchers, ...completedExportVouchers],
+        [activeExportVouchers, completedExportVouchers],
     );
     const filteredProducts = useMemo(
         () => filterProducts(products, categories, filters),
@@ -75,7 +95,7 @@ export function ProductCatalog({
     useExportRegistration(exportConfig);
 
     return (
-        <section className="space-y-4">
+        <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-base font-semibold leading-[1.19] tracking-normal text-[var(--color-text-primary)]">
@@ -134,10 +154,29 @@ export function ProductCatalog({
                             category={categoryById.get(product.category_id)}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onViewDetails={setSelectedProduct}
                         />
                     ))}
                 </div>
             )}
+
+            <ProductDetailModal
+                isOpen={selectedProduct !== null}
+                product={selectedProduct}
+                category={
+                    selectedProduct
+                        ? categoryById.get(selectedProduct.category_id)
+                        : null
+                }
+                inventory={inventory}
+                warehouses={warehouses}
+                locations={locations}
+                slots={slots}
+                slotMappings={slotMappings}
+                importVouchers={importVouchers}
+                exportVouchers={exportVouchers}
+                onClose={() => setSelectedProduct(null)}
+            />
         </section>
     );
 }
