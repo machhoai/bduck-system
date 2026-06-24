@@ -83,6 +83,9 @@ export default function VouchersPage() {
     const [activeTab, setActiveTab] = useState<TabId>(
         prefillWarehouseId ? "create" : "inProgress",
     );
+    const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
+        null,
+    );
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
@@ -109,8 +112,14 @@ export default function VouchersPage() {
         (voucher) => voucher.status === "PENDING_APPROVAL",
     ).length;
 
+    const handleCloneToCreate = (voucherData: Record<string, unknown>) => {
+        setActiveTab("create");
+        setCloneData(voucherData);
+    };
+
     const handleTabSwitch = (tabId: TabId) => {
         setActiveTab(tabId);
+        if (tabId !== "create") setCloneData(null);
     };
 
     if (loading) {
@@ -207,9 +216,11 @@ export default function VouchersPage() {
                 <div className="flex flex-col flex-1">
                     {effectiveTab === "create" && (
                         <UnifiedCreateTab
+                            cloneData={cloneData}
                             prefillWarehouseId={prefillWarehouseId}
                             prefillVoucherType={prefillVoucherType}
                             onCreated={() => {
+                                setCloneData(null);
                                 setActiveTab("inProgress");
                             }}
                         />
@@ -219,6 +230,7 @@ export default function VouchersPage() {
                         <UnifiedInProgressTab
                             vouchers={activeVouchers}
                             initialTypeFilter={prefillVoucherType}
+                            onClone={handleCloneToCreate}
                         />
                     )}
 
@@ -226,6 +238,7 @@ export default function VouchersPage() {
                         <UnifiedHistoryTab
                             vouchers={completedVouchers}
                             initialTypeFilter={prefillVoucherType}
+                            onClone={handleCloneToCreate}
                         />
                     )}
                 </div>

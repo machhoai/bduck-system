@@ -24,6 +24,7 @@ import TransferDetailDrawer from "../transfers/TransferDetailDrawer";
 interface UnifiedHistoryTabProps {
     vouchers: UnifiedVoucher[];
     initialTypeFilter?: string;
+    onClone: (data: Record<string, unknown>) => void;
 }
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; icon: React.ElementType; labelKey: string }> = {
@@ -98,7 +99,7 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[]) {
     }, []);
 }
 
-export default function UnifiedHistoryTab({ vouchers, initialTypeFilter }: UnifiedHistoryTabProps) {
+export default function UnifiedHistoryTab({ vouchers, initialTypeFilter, onClone }: UnifiedHistoryTabProps) {
     const { t } = useTranslation();
     const { warehouses } = useWarehouses();
     const { users } = useUsers();
@@ -334,6 +335,7 @@ export default function UnifiedHistoryTab({ vouchers, initialTypeFilter }: Unifi
                 <VoucherDetailDrawer
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
+                    onClone={onClone}
                 />
             )}
 
@@ -342,6 +344,7 @@ export default function UnifiedHistoryTab({ vouchers, initialTypeFilter }: Unifi
                     orderId={selectedTransferId}
                     onClose={() => setSelectedTransferId(null)}
                     readOnly
+                    onClone={onClone}
                 />
             )}
         </div>

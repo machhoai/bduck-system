@@ -55,11 +55,29 @@ function formatDate(value: unknown) {
   });
 }
 
-function getAllowedResolutions(issueType: IssueType | string) {
-  if (issueType === IssueType.MISSING) return [ResolutionType.ADJUST];
-  if (issueType === IssueType.DISCREPANCY) {
+function hasQuantityPair(report: NonconformityReport) {
+  return (
+    typeof report.expected_quantity === "number" &&
+    Number.isFinite(report.expected_quantity) &&
+    typeof report.actual_quantity === "number" &&
+    Number.isFinite(report.actual_quantity)
+  );
+}
+
+function isQuantityDiscrepancyReport(report: NonconformityReport) {
+  return (
+    report.issue_type === IssueType.DISCREPANCY ||
+    (hasQuantityPair(report) &&
+      report.expected_quantity !== report.actual_quantity)
+  );
+}
+
+function getAllowedResolutions(report: NonconformityReport) {
+  if (isQuantityDiscrepancyReport(report)) {
     return [ResolutionType.REUSE, ResolutionType.ADJUST];
   }
+  const issueType = report.issue_type;
+  if (issueType === IssueType.MISSING) return [ResolutionType.ADJUST];
   return [ResolutionType.REUSE, ResolutionType.RETURN, ResolutionType.DESTROY];
 }
 
@@ -118,12 +136,12 @@ export default function NonconformityResolveDrawer({
   const statusLabel =
     copy.status[report.status as keyof typeof copy.status] || report.status;
   const allowedResolutions = useMemo(
-    () => getAllowedResolutions(report.issue_type),
-    [report.issue_type],
+    () => getAllowedResolutions(report),
+    [report],
   );
   const isReporter = currentUser?.id === report.reporter_id;
   const canResolve = hasPermission("inventory.write") && !isReporter;
-  const isDiscrepancy = report.issue_type === IssueType.DISCREPANCY;
+  const isDiscrepancy = isQuantityDiscrepancyReport(report);
   const expectedQuantityLabel = formatQuantity(report.expected_quantity);
   const actualQuantityLabel = formatQuantity(report.actual_quantity);
 

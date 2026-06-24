@@ -24,6 +24,7 @@ import TransferDetailDrawer from "../transfers/TransferDetailDrawer";
 interface UnifiedInProgressTabProps {
     vouchers: UnifiedVoucher[];
     initialTypeFilter?: string;
+    onClone: (data: Record<string, unknown>) => void;
 }
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; icon: React.ElementType; labelKey: string }> = {
@@ -104,7 +105,7 @@ function groupVouchersByDate(vouchers: UnifiedVoucher[], unknownDateLabel: strin
     }, []);
 }
 
-export default function UnifiedInProgressTab({ vouchers, initialTypeFilter }: UnifiedInProgressTabProps) {
+export default function UnifiedInProgressTab({ vouchers, initialTypeFilter, onClone }: UnifiedInProgressTabProps) {
     const { t, lang } = useTranslation();
     const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
     const { warehouses } = useWarehouses();
@@ -318,6 +319,7 @@ export default function UnifiedInProgressTab({ vouchers, initialTypeFilter }: Un
                 <VoucherDetailDrawer
                     voucher={selectedVoucher.raw as any}
                     onClose={() => setSelectedVoucher(null)}
+                    onClone={onClone}
                 />
             )}
 
@@ -326,6 +328,7 @@ export default function UnifiedInProgressTab({ vouchers, initialTypeFilter }: Un
                     orderId={selectedTransferId}
                     onClose={() => setSelectedTransferId(null)}
                     readOnly
+                    onClone={onClone}
                 />
             )}
         </div>

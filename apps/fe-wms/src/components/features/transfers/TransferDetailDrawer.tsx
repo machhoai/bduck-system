@@ -15,6 +15,7 @@ import {
   Calendar,
   CheckCircle2,
   ClipboardSignature,
+  Copy,
   FileText,
   Hash,
   Loader2,
@@ -90,6 +91,7 @@ interface TransferDetailDrawerProps {
   orderId: string;
   onClose: () => void;
   readOnly?: boolean;
+  onClone?: (data: Record<string, unknown>) => void;
 }
 
 const TERMINAL_STATUSES = new Set<string>([
@@ -216,6 +218,7 @@ export default function TransferDetailDrawer({
   orderId,
   onClose,
   readOnly = false,
+  onClone,
 }: TransferDetailDrawerProps) {
   const { t } = useTranslation();
   const { warehouses } = useWarehouses();
@@ -593,13 +596,41 @@ export default function TransferDetailDrawer({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {order && onClone && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClone({
+                    ...order,
+                    type: "TRANSFER",
+                    warehouse_id: order.source_warehouse_id,
+                    items: items.map((item) => ({
+                      id: item.id,
+                      product_id: item.product_id,
+                      product_name: item.product_name,
+                      source_location_id: item.source_location_id,
+                      destination_location_id: item.destination_location_id,
+                      quantity: item.quantity,
+                    })),
+                  });
+                  onClose();
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-neutral-100)]"
+                title="Copy lệnh này"
+              >
+                <Copy className="h-4 w-4" />
+                Copy
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)] hover:text-[var(--color-text-secondary)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
