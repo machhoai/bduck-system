@@ -852,6 +852,34 @@ export async function forceCancel(
 
   const allRecords = await approvalRepo.findByEntity(entityType, entityId);
 
+  if (allRecords.length === 0) {
+    await cancelEntityOnCancel(entityType, entityId, userId, reason);
+
+    await logAudit({
+      entity_type: entityType,
+      entity_id: entityId,
+      warehouse_id: null,
+      action: AuditAction.CANCEL,
+      user_id: userId,
+      old_value: {
+        status: "UNKNOWN",
+        record_count: 0,
+      },
+      new_value: {
+        status: "CANCELLED",
+        reason,
+        force_cancel: true,
+        cancelled_records: [],
+        note: "Force-cancelled entity without approval records",
+      },
+    });
+
+    console.log(
+      `[approvalService] User ${userId} FORCE CANCELLED ${entityType}/${entityId} without approval records. Reason: ${reason}`,
+    );
+    return;
+  }
+
   // ── Batch cancel all non-cancelled records ──
   const activeRecords = allRecords.filter((r) => r.status !== "CANCELLED");
   if (activeRecords.length === 0) {
