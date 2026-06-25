@@ -152,6 +152,37 @@ const zh: Dictionary = {
             memberCardBar: "会员卡金额",
             highlightedDays: "选中日期",
         },
+        online: {
+            title: "线上营收",
+            subtitle: "来自 B.Duck Ticketing 已支付订单的数据。",
+            generatedAt: "更新时间",
+            metrics: {
+                netRevenue: "净营收",
+                grossRevenue: "总营收",
+                orders: "订单数",
+                itemQuantity: "商品数",
+                passesIssued: "已发票券",
+                discountAmount: "优惠金额",
+                averageOrderValue: "平均订单额",
+            },
+            charts: {
+                dailyTitle: "按日线上营收",
+                dailySubtitle: "按越南日期汇总 paid 订单 finalAmount。",
+                dailyNetRevenue: "净营收",
+            },
+            payments: {
+                title: "线上支付",
+                subtitle: "按 payment provider 统计营收结构。",
+                orders: "单",
+            },
+            products: {
+                title: "线上热门产品",
+                subtitle: "销量和线上营收贡献最高的产品。",
+                units: "次",
+                orders: "单",
+            },
+            empty: "当前范围暂无线上营收数据。",
+        },
         topProducts: {
             title: "按分组的热门产品",
             subtitle: "营收贡献最高的产品分组和商品。",

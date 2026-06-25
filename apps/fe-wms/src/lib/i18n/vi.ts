@@ -150,6 +150,37 @@ const vi = {
             memberCardBar: "Tiền thẻ",
             highlightedDays: "Ngày đang chọn",
         },
+        online: {
+            title: "Doanh thu online",
+            subtitle: "Dữ liệu đơn hàng đã thanh toán từ hệ thống B.Duck Ticketing.",
+            generatedAt: "Cập nhật lúc",
+            metrics: {
+                netRevenue: "Doanh thu thuần",
+                grossRevenue: "Doanh thu gộp",
+                orders: "Đơn hàng",
+                itemQuantity: "Sản phẩm",
+                passesIssued: "Vé đã phát hành",
+                discountAmount: "Giảm giá",
+                averageOrderValue: "Giá trị đơn TB",
+            },
+            charts: {
+                dailyTitle: "Doanh thu online theo ngày",
+                dailySubtitle: "Tổng finalAmount của đơn paid, nhóm theo ngày Việt Nam.",
+                dailyNetRevenue: "Doanh thu thuần",
+            },
+            payments: {
+                title: "Thanh toán online",
+                subtitle: "Cơ cấu doanh thu theo payment provider.",
+                orders: "đơn",
+            },
+            products: {
+                title: "Top sản phẩm online",
+                subtitle: "Sản phẩm bán chạy và đóng góp doanh thu online cao nhất.",
+                units: "lượt",
+                orders: "đơn",
+            },
+            empty: "Chưa có dữ liệu doanh thu online trong phạm vi này.",
+        },
         topProducts: {
             title: "Top sản phẩm theo nhóm",
             subtitle: "Nhóm sản phẩm và các mặt hàng đóng góp doanh thu cao nhất.",

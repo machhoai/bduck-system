@@ -81,8 +81,16 @@ export const formatExportDate = (val: any): string => {
   if (!val) return "";
   let date: Date;
   // Check if it's a serialized Firestore Timestamp
-  if (typeof val === "object" && "seconds" in val) {
-    date = new Date(val.seconds * 1000);
+  if (typeof val === "object") {
+    if (typeof val.toDate === "function") {
+      date = val.toDate();
+    } else if ("seconds" in val) {
+      date = new Date(val.seconds * 1000);
+    } else if ("_seconds" in val) {
+      date = new Date(val._seconds * 1000);
+    } else {
+      date = new Date(val as any);
+    }
   } else {
     date = new Date(val);
   }

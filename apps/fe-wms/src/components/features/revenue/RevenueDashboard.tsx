@@ -12,6 +12,7 @@ import RevenueCharts from "./RevenueCharts";
 import RevenueDateFilter from "./RevenueDateFilter";
 import RevenueDashboardSkeleton from "./RevenueDashboardSkeleton";
 import DeviceConsumptionTable from "./DeviceConsumptionTable";
+import OnlineRevenueSection from "./OnlineRevenueSection";
 import RevenueOrderTabs from "./RevenueOrderTabs";
 import RevenueStats from "./RevenueStats";
 import TopProductsByGroup from "./TopProductsByGroup";
@@ -53,6 +54,7 @@ export default function RevenueDashboard() {
                         paymentMethods={data.charts.paymentMethods}
                         onPointClick={handleChartPointClick}
                     />
+                    <OnlineRevenueSection filter={filter} />
                     <TopProductsByGroup groups={data.topProductGroups} />
                     <DeviceConsumptionTable rows={data.deviceConsumptions} />
                     <RevenueOrderTabs orders={data.orders} soldItems={data.soldItems} />
