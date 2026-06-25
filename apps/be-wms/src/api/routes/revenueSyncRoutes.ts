@@ -10,6 +10,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import {
   syncRevenueHandler,
   getCachedRevenueHandler,
+  getOrderDetailsHandler,
 } from "../controllers/revenueSyncController.js";
 import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
@@ -21,5 +22,6 @@ router.use(requireAuth);
 router.get("/dashboard", getRevenueDashboardHandler);
 router.get("/sync/:period", syncRevenueHandler);
 router.get("/cached/:period", getCachedRevenueHandler);
+router.get("/order-details/:orderId", getOrderDetailsHandler);
 
 export default router;

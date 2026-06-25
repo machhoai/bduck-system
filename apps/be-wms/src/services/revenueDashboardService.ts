@@ -1,9 +1,13 @@
+import { FieldValue } from "firebase-admin/firestore";
+import { db } from "../config/firebase.js";
 import {
-  getGoodsTypeStatistics,
+  getCashierSummary,
+  getCoinStatistics,
+  getGoodsStatistics,
   getJoyworldToken,
+  getOrderGoodsList,
   getOrderList,
   getRevenueData,
-  getSellData,
   getStoreBalance,
 } from "./joyworldService.js";
 
@@ -56,10 +60,58 @@ export interface TopProductGroup {
   items: TopProductItem[];
 }
 
+export interface DeviceConsumptionItem {
+  date: string;
+  electronicCoinConsum: number;
+  physicalCoinConsum: number;
+  totalConsum: number;
+  coinGiveQuantity: number;
+  coinConsumRate: string;
+}
+
+export interface RevenueOrderItem {
+  orderId: string;
+  orderNumber: string;
+  status: number;
+  statusLabel: string;
+  createTime: string;
+  employeeName: string;
+  payMethod: string;
+  terminalName: string;
+  totalQty: number;
+  itemCount: number;
+  sysMoney: number;
+  discountMoney: number;
+  realMoney: number;
+  cancelMoney: number;
+}
+
+export interface SoldOrderGoodsItem {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  status: number;
+  statusLabel: string;
+  createTime: string;
+  employeeName: string;
+  payMethod: string;
+  goodsName: string;
+  goodsTypeName: string;
+  categoryName: string;
+  price: number;
+  qty: number;
+  sysMoney: number;
+  discountMoney: number;
+  realMoney: number;
+  cancelQty: number;
+  cancelMoney: number;
+}
+
 export interface RevenueDashboardData {
   warehouseId: string;
   warehouseName: string;
   mode: RevenueDateMode;
+  cacheKey: string;
   range: {
     startDate: string;
     endDate: string;
@@ -72,6 +124,10 @@ export interface RevenueDashboardData {
     totalOrders: RevenueMetric;
     averageOrderValue: RevenueMetric;
     memberCardSales: RevenueMetric;
+    deviceConsumption: RevenueMetric;
+    memberCount: RevenueMetric;
+    memberStoredBalance: RevenueMetric;
+    memberGiftBalance: RevenueMetric;
     paymentMethods: PaymentMethodMetric[];
   };
   charts: {
@@ -81,6 +137,9 @@ export interface RevenueDashboardData {
     memberCardSales: RevenueChartPoint[];
   };
   topProductGroups: TopProductGroup[];
+  deviceConsumptions: DeviceConsumptionItem[];
+  orders: RevenueOrderItem[];
+  soldItems: SoldOrderGoodsItem[];
   generatedAt: string;
 }
 
@@ -98,57 +157,126 @@ interface NormalizedRange extends DateRange {
   comparisonLabel: string;
 }
 
+interface CoinStat {
+  coinSalesAmount: number;
+  coinSalesQuantity: number;
+  coinGiveQuantity: number;
+  electronicCoinConsum: number;
+  physicalCoinConsum: number;
+  coinConsumRate: string;
+}
+
+interface MemberSnapshot {
+  memberTotal: number;
+  newMemberAmount: number;
+  currency: number;
+  localCurrency: number;
+  giftCoins: number;
+}
+
+const DASHBOARD_COLLECTION = "revenue_dashboards";
+const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 const REVENUE_KEYS = ["realMoney", "shopRealMoney", "totalMoney", "salesMoney", "amount", "money"];
-const MEMBER_CARD_KEYS = ["localCurrency", "newMemberLocalCurrency", "rechargeMoney", "totalMoney"];
-const PRODUCT_NAME_KEYS = ["goodsName", "giftName", "setMealName", "productName", "name"];
-const PRODUCT_GROUP_KEYS = ["typeName", "goodsTypeName", "categoryName", "groupName"];
-const PRODUCT_QTY_KEYS = ["sellAmount", "sellCount", "quantity", "count", "num", "amount"];
-const PRODUCT_REVENUE_KEYS = ["realMoney", "sellMoney", "totalMoney", "salesMoney", "money"];
+
+export function getRevenueDashboardCacheKey(params: RevenueDashboardParams): string {
+  const normalized = normalizeRange(params);
+  return buildCacheKey(params.mode, normalized);
+}
 
 export async function getRevenueDashboardData(
   params: RevenueDashboardParams,
+  userId = "system",
 ): Promise<RevenueDashboardData> {
   const normalized = normalizeRange(params);
+  const cacheKey = buildCacheKey(params.mode, normalized);
+  const docRef = db.collection(DASHBOARD_COLLECTION).doc(cacheKey);
+  const cachedSnap = await docRef.get();
+
+  if (cachedSnap.exists) {
+    const cached = cachedSnap.data() as { dashboard?: RevenueDashboardData; sync_time?: FirebaseFirestore.Timestamp | null };
+    if (cached.dashboard && !isStale(cached.sync_time ?? null)) {
+      return hydrateDashboardRows(cached.dashboard, docRef);
+    }
+  }
+
+  const dashboard = await fetchRevenueDashboardData(params, normalized, cacheKey);
+  const dashboardSummary: RevenueDashboardData = {
+    ...dashboard,
+    orders: [],
+    soldItems: [],
+  };
+  await docRef.set(
+    {
+      cacheKey,
+      mode: params.mode,
+      range: dashboard.range,
+      dashboard: dashboardSummary,
+      sync_time: FieldValue.serverTimestamp(),
+      synced_by: userId,
+    },
+    { merge: true },
+  );
+  await Promise.all([
+    writeCollectionRows(docRef.collection("orders"), dashboard.orders, (row) => row.orderId),
+    writeCollectionRows(docRef.collection("sold_items"), dashboard.soldItems, (row) => row.id),
+  ]);
+
+  return dashboard;
+}
+
+async function fetchRevenueDashboardData(
+  params: RevenueDashboardParams,
+  normalized: NormalizedRange,
+  cacheKey: string,
+): Promise<RevenueDashboardData> {
   const chartWindow = getChartWindow(params, normalized);
   const token = await getJoyworldToken();
+  const selectedDays = daysBetween(normalized.startDate, normalized.endDate);
+  const comparisonDays = daysBetween(normalized.comparison.startDate, normalized.comparison.endDate);
+  const chartDays = daysBetween(chartWindow.startDate, chartWindow.endDate);
+  const coinDays = Array.from(new Set([...selectedDays, ...comparisonDays, ...chartDays]));
 
   const [
     selectedRevenue,
     comparisonRevenue,
     selectedOrders,
     comparisonOrders,
+    selectedOrderRows,
     selectedMembers,
     comparisonMembers,
     chartRevenue,
     chartOrders,
-    chartMembers,
-    sellResponse,
-    goodsTypeResponses,
+    coinStatsByDate,
+    goodsResponses,
+    cashierResponses,
   ] = await Promise.all([
     getRevenueData(token, normalized.startDate, normalized.endDate),
     getRevenueData(token, normalized.comparison.startDate, normalized.comparison.endDate),
     fetchOrderSummary(token, normalized),
     fetchOrderSummary(token, normalized.comparison),
+    fetchOrderGoodsRows(token, normalized),
     getStoreBalance(token, normalized.startDate, normalized.endDate),
     getStoreBalance(token, normalized.comparison.startDate, normalized.comparison.endDate),
     getRevenueData(token, chartWindow.startDate, chartWindow.endDate),
     fetchChartOrderSummaries(token, chartWindow),
-    fetchChartMemberSummaries(token, chartWindow),
-    getSellData(token, normalized.startDate, normalized.endDate),
-    fetchDailyResponses(daysBetween(normalized.startDate, normalized.endDate), (day) =>
-      getGoodsTypeStatistics(token, day),
-    ),
+    fetchCoinStatsByDate(token, coinDays),
+    fetchDailyResponses(selectedDays, (day) => getGoodsStatistics(token, day)),
+    fetchDailyResponses(selectedDays, (day) => getCashierSummary(token, day)),
   ]);
 
   const selectedRevenueTotal = sumRevenue(selectedRevenue, normalized);
   const comparisonRevenueTotal = sumRevenue(comparisonRevenue, normalized.comparison);
-  const selectedMemberTotal = sumMemberCardSales(selectedMembers);
-  const comparisonMemberTotal = sumMemberCardSales(comparisonMembers);
-  const selectedOrderCount = selectedOrders.orderCount;
+  const selectedOrderCount = uniqueOrderCount(selectedOrderRows) || selectedOrders.orderCount;
   const comparisonOrderCount = comparisonOrders.orderCount;
   const selectedAverageOrderValue = selectedOrderCount > 0 ? selectedRevenueTotal / selectedOrderCount : 0;
   const comparisonAverageOrderValue =
     comparisonOrderCount > 0 ? comparisonRevenueTotal / comparisonOrderCount : 0;
+  const selectedMemberTotal = sumCoinStats(coinStatsByDate, selectedDays, "coinSalesAmount");
+  const comparisonMemberTotal = sumCoinStats(coinStatsByDate, comparisonDays, "coinSalesAmount");
+  const selectedDeviceConsum = sumDeviceConsumption(coinStatsByDate, selectedDays);
+  const comparisonDeviceConsum = sumDeviceConsumption(coinStatsByDate, comparisonDays);
+  const selectedMemberSnapshot = parseLatestMemberSnapshot(selectedMembers);
+  const comparisonMemberSnapshot = parseLatestMemberSnapshot(comparisonMembers);
 
   const chartPoints = buildChartPoints({
     params,
@@ -156,18 +284,16 @@ export async function getRevenueDashboardData(
     chartWindow,
     revenueResponse: chartRevenue,
     orderSummaries: chartOrders,
-    memberSummaries: chartMembers,
+    coinStatsByDate,
   });
-  const paymentMethods = parsePaymentMethodsFromRevenue(
-    selectedRevenue,
-    selectedOrderCount,
-    normalized,
-  );
+  const orderData = buildOrderData(selectedOrderRows);
+  const paymentMethods = parsePaymentMethodsFromOrders(orderData.orders, cashierResponses);
 
   return {
     warehouseId: LANDMARK_81_WAREHOUSE_ID,
     warehouseName: "B.Duck Cityfuns Landmark 81",
     mode: params.mode,
+    cacheKey,
     range: {
       startDate: normalized.startDate,
       endDate: normalized.endDate,
@@ -180,18 +306,22 @@ export async function getRevenueDashboardData(
       totalOrders: toMetric(selectedOrderCount, comparisonOrderCount),
       averageOrderValue: toMetric(selectedAverageOrderValue, comparisonAverageOrderValue),
       memberCardSales: toMetric(selectedMemberTotal, comparisonMemberTotal),
+      deviceConsumption: toMetric(selectedDeviceConsum, comparisonDeviceConsum),
+      memberCount: toMetric(selectedMemberSnapshot.memberTotal, comparisonMemberSnapshot.memberTotal),
+      memberStoredBalance: toMetric(selectedMemberSnapshot.localCurrency, comparisonMemberSnapshot.localCurrency),
+      memberGiftBalance: toMetric(selectedMemberSnapshot.giftCoins, comparisonMemberSnapshot.giftCoins),
       paymentMethods,
     },
     charts: {
       granularity: params.mode === "year" ? "month" : "day",
       points: chartPoints,
       paymentMethods,
-      memberCardSales: chartPoints.map((point) => ({
-        ...point,
-        revenue: point.memberCardAmount,
-      })),
+      memberCardSales: chartPoints.map((point) => ({ ...point, revenue: point.memberCardAmount })),
     },
-    topProductGroups: buildTopProducts(sellResponse, goodsTypeResponses),
+    topProductGroups: buildTopProducts(goodsResponses),
+    deviceConsumptions: buildDeviceConsumptions(coinStatsByDate, selectedDays),
+    orders: orderData.orders,
+    soldItems: orderData.soldItems,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -200,9 +330,12 @@ function normalizeRange(params: RevenueDashboardParams): NormalizedRange {
   const today = formatDate(new Date());
   if (params.mode === "year") {
     const year = Number(params.year || today.slice(0, 4));
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
-    return withComparison({ startDate, endDate, label: String(year), highlightedDates: [] }, "year");
+    return withComparison({
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      label: String(year),
+      highlightedDates: [],
+    }, "year");
   }
 
   if (params.mode === "month") {
@@ -282,10 +415,30 @@ async function fetchOrderSummary(token: string, range: DateRange): Promise<{ ord
   return { orderCount: extractTotalCount(response) };
 }
 
-async function fetchChartOrderSummaries(
-  token: string,
-  range: DateRange,
-): Promise<Record<string, number>> {
+async function fetchOrderGoodsRows(token: string, range: DateRange): Promise<JsonRecord[]> {
+  const limit = 200;
+  const rows: JsonRecord[] = [];
+  let page = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (rows.length < total && page <= 20) {
+    const response = await getOrderGoodsList(token, {
+      startTime: `${range.startDate} 00:00:00`,
+      endTime: `${range.endDate} 23:59:59`,
+      page,
+      limit,
+    });
+    const pageRows = extractRows(response);
+    rows.push(...pageRows);
+    total = extractTotalCount(response) || rows.length;
+    if (pageRows.length < limit) break;
+    page += 1;
+  }
+
+  return rows;
+}
+
+async function fetchChartOrderSummaries(token: string, range: DateRange): Promise<Record<string, number>> {
   if (diffDays(range.startDate, range.endDate) > 62) {
     const months = monthsBetween(range.startDate, range.endDate);
     const summaries = await mapLimit(months, 4, (month) =>
@@ -298,34 +451,16 @@ async function fetchChartOrderSummaries(
   return Object.fromEntries(days.map((day, index) => [day, summaries[index]?.orderCount ?? 0]));
 }
 
-async function fetchChartMemberSummaries(
-  token: string,
-  range: DateRange,
-): Promise<Record<string, number>> {
-  if (diffDays(range.startDate, range.endDate) > 62) {
-    const months = monthsBetween(range.startDate, range.endDate);
-    const summaries = await mapLimit(months, 4, (month) =>
-      getStoreBalance(token, `${month}-01`, endOfMonth(`${month}-01`)),
-    );
-    return Object.fromEntries(months.map((month, index) => [`${month}-01`, sumMemberCardSales(summaries[index])]));
-  }
-  const days = daysBetween(range.startDate, range.endDate);
-  const summaries = await fetchDailyResponses(days, (day) => getStoreBalance(token, day, day));
-  return Object.fromEntries(days.map((day, index) => [day, sumMemberCardSales(summaries[index])]));
+async function fetchCoinStatsByDate(token: string, days: string[]): Promise<Record<string, CoinStat>> {
+  const responses = await mapLimit(days, 6, (day) => getCoinStatistics(token, day));
+  return Object.fromEntries(days.map((day, index) => [day, parseCoinStat(responses[index])]));
 }
 
-async function fetchDailyResponses<T>(
-  days: string[],
-  fetcher: (day: string) => Promise<T>,
-): Promise<T[]> {
+async function fetchDailyResponses<T>(days: string[], fetcher: (day: string) => Promise<T>): Promise<T[]> {
   return mapLimit(days, 5, fetcher);
 }
 
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T) => Promise<R>,
-): Promise<R[]> {
+async function mapLimit<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   let cursor = 0;
   async function worker() {
@@ -345,14 +480,14 @@ function buildChartPoints(args: {
   chartWindow: DateRange;
   revenueResponse: JsonRecord;
   orderSummaries: Record<string, number>;
-  memberSummaries: Record<string, number>;
+  coinStatsByDate: Record<string, CoinStat>;
 }): RevenueChartPoint[] {
-  const { params, normalized, chartWindow, revenueResponse, orderSummaries, memberSummaries } = args;
+  const { params, normalized, chartWindow, revenueResponse, orderSummaries, coinStatsByDate } = args;
   const highlighted = new Set(normalized.highlightedDates);
+  const dailyRevenue = revenueByDate(revenueResponse);
 
   if (params.mode === "year") {
     const year = chartWindow.startDate.slice(0, 4);
-    const dailyRevenue = revenueByDate(revenueResponse);
     return Array.from({ length: 12 }, (_, index) => {
       const month = `${year}-${String(index + 1).padStart(2, "0")}`;
       const monthDays = daysBetween(`${month}-01`, endOfMonth(`${month}-01`));
@@ -361,21 +496,197 @@ function buildChartPoints(args: {
         label: `T${index + 1}`,
         revenue: sumByDays(dailyRevenue, monthDays),
         orderCount: sumByDays(orderSummaries, monthDays),
-        memberCardAmount: sumByDays(memberSummaries, monthDays),
+        memberCardAmount: sumCoinStats(coinStatsByDate, monthDays, "coinSalesAmount"),
         highlighted: false,
       };
     });
   }
 
-  const dailyRevenue = revenueByDate(revenueResponse);
   return daysBetween(chartWindow.startDate, chartWindow.endDate).map((day) => ({
     key: day,
     label: day.slice(8, 10),
     revenue: dailyRevenue[day] ?? 0,
     orderCount: orderSummaries[day] ?? 0,
-    memberCardAmount: memberSummaries[day] ?? 0,
+    memberCardAmount: coinStatsByDate[day]?.coinSalesAmount ?? 0,
     highlighted: highlighted.has(day),
   }));
+}
+
+function buildOrderData(rows: JsonRecord[]): { orders: RevenueOrderItem[]; soldItems: SoldOrderGoodsItem[] } {
+  const orderMap = new Map<string, RevenueOrderItem>();
+  const soldItems: SoldOrderGoodsItem[] = [];
+
+  for (const row of rows) {
+    const orderId = firstString(row, ["orderId"]) || firstString(row, ["id"]);
+    if (!orderId) continue;
+    const status = firstNumber(row, ["status"]);
+    const soldItem: SoldOrderGoodsItem = {
+      id: firstString(row, ["id"]) || `${orderId}-${soldItems.length}`,
+      orderId,
+      orderNumber: firstString(row, ["orderNumber"]),
+      status,
+      statusLabel: getOrderStatusLabel(status),
+      createTime: firstString(row, ["createTime"]),
+      employeeName: firstString(row, ["employeeName"]) || "-",
+      payMethod: firstString(row, ["payModeNames"]) || "-",
+      goodsName: firstString(row, ["goodsName"]) || "-",
+      goodsTypeName: firstString(row, ["goodsTypeName"]) || "-",
+      categoryName: firstString(row, ["showCategoryName"]) || "-",
+      price: firstNumber(row, ["price"]),
+      qty: firstNumber(row, ["qty"]),
+      sysMoney: firstNumber(row, ["sysMoney"]),
+      discountMoney: firstNumber(row, ["discountMoney"]),
+      realMoney: firstNumber(row, ["realMoney"]),
+      cancelQty: firstNumber(row, ["cancelQty"]),
+      cancelMoney: firstNumber(row, ["cancelMoney"]),
+    };
+    soldItems.push(soldItem);
+
+    const existing = orderMap.get(orderId);
+    if (existing) {
+      existing.totalQty += soldItem.qty;
+      existing.itemCount += 1;
+      existing.sysMoney += soldItem.sysMoney;
+      existing.discountMoney += soldItem.discountMoney;
+      existing.realMoney += soldItem.realMoney;
+      existing.cancelMoney += soldItem.cancelMoney;
+    } else {
+      orderMap.set(orderId, {
+        orderId,
+        orderNumber: soldItem.orderNumber,
+        status,
+        statusLabel: soldItem.statusLabel,
+        createTime: soldItem.createTime,
+        employeeName: soldItem.employeeName,
+        payMethod: soldItem.payMethod,
+        terminalName: firstString(row, ["terminalName"]) || "-",
+        totalQty: soldItem.qty,
+        itemCount: 1,
+        sysMoney: soldItem.sysMoney,
+        discountMoney: soldItem.discountMoney,
+        realMoney: soldItem.realMoney,
+        cancelMoney: soldItem.cancelMoney,
+      });
+    }
+  }
+
+  return {
+    orders: Array.from(orderMap.values()).sort((a, b) => b.createTime.localeCompare(a.createTime)),
+    soldItems: soldItems.sort((a, b) => b.createTime.localeCompare(a.createTime)),
+  };
+}
+
+function parsePaymentMethodsFromOrders(
+  orders: RevenueOrderItem[],
+  cashierResponses: JsonRecord[],
+): PaymentMethodMetric[] {
+  const byMethod = new Map<string, { amount: number; orderIds: Set<string> }>();
+
+  for (const order of orders) {
+    const method = normalizePaymentMethod(order.payMethod);
+    const current = byMethod.get(method) ?? { amount: 0, orderIds: new Set<string>() };
+    current.amount += order.realMoney;
+    current.orderIds.add(order.orderId);
+    byMethod.set(method, current);
+  }
+
+  if (byMethod.size === 0) {
+    for (const response of cashierResponses) {
+      const totalRow = extractRows(response).find((row) => firstString(row, ["cashierName"]) === "Tong cong") ?? {};
+      const cash = firstNumber(totalRow, ["realMoney", "sysMoney"]);
+      const transfer = sumDynamicPaymentKeys(totalRow);
+      if (cash > 0) byMethod.set("cash", { amount: cash, orderIds: new Set() });
+      if (transfer > 0) byMethod.set("transfer", { amount: transfer, orderIds: new Set() });
+    }
+  }
+
+  const totalAmount = Array.from(byMethod.values()).reduce((sum, item) => sum + item.amount, 0);
+  return Array.from(byMethod.entries())
+    .map(([method, item]) => ({
+      method,
+      amount: item.amount,
+      orderCount: item.orderIds.size,
+      percentage: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+    }))
+    .filter((item) => item.amount > 0 || item.orderCount > 0)
+    .sort((a, b) => b.amount - a.amount);
+}
+
+function buildTopProducts(goodsResponses: JsonRecord[]): TopProductGroup[] {
+  const groups = new Map<string, TopProductGroup>();
+
+  for (const response of goodsResponses) {
+    for (const groupRow of extractRows(response)) {
+      const groupName = firstString(groupRow, ["goodsCategory", "categoryName", "groupName"]) || "Other";
+      const goodsItems = Array.isArray(groupRow.goodsItems) ? groupRow.goodsItems.map(asRecord) : [];
+      const group = groups.get(groupName) ?? { groupName, quantity: 0, revenue: 0, items: [] };
+
+      for (const row of goodsItems) {
+        const productName = firstString(row, ["goodsName", "productName", "name"]) || groupName;
+        const quantity = firstNumber(row, ["realQty", "totalQty", "qty", "quantity"]);
+        const revenue = firstNumber(row, ["realMoney", "totalRealMoney", "totalMoney", "money"]);
+        group.quantity += quantity;
+        group.revenue += revenue;
+        const existing = group.items.find((item) => item.name === productName);
+        if (existing) {
+          existing.quantity += quantity;
+          existing.revenue += revenue;
+        } else {
+          group.items.push({ name: productName, quantity, revenue });
+        }
+      }
+
+      groups.set(groupName, group);
+    }
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({ ...group, items: group.items.sort((a, b) => b.revenue - a.revenue).slice(0, 5) }))
+    .filter((group) => group.revenue > 0 || group.quantity > 0)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 6);
+}
+
+function buildDeviceConsumptions(statsByDate: Record<string, CoinStat>, days: string[]): DeviceConsumptionItem[] {
+  return days.map((date) => {
+    const stat = statsByDate[date] ?? emptyCoinStat();
+    return {
+      date,
+      electronicCoinConsum: stat.electronicCoinConsum,
+      physicalCoinConsum: stat.physicalCoinConsum,
+      totalConsum: stat.electronicCoinConsum + stat.physicalCoinConsum,
+      coinGiveQuantity: stat.coinGiveQuantity,
+      coinConsumRate: stat.coinConsumRate,
+    };
+  });
+}
+
+function parseCoinStat(response: JsonRecord | undefined): CoinStat {
+  const row = extractRows(response ?? {})[0] ?? {};
+  return {
+    coinSalesAmount: firstNumber(row, ["coinSalesAmount"]),
+    coinSalesQuantity: firstNumber(row, ["coinSalesQuantity"]),
+    coinGiveQuantity: firstNumber(row, ["coinGiveQuantity"]),
+    electronicCoinConsum: firstNumber(row, ["electronicCoinConsum"]),
+    physicalCoinConsum: firstNumber(row, ["physicalCoinConsum"]),
+    coinConsumRate: firstString(row, ["coinConsumRate"]),
+  };
+}
+
+function parseLatestMemberSnapshot(response: JsonRecord): MemberSnapshot {
+  const rows = extractRows(response)
+    .filter((row) => /^\d{4}-\d{2}-\d{2}/.test(firstString(row, ["forDate"])))
+    .sort((a, b) => firstString(b, ["forDate"]).localeCompare(firstString(a, ["forDate"])));
+  const latest = rows[0] ?? {};
+  const latestWithMemberTotal = rows.find((row) => firstNumber(row, ["memberTotal"]) > 0) ?? latest;
+
+  return {
+    memberTotal: firstNumber(latestWithMemberTotal, ["memberTotal"]),
+    newMemberAmount: firstNumber(latest, ["newMemberAmount"]),
+    currency: firstNumber(latest, ["currency"]),
+    localCurrency: firstNumber(latest, ["localCurrency"]),
+    giftCoins: firstNumber(latest, ["giftCoins"]),
+  };
 }
 
 function sumRevenue(response: JsonRecord, range: DateRange): number {
@@ -396,76 +707,22 @@ function revenueByDate(response: JsonRecord): Record<string, number> {
   return result;
 }
 
-function parsePaymentMethodsFromRevenue(
-  response: JsonRecord,
-  orderCount: number,
-  range: DateRange,
-): PaymentMethodMetric[] {
-  let cashAmount = 0;
-  let transferAmount = 0;
-  const selectedDays = new Set(daysBetween(range.startDate, range.endDate));
-
-  for (const row of extractRows(response)) {
-    const rowDate = getDateField(row);
-    if (rowDate && !selectedDays.has(rowDate)) continue;
-    cashAmount += firstNumber(row, ["cashRealMoney", "cashMoney", "cashSysMoney"]);
-    transferAmount += firstNumber(row, ["transferRealMoney", "transferMoney", "transferSysMoney"]);
-  }
-
-  const totalAmount = cashAmount + transferAmount;
-  const toMethod = (method: "transfer" | "cash", amount: number): PaymentMethodMetric => ({
-    method,
-    amount,
-    orderCount: totalAmount > 0 ? Math.round((amount / totalAmount) * orderCount) : 0,
-    percentage: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
-  });
-
-  return [toMethod("transfer", transferAmount), toMethod("cash", cashAmount)];
+function sumCoinStats(statsByDate: Record<string, CoinStat>, days: string[], key: keyof CoinStat): number {
+  return days.reduce((sum, day) => {
+    const value = statsByDate[day]?.[key];
+    return sum + (typeof value === "number" ? value : 0);
+  }, 0);
 }
 
-function buildTopProducts(
-  sellResponse: JsonRecord,
-  goodsTypeResponses: JsonRecord[],
-): TopProductGroup[] {
-  const groups = new Map<string, TopProductGroup>();
-  const rows = extractRows(sellResponse);
-  const fallbackRows = goodsTypeResponses.flatMap((response) => extractRows(response));
-
-  for (const row of rows.length > 0 ? rows : fallbackRows) {
-    const groupName = firstString(row, PRODUCT_GROUP_KEYS) || "Other";
-    const productName = firstString(row, PRODUCT_NAME_KEYS) || groupName;
-    const quantity = firstNumber(row, PRODUCT_QTY_KEYS);
-    const revenue = firstNumber(row, PRODUCT_REVENUE_KEYS);
-    const group = groups.get(groupName) ?? { groupName, quantity: 0, revenue: 0, items: [] };
-    group.quantity += quantity;
-    group.revenue += revenue;
-    const existing = group.items.find((item) => item.name === productName);
-    if (existing) {
-      existing.quantity += quantity;
-      existing.revenue += revenue;
-    } else {
-      group.items.push({ name: productName, quantity, revenue });
-    }
-    groups.set(groupName, group);
-  }
-
-  return Array.from(groups.values())
-    .map((group) => ({
-      ...group,
-      items: group.items.sort((a, b) => b.revenue - a.revenue).slice(0, 5),
-    }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 6);
+function sumDeviceConsumption(statsByDate: Record<string, CoinStat>, days: string[]): number {
+  return days.reduce((sum, day) => {
+    const stat = statsByDate[day];
+    return sum + (stat ? stat.electronicCoinConsum + stat.physicalCoinConsum : 0);
+  }, 0);
 }
 
-function sumMemberCardSales(response: JsonRecord | undefined): number {
-  if (!response) return 0;
-  const responseFootData = asRecord(response.footData);
-  const dataFootData = asRecord(asRecord(response.data).footData);
-  const footData = Object.keys(responseFootData).length > 0 ? responseFootData : dataFootData;
-  const footTotal = firstNumber(footData, MEMBER_CARD_KEYS);
-  if (footTotal > 0) return footTotal;
-  return sumRows(extractRows(response), MEMBER_CARD_KEYS);
+function uniqueOrderCount(rows: JsonRecord[]): number {
+  return new Set(rows.map((row) => firstString(row, ["orderId"])).filter(Boolean)).size;
 }
 
 function extractRows(response: JsonRecord): JsonRecord[] {
@@ -507,7 +764,7 @@ function firstNumber(row: JsonRecord, keys: string[]): number {
       typeof value === "number"
         ? value
         : typeof value === "string"
-          ? Number(value.replace(/,/g, ""))
+          ? Number(value.replace(/,/g, "").replace(/\s*%$/, ""))
           : 0;
     if (Number.isFinite(numberValue) && numberValue !== 0) return numberValue;
   }
@@ -518,6 +775,7 @@ function firstString(row: JsonRecord, keys: string[]): string {
   for (const key of keys) {
     const value = row[key];
     if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
   }
   return "";
 }
@@ -533,6 +791,102 @@ function toMetric(value: number, previousValue: number): RevenueMetric {
     previousValue,
     changePercent: previousValue > 0 ? ((value - previousValue) / previousValue) * 100 : 0,
   };
+}
+
+function normalizePaymentMethod(value: string): string {
+  const lower = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (lower.includes("chuyen") || lower.includes("khoan") || lower.includes("transfer") || lower.includes("record")) {
+    return "transfer";
+  }
+  if (lower.includes("cash") || lower.includes("mat") || lower.includes("tien")) {
+    return "cash";
+  }
+  return value || "unknown";
+}
+
+function sumDynamicPaymentKeys(row: JsonRecord): number {
+  return Object.entries(row).reduce((sum, [key, value]) => {
+    if (!key.includes("RealMoney") || key.includes("cash")) return sum;
+    const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : 0;
+    return sum + (Number.isFinite(numberValue) ? numberValue : 0);
+  }, 0);
+}
+
+function getOrderStatusLabel(status: number): string {
+  if (status === 3) return "Hoan thanh";
+  if (status === 4) return "Da huy";
+  if (status === 2) return "Da thanh toan";
+  if (status === 1) return "Dang xu ly";
+  return `Trang thai ${status}`;
+}
+
+function emptyCoinStat(): CoinStat {
+  return {
+    coinSalesAmount: 0,
+    coinSalesQuantity: 0,
+    coinGiveQuantity: 0,
+    electronicCoinConsum: 0,
+    physicalCoinConsum: 0,
+    coinConsumRate: "",
+  };
+}
+
+function buildCacheKey(mode: RevenueDateMode, range: DateRange): string {
+  return `${mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+async function hydrateDashboardRows(
+  dashboard: RevenueDashboardData,
+  docRef: FirebaseFirestore.DocumentReference,
+): Promise<RevenueDashboardData> {
+  const [ordersSnap, itemsSnap] = await Promise.all([
+    docRef.collection("orders").where("is_deleted", "==", false).get(),
+    docRef.collection("sold_items").where("is_deleted", "==", false).get(),
+  ]);
+  return {
+    ...dashboard,
+    orders: ordersSnap.docs.map((doc) => doc.data() as RevenueOrderItem),
+    soldItems: itemsSnap.docs.map((doc) => doc.data() as SoldOrderGoodsItem),
+  };
+}
+
+async function writeCollectionRows<T>(
+  collectionRef: FirebaseFirestore.CollectionReference,
+  rows: T[],
+  getId: (row: T) => string,
+): Promise<void> {
+  const activeIds = new Set(rows.map(getId).filter(Boolean));
+  const existing = await collectionRef.get();
+  const writes: Array<(batch: FirebaseFirestore.WriteBatch) => void> = [];
+
+  for (const row of rows) {
+    const id = getId(row);
+    if (!id) continue;
+    writes.push((batch) => batch.set(collectionRef.doc(id), {
+      ...row,
+      is_deleted: false,
+      updated_at: FieldValue.serverTimestamp(),
+    }, { merge: true }));
+  }
+
+  for (const doc of existing.docs) {
+    if (activeIds.has(doc.id)) continue;
+    writes.push((batch) => batch.set(doc.ref, {
+      is_deleted: true,
+      updated_at: FieldValue.serverTimestamp(),
+    }, { merge: true }));
+  }
+
+  for (let index = 0; index < writes.length; index += 450) {
+    const batch = db.batch();
+    for (const write of writes.slice(index, index + 450)) write(batch);
+    await batch.commit();
+  }
+}
+
+function isStale(syncTime: FirebaseFirestore.Timestamp | null): boolean {
+  if (!syncTime) return true;
+  return Date.now() - syncTime.toMillis() > STALE_THRESHOLD_MS;
 }
 
 function asRecord(value: unknown): JsonRecord {

@@ -69,6 +69,15 @@ export interface OrderListParams {
   limit?: number;
 }
 
+export interface OrderGoodsListParams {
+  startTime: string;
+  endTime: string;
+  statusContent?: string;
+  payMethodContent?: string;
+  page?: number;
+  limit?: number;
+}
+
 export interface SetMealCatalogItem {
   setMealId: string;
   setMealName: string;
@@ -199,6 +208,60 @@ export async function getGoodsTypeStatistics(
   return (await response.json()) as RevenueOverviewResponse;
 }
 
+export async function getCoinStatistics(
+  token: string,
+  forDate: string,
+): Promise<RevenueOverviewResponse> {
+  const url = `${BASE_URL}/finance/manager/revenuepanel/statistics/coin?forDate=${forDate}&_t=${Date.now()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`[joyworldService] getCoinStatistics failed: HTTP ${response.status}`);
+  }
+  return (await response.json()) as RevenueOverviewResponse;
+}
+
+export async function getGoodsStatistics(
+  token: string,
+  forDate: string,
+): Promise<RevenueOverviewResponse> {
+  const url = `${BASE_URL}/finance/manager/revenuepanel/statistics/goods?forDate=${forDate}&_t=${Date.now()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`[joyworldService] getGoodsStatistics failed: HTTP ${response.status}`);
+  }
+  return (await response.json()) as RevenueOverviewResponse;
+}
+
+export async function getCashierSummary(
+  token: string,
+  forDate: string,
+): Promise<RevenueOverviewResponse> {
+  const url = `${BASE_URL}/finance/manager/revenuepanel/getcashiersummary?forDate=${forDate}&_t=${Date.now()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`[joyworldService] getCashierSummary failed: HTTP ${response.status}`);
+  }
+  return (await response.json()) as RevenueOverviewResponse;
+}
+
 export async function getStoreBalance(
   token: string,
   startDate: string,
@@ -241,6 +304,32 @@ export async function getOrderList(
   });
   if (!response.ok) {
     throw new Error(`[joyworldService] getOrderList failed: HTTP ${response.status}`);
+  }
+  return (await response.json()) as RevenueOverviewResponse;
+}
+
+export async function getOrderGoodsList(
+  token: string,
+  params: OrderGoodsListParams,
+): Promise<RevenueOverviewResponse> {
+  const qs = new URLSearchParams({
+    startTime: params.startTime,
+    endTime: params.endTime,
+    statusContent: params.statusContent ?? "",
+    payMethodContent: params.payMethodContent ?? "",
+    page: String(params.page ?? 1),
+    limit: String(params.limit ?? 100),
+    _t: String(Date.now()),
+  });
+  const response = await fetch(`${BASE_URL}/order/manager/buy/order/goods/list?${qs}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`[joyworldService] getOrderGoodsList failed: HTTP ${response.status}`);
   }
   return (await response.json()) as RevenueOverviewResponse;
 }
@@ -341,4 +430,22 @@ export async function getGiftCatalog(token: string): Promise<GiftCatalogItem[]> 
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+export async function getOrderDetail(
+  token: string,
+  orderId: string,
+): Promise<RevenueOverviewResponse> {
+  const url = `${BASE_URL}/order/manager/buy/getorderdetails?orderId=${orderId}&_t=${Date.now()}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`[joyworldService] getOrderDetail failed: HTTP ${response.status}`);
+  }
+  return (await response.json()) as RevenueOverviewResponse;
 }

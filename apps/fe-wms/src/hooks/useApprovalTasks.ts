@@ -1,28 +1,20 @@
 "use client";
 
 /**
- * useApprovalTasks — Realtime Firebase listener for pending approvals
+ * useApprovalTasks - realtime Firebase listener for actionable approvals.
  *
- * REPLACES: useWorkflowTasks (collectionGroup on "tasks" subcollection)
- *
- * NEW DESIGN:
- * - Queries flat `pending_approvals` collection (no collectionGroup index)
- * - Filters by role_id matching current user's roles
- * - Status = PENDING only (approved/rejected auto-disappear from inbox)
- *
- * LUẬT THÉP: No reload buttons. Tasks update via onSnapshot.
+ * Reads pending approvals, keeps only the current pending level per entity, then
+ * applies the current user's role + warehouse/global scope locally.
  */
 
-import { useEffect, useState, useMemo } from "react";
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import type { ApprovalRecord } from "@bduck/shared-types";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 interface UseApprovalTasksReturn {
   myTasks: ApprovalRecord[];
@@ -68,6 +60,40 @@ function toTime(value: unknown): number {
   return Number.isNaN(time) ? 0 : time;
 }
 
+function getEntityKey(record: ApprovalRecord): string {
+  return `${record.entity_type}:${record.entity_id}`;
+}
+
+function filterCurrentPendingLevel(records: ApprovalRecord[]): ApprovalRecord[] {
+  const currentLevelByEntity = new Map<string, number>();
+
+  records.forEach((record) => {
+    const key = getEntityKey(record);
+    const current = currentLevelByEntity.get(key);
+    if (current === undefined || record.level < current) {
+      currentLevelByEntity.set(key, record.level);
+    }
+  });
+
+  return records.filter(
+    (record) => currentLevelByEntity.get(getEntityKey(record)) === record.level,
+  );
+}
+
+async function fetchPendingApprovalsFromApi(): Promise<ApprovalRecord[]> {
+  const response = await fetch(`${API_BASE_URL}/api/approvals/pending`, {
+    method: "GET",
+    credentials: "include",
+  });
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.messages?.vi || "Khong the tai cong viec cho duyet.");
+  }
+
+  return (body.data || []) as ApprovalRecord[];
+}
+
 export function useApprovalTasks(): UseApprovalTasksReturn {
   const [allRecords, setAllRecords] = useState<ApprovalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,17 +108,32 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
       return;
     }
 
-    // Firestore "in" supports up to 30 values — safe for role IDs
-    const roleSlice = userRoleIds.slice(0, 30);
+    const applyRecords = (records: ApprovalRecord[]) => {
+      const currentLevelRecords = filterCurrentPendingLevel(records);
 
-    console.log(
-      `[useApprovalTasks] Querying pending_approvals with roleIds:`,
-      roleSlice,
-    );
+      currentLevelRecords.sort((a, b) => {
+        return toTime(b.created_at) - toTime(a.created_at);
+      });
+
+      setAllRecords(
+        currentLevelRecords.filter((record) =>
+          hasScopedRole(
+            record.role_id,
+            record.approval_warehouse_id === undefined
+              ? record.warehouse_id
+              : record.approval_warehouse_id,
+            {
+              allowGlobalFallback: record.allow_global_fallback === true,
+              requireGlobal: record.approval_scope === "GLOBAL",
+            },
+          ),
+        ),
+      );
+      setLoading(false);
+    };
 
     const q = query(
       collection(db, "pending_approvals"),
-      where("role_id", "in", roleSlice),
       where("status", "==", "PENDING"),
     );
 
@@ -104,38 +145,22 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
           records.push({ id: doc.id, ...doc.data() } as ApprovalRecord);
         });
 
-        // Sort by created_at DESC (newest first)
-        records.sort((a, b) => {
-          return toTime(b.created_at) - toTime(a.created_at);
-        });
-
-        setAllRecords(
-          records.filter((record) =>
-            hasScopedRole(
-              record.role_id,
-              record.approval_warehouse_id === undefined
-                ? record.warehouse_id
-                : record.approval_warehouse_id,
-              {
-                allowGlobalFallback: record.allow_global_fallback === true,
-                requireGlobal: record.approval_scope === "GLOBAL",
-              },
-            ),
-          ),
-        );
-        setLoading(false);
+        applyRecords(records);
       },
-      (error) => {
+      async (error) => {
         console.error("[useApprovalTasks] onSnapshot error:", error);
-        setLoading(false);
+        try {
+          applyRecords(await fetchPendingApprovalsFromApi());
+        } catch (apiError) {
+          console.error("[useApprovalTasks] API fallback error:", apiError);
+          setLoading(false);
+        }
       },
     );
 
     return () => unsubscribe();
   }, [hasScopedRole, user?.id, userRoleIds]);
 
-  // Self-Approval Block: identify tasks where current user is the creator
-  // These tasks are still VISIBLE but approval actions are DISABLED
   const selfCreatedIds = useMemo(() => {
     if (!user?.id) return new Set<string>();
     return new Set(

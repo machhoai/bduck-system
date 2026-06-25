@@ -70,9 +70,39 @@ function canSeeTransferScoped(
     );
 }
 
+function getApprovalEntityKey(record: {
+    entity_type?: string;
+    entity_id?: string;
+}) {
+    return `${record.entity_type || ""}:${record.entity_id || ""}`;
+}
+
+function filterCurrentPendingApprovalLevel<
+    T extends { entity_type?: string; entity_id?: string; level?: number },
+>(records: T[]): T[] {
+    const currentLevelByEntity = new Map<string, number>();
+
+    records.forEach((record) => {
+        const key = getApprovalEntityKey(record);
+        const level = typeof record.level === "number" ? record.level : 0;
+        const current = currentLevelByEntity.get(key);
+        if (current === undefined || level < current) {
+            currentLevelByEntity.set(key, level);
+        }
+    });
+
+    return records.filter((record) => {
+        const level = typeof record.level === "number" ? record.level : 0;
+        return currentLevelByEntity.get(getApprovalEntityKey(record)) === level;
+    });
+}
+
 export function useMenuBadges(): MenuBadges {
     const [pendingRecords, setPendingRecords] = useState<
         Array<{
+            entity_type?: string;
+            entity_id?: string;
+            level?: number;
             role_id?: string;
             creator_id?: string;
             warehouse_id?: string;
@@ -109,13 +139,13 @@ export function useMenuBadges(): MenuBadges {
 
     // ── Pending approvals count (realtime) ──
     useEffect(() => {
-        if (!user?.id || roleIds.length === 0) return;
-
-        const roleSlice = roleIds.slice(0, 30);
+        if (!user?.id || roleIds.length === 0) {
+            setPendingRecords([]);
+            return;
+        }
 
         const q = query(
             collection(db, "pending_approvals"),
-            where("role_id", "in", roleSlice),
             where("status", "==", "PENDING"),
         );
 
@@ -123,6 +153,9 @@ export function useMenuBadges(): MenuBadges {
             q,
             (snap) => {
                 const records = snap.docs.map((doc) => ({
+                    entity_type: doc.data().entity_type as string | undefined,
+                    entity_id: doc.data().entity_id as string | undefined,
+                    level: doc.data().level as number | undefined,
                     role_id: doc.data().role_id as string | undefined,
                     creator_id: doc.data().creator_id as string | undefined,
                     warehouse_id: doc.data().warehouse_id as string | undefined,
@@ -136,7 +169,7 @@ export function useMenuBadges(): MenuBadges {
                         | undefined,
                 }));
                 setPendingRecords(
-                    records.filter((record) =>
+                    filterCurrentPendingApprovalLevel(records).filter((record) =>
                         hasScopedRole(
                             record.role_id,
                             record.approval_warehouse_id === undefined

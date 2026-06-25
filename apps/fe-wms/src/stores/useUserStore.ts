@@ -18,6 +18,7 @@ interface UserState {
     roleIds?: string[],
     roleAssignments?: UserWarehouseRole[],
   ) => void;
+  setRoleAssignments: (roleAssignments: UserWarehouseRole[]) => void;
   clearAuth: () => void;
 
   // Selectors
@@ -52,6 +53,14 @@ export const useUserStore = create<UserState>()(
 
       setAuthData: (user, permissions, roleIds = [], roleAssignments = []) =>
         set({ user, permissions, roleIds, roleAssignments, isAuthenticated: true }),
+
+      setRoleAssignments: (roleAssignments) =>
+        set({
+          roleAssignments,
+          roleIds: Array.from(
+            new Set(roleAssignments.map((assignment) => assignment.role_id)),
+          ),
+        }),
 
       clearAuth: () =>
         set({

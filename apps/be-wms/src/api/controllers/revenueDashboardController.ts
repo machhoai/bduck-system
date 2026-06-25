@@ -46,6 +46,7 @@ export const getRevenueDashboardHandler = async (req: Request, res: Response) =>
     }
 
     const query = dashboardQuerySchema.parse(req.query);
+    const user = (req as Request & { user?: { id?: string; uid?: string } }).user;
     const data = await getRevenueDashboardData({
       mode: query.mode as RevenueDateMode,
       date: query.date,
@@ -53,7 +54,7 @@ export const getRevenueDashboardHandler = async (req: Request, res: Response) =>
       year: query.year,
       startDate: query.startDate,
       endDate: query.endDate,
-    });
+    }, user?.id || user?.uid || "system");
 
     return sendSuccess(res, data, {
       vi: "Tai du lieu dashboard doanh thu thanh cong.",

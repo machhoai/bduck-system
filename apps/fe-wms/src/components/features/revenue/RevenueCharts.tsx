@@ -18,16 +18,17 @@ type MixedChartType = "bar" | "line";
 interface RevenueChartsProps {
     points: RevenueChartPoint[];
     paymentMethods: PaymentMethodMetric[];
+    onPointClick?: (key: string) => void;
 }
 
-export default function RevenueCharts({ points, paymentMethods }: RevenueChartsProps) {
+export default function RevenueCharts({ points, paymentMethods, onPointClick }: RevenueChartsProps) {
     const { t } = useTranslation();
     const d = t.revenue;
 
     return (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
             <div className="col-span-3 h-full">
-                <RevenueMixedChart points={points} title={d.charts.revenueTitle} />
+                <RevenueMixedChart points={points} title={d.charts.revenueTitle} onPointClick={onPointClick} />
             </div>
             <div className="col-span-1 h-full">
                 <PaymentDonutChart methods={paymentMethods} title={d.charts.paymentTitle} />
@@ -36,7 +37,7 @@ export default function RevenueCharts({ points, paymentMethods }: RevenueChartsP
                 <ChartSummary points={points} />
             </div>
             <div className="col-span-3 h-full">
-                <MemberCardChart points={points} title={d.charts.memberCardTitle} />
+                <MemberCardChart points={points} title={d.charts.memberCardTitle} onPointClick={onPointClick} />
             </div>
         </div>
     );
@@ -44,7 +45,7 @@ export default function RevenueCharts({ points, paymentMethods }: RevenueChartsP
 
 /* ═══════════════ Revenue Mixed Chart ═══════════════ */
 
-function RevenueMixedChart({ points, title }: { points: RevenueChartPoint[]; title: string }) {
+function RevenueMixedChart({ points, title, onPointClick }: { points: RevenueChartPoint[]; title: string; onPointClick?: (key: string) => void }) {
     const { t } = useTranslation();
     const d = t.revenue;
     const data = useMemo<ChartData<MixedChartType, number[], string>>(
@@ -105,7 +106,14 @@ function RevenueMixedChart({ points, title }: { points: RevenueChartPoint[]; tit
 
     return (
         <ChartShell title={title} subtitle={d.charts.revenueSubtitle}>
-            {points.length > 0 ? <ChartCanvas type="bar" data={data} options={options} /> : <EmptyChart />}
+            {points.length > 0 ? (
+                <ChartCanvas
+                    type="bar"
+                    data={data}
+                    options={options}
+                    onElementClick={(index) => onPointClick?.(points[index]?.key)}
+                />
+            ) : <EmptyChart />}
         </ChartShell>
     );
 }
@@ -172,7 +180,7 @@ function PaymentDonutChart({ methods, title }: { methods: PaymentMethodMetric[];
 
 /* ═══════════════ Member Card Chart ═══════════════ */
 
-function MemberCardChart({ points, title }: { points: RevenueChartPoint[]; title: string }) {
+function MemberCardChart({ points, title, onPointClick }: { points: RevenueChartPoint[]; title: string; onPointClick?: (key: string) => void }) {
     const { t } = useTranslation();
     const d = t.revenue;
     const data = useMemo<ChartData<"bar", number[], string>>(
@@ -209,7 +217,14 @@ function MemberCardChart({ points, title }: { points: RevenueChartPoint[]; title
 
     return (
         <ChartShell title={title} subtitle={d.charts.memberCardSubtitle}>
-            {points.length > 0 ? <ChartCanvas type="bar" data={data} options={options} /> : <EmptyChart />}
+            {points.length > 0 ? (
+                <ChartCanvas
+                    type="bar"
+                    data={data}
+                    options={options}
+                    onElementClick={(index) => onPointClick?.(points[index]?.key)}
+                />
+            ) : <EmptyChart />}
         </ChartShell>
     );
 }

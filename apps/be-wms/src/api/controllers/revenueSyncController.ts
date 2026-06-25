@@ -10,6 +10,10 @@ import {
   syncRevenueForPeriod,
   getCachedRevenue,
 } from "../../services/revenueSyncService.js";
+import {
+  getJoyworldToken,
+  getOrderDetail,
+} from "../../services/joyworldService.js";
 
 /**
  * GET /api/revenue/sync/:period
@@ -136,6 +140,53 @@ export async function getCachedRevenueHandler(
       messages: {
         vi: "Lỗi tải dữ liệu doanh thu.",
         zh: "加载营收数据时出错。",
+      },
+    });
+  }
+}
+
+/**
+ * GET /api/revenue/order-details/:orderId
+ *
+ * Proxy to fetch order details from JoyWorld
+ */
+export async function getOrderDetailsHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const orderId = String(req.params.orderId || "");
+    if (!orderId) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Thiếu mã đơn hàng.",
+          zh: "缺少订单号。",
+        },
+      });
+      return;
+    }
+    
+    const token = await getJoyworldToken();
+    const response = await getOrderDetail(token, orderId);
+
+    res.json({
+      success: true,
+      data: response.data || response,
+      messages: {
+        vi: "Tải chi tiết đơn hàng thành công.",
+        zh: "成功加载订单详情。",
+      },
+    });
+  } catch (error) {
+    console.error("[revenueSyncController] getOrderDetailsHandler error:", error);
+    res.status(500).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Lỗi tải chi tiết đơn hàng.",
+        zh: "加载订单详情时出错。",
       },
     });
   }

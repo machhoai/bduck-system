@@ -1,6 +1,6 @@
 Danh sách API:
 
-Bảng sản phẩm đã bán
+Bảng doanh thu bán thẻ
 http://joyworld.jingjianx.vip/finance/manager/revenuepanel/statistics/coin?forDate=2026-06-21
 {
     "success": true,
@@ -1455,9 +1455,9 @@ http://joyworld.jingjianx.vip/device/manager/RevenueOverview/getMachineConsumpti
         "shopAcctId": null,
         "createTime": "2026-06-23 14:45:50.797",
         "sumAmount": 0,
-        "inTotalAmount": 178234,
-        "inPhysicalTotalAmount": 14598,
-        "inVirtuallyTotalAmount": 163636,
+        "inTotalAmount": 178234, (Tổng tiêu thụ)
+        "inPhysicalTotalAmount": 14598, (tiêu thụ tiền nạp)
+        "inVirtuallyTotalAmount": 163636, (tiêu thụ tiền tặng)
         "inVirtuallyCoinBal2TotalAmount": 0,
         "outPhysicalCoin1TotalAmount": 0,
         "outVirtuallyCoin1TotalAmount": 0,
@@ -2363,7 +2363,7 @@ http://joyworld.jingjianx.vip/member/manager/RevenueOverview/getStoreBalance?sta
         "createTime": "0001-01-01 00:00:00.000",
         "memberTotal": 58647,
         "touristTotal": 0,
-        "newMemberAmount": 56,
+        "newMemberAmount": 56, 
         "goShopMemberAmount": 223,
         "couponTotal": 0.00,
         "currency": 71258273.00,
@@ -2411,14 +2411,14 @@ http://joyworld.jingjianx.vip/member/manager/RevenueOverview/getStoreBalance?sta
         {
             "forDate": "2026-06-22 00:00:00.000",
             "createTime": "2026-06-23 00:02:00.858",
-            "memberTotal": 2696,
+            "memberTotal": 2696, (số lượng thành viên tính đến hiện tại)
             "touristTotal": 0,
-            "newMemberAmount": 0,
+            "newMemberAmount": 0, (số lượng thành viên mới)
             "goShopMemberAmount": 7,
             "couponTotal": 0.00,
             "currency": 3071118.00,
-            "localCurrency": 235813.00,
-            "giftCoins": 2835305.00,
+            "localCurrency": 235813.00, (Giá trị tiền nạp thẻ thành viên)
+            "giftCoins": 2835305.00, (Giá trị tiền tặng thẻ thành viên)
             "countingTicket": 0.00,
             "annualTicket": 0.00,
             "lotteryTicket": 1607.00,
@@ -3078,6 +3078,877 @@ respone: {
                     "printByPayCategory": 1,
                     "printJsonData": "{}"
                 }
+            }
+        ]
+    },
+    "desc": ""
+}
+
+Bảng doanh thu theo ngày
+
+http://joyworld.jingjianx.vip/finance/manager/revenueoverview/revenue?startDate=2026-06-01&endDate=2026-06-24
+
+{
+    "success": true,
+    "msg": "",
+    "code": 0,
+    "data": {
+        "headers": [
+            {
+                "label": "Ngày",
+                "prop": "forDate",
+                "fixed": "left",
+                "width": 120,
+                "minWidth": 120,
+                "isShowTipsIcon": false,
+                "tips": "",
+                "childrens": []
+            },
+            {
+                "label": "Tổng thu nhập",
+                "prop": "realMoney",
+                "fixed": "left",
+                "width": 115,
+                "minWidth": 115,
+                "isShowTipsIcon": false,
+                "tips": "",
+                "childrens": []
+            },
+            {
+                "label": "Tổng số tiền phải thu",
+                "prop": "sysMoney",
+                "fixed": "left",
+                "width": 115,
+                "minWidth": 115,
+                "isShowTipsIcon": false,
+                "tips": "",
+                "childrens": []
+            },
+            {
+                "label": "Hệ thống bán hàng",
+                "prop": "",
+                "fixed": "",
+                "width": 0,
+                "minWidth": 0,
+                "isShowTipsIcon": false,
+                "tips": "",
+                "childrens": [
+                    {
+                        "label": "Tổng Tiền",
+                        "prop": "saleSubMoney",
+                        "fixed": "",
+                        "width": 115,
+                        "minWidth": 90,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    },
+                    {
+                        "label": "Tiền mặt phải thu",
+                        "prop": "cashSysMoney",
+                        "fixed": "",
+                        "width": 115,
+                        "minWidth": 90,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    },
+                    {
+                        "label": "Rút tiền mặt",
+                        "prop": "cashRealMoney",
+                        "fixed": "",
+                        "width": 115,
+                        "minWidth": 90,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    },
+                    {
+                        "label": "Lỗi tiền mặt",
+                        "prop": "cashErrorMoney",
+                        "fixed": "",
+                        "width": 90,
+                        "minWidth": 90,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    },
+                    {
+                        "label": "NhậnChuyển khoản",
+                        "prop": "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney",
+                        "fixed": "",
+                        "width": 110,
+                        "minWidth": 110,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    },
+                    {
+                        "label": "Thực thuChuyển khoản",
+                        "prop": "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney",
+                        "fixed": "",
+                        "width": 110,
+                        "minWidth": 110,
+                        "isShowTipsIcon": false,
+                        "tips": "",
+                        "childrens": []
+                    }
+                ]
+            },
+            {
+                "label": "Đồng xu bán hàng ngày",
+                "prop": "sellCoinAmount",
+                "fixed": "",
+                "width": 110,
+                "minWidth": 110,
+                "isShowTipsIcon": true,
+                "tips": "\u003Cdiv\u003ECông thức tính toán\u003C/div\u003E\r\n                                     \u003Cdiv\u003EĐồng xu bán hàng ngày=Số lượng coin bán\u002BSố lượng nucleon của bên thứ ba\u002BSố tiền tặng\u003C/div\u003E",
+                "childrens": []
+            },
+            {
+                "label": "Đơn giá đồng xu bán hàng",
+                "prop": "sellCoinPrice",
+                "fixed": "",
+                "width": 120,
+                "minWidth": 120,
+                "isShowTipsIcon": true,
+                "tips": "\u003Cdiv\u003ECông thức tính toán\u003C/div\u003E\r\n                                     \u003Cdiv\u003EĐơn giá đồng xu bán hàng=(Giá\u002BSố tiền bán hạt nhân của bên thứ ba)/(Số lượng coin bán\u002BSố lượng nucleon của bên thứ ba)\u003C/div\u003E",
+                "childrens": []
+            }
+        ],
+        "dataXs": [
+            {
+                "revenueId": "7784e010-0f7a-4ef7-95b6-92499da23a85",
+                "shopName": null,
+                "forDate": "2026-06-24",
+                "realMoney": "10453000.00",
+                "sysMoney": "10453000.00",
+                "saleSubMoney": "6288000.00",
+                "cashSysMoney": "6288000.00",
+                "cashRealMoney": "6288000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "1980",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "4165000.00"
+            },
+            {
+                "revenueId": "b49a9af6-cd89-4c27-8321-0b1fe82fce38",
+                "shopName": null,
+                "forDate": "2026-06-23",
+                "realMoney": "16877000.00",
+                "sysMoney": "16877000.00",
+                "saleSubMoney": "9783000.00",
+                "cashSysMoney": "9783000.00",
+                "cashRealMoney": "9783000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "6435",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "7094000.00"
+            },
+            {
+                "revenueId": "6988504b-69a6-4248-bf6d-ea4c21250169",
+                "shopName": null,
+                "forDate": "2026-06-22",
+                "realMoney": "7441000.00",
+                "sysMoney": "7441000.00",
+                "saleSubMoney": "3892000.00",
+                "cashSysMoney": "3892000.00",
+                "cashRealMoney": "3892000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "0",
+                "sellCoinPrice": "0.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "3549000.00"
+            },
+            {
+                "revenueId": "9c75c64b-859b-4aa5-b297-688b1cfa8d64",
+                "shopName": null,
+                "forDate": "2026-06-21",
+                "realMoney": "24496000.00",
+                "sysMoney": "24496000.00",
+                "saleSubMoney": "11960000.00",
+                "cashSysMoney": "11960000.00",
+                "cashRealMoney": "11960000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "7920",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "12536000.00"
+            },
+            {
+                "revenueId": "50645b6c-534b-4212-8f8a-c12e1a6fd8ea",
+                "shopName": null,
+                "forDate": "2026-06-20",
+                "realMoney": "32968000.00",
+                "sysMoney": "32968000.00",
+                "saleSubMoney": "14041000.00",
+                "cashSysMoney": "14041000.00",
+                "cashRealMoney": "14041000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "8415",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "18927000.00"
+            },
+            {
+                "revenueId": "ebe30130-7cf9-4c7d-a7a3-7b096a4ddc7d",
+                "shopName": null,
+                "forDate": "2026-06-19",
+                "realMoney": "13303000.00",
+                "sysMoney": "13303000.00",
+                "saleSubMoney": "7065000.00",
+                "cashSysMoney": "7065000.00",
+                "cashRealMoney": "7065000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "5940",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "6238000.00"
+            },
+            {
+                "revenueId": "ffb6bac6-61a5-48d0-975d-d10d0d39a092",
+                "shopName": null,
+                "forDate": "2026-06-18",
+                "realMoney": "2788000.00",
+                "sysMoney": "2788000.00",
+                "saleSubMoney": "1734000.00",
+                "cashSysMoney": "1734000.00",
+                "cashRealMoney": "1734000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "0",
+                "sellCoinPrice": "0.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "1054000.00"
+            },
+            {
+                "revenueId": "0902385a-419c-4cd5-9e88-9b89554e4fa8",
+                "shopName": null,
+                "forDate": "2026-06-17",
+                "realMoney": "11670000.00",
+                "sysMoney": "11670000.00",
+                "saleSubMoney": "5747000.00",
+                "cashSysMoney": "5747000.00",
+                "cashRealMoney": "5747000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "5940",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "5923000.00"
+            },
+            {
+                "revenueId": "5db4e2f1-a8e6-44cc-a362-6d5708d53bcd",
+                "shopName": null,
+                "forDate": "2026-06-16",
+                "realMoney": "8309000.00",
+                "sysMoney": "8309000.00",
+                "saleSubMoney": "3299000.00",
+                "cashSysMoney": "3299000.00",
+                "cashRealMoney": "3299000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "1980",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "5010000.00"
+            },
+            {
+                "revenueId": "b0b56584-8685-40c9-9722-d4c3ed419d34",
+                "shopName": null,
+                "forDate": "2026-06-15",
+                "realMoney": "2735000.00",
+                "sysMoney": "2735000.00",
+                "saleSubMoney": "0.00",
+                "cashSysMoney": "0.00",
+                "cashRealMoney": "0.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "1980",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "2735000.00"
+            },
+            {
+                "revenueId": "6563f1ab-9320-451a-acd3-6e1197f35b58",
+                "shopName": null,
+                "forDate": "2026-06-14",
+                "realMoney": "35573000.00",
+                "sysMoney": "35573000.00",
+                "saleSubMoney": "17804000.00",
+                "cashSysMoney": "17804000.00",
+                "cashRealMoney": "17804000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "11880",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "17769000.00"
+            },
+            {
+                "revenueId": "cd9370d5-1332-414c-bc7b-584a689cedda",
+                "shopName": null,
+                "forDate": "2026-06-13",
+                "realMoney": "17835000.00",
+                "sysMoney": "17835000.00",
+                "saleSubMoney": "7311000.00",
+                "cashSysMoney": "7311000.00",
+                "cashRealMoney": "7311000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "5940",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "10524000.00"
+            },
+            {
+                "revenueId": "ae816852-6285-4cbe-99a2-da3448cee087",
+                "shopName": null,
+                "forDate": "2026-06-12",
+                "realMoney": "13196000.00",
+                "sysMoney": "13196000.00",
+                "saleSubMoney": "5432000.00",
+                "cashSysMoney": "5432000.00",
+                "cashRealMoney": "5432000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "14355",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "7764000.00"
+            },
+            {
+                "revenueId": "79f6fb3d-a711-4bc5-b83a-d952bd050468",
+                "shopName": null,
+                "forDate": "2026-06-11",
+                "realMoney": "2486000.00",
+                "sysMoney": "2486000.00",
+                "saleSubMoney": "1584000.00",
+                "cashSysMoney": "1584000.00",
+                "cashRealMoney": "1584000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "1980",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "902000.00"
+            },
+            {
+                "revenueId": "ee3bb896-6e6e-4eac-aeb4-ba8a388bdf5a",
+                "shopName": null,
+                "forDate": "2026-06-10",
+                "realMoney": "17526000.00",
+                "sysMoney": "17526000.00",
+                "saleSubMoney": "12093000.00",
+                "cashSysMoney": "12093000.00",
+                "cashRealMoney": "12093000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "3960",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "5433000.00"
+            },
+            {
+                "revenueId": "ef8c9b98-37e5-40e5-b4e5-822ca7fdf6fb",
+                "shopName": null,
+                "forDate": "2026-06-09",
+                "realMoney": "16501000.00",
+                "sysMoney": "16501000.00",
+                "saleSubMoney": "9626000.00",
+                "cashSysMoney": "9626000.00",
+                "cashRealMoney": "9626000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "5940",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "6875000.00"
+            },
+            {
+                "revenueId": "d9b2636b-d974-49e6-861d-e9565331c097",
+                "shopName": null,
+                "forDate": "2026-06-08",
+                "realMoney": "10964000.00",
+                "sysMoney": "10964000.00",
+                "saleSubMoney": "2662000.00",
+                "cashSysMoney": "2662000.00",
+                "cashRealMoney": "2662000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "1980",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "8302000.00"
+            },
+            {
+                "revenueId": "44c1c229-92a0-41ef-990e-693bc4b32fee",
+                "shopName": null,
+                "forDate": "2026-06-07",
+                "realMoney": "29434000.00",
+                "sysMoney": "29434000.00",
+                "saleSubMoney": "8613000.00",
+                "cashSysMoney": "8613000.00",
+                "cashRealMoney": "8613000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "3960",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "20821000.00"
+            },
+            {
+                "revenueId": "d1607f49-b76f-4a07-88b6-05f3503c0900",
+                "shopName": null,
+                "forDate": "2026-06-06",
+                "realMoney": "32496000.00",
+                "sysMoney": "32496000.00",
+                "saleSubMoney": "18170000.00",
+                "cashSysMoney": "18170000.00",
+                "cashRealMoney": "18170000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "7920",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "14326000.00"
+            },
+            {
+                "revenueId": "9a7fa0a5-829f-4890-aad0-0207ad04de00",
+                "shopName": null,
+                "forDate": "2026-06-05",
+                "realMoney": "22598000.00",
+                "sysMoney": "22598000.00",
+                "saleSubMoney": "10920000.00",
+                "cashSysMoney": "10920000.00",
+                "cashRealMoney": "10920000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "7920",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "11678000.00"
+            },
+            {
+                "revenueId": "3c330936-e2ca-4337-bbd8-21c24e675648",
+                "shopName": null,
+                "forDate": "2026-06-04",
+                "realMoney": "16819000.00",
+                "sysMoney": "16819000.00",
+                "saleSubMoney": "12493000.00",
+                "cashSysMoney": "12493000.00",
+                "cashRealMoney": "12493000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "10395",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "4326000.00"
+            },
+            {
+                "revenueId": "47c4b5dd-5837-4da4-9d6b-d60eecc1f9f4",
+                "shopName": null,
+                "forDate": "2026-06-03",
+                "realMoney": "9219000.00",
+                "sysMoney": "9219000.00",
+                "saleSubMoney": "6999000.00",
+                "cashSysMoney": "6999000.00",
+                "cashRealMoney": "6999000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "3190",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "2220000.00"
+            },
+            {
+                "revenueId": "c4ef623b-a0bf-4da6-9c83-e80052d67aa0",
+                "shopName": null,
+                "forDate": "2026-06-02",
+                "realMoney": "6827000.00",
+                "sysMoney": "6827000.00",
+                "saleSubMoney": "1582000.00",
+                "cashSysMoney": "1582000.00",
+                "cashRealMoney": "1582000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "4785",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "5245000.00"
+            },
+            {
+                "revenueId": "882f4bf1-6349-454d-82d7-810a163f04fb",
+                "shopName": null,
+                "forDate": "2026-06-01",
+                "realMoney": "10066000.00",
+                "sysMoney": "10066000.00",
+                "saleSubMoney": "6319000.00",
+                "cashSysMoney": "6319000.00",
+                "cashRealMoney": "6319000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "3960",
+                "sellCoinPrice": "1000.00000",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "3747000.00"
+            },
+            {
+                "forDate": "Tổng cộng",
+                "realMoney": "372580000.00",
+                "sysMoney": "372580000.00",
+                "saleSubMoney": "185417000.00",
+                "cashSysMoney": "185417000.00",
+                "cashRealMoney": "185417000.00",
+                "cashErrorMoney": "0.00",
+                "preDepositEntryMoney": "0.00",
+                "preDepositUseMoney": "0.00",
+                "otherInMoney": "0.00",
+                "otherOutMoney": "0.00",
+                "sellCoinAmount": "128755",
+                "sellCoinPrice": "916.66667",
+                "writeoffSubMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "187163000.00"
+            }
+        ]
+    },
+    "desc": ""
+}
+
+Donh thu hiện tại
+
+http://joyworld.jingjianx.vip/finance/manager/revenuepanel/getshopsummary?forDate=2026-06-25
+{
+    "success": true,
+    "msg": "",
+    "code": 0,
+    "data": {
+        "shopId": 20692,
+        "totalMoney": 2429000.00,
+        "shopMoney": 2429000.00,
+        "shopRealMoney": 2429000.00,
+        "thirdPartyMoney": 0,
+        "refundMoney": 0,
+        "preDepositPayMoney": 0,
+        "preDepositRefundMoney": 0,
+        "preDepositPayRealMoney": 0,
+        "otherMoney": 0,
+        "lastRefreshTime": "Thời gian làm mới cuối cùng：2026-06-25 13:40:12"
+    },
+    "desc": ""
+}
+
+Dữ liệu từ quầy thu ngân
+
+http://joyworld.jingjianx.vip/finance/manager/revenuepanel/getcashiersummary?forDate=2026-06-24
+{
+    "success": true,
+    "msg": "",
+    "code": 0,
+    "data": {
+        "headers": [
+            {
+                "label": "Thiết bị đầu cuối thanh toán",
+                "prop": "cashierName",
+                "fixed": "left",
+                "width": 200,
+                "minWidth": 200,
+                "childrens": []
+            },
+            {
+                "label": "Hoạt động",
+                "prop": "operate",
+                "fixed": "left",
+                "width": 120,
+                "minWidth": 120,
+                "childrens": []
+            },
+            {
+                "label": "Tổng Tiền",
+                "prop": "",
+                "fixed": "",
+                "width": 0,
+                "minWidth": 0,
+                "childrens": [
+                    {
+                        "label": "Nhận",
+                        "prop": "totalSysMoney",
+                        "fixed": "",
+                        "width": 120,
+                        "minWidth": 120,
+                        "childrens": []
+                    },
+                    {
+                        "label": "Thực thu",
+                        "prop": "totalRealMoney",
+                        "fixed": "",
+                        "width": 120,
+                        "minWidth": 120,
+                        "childrens": []
+                    },
+                    {
+                        "label": "Lỗi",
+                        "prop": "totalErrorMoney",
+                        "fixed": "",
+                        "width": 110,
+                        "minWidth": 110,
+                        "childrens": []
+                    }
+                ]
+            },
+            {
+                "label": "Tiền Mặt",
+                "prop": "",
+                "fixed": "",
+                "width": 0,
+                "minWidth": 0,
+                "childrens": [
+                    {
+                        "label": "Nhận",
+                        "prop": "sysMoney",
+                        "fixed": "",
+                        "width": 120,
+                        "minWidth": 120,
+                        "childrens": []
+                    },
+                    {
+                        "label": "Thực thu",
+                        "prop": "realMoney",
+                        "fixed": "",
+                        "width": 120,
+                        "minWidth": 120,
+                        "childrens": []
+                    }
+                ]
+            },
+            {
+                "label": "Chuyển khoản",
+                "prop": "",
+                "fixed": "",
+                "width": 0,
+                "minWidth": 0,
+                "childrens": [
+                    {
+                        "label": "Nhận",
+                        "prop": "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney",
+                        "fixed": "",
+                        "width": 110,
+                        "minWidth": 110,
+                        "childrens": []
+                    },
+                    {
+                        "label": "Thực thu",
+                        "prop": "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney",
+                        "fixed": "",
+                        "width": 110,
+                        "minWidth": 110,
+                        "childrens": []
+                    }
+                ]
+            },
+            {
+                "label": "Ghi chú",
+                "prop": "remark",
+                "fixed": "",
+                "width": 0,
+                "minWidth": 0,
+                "childrens": []
+            }
+        ],
+        "dataXs": [
+            {
+                "forDate": "2026-06-24",
+                "cashierSummaryId": "9ea311c7-ece4-4736-a3b4-da43480f4b2c",
+                "cashierId": "7bd0d0b4-42c7-4841-aa03-82c6b489bae3",
+                "cashierName": "Kim Ngân",
+                "operate": "Thanh toán",
+                "isNeedAccount": "true",
+                "sysMoney": "1197000.00",
+                "realMoney": "1197000.00",
+                "errorMoney": "0.00",
+                "inMoney": "0.00",
+                "outMoney": "0.00",
+                "nativeMoney": "0.00",
+                "giveMoney": "0.00",
+                "discountMoney": "0.00",
+                "returnMoney": "0.00",
+                "remark": "",
+                "totalSysMoney": "1571000.00",
+                "totalRealMoney": "1571000.00",
+                "totalErrorMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "374000.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "374000.00"
+            },
+            {
+                "forDate": "2026-06-24",
+                "cashierSummaryId": "19f3f61e-cbcd-4c60-a4df-e4d62d7550d5",
+                "cashierId": "fc35edee-5759-4976-ac01-e51affcc690a",
+                "cashierName": "Thùy Dung",
+                "operate": "Thanh toán",
+                "isNeedAccount": "true",
+                "sysMoney": "5091000.00",
+                "realMoney": "5091000.00",
+                "errorMoney": "0.00",
+                "inMoney": "0.00",
+                "outMoney": "0.00",
+                "nativeMoney": "0.00",
+                "giveMoney": "0.00",
+                "discountMoney": "0.00",
+                "returnMoney": "0.00",
+                "remark": "",
+                "totalSysMoney": "8882000.00",
+                "totalRealMoney": "8882000.00",
+                "totalErrorMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "3791000.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "3791000.00"
+            },
+            {
+                "cashierName": "Tổng cộng",
+                "totalSysMoney": "10453000.00",
+                "totalRealMoney": "10453000.00",
+                "totalErrorMoney": "0.00",
+                "sysMoney": "6288000.00",
+                "realMoney": "6288000.00",
+                "errorMoney": "0.00",
+                "inMoney": "0.00",
+                "outMoney": "0.00",
+                "nativeMoney": "0.00",
+                "giveMoney": "0.00",
+                "discountMoney": "0.00",
+                "returnMoney": "0.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_SysMoney": "4165000.00",
+                "bookKeeping_7ef314eb-7562-4df0-b097-0b55c89d7da7_RecordPaymentExecutor_Chuyển khoản_RealMoney": "4165000.00"
+            }
+        ],
+        "bookKeeps": [
+            {
+                "cashierSummaryId": "9ea311c7-ece4-4736-a3b4-da43480f4b2c",
+                "bookKeepingItems": [
+                    {
+                        "payMethodId": "7ef314eb-7562-4df0-b097-0b55c89d7da7",
+                        "payMethodCode": "RecordPaymentExecutor",
+                        "payMethodName": "Chuyển khoản",
+                        "sysMoney": 374000.00,
+                        "realMoney": 374000.00
+                    }
+                ]
+            },
+            {
+                "cashierSummaryId": "19f3f61e-cbcd-4c60-a4df-e4d62d7550d5",
+                "bookKeepingItems": [
+                    {
+                        "payMethodId": "7ef314eb-7562-4df0-b097-0b55c89d7da7",
+                        "payMethodCode": "RecordPaymentExecutor",
+                        "payMethodName": "Chuyển khoản",
+                        "sysMoney": 3791000.00,
+                        "realMoney": 3791000.00
+                    }
+                ]
             }
         ]
     },

@@ -45,16 +45,25 @@ export async function findPendingByRoleIds(
 ): Promise<ApprovalRecord[]> {
   if (roleIds.length === 0) return [];
 
-  // Firestore "in" supports up to 30 values
-  const snap = await db
-    .collection(COLLECTION)
-    .where("role_id", "in", roleIds)
-    .where("status", "==", "PENDING")
-    .get();
+  const records: ApprovalRecord[] = [];
+  const uniqueRoleIds = Array.from(new Set(roleIds.filter(Boolean)));
 
-  return snap.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() }) as ApprovalRecord,
-  );
+  for (let index = 0; index < uniqueRoleIds.length; index += 30) {
+    const chunk = uniqueRoleIds.slice(index, index + 30);
+    const snap = await db
+      .collection(COLLECTION)
+      .where("role_id", "in", chunk)
+      .where("status", "==", "PENDING")
+      .get();
+
+    records.push(
+      ...snap.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as ApprovalRecord,
+      ),
+    );
+  }
+
+  return records;
 }
 
 /**

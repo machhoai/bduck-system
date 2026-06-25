@@ -1,19 +1,20 @@
 "use client";
 
-import { useRevenueDashboard, type RevenueDashboardFilter, type RevenueDateMode } from "@/hooks/useRevenueDashboard";
+import type { RevenueDashboardFilter, RevenueDateMode } from "@/hooks/useRevenueDashboard";
 import { useTranslation } from "@/lib/i18n";
-import { Clock3, MapPin } from "lucide-react";
+import { Clock3 } from "lucide-react";
 
 interface RevenueDateFilterProps {
     filter: RevenueDashboardFilter;
     onChange: (filter: RevenueDashboardFilter) => void;
+    generatedAt?: string;
+    syncing?: boolean;
 }
 
 const modeKeys: RevenueDateMode[] = ["today", "date", "month", "year", "custom"];
 
-export default function RevenueDateFilter({ filter, onChange }: RevenueDateFilterProps) {
+export default function RevenueDateFilter({ filter, onChange, generatedAt, syncing }: RevenueDateFilterProps) {
     const { t } = useTranslation();
-    const { data, loading, error } = useRevenueDashboard(filter);
     const d = t.revenue;
 
     const update = (patch: Partial<RevenueDashboardFilter>) => {
@@ -70,7 +71,7 @@ export default function RevenueDateFilter({ filter, onChange }: RevenueDateFilte
                             {d.generatedAt}
                         </p>
                         <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                            {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("vi-VN") : "---"}
+                            {syncing ? d.syncing : generatedAt ? new Date(generatedAt).toLocaleString("vi-VN") : "---"}
                         </p>
                     </div>
                 </div>

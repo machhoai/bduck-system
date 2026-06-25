@@ -10,6 +10,7 @@ import { usePagePermission } from "../../hooks/usePagePermission";
 import Forbidden403 from "../../components/shared/Forbidden403";
 import { MFALockScreen } from "../../components/auth/MFALockScreen";
 import { useMFA } from "../../hooks/useMFA";
+import { useCurrentUserRoleSync } from "../../hooks/useCurrentUserRoleSync";
 import GuideProvider from "../../components/providers/GuideProvider";
 
 /**
@@ -32,6 +33,7 @@ export default function DashboardGroupLayout({
   const [isMounted, setIsMounted] = useState(false);
   const hasAccess = usePagePermission(pathname);
   const { isLocked } = useMFA();
+  useCurrentUserRoleSync();
 
   useEffect(() => {
     setIsMounted(true);

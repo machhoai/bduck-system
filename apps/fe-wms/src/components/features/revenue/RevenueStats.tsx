@@ -3,18 +3,31 @@
 import { useEffect, useState } from "react";
 import {
     Banknote,
+    CircleDollarSign,
     CreditCard,
+    Gift,
+    MonitorCog,
     ReceiptText,
     ShoppingCart,
     TrendingDown,
     TrendingUp,
+    Users,
     X,
 } from "lucide-react";
 import type { PaymentMethodMetric, RevenueDashboardData, RevenueMetric } from "@/hooks/useRevenueDashboard";
 import { useTranslation } from "@/lib/i18n";
 import { formatCurrency, formatNumber, getMetricTone, getPaymentTotal, donutColors } from "./revenueDashboardUtils";
 
-type StatKey = "totalRevenue" | "totalOrders" | "averageOrderValue" | "memberCardSales";
+type StatKey =
+    | "totalRevenue"
+    | "totalOrders"
+    | "averageOrderValue"
+    | "memberCardSales"
+    | "deviceConsumption"
+    | "memberCount"
+    | "memberStoredBalance"
+    | "memberGiftBalance"
+    | "paymentMethods";
 
 interface RevenueStatsProps {
     data: RevenueDashboardData;
@@ -25,6 +38,11 @@ const statIcons = {
     totalOrders: ShoppingCart,
     averageOrderValue: ReceiptText,
     memberCardSales: CreditCard,
+    deviceConsumption: MonitorCog,
+    memberCount: Users,
+    memberStoredBalance: CircleDollarSign,
+    memberGiftBalance: Gift,
+    paymentMethods: Banknote,
 };
 
 export default function RevenueStats({ data }: RevenueStatsProps) {
@@ -71,6 +89,38 @@ export default function RevenueStats({ data }: RevenueStatsProps) {
                 formatValue: formatCurrency,
                 metric: data.stats.memberCardSales,
                 hint: d.stats.memberHint,
+            },
+            {
+                key: "deviceConsumption",
+                label: d.stats.deviceConsumption,
+                value: data.stats.deviceConsumption.value,
+                formatValue: formatNumber,
+                metric: data.stats.deviceConsumption,
+                hint: d.stats.deviceHint,
+            },
+            {
+                key: "memberCount",
+                label: d.stats.memberCount,
+                value: data.stats.memberCount.value,
+                formatValue: formatNumber,
+                metric: data.stats.memberCount,
+                hint: d.stats.memberCountHint,
+            },
+            {
+                key: "memberStoredBalance",
+                label: d.stats.memberStoredBalance,
+                value: data.stats.memberStoredBalance.value,
+                formatValue: formatCurrency,
+                metric: data.stats.memberStoredBalance,
+                hint: d.stats.memberBalanceHint,
+            },
+            {
+                key: "memberGiftBalance",
+                label: d.stats.memberGiftBalance,
+                value: data.stats.memberGiftBalance.value,
+                formatValue: formatCurrency,
+                metric: data.stats.memberGiftBalance,
+                hint: d.stats.memberGiftHint,
             },
         ];
 
@@ -160,14 +210,14 @@ function StatCard({
                     strokeWidth={1.8}
                     className={isHero ? "opacity-70" : "text-[var(--color-text-muted)]"}
                 />
-                <span className={`truncate text-xs font-semibold tracking-wide ${isHero ? "opacity-80" : "text-[var(--color-text-muted)]"}`}>
+                <span className={`truncate text-xs font-medium tracking-wide ${isHero ? "opacity-80" : "text-[var(--color-text-muted)]"}`}>
                     {card.label}
                 </span>
             </div>
 
             {/* Hero number */}
             <p className={`truncate tabular-nums ${isHero
-                ? "text-2xl font-extrabold"
+                ? "text-2xl font-bold"
                 : "text-lg font-bold text-[var(--color-text-primary)]"
                 }`}>
                 <AnimatedNumber value={card.value} formatValue={card.formatValue} />
@@ -229,6 +279,7 @@ function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data:
     const d = t.revenue;
     const paymentTotal = getPaymentTotal(data.stats.paymentMethods);
     const title = d.stats[selected];
+    const metric = selected === "paymentMethods" ? undefined : data.stats[selected];
     const comparisonText =
         data.comparisonLabel in d.comparison
             ? d.comparison[data.comparisonLabel as keyof typeof d.comparison]
@@ -257,9 +308,9 @@ function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data:
                     </button>
                 </div>
 
-                <MetricDetail metric={data.stats[selected]} selected={selected} />
+                {metric && <MetricDetail metric={metric} selected={selected} />}
 
-                {selected === "totalRevenue" && (
+                {(selected === "totalRevenue" || selected === "paymentMethods") && (
                     <div className="flex flex-col gap-2">
                         {data.stats.paymentMethods.map((method, index) => (
                             <PaymentRow
@@ -289,7 +340,9 @@ function MetricDetail({ metric, selected }: { metric: RevenueMetric; selected: S
     const d = t.revenue;
     const tone = getMetricTone(metric);
     const color = tone === "up" ? "var(--color-success-text)" : tone === "down" ? "var(--color-error-text)" : "var(--color-neutral-500)";
-    const fmtVal = selected === "totalOrders" ? formatNumber : formatCurrency;
+    const fmtVal = selected === "totalOrders" || selected === "deviceConsumption" || selected === "memberCount"
+        ? formatNumber
+        : formatCurrency;
 
     return (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

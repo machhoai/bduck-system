@@ -298,6 +298,21 @@ export async function approveLevel(
   }
 
   // ── Mark as APPROVED ──
+  const alreadyApprovedThisLevel = allRecords.some(
+    (r) =>
+      r.level === record.level &&
+      r.status === "APPROVED" &&
+      r.approver_id === approverId,
+  );
+
+  if (alreadyApprovedThisLevel) {
+    throw createError(
+      403,
+      "Ban da phe duyet cap nay. Cau hinh nhieu nguoi duyet yeu cau cac nguoi duyet khac nhau.",
+      "You already approved this level. Multi-approver levels require distinct approvers.",
+    );
+  }
+
   const now = new Date();
   await approvalRepo.updateStatus(approvalId, {
     status: "APPROVED",
@@ -532,7 +547,43 @@ export async function getPendingTasksForUser(
   user: ScopedUser,
 ): Promise<ApprovalRecord[]> {
   const records = await approvalRepo.findPendingByRoleIds(user.roleIds || []);
-  return records.filter((record) => canActOnApprovalRecord(user, record));
+  const scopedRecords = records.filter((record) =>
+    canActOnApprovalRecord(user, record),
+  );
+  const entityKeys = Array.from(
+    new Set(
+      scopedRecords.map(
+        (record) => `${record.entity_type}:${record.entity_id}`,
+      ),
+    ),
+  );
+  const currentPendingLevelByEntity = new Map<string, number>();
+
+  await Promise.all(
+    entityKeys.map(async (key) => {
+      const sample = scopedRecords.find(
+        (record) => `${record.entity_type}:${record.entity_id}` === key,
+      );
+      if (!sample) return;
+
+      const allEntityRecords = await approvalRepo.findByEntity(
+        sample.entity_type,
+        sample.entity_id,
+      );
+      const pendingLevels = allEntityRecords
+        .filter((record) => record.status === "PENDING")
+        .map((record) => record.level);
+
+      if (pendingLevels.length > 0) {
+        currentPendingLevelByEntity.set(key, Math.min(...pendingLevels));
+      }
+    }),
+  );
+
+  return scopedRecords.filter((record) => {
+    const key = `${record.entity_type}:${record.entity_id}`;
+    return currentPendingLevelByEntity.get(key) === record.level;
+  });
 }
 
 /**

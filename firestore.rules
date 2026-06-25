@@ -210,6 +210,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Revenue Dashboard: Authenticated read for realtime cached JoyWorld dashboards ──
+    match /revenue_dashboards/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      match /orders/{orderId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+
+      match /sold_items/{itemId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
     // ── Default: Deny all ──
     match /{document=**} {
       allow read, write: if false;

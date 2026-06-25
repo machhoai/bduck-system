@@ -26,6 +26,7 @@ interface ChartCanvasProps {
     data: SupportedChartData;
     options: SupportedChartOptions;
     plugins?: Plugin<ChartType>[];
+    onElementClick?: (index: number) => void;
 }
 
 export default function ChartCanvas({
@@ -33,6 +34,7 @@ export default function ChartCanvas({
     data,
     options,
     plugins,
+    onElementClick,
 }: ChartCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const chartRef = useRef<ChartJS<ChartType, number[], string> | null>(null);
@@ -66,5 +68,21 @@ export default function ChartCanvas({
         chart.update();
     }, [data, options]);
 
-    return <canvas ref={canvasRef} role="img" />;
+    return (
+        <canvas
+            ref={canvasRef}
+            role="img"
+            onClick={(event) => {
+                if (!onElementClick || !chartRef.current) return;
+                const points = chartRef.current.getElementsAtEventForMode(
+                    event.nativeEvent,
+                    "nearest",
+                    { intersect: true },
+                    true,
+                );
+                const index = points[0]?.index;
+                if (typeof index === "number") onElementClick(index);
+            }}
+        />
+    );
 }
