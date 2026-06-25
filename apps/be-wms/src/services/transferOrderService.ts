@@ -1140,82 +1140,241 @@ export async function completeReceiving(
 
   const now = new Date();
 
+  const seenItemIds = new Set<string>();
+  for (const item of input.items) {
+    if (seenItemIds.has(item.item_id)) {
+      throw createError(
+        400,
+        "Dữ liệu nhận hàng bị trùng sản phẩm.",
+        "收货数据中存在重复商品。",
+      );
+    }
+    seenItemIds.add(item.item_id);
+  }
+
   await db.runTransaction(async (txn) => {
-    for (const receivedItem of input.items) {
-      // Increase atp at destination location (upsert)
-      const dstSnap = await txn.get(
-        db
-          .collection("inventory")
-          .where("warehouse_id", "==", order.destination_warehouse_id)
-          .where(
-            "warehouse_location_id",
-            "==",
-            receivedItem.destination_location_id,
-          )
-          .where("product_id", "==", "")
-          .limit(1), // placeholder — need product_id from transfer item
+    const orderRef = db.collection("transfer_orders").doc(orderId);
+    const orderSnap = await txn.get(orderRef);
+    if (!orderSnap.exists) {
+      throw createError(404, "Không tìm thấy phiếu.", "找不到单据。");
+    }
+
+    const currentOrder = orderSnap.data() as TransferOrder;
+    if (currentOrder.status !== TransferOrderStatus.RECEIVING) {
+      throw createError(
+        400,
+        "Phiếu chưa ở trạng thái kiểm đếm.",
+        "单据不在盘点状态。",
+      );
+    }
+
+    const itemRefs = input.items.map((receivedItem) =>
+      orderRef.collection("items").doc(receivedItem.item_id),
+    );
+    const itemSnaps = await Promise.all(itemRefs.map((ref) => txn.get(ref)));
+
+    const receivingItems: Array<{
+      receivedItem: CompleteReceivingInput["items"][number];
+      transferItem: TransferOrderItem;
+      ref: FirebaseFirestore.DocumentReference;
+    }> = [];
+
+    for (let i = 0; i < input.items.length; i++) {
+      const itemSnap = itemSnaps[i];
+      if (!itemSnap.exists) {
+        throw createError(
+          400,
+          "Không tìm thấy dòng hàng cần nhận.",
+          "找不到需要收货的商品行。",
+        );
+      }
+
+      const transferItem = itemSnap.data() as TransferOrderItem;
+      if (transferItem.is_deleted === true) {
+        throw createError(
+          400,
+          "Dòng hàng cần nhận đã bị xóa.",
+          "需要收货的商品行已删除。",
+        );
+      }
+
+      receivingItems.push({
+        receivedItem: input.items[i],
+        transferItem,
+        ref: itemSnap.ref,
+      });
+    }
+
+    const inventoryKey = (
+      warehouseId: string,
+      locationId: string,
+      productId: string,
+    ) => `${warehouseId}:${locationId}:${productId}`;
+
+    const inventoryDeltas = new Map<
+      string,
+      {
+        warehouseId: string;
+        locationId: string;
+        productId: string;
+        atpDelta: number;
+        inTransitDelta: number;
+      }
+    >();
+
+    const addInventoryDelta = (
+      warehouseId: string,
+      locationId: string,
+      productId: string,
+      delta: { atpDelta?: number; inTransitDelta?: number },
+    ) => {
+      const key = inventoryKey(warehouseId, locationId, productId);
+      const existing =
+        inventoryDeltas.get(key) ?? {
+          warehouseId,
+          locationId,
+          productId,
+          atpDelta: 0,
+          inTransitDelta: 0,
+        };
+
+      existing.atpDelta += delta.atpDelta ?? 0;
+      existing.inTransitDelta += delta.inTransitDelta ?? 0;
+      inventoryDeltas.set(key, existing);
+    };
+
+    for (const { receivedItem, transferItem } of receivingItems) {
+      addInventoryDelta(
+        currentOrder.source_warehouse_id,
+        transferItem.source_location_id,
+        transferItem.product_id,
+        { inTransitDelta: -transferItem.quantity },
       );
 
-      // Get the transfer item to find product_id
-      const transferItemSnap = await txn.get(
-        db
-          .collection("transfer_orders")
-          .doc(orderId)
-          .collection("items")
-          .doc(receivedItem.item_id),
-      );
+      if (receivedItem.received_quantity > 0) {
+        addInventoryDelta(
+          currentOrder.destination_warehouse_id,
+          receivedItem.destination_location_id,
+          transferItem.product_id,
+          { atpDelta: receivedItem.received_quantity },
+        );
+      }
+    }
 
-      if (!transferItemSnap.exists) continue;
-      const transferItem = transferItemSnap.data() as TransferOrderItem;
+    const inventoryEntries = Array.from(inventoryDeltas.values()).filter(
+      (entry) => entry.atpDelta !== 0 || entry.inTransitDelta !== 0,
+    );
+    const inventorySnapshots = await Promise.all(
+      inventoryEntries.map((entry) =>
+        txn.get(
+          db
+            .collection("inventory")
+            .where("warehouse_id", "==", entry.warehouseId)
+            .where("warehouse_location_id", "==", entry.locationId)
+            .where("product_id", "==", entry.productId)
+            .limit(5),
+        ),
+      ),
+    );
 
-      // Actual destination inventory query with correct product_id
-      const actualDstSnap = await txn.get(
-        db
-          .collection("inventory")
-          .where("warehouse_id", "==", order.destination_warehouse_id)
-          .where(
-            "warehouse_location_id",
-            "==",
-            receivedItem.destination_location_id,
-          )
-          .where("product_id", "==", transferItem.product_id)
-          .limit(1),
-      );
-      const activeDst = actualDstSnap.docs.find(
+    const activeInventory = new Map<
+      string,
+      { ref: FirebaseFirestore.DocumentReference; data: Inventory }
+    >();
+
+    for (let i = 0; i < inventoryEntries.length; i++) {
+      const entry = inventoryEntries[i];
+      const activeDoc = inventorySnapshots[i].docs.find(
         (d) => d.data().is_deleted !== true,
       );
 
-      if (activeDst) {
-        const dstData = activeDst.data();
-        txn.update(activeDst.ref, {
-          atp_quantity:
-            (dstData.atp_quantity as number) + receivedItem.received_quantity,
-          total_quantity:
-            (dstData.total_quantity as number) + receivedItem.received_quantity,
+      if (activeDoc) {
+        activeInventory.set(
+          inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
+          { ref: activeDoc.ref, data: activeDoc.data() as Inventory },
+        );
+      }
+    }
+
+    for (const entry of inventoryEntries) {
+      const activeRecord = activeInventory.get(
+        inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
+      );
+
+      if (!activeRecord && entry.inTransitDelta < 0) {
+        throw createError(
+          400,
+          "Không tìm thấy tồn kho đang chuyển tại vị trí nguồn.",
+          "源库位未找到在途库存。",
+        );
+      }
+
+      const currentAtp = activeRecord?.data.atp_quantity ?? 0;
+      const currentInTransit = activeRecord?.data.in_transit_quantity ?? 0;
+      const newAtp = currentAtp + entry.atpDelta;
+      const newInTransit = currentInTransit + entry.inTransitDelta;
+
+      if (newAtp < 0 || newInTransit < 0) {
+        throw createError(
+          400,
+          "Tồn kho sau khi nhận hàng không hợp lệ.",
+          "收货后的库存无效。",
+        );
+      }
+    }
+
+    for (const entry of inventoryEntries) {
+      const activeRecord = activeInventory.get(
+        inventoryKey(entry.warehouseId, entry.locationId, entry.productId),
+      );
+
+      if (activeRecord) {
+        const newAtp = activeRecord.data.atp_quantity + entry.atpDelta;
+        const newInTransit =
+          activeRecord.data.in_transit_quantity + entry.inTransitDelta;
+        const newTotal = calculateInventoryTotalQuantity({
+          atp_quantity: newAtp,
+          on_hold_quantity: activeRecord.data.on_hold_quantity,
+          in_transit_quantity: newInTransit,
+          quarantine_quantity: activeRecord.data.quarantine_quantity,
+        });
+
+        txn.update(activeRecord.ref, {
+          atp_quantity: newAtp,
+          in_transit_quantity: newInTransit,
+          total_quantity: newTotal,
           last_updated_at: now,
         });
       } else {
         const newInvId = randomUUID();
-        txn.set(db.collection("inventory").doc(newInvId), {
+        const record: Inventory = {
           id: newInvId,
-          warehouse_id: order.destination_warehouse_id,
-          warehouse_location_id: receivedItem.destination_location_id,
-          product_id: transferItem.product_id,
-          total_quantity: receivedItem.received_quantity,
-          atp_quantity: receivedItem.received_quantity,
+          warehouse_id: entry.warehouseId,
+          warehouse_location_id: entry.locationId,
+          product_id: entry.productId,
+          total_quantity: calculateInventoryTotalQuantity({
+            atp_quantity: entry.atpDelta,
+            on_hold_quantity: 0,
+            in_transit_quantity: entry.inTransitDelta,
+            quarantine_quantity: 0,
+          }),
+          atp_quantity: entry.atpDelta,
           on_hold_quantity: 0,
-          in_transit_quantity: 0,
+          in_transit_quantity: entry.inTransitDelta,
           quarantine_quantity: 0,
           last_count_at: null,
           last_updated_at: now,
           is_deleted: false,
-        });
-      }
+        };
 
-      // Update transfer item
+        txn.set(db.collection("inventory").doc(newInvId), record);
+      }
+    }
+
+    for (const { receivedItem, transferItem, ref } of receivingItems) {
       const hasDiscrepancy =
         receivedItem.received_quantity !== transferItem.quantity;
-      txn.update(transferItemSnap.ref, {
+      txn.update(ref, {
         destination_location_id: receivedItem.destination_location_id,
         received_quantity: receivedItem.received_quantity,
         status: hasDiscrepancy
@@ -1224,8 +1383,7 @@ export async function completeReceiving(
       });
     }
 
-    // Update transfer order status
-    txn.update(db.collection("transfer_orders").doc(orderId), {
+    txn.update(orderRef, {
       status: TransferOrderStatus.COMPLETED,
       received_at: now,
       updated_at: now,
