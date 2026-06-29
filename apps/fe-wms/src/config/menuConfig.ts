@@ -164,8 +164,13 @@ export const menuItems: MenuItem[] = [
         id: "externalQueue",
         labelKey: "externalQueue",
         icon: ScanBarcode,
-        href: "/external-queue",
-        permissionsAny: ["external_scan.view", "external_scan.approve"],
+        href: "/external/queue",
+        permissionsAny: [
+            "external_scan.view",
+            "external_scan.approve",
+            "external_count.view",
+            "external_count.count",
+        ],
     },
     // ── Thêm module mới vào đây ──
 ];

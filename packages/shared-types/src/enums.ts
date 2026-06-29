@@ -184,14 +184,35 @@ export enum StockCountType {
   RANDOM = "RANDOM",
   SCHEDULED = "SCHEDULED",
   FULL = "FULL",
+  EXTERNAL = "EXTERNAL",
+  ADHOC = "ADHOC",
+}
+
+export enum StockCountPurpose {
+  EXTERNAL_OPENING = "EXTERNAL_OPENING",
+  EXTERNAL_CLOSING = "EXTERNAL_CLOSING",
+  ADHOC = "ADHOC",
+  RANDOM_AUDIT = "RANDOM_AUDIT",
+  SCHEDULED = "SCHEDULED",
+  FULL = "FULL",
+}
+
+export enum StockCountSource {
+  INTERNAL_UI = "INTERNAL_UI",
+  EXTERNAL_API = "EXTERNAL_API",
+  SYSTEM_SUGGESTION = "SYSTEM_SUGGESTION",
 }
 
 /** Stock count session status */
 export enum StockCountSessionStatus {
+  DRAFT = "DRAFT",
   IN_PROGRESS = "IN_PROGRESS",
+  SUBMITTED = "SUBMITTED",
   COMPLETED = "COMPLETED",
   DISCREPANCY_FOUND = "DISCREPANCY_FOUND",
+  VERIFIED = "VERIFIED",
   RESOLVED = "RESOLVED",
+  CANCELLED = "CANCELLED",
 }
 
 /** Stock count item condition */

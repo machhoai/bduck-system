@@ -645,6 +645,33 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "查看来自外部系统的出库待处理列表和历史记录。",
     },
   },
+  {
+    key: "external_count.view",
+    group: "external",
+    label: { vi: "Xem kiểm đếm ngoài", zh: "查看外部盘点" },
+    description: {
+      vi: "Xem phiên kiểm đếm ATP theo quầy từ hệ thống ngoài.",
+      zh: "查看来自外部系统的柜台ATP盘点会话。",
+    },
+  },
+  {
+    key: "external_count.count",
+    group: "external",
+    label: { vi: "Nhập kiểm đếm ngoài", zh: "录入外部盘点" },
+    description: {
+      vi: "Tạo, lưu tạm và nộp kết quả kiểm đếm ATP theo quầy.",
+      zh: "创建、暂存并提交柜台ATP盘点结果。",
+    },
+  },
+  {
+    key: "external_count.cancel",
+    group: "external",
+    label: { vi: "Hủy phiên kiểm đếm ngoài", zh: "取消外部盘点" },
+    description: {
+      vi: "Hủy phiên kiểm đếm ngoài với lý do bắt buộc và audit log.",
+      zh: "带必填原因和审计日志取消外部盘点。",
+    },
+  },
 ];
 
 // ─────────────────────────────────────────────

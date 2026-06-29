@@ -2,6 +2,8 @@
 
 import {
   StockCountType,
+  StockCountPurpose,
+  StockCountSource,
   StockCountSessionStatus,
   StockCountItemCondition,
   StockPolicyScope,
@@ -106,12 +108,26 @@ export interface StockCountSession {
   id: string; // UUID, PK
   session_number: string; // UNIQUE
   warehouse_id: string; // FK → warehouses
+  warehouse_location_id?: string | null;
   count_type: StockCountType;
+  count_purpose?: StockCountPurpose;
+  source?: StockCountSource;
   status: StockCountSessionStatus;
-  counter_id: string; // FK → users
-  supervisor_id: string; // FK → users — CHECK(counter_id <> supervisor_id)
+  counter_id: string | null; // FK → users
+  supervisor_id: string | null; // FK → users — CHECK(counter_id <> supervisor_id)
+  external_operator_name?: string | null;
+  external_operator_id?: string | null;
+  external_client_id?: string | null;
+  device_id?: string | null;
+  business_date?: string | null;
+  blind_count_enabled?: boolean;
   started_at: Date;
   completed_at: Date | null;
+  submitted_at?: Date | null;
+  cancelled_at?: Date | null;
+  cancelled_by?: string | null;
+  cancel_reason?: string | null;
+  discrepancy_count?: number;
   action_time: Date; // ISO
   sync_time: Date; // ISO
   notes: string | null;
@@ -123,14 +139,23 @@ export interface StockCountSession {
 export interface StockCountItem {
   id: string; // UUID, PK
   session_id: string; // FK → stock_count_sessions
+  inventory_id?: string | null;
   product_id: string; // FK → products
   warehouse_location_id: string; // FK → warehouse_locations
   system_quantity: number;
   atp_snapshot: number;
-  counted_quantity: number;
+  expected_at_count_time?: number | null;
+  current_atp?: number | null;
+  counted_quantity: number | null;
+  counted_at?: Date | null;
   discrepancy: number; // = counted_quantity - system_quantity
   condition: StockCountItemCondition;
   has_discrepancy: boolean; // IDX
+  movement_delta_before_count?: number;
+  movement_delta_after_count?: number;
+  evidence_urls?: string[];
   notes: string | null;
   is_deleted: boolean;
+  created_at?: Date;
+  updated_at?: Date;
 }

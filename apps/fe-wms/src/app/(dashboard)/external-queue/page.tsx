@@ -1,4 +1,4 @@
-import ExternalQueuePage from "../../../components/features/external-queue/ExternalQueuePage";
+import { redirect } from "next/navigation";
 
 export const metadata = {
     title: "Duyệt đơn ngoài | B-Duck WMS",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function Page() {
-    return <ExternalQueuePage />;
+    redirect("/external/queue");
 }

@@ -24,6 +24,7 @@ import reportRoutes from "./api/routes/reportRoutes.js";
 import notificationRoutes from "./api/routes/notificationRoutes.js";
 import nonconformityRoutes from "./api/routes/nonconformityRoutes.js";
 import stockPolicyRoutes from "./api/routes/stockPolicyRoutes.js";
+import stockCountRoutes from "./api/routes/stockCountRoutes.js";
 import externalRoutes from "./api/routes/externalRoutes.js";
 import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
@@ -71,6 +72,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/nonconformities", nonconformityRoutes);
 app.use("/api/stock-policies", stockPolicyRoutes);
+app.use("/api/external/count", stockCountRoutes);
 app.use("/api/external/v1", externalRoutes);
 app.use("/api/external-queue", externalQueueRoutes);
 

@@ -21,6 +21,7 @@ import {
 } from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
 import * as scannableProductService from "./externalQueueScannableProductService.js";
+import { isExternalCountGateOpen } from "./stockCountService.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
 async function resolveProduct(
@@ -491,10 +492,27 @@ export const autoSubmitQueuedLocations = async (params: {
   }
 
   const submittedBatches = [];
+  const blockedLocations = [];
   let submittedScans = 0;
   for (const group of groupMap.values()) {
     const first = group[0];
     const shiftDate = getShiftDate(toDate(first.scan_time));
+    const countGateOpen = await isExternalCountGateOpen({
+      warehouseId: first.warehouse_id,
+      warehouseLocationId: first.warehouse_location_id,
+      businessDate: shiftDate,
+    });
+    if (!countGateOpen) {
+      blockedLocations.push({
+        warehouse_id: first.warehouse_id,
+        warehouse_location_id: first.warehouse_location_id,
+        business_date: shiftDate,
+        queued_scans: group.length,
+        reason: "EXTERNAL_COUNT_REQUIRED",
+      });
+      continue;
+    }
+
     const batchId = buildLocationBatchId(shiftDate);
     const batch = db.batch();
     let totalQty = 0;
@@ -552,6 +570,7 @@ export const autoSubmitQueuedLocations = async (params: {
     submitted_batches: submittedBatches.length,
     submitted_scans: submittedScans,
     batches: submittedBatches,
+    blocked_locations: blockedLocations,
   };
 };
 
