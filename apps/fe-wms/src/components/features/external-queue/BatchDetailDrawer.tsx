@@ -175,6 +175,18 @@ export default function BatchDetailDrawer({
     [canViewPrice, items, quantities],
   );
 
+  const itemSummary = useMemo(() => {
+    const summary: Record<string, number> = {};
+    items.forEach((item: any) => {
+      const code = item.product_code || item.product_name || item.product_id || "Unknown";
+      const qty = quantities[item.scan_id] || 0;
+      if (qty > 0) {
+        summary[code] = (summary[code] || 0) + qty;
+      }
+    });
+    return Object.entries(summary).sort((a, b) => b[1] - a[1]);
+  }, [items, quantities]);
+
   const handleSaveQuantity = async (item: any) => {
     if (!canEditQuantity || savingScanId) return;
     const nextQuantity = quantities[item.scan_id];
@@ -702,25 +714,48 @@ export default function BatchDetailDrawer({
             </div>
           </div>
 
-          <div
-            className={`mt-3 grid gap-2 ${canViewPrice ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}
-          >
-            <div className="rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3">
-              <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                {drawerText?.info?.totalQuantity || "Tổng số lượng"}
-              </p>
-              <p className="mt-1 text-xl font-bold text-[var(--color-text-primary)]">
-                {totalQuantity.toLocaleString()}
-              </p>
+          <div className="mt-3 overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-white">
+            <div
+              className={`grid gap-px bg-[var(--color-border-soft)] ${canViewPrice ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}
+            >
+              <div className="bg-white px-4 py-3">
+                <p className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {drawerText?.info?.totalQuantity || "Tổng số lượng"}
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-[var(--color-text-primary)]">
+                  {totalQuantity.toLocaleString()}
+                </p>
+              </div>
+              {canViewPrice && (
+                <div className="bg-white px-4 py-3">
+                  <p className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    {drawerText?.info?.totalValue || "Tổng giá trị"}
+                  </p>
+                  <p className="mt-0.5 text-lg font-bold text-[var(--color-brand-primary)]">
+                    {totalValue.toLocaleString()}đ
+                  </p>
+                </div>
+              )}
             </div>
-            {canViewPrice && (
-              <div className="rounded-lg border border-[var(--color-border-soft)] bg-white px-4 py-3">
-                <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                  {drawerText?.info?.totalValue || "Tổng giá trị"}
+            
+            {itemSummary.length > 0 && (
+              <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-4 py-3">
+                <p className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {drawerText?.info?.itemSummary || "Tóm tắt mã hàng"}
                 </p>
-                <p className="mt-1 text-xl font-bold text-[var(--color-brand-primary)]">
-                  {totalValue.toLocaleString()}đ
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {itemSummary.map(([code, qty]) => (
+                    <div 
+                      key={code} 
+                      className="flex items-center gap-1.5 rounded-md border border-[var(--color-border-subtle)] bg-white px-2 py-1 shadow-sm"
+                    >
+                      <span className="text-xs font-semibold text-[var(--color-text-primary)]">{code}</span>
+                      <span className="flex h-5 items-center justify-center rounded bg-[var(--color-brand-primary-muted)] px-1.5 text-xs font-bold text-[var(--color-brand-primary)]">
+                        {qty.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
