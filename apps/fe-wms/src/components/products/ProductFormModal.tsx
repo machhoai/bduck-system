@@ -60,6 +60,13 @@ export function ProductFormModal({
     product_type: ProductType.EQUIPMENT,
     product_material: "",
     product_origin: ProductOrigin.DOMESTIC,
+    hs_code: "",
+    technical_specifications: "",
+    dimensions: "",
+    manufacturer: "",
+    manufacturer_address: "",
+    notes: "",
+    applicable_standard: "",
     unit_price: "",
     is_serialized: false,
     description: "",
@@ -83,6 +90,13 @@ export function ProductFormModal({
         product_type: product.product_type,
         product_material: product.product_material || "",
         product_origin: product.product_origin || ProductOrigin.DOMESTIC,
+        hs_code: product.hs_code || "",
+        technical_specifications: product.technical_specifications || "",
+        dimensions: product.dimensions || "",
+        manufacturer: product.manufacturer || "",
+        manufacturer_address: product.manufacturer_address || "",
+        notes: product.notes || "",
+        applicable_standard: product.applicable_standard || "",
         unit_price: product.unit_price
           ? new Intl.NumberFormat("vi-VN").format(product.unit_price)
           : "",
@@ -102,6 +116,13 @@ export function ProductFormModal({
         product_type: ProductType.EQUIPMENT,
         product_material: "",
         product_origin: ProductOrigin.DOMESTIC,
+        hs_code: "",
+        technical_specifications: "",
+        dimensions: "",
+        manufacturer: "",
+        manufacturer_address: "",
+        notes: "",
+        applicable_standard: "",
         unit_price: "",
         is_serialized: false,
         description: "",
@@ -215,6 +236,13 @@ export function ProductFormModal({
           product_image_url: finalImageUrls.length > 0 ? finalImageUrls : null,
           barcode: formData.barcode || null,
           product_material: formData.product_material || null,
+          hs_code: formData.hs_code || null,
+          technical_specifications: formData.technical_specifications || null,
+          dimensions: formData.dimensions || null,
+          manufacturer: formData.manufacturer || null,
+          manufacturer_address: formData.manufacturer_address || null,
+          notes: formData.notes || null,
+          applicable_standard: formData.applicable_standard || null,
         };
 
         // 1. Update Product Parent
@@ -328,7 +356,8 @@ export function ProductFormModal({
                 {/* Category */}
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Danh mục <span className="text-[var(--color-accent-error)]">*</span>
+                    Danh mục{" "}
+                    <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <select
                     required={activeTab === "info"}
@@ -352,7 +381,8 @@ export function ProductFormModal({
                 {/* Type */}
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Loại hình <span className="text-[var(--color-accent-error)]">*</span>
+                    Loại hình{" "}
+                    <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <select
                     required={activeTab === "info"}
@@ -376,7 +406,8 @@ export function ProductFormModal({
                 {/* Name */}
                 <div className="col-span-2">
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Tên sản phẩm <span className="text-[var(--color-accent-error)]">*</span>
+                    Tên sản phẩm{" "}
+                    <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <input
                     required={activeTab === "info"}
@@ -393,7 +424,8 @@ export function ProductFormModal({
                 {/* Code */}
                 <div>
                   <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                    Mã (SKU) <span className="text-[var(--color-accent-error)]">*</span>
+                    Mã (SKU){" "}
+                    <span className="text-[var(--color-accent-error)]">*</span>
                   </label>
                   <input
                     required={activeTab === "info"}
@@ -433,7 +465,10 @@ export function ProductFormModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
-                      Đơn vị <span className="text-[var(--color-accent-error)]">*</span>
+                      Đơn vị{" "}
+                      <span className="text-[var(--color-accent-error)]">
+                        *
+                      </span>
                     </label>
                     <input
                       required={activeTab === "info"}
@@ -504,6 +539,117 @@ export function ProductFormModal({
                         })
                       }
                       className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Mã HS code khai quan
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: 9503.00.99"
+                      value={formData.hs_code}
+                      onChange={(e) =>
+                        setFormData({ ...formData, hs_code: e.target.value })
+                      }
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Kích thước
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: 20 x 10 x 5 cm"
+                      value={formData.dimensions}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dimensions: e.target.value })
+                      }
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Nhà sản xuất
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Nhập tên nhà sản xuất"
+                      value={formData.manufacturer}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          manufacturer: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Quy chuẩn áp dụng
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: QCVN, TCVN..."
+                      value={formData.applicable_standard}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          applicable_standard: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Địa chỉ nhà sản xuất
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Nhập địa chỉ nhà sản xuất"
+                      value={formData.manufacturer_address}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          manufacturer_address: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Đặc tính kỹ thuật
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formData.technical_specifications}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          technical_specifications: e.target.value,
+                        })
+                      }
+                      className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-normal text-[var(--color-text-secondary)]">
+                      Lưu ý
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
+                      className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-4 py-2 text-sm outline-none transition-all focus:border-[var(--color-border-focus)]"
                     />
                   </div>
                 </div>
@@ -601,7 +747,10 @@ export function ProductFormModal({
                     ))}
 
                     <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-[var(--radius-sm)] border-2 border-dashed border-[var(--color-border-subtle)] transition-colors hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-surface-card)]">
-                      <Upload size={24} className="mb-2 text-[var(--color-text-muted)]" />
+                      <Upload
+                        size={24}
+                        className="mb-2 text-[var(--color-text-muted)]"
+                      />
                       <span className="text-xs font-normal text-[var(--color-text-muted)]">
                         Tải ảnh
                       </span>

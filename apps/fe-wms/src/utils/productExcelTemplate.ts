@@ -14,6 +14,13 @@ type ProductColumnKey =
   | "product_type"
   | "product_material"
   | "product_origin"
+  | "hs_code"
+  | "technical_specifications"
+  | "dimensions"
+  | "manufacturer"
+  | "manufacturer_address"
+  | "notes"
+  | "applicable_standard"
   | "unit_price"
   | "is_serialized"
   | "description";
@@ -122,6 +129,41 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
         note: "Không bắt buộc. DOMESTIC là trong nước, INTERNATIONAL là nhập khẩu.",
         width: 28,
       },
+      hs_code: {
+        label: "Mã HS code khai quan",
+        note: "Không bắt buộc. Mã HS dùng cho khai quan nếu có.",
+        width: 22,
+      },
+      technical_specifications: {
+        label: "Đặc tính kỹ thuật",
+        note: "Không bắt buộc. Mô tả thông số hoặc đặc tính kỹ thuật của sản phẩm.",
+        width: 36,
+      },
+      dimensions: {
+        label: "Kích thước",
+        note: "Không bắt buộc. Ví dụ: 20 x 10 x 5 cm.",
+        width: 22,
+      },
+      manufacturer: {
+        label: "Nhà sản xuất",
+        note: "Không bắt buộc. Tên nhà sản xuất.",
+        width: 28,
+      },
+      manufacturer_address: {
+        label: "Địa chỉ nhà sản xuất",
+        note: "Không bắt buộc. Địa chỉ nhà sản xuất.",
+        width: 36,
+      },
+      notes: {
+        label: "Lưu ý",
+        note: "Không bắt buộc. Các lưu ý nội bộ hoặc vận hành.",
+        width: 30,
+      },
+      applicable_standard: {
+        label: "Quy chuẩn áp dụng",
+        note: "Không bắt buộc. Quy chuẩn, tiêu chuẩn áp dụng nếu có.",
+        width: 28,
+      },
       unit_price: {
         label: "Đơn giá",
         note: "Không bắt buộc. Nhập số nguyên không âm để làm đơn giá cơ sở.",
@@ -148,6 +190,13 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       product_type: "EQUIPMENT - Thiết bị",
       product_material: "Nhựa",
       product_origin: "DOMESTIC - Trong nước",
+      hs_code: "9503.00.99",
+      technical_specifications: "Chống nước, dùng trong nhà",
+      dimensions: "20 x 10 x 5 cm",
+      manufacturer: "Nhà máy mẫu",
+      manufacturer_address: "Khu công nghiệp mẫu, Việt Nam",
+      notes: "Bảo quản nơi khô ráo",
+      applicable_standard: "QCVN/TCVN áp dụng",
       unit_price: 10000,
       is_serialized: "false - Không theo dõi serial",
       description: "Mô tả tùy chọn",
@@ -283,6 +332,41 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
         note: "选填。DOMESTIC 为国内，INTERNATIONAL 为进口。",
         width: 28,
       },
+      hs_code: {
+        label: "HS code",
+        note: "选填。海关申报 HS 编码。",
+        width: 22,
+      },
+      technical_specifications: {
+        label: "技术特性",
+        note: "选填。产品技术参数或特性。",
+        width: 36,
+      },
+      dimensions: {
+        label: "尺寸",
+        note: "选填。例如：20 x 10 x 5 cm。",
+        width: 22,
+      },
+      manufacturer: {
+        label: "制造商",
+        note: "选填。制造商名称。",
+        width: 28,
+      },
+      manufacturer_address: {
+        label: "制造商地址",
+        note: "选填。制造商地址。",
+        width: 36,
+      },
+      notes: {
+        label: "注意事项",
+        note: "选填。内部或操作注意事项。",
+        width: 30,
+      },
+      applicable_standard: {
+        label: "适用标准",
+        note: "选填。适用的规范或标准。",
+        width: 28,
+      },
       unit_price: {
         label: "单价",
         note: "选填。请输入非负整数，作为基础单价。",
@@ -309,6 +393,13 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       product_type: "EQUIPMENT - 设备",
       product_material: "塑料",
       product_origin: "DOMESTIC - 国内",
+      hs_code: "9503.00.99",
+      technical_specifications: "防水，室内使用",
+      dimensions: "20 x 10 x 5 cm",
+      manufacturer: "示例制造商",
+      manufacturer_address: "示例工业区，越南",
+      notes: "存放于干燥处",
+      applicable_standard: "适用标准",
       unit_price: 10000,
       is_serialized: "false - 不管理序列号",
       description: "选填描述",
@@ -346,13 +437,11 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       },
       {
         section: "产品分类",
-        guide:
-          "请选择 '分类编码 - 分类名称'。导入时系统只使用分类编码。",
+        guide: "请选择 '分类编码 - 分类名称'。导入时系统只使用分类编码。",
       },
       {
         section: "SKU 与条形码",
-        guide:
-          "SKU 必填且必须唯一。条形码选填，如填写也必须唯一。",
+        guide: "SKU 必填且必须唯一。条形码选填，如填写也必须唯一。",
       },
       {
         section: "产品类型",
@@ -361,8 +450,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       },
       {
         section: "来源",
-        guide:
-          "DOMESTIC: 国内。INTERNATIONAL: 进口。未知时可留空。",
+        guide: "DOMESTIC: 国内。INTERNATIONAL: 进口。未知时可留空。",
       },
       {
         section: "序列号管理",
@@ -371,8 +459,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       },
       {
         section: "单价",
-        guide:
-          "请输入非负整数（例如：10000）；暂无单价时可留空。",
+        guide: "请输入非负整数（例如：10000）；暂无单价时可留空。",
       },
     ],
     typeLabels: {
@@ -401,6 +488,13 @@ const PRODUCT_COLUMNS: ProductColumnKey[] = [
   "product_type",
   "product_material",
   "product_origin",
+  "hs_code",
+  "technical_specifications",
+  "dimensions",
+  "manufacturer",
+  "manufacturer_address",
+  "notes",
+  "applicable_standard",
   "unit_price",
   "is_serialized",
   "description",
@@ -429,7 +523,11 @@ export async function downloadProductImportTemplate(
 
   const refs = buildTemplateRefs(categories, text);
   fillRefsSheet(refsSheet, refs, text);
-  addSampleRow(productSheet, refs.categoryOptions[0] ?? text.refs.noCategory, text);
+  addSampleRow(
+    productSheet,
+    refs.categoryOptions[0] ?? text.refs.noCategory,
+    text,
+  );
   styleProductSheet(productSheet, text);
   addProductSheetValidations(productSheet, {
     categoryCount: refs.categoryOptions.length,
@@ -572,7 +670,11 @@ function styleProductSheet(sheet: ExcelJS.Worksheet, text: TemplateText) {
   PRODUCT_COLUMNS.forEach((key, index) => {
     const cell = headerRow.getCell(index + 1);
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -591,7 +693,7 @@ function styleProductSheet(sheet: ExcelJS.Worksheet, text: TemplateText) {
     });
   }
 
-  sheet.autoFilter = { from: "A1", to: "K1" };
+  sheet.autoFilter = { from: "A1", to: "R1" };
 }
 
 function addProductSheetValidations(
@@ -631,7 +733,7 @@ function addProductSheetValidations(
       config.text,
       true,
     );
-    sheet.getCell(`I${rowNumber}`).dataValidation = {
+    sheet.getCell(`P${rowNumber}`).dataValidation = {
       type: "whole",
       operator: "greaterThanOrEqual",
       formulae: [0],
@@ -640,7 +742,7 @@ function addProductSheetValidations(
       errorTitle: config.text.prompts.invalidTitle,
       error: config.text.prompts.invalidUnitPrice,
     };
-    sheet.getCell(`J${rowNumber}`).dataValidation = listValidation(
+    sheet.getCell(`Q${rowNumber}`).dataValidation = listValidation(
       `${refsName}!$G$2:$G$${config.serializedCount + 1}`,
       config.text.prompts.serialized,
       config.text,

@@ -9,6 +9,9 @@ export type ProductSortField =
   | "unit_price"
   | "product_type"
   | "product_origin"
+  | "hs_code"
+  | "manufacturer"
+  | "applicable_standard"
   | "created_at"
   | "updated_at";
 export type ProductSortDirection = "asc" | "desc";
@@ -35,7 +38,10 @@ export const defaultProductFilters: ProductFilters = {
   sortDirection: "desc",
 };
 
-function getProductSortValue(product: Product, field: ProductSortField): string | number {
+function getProductSortValue(
+  product: Product,
+  field: ProductSortField,
+): string | number {
   if (field === "created_at" || field === "updated_at") {
     const val = product[field];
     if (!val) return 0;
@@ -79,6 +85,13 @@ export function filterProducts(
         product.barcode,
         product.unit,
         product.product_material,
+        product.hs_code,
+        product.technical_specifications,
+        product.dimensions,
+        product.manufacturer,
+        product.manufacturer_address,
+        product.notes,
+        product.applicable_standard,
         product.description,
         product.product_type,
         product.product_origin,
@@ -101,10 +114,16 @@ export function filterProducts(
       ) {
         return false;
       }
-      if (filters.origin !== "all" && product.product_origin !== filters.origin) {
+      if (
+        filters.origin !== "all" &&
+        product.product_origin !== filters.origin
+      ) {
         return false;
       }
-      if (filters.serialized === "serialized" && product.is_serialized !== true) {
+      if (
+        filters.serialized === "serialized" &&
+        product.is_serialized !== true
+      ) {
         return false;
       }
       if (filters.serialized === "standard" && product.is_serialized === true) {
