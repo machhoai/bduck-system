@@ -36,7 +36,14 @@ export function ProductTable({
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase())),
+      (p.barcode &&
+        p.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.hs_code &&
+        p.hs_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.manufacturer &&
+        p.manufacturer.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.applicable_standard &&
+        p.applicable_standard.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   return (
@@ -75,7 +82,9 @@ export function ProductTable({
               <th className="px-4 py-4">{copy.columns.skuBarcode}</th>
               <th className="px-4 py-4">{copy.columns.category}</th>
               <th className="px-4 py-4 text-center">{copy.columns.unit}</th>
-              <th className="px-4 py-4 text-center">{copy.columns.serialTracking}</th>
+              <th className="px-4 py-4 text-center">
+                {copy.columns.serialTracking}
+              </th>
               <th className="px-4 py-4 text-right">{copy.columns.actions}</th>
             </tr>
           </thead>
@@ -119,9 +128,7 @@ export function ProductTable({
                       {copy.emptyTitle}
                     </p>
                     <p className="w-full text-sm text-gray-500">
-                      {searchTerm
-                        ? copy.emptySearchHint
-                        : copy.emptyHint}
+                      {searchTerm ? copy.emptySearchHint : copy.emptyHint}
                     </p>
                   </div>
                 </td>
@@ -207,7 +214,10 @@ export function ProductTable({
                         onClick={() => {
                           if (
                             confirm(
-                              copy.confirmDelete.replace("{{name}}", product.name),
+                              copy.confirmDelete.replace(
+                                "{{name}}",
+                                product.name,
+                              ),
                             )
                           ) {
                             onDelete(product.id);
@@ -230,7 +240,12 @@ export function ProductTable({
       {/* Pagination Footer */}
       {!loading && filteredProducts.length > 0 && (
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
-          <span>{copy.visibleCount.replace("{{count}}", String(filteredProducts.length))}</span>
+          <span>
+            {copy.visibleCount.replace(
+              "{{count}}",
+              String(filteredProducts.length),
+            )}
+          </span>
           {/* Implement real pagination controls here later if needed */}
         </div>
       )}

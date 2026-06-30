@@ -10,6 +10,13 @@ export interface ProductImportPayload {
   product_image_url: string[] | null;
   product_material: string | null;
   product_origin: ProductOrigin | null;
+  hs_code: string | null;
+  technical_specifications: string | null;
+  dimensions: string | null;
+  manufacturer: string | null;
+  manufacturer_address: string | null;
+  notes: string | null;
+  applicable_standard: string | null;
   unit: string;
   product_type: ProductType;
   unit_price: number | null;
@@ -41,58 +48,84 @@ const PRODUCT_TEMPLATE_HEADERS = [
   "product_type",
   "product_material",
   "product_origin",
+  "hs_code",
+  "technical_specifications",
+  "dimensions",
+  "manufacturer",
+  "manufacturer_address",
+  "notes",
+  "applicable_standard",
   "unit_price",
   "is_serialized",
   "description",
 ] as const;
 
-const HEADER_ALIASES: Record<string, (typeof PRODUCT_TEMPLATE_HEADERS)[number]> =
-  {
-    category_code: "category_code",
-    category: "category_code",
-    ma_danh_muc: "category_code",
-    danh_muc: "category_code",
-    danh_muc_san_pham: "category_code",
-    产品分类: "category_code",
-    name: "name",
-    product_name: "name",
-    ten: "name",
-    ten_san_pham: "name",
-    产品名称: "name",
-    code: "code",
-    sku: "code",
-    ma_sku: "code",
-    ma_san_pham: "code",
-    sku_ma_san_pham: "code",
-    sku_产品编码: "code",
-    barcode: "barcode",
-    ma_vach: "barcode",
-    条形码: "barcode",
-    unit: "unit",
-    don_vi: "unit",
-    don_vi_tinh: "unit",
-    单位: "unit",
-    product_type: "product_type",
-    loai: "product_type",
-    loai_san_pham: "product_type",
-    产品类型: "product_type",
-    product_material: "product_material",
-    chat_lieu: "product_material",
-    材质: "product_material",
-    product_origin: "product_origin",
-    nguon_goc: "product_origin",
-    来源: "product_origin",
-    unit_price: "unit_price",
-    don_gia: "unit_price",
-    单价: "unit_price",
-    is_serialized: "is_serialized",
-    serial: "is_serialized",
-    theo_doi_serial: "is_serialized",
-    序列号管理: "is_serialized",
-    description: "description",
-    mo_ta: "description",
-    描述: "description",
-  };
+const HEADER_ALIASES: Record<
+  string,
+  (typeof PRODUCT_TEMPLATE_HEADERS)[number]
+> = {
+  category_code: "category_code",
+  category: "category_code",
+  ma_danh_muc: "category_code",
+  danh_muc: "category_code",
+  danh_muc_san_pham: "category_code",
+  产品分类: "category_code",
+  name: "name",
+  product_name: "name",
+  ten: "name",
+  ten_san_pham: "name",
+  产品名称: "name",
+  code: "code",
+  sku: "code",
+  ma_sku: "code",
+  ma_san_pham: "code",
+  sku_ma_san_pham: "code",
+  sku_产品编码: "code",
+  barcode: "barcode",
+  ma_vach: "barcode",
+  条形码: "barcode",
+  unit: "unit",
+  don_vi: "unit",
+  don_vi_tinh: "unit",
+  单位: "unit",
+  product_type: "product_type",
+  loai: "product_type",
+  loai_san_pham: "product_type",
+  产品类型: "product_type",
+  product_material: "product_material",
+  chat_lieu: "product_material",
+  材质: "product_material",
+  product_origin: "product_origin",
+  nguon_goc: "product_origin",
+  来源: "product_origin",
+  hs_code: "hs_code",
+  ma_hs_code_khai_quan: "hs_code",
+  ma_hs: "hs_code",
+  hs: "hs_code",
+  technical_specifications: "technical_specifications",
+  dac_tinh_ky_thuat: "technical_specifications",
+  thong_so_ky_thuat: "technical_specifications",
+  dimensions: "dimensions",
+  kich_thuoc: "dimensions",
+  manufacturer: "manufacturer",
+  nha_san_xuat: "manufacturer",
+  manufacturer_address: "manufacturer_address",
+  dia_chi_nha_san_xuat: "manufacturer_address",
+  notes: "notes",
+  luu_y: "notes",
+  applicable_standard: "applicable_standard",
+  quy_chuan_ap_dung: "applicable_standard",
+  unit_price: "unit_price",
+  don_gia: "unit_price",
+  单价: "unit_price",
+  is_serialized: "is_serialized",
+  serial: "is_serialized",
+  theo_doi_serial: "is_serialized",
+  序列号管理: "is_serialized",
+  description: "description",
+  mo_ta: "description",
+  描述: "description",
+};
 
 const normalizeText = (value: unknown) =>
   String(value ?? "")
@@ -117,13 +150,15 @@ const parseBoolean = (value: string): boolean | null => {
   if (["true", "1", "yes", "y", "co", "c", "serialized"].includes(normalized)) {
     return true;
   }
-  if (["false", "0", "no", "n", "khong", "k", "standard"].includes(normalized)) {
+  if (
+    ["false", "0", "no", "n", "khong", "k", "standard"].includes(normalized)
+  ) {
     return false;
   }
   return null;
 };
 
-const countBy = <T,>(items: T[], getKey: (item: T) => string | null) => {
+const countBy = <T>(items: T[], getKey: (item: T) => string | null) => {
   const counts = new Map<string, number>();
   for (const item of items) {
     const key = getKey(item);
@@ -174,7 +209,10 @@ export async function parseProductImportFile(
     headers[colNumber - 1] = cleanCell(cell.value);
   });
 
-  const rows: { raw: Record<string, string>, rawValues: Record<string, any> }[] = [];
+  const rows: {
+    raw: Record<string, string>;
+    rawValues: Record<string, any>;
+  }[] = [];
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const rowData: Record<string, string> = {};
@@ -182,14 +220,21 @@ export async function parseProductImportFile(
     headers.forEach((header, index) => {
       const cell = row.getCell(index + 1);
       rowData[header] = cleanCell(cell.text || cell.value);
-      rawValuesData[header] = cell.type === 4 /* Formula */ ? cell.result : cell.value;
+      rawValuesData[header] =
+        cell.type === 4 /* Formula */ ? cell.result : cell.value;
     });
     rows.push({ raw: rowData, rawValues: rawValuesData });
   });
 
   const normalizedRows = rows
-    .map((row, index) => ({ rowNumber: index + 2, raw: normalizeRow(row.raw) as Record<string, string>, rawValues: normalizeRow(row.rawValues) }))
-    .filter(({ raw }) => Object.values(raw).some((value) => value && String(value).trim()));
+    .map((row, index) => ({
+      rowNumber: index + 2,
+      raw: normalizeRow(row.raw) as Record<string, string>,
+      rawValues: normalizeRow(row.rawValues),
+    }))
+    .filter(({ raw }) =>
+      Object.values(raw).some((value) => value && String(value).trim()),
+    );
 
   const categoryByCode = new Map(
     categories.map((category) => [normalizeIdentity(category.code), category]),
@@ -222,20 +267,22 @@ export async function parseProductImportFile(
     const categoryCode = extractCategoryCode(raw.category_code);
     const category = categoryByCode.get(normalizeIdentity(categoryCode));
     const productType = extractOptionCode(raw.product_type) as ProductType;
-    const productOrigin = extractOptionCode(raw.product_origin) as ProductOrigin;
+    const productOrigin = extractOptionCode(
+      raw.product_origin,
+    ) as ProductOrigin;
     const parsedSerialized = parseBoolean(raw.is_serialized);
-    
+
     let priceNumber: number | null = null;
     const rawPrice = rawValues.unit_price;
     if (rawPrice !== undefined && rawPrice !== null && rawPrice !== "") {
-        if (typeof rawPrice === "number") {
-            priceNumber = Math.round(rawPrice);
-        } else {
-            const priceText = String(rawPrice).trim();
-            const priceNormalized = priceText.replace(/\./g, "").replace(",", ".");
-            const parsed = Number(priceNormalized);
-            priceNumber = !isNaN(parsed) ? Math.round(parsed) : null;
-        }
+      if (typeof rawPrice === "number") {
+        priceNumber = Math.round(rawPrice);
+      } else {
+        const priceText = String(rawPrice).trim();
+        const priceNormalized = priceText.replace(/\./g, "").replace(",", ".");
+        const parsed = Number(priceNormalized);
+        priceNumber = !isNaN(parsed) ? Math.round(parsed) : null;
+      }
     }
 
     if (!raw.category_code) errors.push("Thiếu category_code.");
@@ -246,10 +293,7 @@ export async function parseProductImportFile(
     if (!raw.code) errors.push("Thiếu mã SKU.");
     if (!raw.unit) errors.push("Thiếu đơn vị tính.");
     if (!raw.product_type) errors.push("Thiếu loại sản phẩm.");
-    if (
-      raw.product_type &&
-      !Object.values(ProductType).includes(productType)
-    ) {
+    if (raw.product_type && !Object.values(ProductType).includes(productType)) {
       errors.push(
         `product_type không hợp lệ. Dùng: ${Object.values(ProductType).join(", ")}.`,
       );
@@ -258,16 +302,16 @@ export async function parseProductImportFile(
       raw.product_origin &&
       !Object.values(ProductOrigin).includes(productOrigin)
     ) {
-      errors.push("product_origin không hợp lệ. Dùng DOMESTIC hoặc INTERNATIONAL.");
+      errors.push(
+        "product_origin không hợp lệ. Dùng DOMESTIC hoặc INTERNATIONAL.",
+      );
     }
     if (parsedSerialized === null) {
       errors.push("is_serialized phải là true/false, yes/no hoặc 1/0.");
     }
     if (
       raw.unit_price &&
-      (priceNumber === null ||
-        isNaN(priceNumber) ||
-        priceNumber < 0)
+      (priceNumber === null || isNaN(priceNumber) || priceNumber < 0)
     ) {
       errors.push("unit_price phải là số không âm.");
     }
@@ -305,6 +349,13 @@ export async function parseProductImportFile(
             product_image_url: null,
             product_material: raw.product_material || null,
             product_origin: raw.product_origin ? productOrigin : null,
+            hs_code: raw.hs_code || null,
+            technical_specifications: raw.technical_specifications || null,
+            dimensions: raw.dimensions || null,
+            manufacturer: raw.manufacturer || null,
+            manufacturer_address: raw.manufacturer_address || null,
+            notes: raw.notes || null,
+            applicable_standard: raw.applicable_standard || null,
             unit: raw.unit,
             product_type: productType,
             unit_price: priceNumber,

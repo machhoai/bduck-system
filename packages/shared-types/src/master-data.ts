@@ -107,6 +107,13 @@ export interface Product {
   product_image_url: string[] | null;
   product_material: string | null;
   product_origin: ProductOrigin | null;
+  hs_code: string | null;
+  technical_specifications: string | null;
+  dimensions: string | null;
+  manufacturer: string | null;
+  manufacturer_address: string | null;
+  notes: string | null;
+  applicable_standard: string | null;
   unit: string; // PCS, BOX, KG, SET…
   product_type: ProductType;
   unit_price: number | null;

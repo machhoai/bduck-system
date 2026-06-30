@@ -78,6 +78,13 @@ export const createProductSchema = z.object({
   product_image_url: z.array(z.string().url()).nullable().optional(),
   product_material: z.string().nullable().optional(),
   product_origin: z.enum(["DOMESTIC", "INTERNATIONAL"]).nullable().optional(),
+  hs_code: z.string().nullable().optional(),
+  technical_specifications: z.string().nullable().optional(),
+  dimensions: z.string().nullable().optional(),
+  manufacturer: z.string().nullable().optional(),
+  manufacturer_address: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  applicable_standard: z.string().nullable().optional(),
   unit: z.string().min(1),
   product_type: z.enum([
     "EQUIPMENT",
