@@ -1,11 +1,9 @@
 import { Router, type Router as ExpressRouter } from "express";
 import {
-  cancelExternalCountHandler,
-  createExternalCountHandler,
   getExternalCountHandler,
+  getExternalCountRequirementHandler,
   listExternalCountsHandler,
-  submitExternalCountHandler,
-  updateExternalCountItemHandler,
+  updateExternalCountRequirementHandler,
 } from "../controllers/stockCountController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
@@ -20,10 +18,16 @@ router.get(
   listExternalCountsHandler,
 );
 
-router.post(
-  "/",
+router.get(
+  "/requirement",
+  requireAnyScopedPermission(["external_count.view", "external_count.count"]),
+  getExternalCountRequirementHandler,
+);
+
+router.put(
+  "/requirement",
   requireAnyScopedPermission("external_count.count"),
-  createExternalCountHandler,
+  updateExternalCountRequirementHandler,
 );
 
 router.get(
@@ -32,23 +36,4 @@ router.get(
   getExternalCountHandler,
 );
 
-router.patch(
-  "/:id/items/:itemId",
-  requireAnyScopedPermission("external_count.count"),
-  updateExternalCountItemHandler,
-);
-
-router.post(
-  "/:id/submit",
-  requireAnyScopedPermission("external_count.count"),
-  submitExternalCountHandler,
-);
-
-router.post(
-  "/:id/cancel",
-  requireAnyScopedPermission("external_count.cancel"),
-  cancelExternalCountHandler,
-);
-
 export default router;
-

@@ -63,6 +63,26 @@ export function getAuditDate(value: unknown): Date | null {
     return value.toDate();
   }
 
+  if (typeof value === "object" && value !== null) {
+    const seconds =
+      "_seconds" in value
+        ? value._seconds
+        : "seconds" in value
+          ? value.seconds
+          : null;
+
+    if (typeof seconds === "number") {
+      const nanoseconds =
+        "_nanoseconds" in value && typeof value._nanoseconds === "number"
+          ? value._nanoseconds
+          : "nanoseconds" in value && typeof value.nanoseconds === "number"
+            ? value.nanoseconds
+            : 0;
+
+      return new Date(seconds * 1000 + Math.floor(nanoseconds / 1000000));
+    }
+  }
+
   return null;
 }
 

@@ -69,6 +69,7 @@ export const fetchAuditLogs = async (
     from: input.from,
     to: input.to,
     limit: input.limit,
+    offset: input.offset ?? (input.page - 1) * input.limit,
     sort_by: input.sort_by,
     sort_dir: input.sort_dir,
     allowed_warehouse_ids:

@@ -16,12 +16,16 @@ import { productRepository as productRepo } from "../repositories/productReposit
 import { logAudit } from "./auditService.js";
 import {
   AuditAction,
+  ExternalCountCheckpointType,
   ExportType,
   ExportVoucherStatus,
 } from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
 import * as scannableProductService from "./externalQueueScannableProductService.js";
-import { isExternalCountGateOpen } from "./stockCountService.js";
+import {
+  isExternalCountCheckpointSatisfied,
+  isExternalCountGateOpen,
+} from "./stockCountService.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
 async function resolveProduct(
@@ -112,6 +116,16 @@ export const scanProduct = async (
 
   if (!client.allowed_warehouse_ids.includes(warehouseId)) {
     throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  const beforeScanCountOk = await isExternalCountCheckpointSatisfied({
+    warehouseId,
+    warehouseLocationId: data.warehouse_location_id,
+    businessDate: getShiftDate(new Date(data.scan_time)),
+    checkpointType: ExternalCountCheckpointType.BEFORE_SCAN,
+  });
+  if (!beforeScanCountOk) {
+    throw new Error("EXTERNAL_COUNT_BEFORE_SCAN_REQUIRED");
   }
 
   const isAllowed = await scannableProductService.isProductAllowedForLocation(
@@ -276,6 +290,16 @@ export const submitBatch = async (
 ) => {
   if (!client.allowed_warehouse_ids.includes(data.warehouse_id)) {
     throw new Error("UNAUTHORIZED_WAREHOUSE");
+  }
+
+  const beforeSubmitCountOk = await isExternalCountCheckpointSatisfied({
+    warehouseId: data.warehouse_id,
+    warehouseLocationId: data.warehouse_location_id,
+    businessDate: data.shift_date,
+    checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT,
+  });
+  if (!beforeSubmitCountOk) {
+    throw new Error("EXTERNAL_COUNT_BEFORE_SUBMIT_REQUIRED");
   }
 
   const batchId = buildLocationBatchId(data.shift_date);

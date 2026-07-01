@@ -1,23 +1,103 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardList, Eye, MapPin, Plus, Search, ShieldCheck } from "lucide-react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { AlertTriangle, CheckCircle2, ClipboardList, Search, Settings2 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { externalCountApi, type ExternalCountSession } from "@/api/externalCountApi";
+import {
+  externalCountApi,
+  type ExternalCountRequirementConfig,
+  type ExternalCountSession,
+} from "@/api/externalCountApi";
+import { db } from "@/lib/firebase";
+import { useTranslation } from "@/lib/i18n";
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useUserStore } from "@/stores/useUserStore";
-import ExternalCountDrawer from "./ExternalCountDrawer";
+
+const copy = {
+  vi: {
+    title: "Kiểm đếm external",
+    configTitle: "Cấu hình bắt buộc kiểm đếm",
+    enabled: "Bật kiểm đếm external",
+    beforeScan: "Yêu cầu BEFORE_SCAN trước khi quét",
+    beforeSubmit: "Yêu cầu BEFORE_SUBMIT trước khi nộp",
+    save: "Lưu cấu hình",
+    saving: "Đang lưu cấu hình...",
+    saved: "Đã lưu cấu hình",
+    saveError: "Không thể lưu cấu hình",
+    saveDesc: "Luồng quét ngoài sẽ áp dụng cấu hình mới ngay.",
+    saveErrorDesc: "Vui lòng kiểm tra quyền hoặc thử lại sau.",
+    warehouse: "Kho",
+    location: "Quầy",
+    date: "Ngày",
+    all: "Tất cả",
+    search: "Tìm theo mã checkpoint, quầy, kho hoặc nhân viên...",
+    emptyTitle: "Chưa có checkpoint kiểm đếm",
+    emptyHint: "Hệ thống ngoài gửi POST /api/external/v1/count để tạo dữ liệu ở đây.",
+    total: "Tổng checkpoint",
+    verified: "Hợp lệ",
+    issues: "Có chênh lệch",
+    beforeScanLabel: "Trước khi quét",
+    beforeSubmitLabel: "Trước khi nộp",
+    operator: "Nhân viên",
+    client: "Client",
+    discrepancy: "Chênh lệch",
+    idempotency: "Idempotency",
+    noPermission: "Bạn không có quyền chỉnh cấu hình kiểm đếm external.",
+  },
+  zh: {
+    title: "外部盘点",
+    configTitle: "外部盘点要求",
+    enabled: "启用外部盘点",
+    beforeScan: "扫描前需要 BEFORE_SCAN",
+    beforeSubmit: "提交前需要 BEFORE_SUBMIT",
+    save: "保存配置",
+    saving: "正在保存配置...",
+    saved: "配置已保存",
+    saveError: "无法保存配置",
+    saveDesc: "外部扫描流程会立即使用新配置。",
+    saveErrorDesc: "请检查权限或稍后重试。",
+    warehouse: "仓库",
+    location: "柜台",
+    date: "日期",
+    all: "全部",
+    search: "按检查点、柜台、仓库或员工搜索...",
+    emptyTitle: "暂无盘点检查点",
+    emptyHint: "外部系统通过 POST /api/external/v1/count 提交数据。",
+    total: "检查点总数",
+    verified: "有效",
+    issues: "有差异",
+    beforeScanLabel: "扫描前",
+    beforeSubmitLabel: "提交前",
+    operator: "操作员",
+    client: "客户端",
+    discrepancy: "差异",
+    idempotency: "幂等键",
+    noPermission: "您没有权限修改外部盘点配置。",
+  },
+};
 
 function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function statusClass(status: string) {
-  if (["VERIFIED", "RESOLVED", "COMPLETED"].includes(status)) {
-    return "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]";
+function toMillis(value: unknown) {
+  if (!value) return 0;
+  if (typeof value === "string") return new Date(value).getTime();
+  if (value instanceof Date) return value.getTime();
+  if (
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate().getTime();
   }
-  if (status === "CANCELLED") {
-    return "border-[var(--color-error-border)] bg-[var(--color-error-bg)] text-[var(--color-error-text)]";
+  return 0;
+}
+
+function statusClass(status: string) {
+  if (status === "VERIFIED") {
+    return "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]";
   }
   if (status === "DISCREPANCY_FOUND") {
     return "border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]";
@@ -26,23 +106,36 @@ function statusClass(status: string) {
 }
 
 export default function ExternalCountPage() {
+  const { lang } = useTranslation();
+  const text = copy[lang] ?? copy.vi;
   const hasPermission = useUserStore((state) => state.hasPermission);
-  const canCount = hasPermission("external_count.count");
+  const canConfigure = hasPermission("external_count.count");
   const { warehouses } = useWarehouses();
   const [warehouseId, setWarehouseId] = useState("");
   const { locations } = useWarehouseLocations(warehouseId || undefined);
   const [locationId, setLocationId] = useState("");
   const [businessDate, setBusinessDate] = useState(todayString());
-  const [purpose, setPurpose] = useState<"EXTERNAL_OPENING" | "EXTERNAL_CLOSING">("EXTERNAL_CLOSING");
-  const [blindCount, setBlindCount] = useState(false);
-  const [operatorName, setOperatorName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sessions, setSessions] = useState<ExternalCountSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [config, setConfig] = useState<ExternalCountRequirementConfig | null>(null);
 
-  const fetchSessions = useCallback(async () => {
+  const warehouseById = useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
+    [warehouses],
+  );
+  const locationById = useMemo(
+    () => new Map(locations.map((location) => [location.id, location])),
+    [locations],
+  );
+
+  const loadConfig = useCallback(async () => {
+    const response = await externalCountApi.getRequirement();
+    setConfig(response.data);
+  }, []);
+
+  const loadApiFallback = useCallback(async () => {
     try {
       const response = await externalCountApi.list({
         warehouse_id: warehouseId || undefined,
@@ -51,114 +144,191 @@ export default function ExternalCountPage() {
       });
       setSessions(response.data || []);
     } catch (error) {
-      console.error("[ExternalCountPage] fetch failed", error);
+      console.error("[ExternalCountPage] fallback failed", error);
     } finally {
       setIsLoading(false);
     }
   }, [businessDate, locationId, warehouseId]);
 
   useEffect(() => {
-    void fetchSessions();
-    const timer = window.setInterval(fetchSessions, 5000);
-    return () => window.clearInterval(timer);
-  }, [fetchSessions]);
+    void loadConfig();
+  }, [loadConfig]);
 
-  const filteredSessions = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return sessions;
-    return sessions.filter((session) =>
-      [
-        session.session_number,
-        session.location_name,
-        session.location_code,
-        session.warehouse_name,
-        session.warehouse_code,
-        session.counter_name,
-        session.external_operator_name,
-        session.status,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q)),
+  useEffect(() => {
+    setIsLoading(true);
+    const countQuery = query(
+      collection(db, "stock_count_sessions"),
+      where("source", "==", "EXTERNAL_API"),
+      where("is_deleted", "==", false),
     );
-  }, [searchTerm, sessions]);
 
-  const createSession = async () => {
-    if (!warehouseId || !locationId) {
-      gooeyToast.error("Thiếu quầy kiểm đếm", {
-        description: "Vui lòng chọn kho và quầy trước khi tạo phiên.",
+    const unsubscribe = onSnapshot(
+      countQuery,
+      (snapshot) => {
+        const rows = snapshot.docs
+          .map((doc) => ({ ...doc.data(), id: doc.id }) as ExternalCountSession)
+          .sort((a, b) => toMillis(b.created_at) - toMillis(a.created_at));
+        setSessions(rows);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.warn("[ExternalCountPage] onSnapshot failed", error);
+        void loadApiFallback();
+      },
+    );
+
+    return () => unsubscribe();
+  }, [loadApiFallback]);
+
+  const visibleSessions = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return sessions
+      .filter((session) => !warehouseId || session.warehouse_id === warehouseId)
+      .filter((session) => !locationId || session.warehouse_location_id === locationId)
+      .filter((session) => !businessDate || session.business_date === businessDate)
+      .filter((session) => {
+        if (!q) return true;
+        const warehouse = warehouseById.get(session.warehouse_id);
+        const location = session.warehouse_location_id
+          ? locationById.get(session.warehouse_location_id)
+          : null;
+        return [
+          session.session_number,
+          session.status,
+          session.external_operator_name,
+          session.external_client_id,
+          session.idempotency_key,
+          warehouse?.name,
+          warehouse?.code,
+          location?.name,
+          location?.code,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q));
       });
+  }, [businessDate, locationById, locationId, searchTerm, sessions, warehouseById, warehouseId]);
+
+  const summary = useMemo(
+    () => ({
+      total: visibleSessions.length,
+      verified: visibleSessions.filter((session) => session.status === "VERIFIED").length,
+      issues: visibleSessions.filter((session) => session.status === "DISCREPANCY_FOUND").length,
+    }),
+    [visibleSessions],
+  );
+
+  const saveConfig = async () => {
+    if (!config) return;
+    if (!canConfigure) {
+      gooeyToast.error(text.noPermission);
       return;
     }
-    setIsCreating(true);
-    const action = externalCountApi.create({
-      warehouse_id: warehouseId,
-      warehouse_location_id: locationId,
-      count_purpose: purpose,
-      business_date: businessDate,
-      blind_count_enabled: blindCount,
-      external_operator_name: operatorName || null,
-      notes: null,
+
+    setIsSaving(true);
+    const action = externalCountApi.updateRequirement({
+      enabled: config.enabled,
+      require_before_scan: config.require_before_scan,
+      require_before_submit: config.require_before_submit,
     });
     gooeyToast.promise(action, {
-      loading: "Đang tạo phiên kiểm đếm...",
-      success: "Đã tạo phiên kiểm đếm",
-      error: "Không thể tạo phiên",
+      loading: text.saving,
+      success: text.saved,
+      error: text.saveError,
       description: {
-        success: "Danh sách barcode đã được snapshot theo ATP hiện tại.",
-        error: "Có thể quầy chưa có ATP hoặc đang có phiên mở.",
+        success: text.saveDesc,
+        error: text.saveErrorDesc,
       },
-      action: { error: { label: "Thử lại", onClick: createSession } },
+      action: { error: { label: "Retry", onClick: saveConfig } },
     });
     try {
       const response = await action;
-      await fetchSessions();
-      setSelectedSessionId(response.data.session.id);
+      setConfig(response.data);
     } catch (error) {
-      console.error("[ExternalCountPage] create failed", error);
+      console.error("[ExternalCountPage] save config failed", error);
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
     }
   };
 
   return (
     <div className="flex min-h-[calc(100dvh-112px)] flex-col gap-3 bg-[var(--color-surface-subtle)] p-3 sm:bg-transparent sm:p-0">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-4">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-[var(--color-brand-primary)]" />
+            <h1 className="text-lg font-bold text-[var(--color-text-primary)]">{text.title}</h1>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <Metric label={text.total} value={summary.total} />
+            <Metric label={text.verified} value={summary.verified} tone="success" />
+            <Metric label={text.issues} value={summary.issues} tone="warning" />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-4">
+          <div className="flex items-center gap-2">
+            <Settings2 className="h-5 w-5 text-[var(--color-brand-primary)]" />
+            <h2 className="text-sm font-bold text-[var(--color-text-primary)]">{text.configTitle}</h2>
+          </div>
+          <div className="mt-3 grid gap-2">
+            <ToggleRow
+              label={text.enabled}
+              checked={config?.enabled ?? false}
+              disabled={!canConfigure}
+              onChange={(checked) => setConfig((prev) => prev ? { ...prev, enabled: checked } : prev)}
+            />
+            <ToggleRow
+              label={text.beforeScan}
+              checked={config?.require_before_scan ?? true}
+              disabled={!canConfigure || !config?.enabled}
+              onChange={(checked) => setConfig((prev) => prev ? { ...prev, require_before_scan: checked } : prev)}
+            />
+            <ToggleRow
+              label={text.beforeSubmit}
+              checked={config?.require_before_submit ?? true}
+              disabled={!canConfigure || !config?.enabled}
+              onChange={(checked) => setConfig((prev) => prev ? { ...prev, require_before_submit: checked } : prev)}
+            />
+            <button
+              type="button"
+              onClick={saveConfig}
+              disabled={isSaving || !canConfigure}
+              className="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {text.save}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <label className="grid min-w-0 flex-1 gap-1">
-            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Kho</span>
-            <select
-              value={warehouseId}
-              onChange={(event) => {
-                setWarehouseId(event.target.value);
-                setLocationId("");
-              }}
-              className="h-10 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            >
-              <option value="">Chọn kho</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name || warehouse.code}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 flex-1 gap-1">
-            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Quầy</span>
-            <select
-              value={locationId}
-              onChange={(event) => setLocationId(event.target.value)}
-              className="h-10 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            >
-              <option value="">Chọn quầy</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name || location.code}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="grid gap-3 lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_160px_minmax(220px,1.2fr)]">
+          <FilterSelect
+            label={text.warehouse}
+            value={warehouseId}
+            onChange={(value) => {
+              setWarehouseId(value);
+              setLocationId("");
+            }}
+            options={warehouses.map((warehouse) => ({
+              value: warehouse.id,
+              label: warehouse.name || warehouse.code,
+            }))}
+            allLabel={text.all}
+          />
+          <FilterSelect
+            label={text.location}
+            value={locationId}
+            onChange={setLocationId}
+            options={locations.map((location) => ({
+              value: location.id,
+              label: location.name || location.code,
+            }))}
+            allLabel={text.all}
+          />
           <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Ngày</span>
+            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{text.date}</span>
             <input
               type="date"
               value={businessDate}
@@ -167,73 +337,46 @@ export default function ExternalCountPage() {
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Loại</span>
-            <select
-              value={purpose}
-              onChange={(event) => setPurpose(event.target.value as "EXTERNAL_OPENING" | "EXTERNAL_CLOSING")}
-              className="h-10 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            >
-              <option value="EXTERNAL_OPENING">Đầu ca</option>
-              <option value="EXTERNAL_CLOSING">Cuối ca</option>
-            </select>
+            <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">Search</span>
+            <span className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder={text.search}
+                className="h-10 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] pl-9 pr-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
+              />
+            </span>
           </label>
-          <label className="flex h-10 items-center gap-2 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)]">
-            <input
-              type="checkbox"
-              checked={blindCount}
-              onChange={(event) => setBlindCount(event.target.checked)}
-            />
-            Blind count
-          </label>
-          <input
-            value={operatorName}
-            onChange={(event) => setOperatorName(event.target.value)}
-            placeholder="Tên nhân viên"
-            className="h-10 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
-          />
-          {canCount && (
-            <button
-              type="button"
-              onClick={createSession}
-              disabled={isCreating}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              Tạo phiên
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border-subtle)] bg-white">
-        <div className="border-b border-[var(--color-border-subtle)] p-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Tìm phiên, quầy, kho hoặc nhân viên..."
-              className="h-10 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] pl-9 pr-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            />
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--color-border-subtle)] bg-white">
+        {isLoading ? (
+          <div className="grid gap-3 p-4">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-20 animate-pulse rounded-lg bg-[var(--color-neutral-100)]" />
+            ))}
           </div>
-        </div>
+        ) : visibleSessions.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
+            <ClipboardList className="h-10 w-10 text-[var(--color-neutral-300)]" />
+            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">{text.emptyTitle}</h3>
+            <p className="text-sm text-[var(--color-text-muted)]">{text.emptyHint}</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 p-3">
+            {visibleSessions.map((session) => {
+              const warehouse = warehouseById.get(session.warehouse_id);
+              const location = session.warehouse_location_id
+                ? locationById.get(session.warehouse_location_id)
+                : null;
+              const checkpointLabel =
+                session.checkpoint_type === "BEFORE_SCAN"
+                  ? text.beforeScanLabel
+                  : text.beforeSubmitLabel;
 
-        <div className="flex-1 overflow-auto bg-[var(--color-neutral-50)] p-3">
-          {isLoading ? (
-            <div className="grid gap-3">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-24 animate-pulse rounded-lg bg-[var(--color-neutral-100)]" />
-              ))}
-            </div>
-          ) : filteredSessions.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-white text-center">
-              <ClipboardList className="h-10 w-10 text-[var(--color-neutral-300)]" />
-              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Chưa có phiên kiểm đếm</h3>
-              <p className="text-sm text-[var(--color-text-muted)]">Tạo phiên theo quầy để kiểm ATP cuối ca trước khi auto-submit.</p>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {filteredSessions.map((session) => (
+              return (
                 <div key={session.id} className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-4">
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                     <div className="min-w-0">
@@ -241,51 +384,115 @@ export default function ExternalCountPage() {
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(session.status)}`}>
                           {session.status}
                         </span>
+                        <span className="inline-flex rounded-full border border-[var(--color-border-subtle)] px-2 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)]">
+                          {checkpointLabel}
+                        </span>
+                        {session.status === "DISCREPANCY_FOUND" && (
+                          <AlertTriangle className="h-4 w-4 text-[var(--color-warning-text)]" />
+                        )}
                         <span className="truncate text-sm font-bold text-[var(--color-text-primary)]">
-                          {session.location_name || session.location_code}
-                        </span>
-                        <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                          {session.count_purpose === "EXTERNAL_CLOSING" ? "Cuối ca" : "Đầu ca"}
+                          {location?.name || location?.code || session.warehouse_location_id}
                         </span>
                       </div>
-                      <div className="mt-2 grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <MapPin className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                          <span className="truncate">{session.warehouse_name || session.warehouse_code}</span>
-                        </span>
-                        <span className="flex min-w-0 items-center gap-2">
-                          <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                          <span className="truncate">{session.blind_count_enabled ? "Blind count" : "Hiện ATP"}</span>
-                        </span>
-                        <span className="truncate text-[var(--color-text-muted)]">
-                          {session.session_number}
-                        </span>
+                      <div className="mt-2 grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-4">
+                        <span className="truncate">{warehouse?.name || warehouse?.code || session.warehouse_id}</span>
+                        <span className="truncate">{text.operator}: {session.external_operator_name || session.external_operator_id || "-"}</span>
+                        <span className="truncate">{text.client}: {session.external_client_id || "-"}</span>
+                        <span>{text.discrepancy}: {session.discrepancy_count ?? 0}</span>
                       </div>
+                      <p className="mt-2 truncate text-xs text-[var(--color-text-muted)]">
+                        {session.session_number} · {text.idempotency}: {session.idempotency_key || "-"}
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSessionId(session.id)}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-3 text-sm font-semibold text-white"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Mở
-                    </button>
+                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">
+                      {session.business_date}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {selectedSessionId && (
-        <ExternalCountDrawer
-          sessionId={selectedSessionId}
-          onClose={() => setSelectedSessionId(null)}
-          onChanged={fetchSessions}
-        />
-      )}
     </div>
   );
 }
 
+function Metric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "success" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "text-[var(--color-success-text)]"
+      : tone === "warning"
+        ? "text-[var(--color-warning-text)]"
+        : "text-[var(--color-text-primary)]";
+  return (
+    <div className="rounded-lg border border-[var(--color-border-soft)] bg-white px-3 py-2">
+      <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${toneClass}`}>{value.toLocaleString()}</p>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-secondary)]">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </label>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  allLabel: string;
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 rounded-md border border-[var(--color-border-subtle)] px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
+      >
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}

@@ -115,7 +115,12 @@ export const menuItems: MenuItem[] = [
         labelKey: "vouchers",
         icon: PackagePlus,
         href: "/vouchers",
-        permissionsAny: ["vouchers.read", "transfers.read"],
+        permissionsAny: [
+            "vouchers.read",
+            "vouchers.write",
+            "transfers.read",
+            "transfers.write",
+        ],
         badgeKey: "vouchers",
     },
     {
@@ -137,7 +142,7 @@ export const menuItems: MenuItem[] = [
         labelKey: "processConfigs",
         icon: FolderSymlink,
         href: "/process-configs",
-        permission: "workflow.read",
+        permission: "workflows.manage",
     },
     {
         id: "expenseEntry",

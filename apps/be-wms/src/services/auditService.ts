@@ -48,6 +48,9 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   TRANSFER_ORDER: "transfer_orders",
   TRANSFER_INTRA: "transfer_orders",
   EXTERNAL_SCAN: "external_scan_queue",
+  EXTERNAL_COUNT_CONFIG: "system_configs",
+  STOCK_COUNT_SESSION: "stock_count_sessions",
+  STOCK_COUNT_ITEM: "stock_count_items",
   NONCONFORMITY_REPORT: "nonconformity_reports",
 };
 

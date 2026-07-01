@@ -242,6 +242,8 @@ export const auditLogQuerySchema = z.object({
   user_id: z.string().trim().min(1).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  offset: z.coerce.number().int().min(0).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
   sort_by: z.enum(["action_time", "sync_time"]).default("sync_time"),
   sort_dir: z.enum(["asc", "desc"]).default("desc"),

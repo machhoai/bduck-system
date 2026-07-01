@@ -22,49 +22,40 @@ async function apiFetch<T = unknown>(
   return body;
 }
 
+export type ExternalCountCheckpointType = "BEFORE_SCAN" | "BEFORE_SUBMIT";
+
 export type ExternalCountSession = {
   id: string;
   session_number: string;
   warehouse_id: string;
   warehouse_location_id: string;
-  count_purpose: "EXTERNAL_OPENING" | "EXTERNAL_CLOSING";
+  checkpoint_type?: ExternalCountCheckpointType;
+  count_purpose?: "EXTERNAL_OPENING" | "EXTERNAL_CLOSING";
   status: string;
   business_date: string;
-  blind_count_enabled: boolean;
   external_operator_name?: string | null;
+  external_operator_id?: string | null;
+  external_client_id?: string | null;
+  device_id?: string | null;
+  idempotency_key?: string | null;
   notes?: string | null;
   discrepancy_count?: number;
   warehouse_name?: string | null;
   warehouse_code?: string | null;
   location_name?: string | null;
   location_code?: string | null;
-  counter_name?: string | null;
-  cancel_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+  submitted_at?: string;
 };
 
-export type ExternalCountItem = {
+export type ExternalCountRequirementConfig = {
   id: string;
-  product_id: string;
-  product_name?: string | null;
-  product_barcode?: string | null;
-  product_code?: string | null;
-  product_unit?: string | null;
-  product_image_url?: string | null;
-  atp_snapshot: number;
-  expected_at_count_time?: number | null;
-  current_atp?: number | null;
-  counted_quantity: number | null;
-  discrepancy: number;
-  condition: string;
-  has_discrepancy: boolean;
-  notes?: string | null;
-};
-
-export type ExternalCountDetail = {
-  session: ExternalCountSession;
-  items: ExternalCountItem[];
+  enabled: boolean;
+  require_before_scan: boolean;
+  require_before_submit: boolean;
+  updated_at?: string | null;
+  updated_by?: string | null;
 };
 
 export const externalCountApi = {
@@ -84,45 +75,21 @@ export const externalCountApi = {
     );
   },
 
-  create: (data: {
-    warehouse_id: string;
-    warehouse_location_id: string;
-    count_purpose: "EXTERNAL_OPENING" | "EXTERNAL_CLOSING";
-    business_date: string;
-    blind_count_enabled: boolean;
-    external_operator_name?: string | null;
-    notes?: string | null;
+  getRequirement: () =>
+    apiFetch<{ success: boolean; data: ExternalCountRequirementConfig }>(
+      "/requirement",
+    ),
+
+  updateRequirement: (data: {
+    enabled: boolean;
+    require_before_scan: boolean;
+    require_before_submit: boolean;
   }) =>
-    apiFetch<{ success: boolean; data: ExternalCountDetail }>("/", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  get: (id: string) =>
-    apiFetch<{ success: boolean; data: ExternalCountDetail }>(`/${id}`),
-
-  updateItem: (
-    sessionId: string,
-    itemId: string,
-    data: { counted_quantity: number; condition: string; notes?: string | null },
-  ) =>
-    apiFetch<{ success: boolean; data: ExternalCountDetail }>(
-      `/${sessionId}/items/${itemId}`,
+    apiFetch<{ success: boolean; data: ExternalCountRequirementConfig }>(
+      "/requirement",
       {
-        method: "PATCH",
+        method: "PUT",
         body: JSON.stringify(data),
       },
     ),
-
-  submit: (id: string) =>
-    apiFetch<{ success: boolean; data: ExternalCountDetail }>(`/${id}/submit`, {
-      method: "POST",
-    }),
-
-  cancel: (id: string, reason: string) =>
-    apiFetch<{ success: boolean; data: ExternalCountDetail }>(`/${id}/cancel`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    }),
 };
-

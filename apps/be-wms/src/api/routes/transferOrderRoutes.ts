@@ -7,6 +7,7 @@
 
 import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 import {
   createHandler,
   updateHandler,
@@ -23,16 +24,36 @@ const router: IRouter = Router();
 router.use(requireAuth);
 
 // ── CRUD ──
-router.post("/", createHandler);
-router.get("/", listHandler);
-router.get("/:id", getDetailHandler);
-router.put("/:id", updateHandler);
+router.post("/", requireAnyScopedPermission("transfers.write"), createHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission(["transfers.read", "vouchers.read"]),
+  listHandler,
+);
+router.get(
+  "/:id",
+  requireAnyScopedPermission(["transfers.read", "vouchers.read"]),
+  getDetailHandler,
+);
+router.put("/:id", requireAnyScopedPermission("transfers.write"), updateHandler);
 
 // ── Transfer → Export (1-click) ──
-router.post("/:id/create-export", createExportHandler);
+router.post(
+  "/:id/create-export",
+  requireAnyScopedPermission("transfers.write"),
+  createExportHandler,
+);
 
 // ── Receiving ──
-router.post("/:id/receive", receiveHandler);
-router.post("/:id/complete-receiving", completeReceivingHandler);
+router.post(
+  "/:id/receive",
+  requireAnyScopedPermission("transfers.receive"),
+  receiveHandler,
+);
+router.post(
+  "/:id/complete-receiving",
+  requireAnyScopedPermission("transfers.receive"),
+  completeReceivingHandler,
+);
 
 export default router;

@@ -55,6 +55,7 @@ export interface AuditLogSearchParams {
   from?: Date;
   to?: Date;
   limit: number;
+  offset: number;
   sort_by: "action_time" | "sync_time";
   sort_dir: "asc" | "desc";
   /** RBAC: restrict to these warehouse IDs (undefined = no restriction) */
@@ -86,10 +87,10 @@ class AuditLogRepository {
   ): Promise<AuditLog[]> {
     let query: FirebaseFirestore.Query = db
       .collection(COLLECTION)
-      .orderBy(params.sort_by, params.sort_dir)
-      .limit(params.limit);
+      .orderBy(params.sort_by, params.sort_dir);
 
     query = this.applyFilters(query, params);
+    query = query.offset(params.offset).limit(params.limit);
 
     const snapshot = await query.get();
     const logs = snapshot.docs.map(
@@ -112,6 +113,7 @@ class AuditLogRepository {
   ): Promise<AuditLog[]> {
     const warehouseIds = params.allowed_warehouse_ids!;
     const BATCH_SIZE = 30;
+    const fetchLimit = params.offset + params.limit;
     const allLogs: AuditLog[] = [];
 
     for (let i = 0; i < warehouseIds.length; i += BATCH_SIZE) {
@@ -121,7 +123,7 @@ class AuditLogRepository {
         .collection(COLLECTION)
         .where("warehouse_id", "in", batch)
         .orderBy(params.sort_by, params.sort_dir)
-        .limit(params.limit);
+        .limit(fetchLimit);
 
       query = this.applyFilters(query, params);
 
@@ -147,7 +149,7 @@ class AuditLogRepository {
       return params.sort_dir === "desc" ? bTime - aTime : aTime - bTime;
     });
 
-    const trimmed = allLogs.slice(0, params.limit);
+    const trimmed = allLogs.slice(params.offset, params.offset + params.limit);
     return this.enrichLogs(trimmed);
   }
 

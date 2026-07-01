@@ -203,6 +203,11 @@ export enum StockCountSource {
   SYSTEM_SUGGESTION = "SYSTEM_SUGGESTION",
 }
 
+export enum ExternalCountCheckpointType {
+  BEFORE_SCAN = "BEFORE_SCAN",
+  BEFORE_SUBMIT = "BEFORE_SUBMIT",
+}
+
 /** Stock count session status */
 export enum StockCountSessionStatus {
   DRAFT = "DRAFT",

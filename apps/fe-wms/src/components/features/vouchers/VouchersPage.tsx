@@ -21,6 +21,7 @@ interface TabDef {
     labelKey: TabId;
     icon: React.ElementType;
     permission?: string;
+    permissionsAny?: string[];
 }
 
 const TAB_DEFINITIONS: TabDef[] = [
@@ -28,11 +29,20 @@ const TAB_DEFINITIONS: TabDef[] = [
         id: "create",
         labelKey: "create",
         icon: Plus,
-        // Since it's unified, any voucher write permission allows access to this tab
-        // But we will filter the options inside based on actual permission
+        permissionsAny: ["vouchers.write", "transfers.write"],
     },
-    { id: "inProgress", labelKey: "inProgress", icon: ClipboardList },
-    { id: "history", labelKey: "history", icon: History },
+    {
+        id: "inProgress",
+        labelKey: "inProgress",
+        icon: ClipboardList,
+        permissionsAny: ["vouchers.read", "transfers.read"],
+    },
+    {
+        id: "history",
+        labelKey: "history",
+        icon: History,
+        permissionsAny: ["vouchers.read", "transfers.read"],
+    },
 ];
 
 function parseVoucherType(value: string | null): VoucherType | undefined {
@@ -97,8 +107,11 @@ export default function VouchersPage() {
     const visibleTabs = useMemo(
         () =>
             TAB_DEFINITIONS.filter((tab) => {
-                if (!tab.permission) return true;
-                return hasPermission(tab.permission);
+                if (tab.permission && hasPermission(tab.permission)) return true;
+                if (tab.permissionsAny?.some((permission) => hasPermission(permission))) {
+                    return true;
+                }
+                return !tab.permission && !tab.permissionsAny;
             }),
         [hasPermission],
     );

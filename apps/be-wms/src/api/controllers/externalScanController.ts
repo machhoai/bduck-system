@@ -219,6 +219,15 @@ const scan = async (req: Request, res: Response) => {
         data: null,
         messages: { vi: viMessage, zh: zhMessage },
       });
+    } else if (error.message === "EXTERNAL_COUNT_BEFORE_SCAN_REQUIRED") {
+      return res.status(409).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Can gui checkpoint kiem dem BEFORE_SCAN hop le truoc khi quet.",
+          zh: "扫描前需要提交有效的 BEFORE_SCAN 盘点检查点。",
+        },
+      });
     } else if (error.message === "UNAUTHORIZED_WAREHOUSE") {
       return res.status(403).json({
         success: false,
@@ -278,6 +287,16 @@ const submitBatch = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[submitBatch]", error);
+    if (error.message === "EXTERNAL_COUNT_BEFORE_SUBMIT_REQUIRED") {
+      return res.status(409).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Can gui checkpoint kiem dem BEFORE_SUBMIT hop le truoc khi nop batch.",
+          zh: "提交批次前需要有效的 BEFORE_SUBMIT 盘点检查点。",
+        },
+      });
+    }
     return res.status(400).json({
       success: false,
       data: null,

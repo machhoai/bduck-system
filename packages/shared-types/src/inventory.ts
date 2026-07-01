@@ -4,6 +4,7 @@ import {
   StockCountType,
   StockCountPurpose,
   StockCountSource,
+  ExternalCountCheckpointType,
   StockCountSessionStatus,
   StockCountItemCondition,
   StockPolicyScope,
@@ -111,6 +112,7 @@ export interface StockCountSession {
   warehouse_location_id?: string | null;
   count_type: StockCountType;
   count_purpose?: StockCountPurpose;
+  checkpoint_type?: ExternalCountCheckpointType;
   source?: StockCountSource;
   status: StockCountSessionStatus;
   counter_id: string | null; // FK → users
@@ -120,6 +122,7 @@ export interface StockCountSession {
   external_client_id?: string | null;
   device_id?: string | null;
   business_date?: string | null;
+  idempotency_key?: string | null;
   blind_count_enabled?: boolean;
   started_at: Date;
   completed_at: Date | null;
@@ -154,6 +157,8 @@ export interface StockCountItem {
   movement_delta_before_count?: number;
   movement_delta_after_count?: number;
   evidence_urls?: string[];
+  base_atp?: number | null;
+  movement_detected?: boolean;
   notes: string | null;
   is_deleted: boolean;
   created_at?: Date;

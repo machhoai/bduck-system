@@ -277,6 +277,18 @@ function isAll(value: string | undefined) {
   return !value || value === "all";
 }
 
+function hasProductFilter(options: ExportRequestOptions) {
+  return Boolean(
+    options.productSearch?.trim() ||
+      !isAll(options.categoryId) ||
+      !isAll(options.productType) ||
+      !isAll(options.productOrigin) ||
+      !isAll(options.serialized) ||
+      !isAll(options.productUnit) ||
+      !isAll(options.productMaterial),
+  );
+}
+
 function buildSlotKey(locationId: string | null | undefined, productId: string) {
   return `${locationId ?? ""}:${productId}`;
 }
@@ -297,7 +309,8 @@ function productMatchesFilters(
   categoryById: Map<string, ProductCategory>,
   options: ExportRequestOptions,
 ) {
-  if (!product || product.is_deleted) return false;
+  if (!product) return !hasProductFilter(options);
+  if (product.is_deleted) return false;
 
   const category = categoryById.get(product.category_id);
   const search = options.productSearch?.trim().toLowerCase() ?? "";
@@ -355,6 +368,8 @@ function buildFilteredProductIds(
   context: WarehouseExportContext,
   options: ExportRequestOptions,
 ) {
+  if (!hasProductFilter(options)) return null;
+
   const categoryById = new Map(context.categories.map((category) => [category.id, category]));
   const ids = new Set<string>();
 
@@ -370,11 +385,11 @@ function buildFilteredProductIds(
 function itemMatchesFilters(
   productId: string,
   locationId: string | null | undefined,
-  productIds: Set<string>,
+  productIds: Set<string> | null,
   slotByLocationProduct: Map<string, string>,
   options: ExportRequestOptions,
 ) {
-  if (!productIds.has(productId)) return false;
+  if (productIds && !productIds.has(productId)) return false;
   if (!isAll(options.locationId) && locationId !== options.locationId) {
     return false;
   }
@@ -409,6 +424,12 @@ function getFilteredInventory(
       return false;
     }
     if (counterOnly) {
+      if (
+        !isAll(options.locationId) &&
+        item.warehouse_location_id === options.locationId
+      ) {
+        return true;
+      }
       return locationById.get(item.warehouse_location_id)?.type === LocationType.COUNTER;
     }
     return true;
@@ -838,6 +859,9 @@ function buildCounterDailySummaryExportConfig(
       })
       .map((location) => location.id),
   );
+  if (!isAll(options.locationId)) {
+    allowedLocationIds.add(options.locationId as string);
+  }
 
   const rowKeys = new Set<string>();
   for (const key of currentStock.keys()) {

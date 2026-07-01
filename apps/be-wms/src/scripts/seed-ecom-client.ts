@@ -19,7 +19,14 @@ async function seed() {
         client_name: "E-Commerce System",
         api_key: "Bduck-Local-Integration-Key",
         api_secret_hash: apiSecretHash,
-        scopes: ["scan", "locations.read", "products.read", "external_scan.write"],
+        scopes: [
+            "scan",
+            "locations.read",
+            "products.read",
+            "external_scan.write",
+            "external_count.read",
+            "external_count.write",
+        ],
         allowed_warehouse_ids: warehouseIds, // Allow all for this POS
         ip_whitelist: ["127.0.0.1", "::1", "0.0.0.0"],
         rate_limit_per_minute: 1000,

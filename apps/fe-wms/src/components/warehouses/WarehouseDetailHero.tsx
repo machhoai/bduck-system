@@ -13,6 +13,7 @@ import {
 import type { Warehouse } from "@bduck/shared-types";
 
 import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
 
 interface WarehouseDetailHeroProps {
     warehouse: Warehouse;
@@ -28,8 +29,34 @@ export function WarehouseDetailHero({
     onEdit,
 }: WarehouseDetailHeroProps) {
     const { t } = useTranslation();
+    const hasPermission = useUserStore((state) => state.hasPermission);
     const coordinate = warehouse.coordinate;
     const isActive = warehouse.status === "ACTIVE";
+    const canEditWarehouse = hasPermission("warehouses.write", warehouseId);
+    const quickActions = [
+        {
+            key: "import",
+            visible: hasPermission("vouchers.write", warehouseId),
+            href: `/vouchers?warehouseId=${warehouseId}&type=IMPORT`,
+            label: t.warehouses.import,
+            tone: "primary" as const,
+            icon: <ArrowDownToLine size={18} />,
+        },
+        {
+            key: "export",
+            visible: hasPermission("vouchers.write", warehouseId),
+            href: `/vouchers?warehouseId=${warehouseId}&type=EXPORT`,
+            label: t.warehouses.export,
+            icon: <ArrowUpFromLine size={18} />,
+        },
+        {
+            key: "transfer",
+            visible: hasPermission("transfers.write", warehouseId),
+            href: `/vouchers?warehouseId=${warehouseId}&type=TRANSFER`,
+            label: t.warehouses.transfer,
+            icon: <ArrowRightLeft size={18} />,
+        },
+    ].filter((action) => action.visible);
 
     return (
         <header className="overflow-hidden ">
@@ -92,38 +119,35 @@ export function WarehouseDetailHero({
                                     )}
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={onEdit}
-                                    aria-label={t.warehouses.editWarehouse}
-                                    className="inline-flex h-8 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-xs transition-colors hover:bg-[var(--color-surface-card)]"
-                                >
-                                    <Pencil size={17} />
-                                </button>
+                                {canEditWarehouse && (
+                                    <button
+                                        type="button"
+                                        onClick={onEdit}
+                                        aria-label={t.warehouses.editWarehouse}
+                                        className="inline-flex h-8 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-xs transition-colors hover:bg-[var(--color-surface-card)]"
+                                    >
+                                        <Pencil size={17} />
+                                    </button>
+                                )}
                             </div>
-                            <div className="flex min-w-0 row-start-1 col-span-2 flex-1 flex-col gap-2">
-                                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                                    {t.warehouses.quickActions}:
-                                </p>
-                                <div className="flex gap-2 w-full">
-                                    <ActionLink
-                                        href={`/vouchers?warehouseId=${warehouseId}&type=IMPORT`}
-                                        label={t.warehouses.import}
-                                        tone="primary"
-                                        icon={<ArrowDownToLine size={18} />}
-                                    />
-                                    <ActionLink
-                                        href={`/vouchers?warehouseId=${warehouseId}&type=EXPORT`}
-                                        label={t.warehouses.export}
-                                        icon={<ArrowUpFromLine size={18} />}
-                                    />
-                                    <ActionLink
-                                        href={`/vouchers?warehouseId=${warehouseId}&type=TRANSFER`}
-                                        label={t.warehouses.transfer}
-                                        icon={<ArrowRightLeft size={18} />}
-                                    />
+                            {quickActions.length > 0 && (
+                                <div className="flex min-w-0 row-start-1 col-span-2 flex-1 flex-col gap-2">
+                                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                        {t.warehouses.quickActions}:
+                                    </p>
+                                    <div className="flex gap-2 w-full">
+                                        {quickActions.map((action) => (
+                                            <ActionLink
+                                                key={action.key}
+                                                href={action.href}
+                                                label={action.label}
+                                                tone={action.tone}
+                                                icon={action.icon}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             <div className="row-start-2 row-span-1 min-w-0">
                                 <InfoTile label={t.warehouses.code} value={warehouse.code} />
                             </div>
