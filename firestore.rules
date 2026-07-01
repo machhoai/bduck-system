@@ -102,6 +102,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /warehouse_attendance_policies/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /warehouse_attendance_exemptions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /attendance_logs/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Workflow Definitions: Authenticated read (+ versions subcollection) ──
     match /workflow_definitions/{docId} {
       allow read: if isAuthenticated();

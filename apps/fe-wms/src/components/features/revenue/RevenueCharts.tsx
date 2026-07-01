@@ -10,60 +10,151 @@ import {
     responsiveChartOptions,
 } from "@/components/charts/chartjs";
 import { useTranslation } from "@/lib/i18n";
-import type { PaymentMethodMetric, RevenueChartPoint } from "@/hooks/useRevenueDashboard";
-import { chartColors, donutColors, formatAxisValue, formatCurrency } from "./revenueDashboardUtils";
+import type { PaymentMethodMetric, RevenueChartPoint, RevenueDateMode } from "@/hooks/useRevenueDashboard";
+import {
+    chartColors,
+    donutColors,
+    formatAxisValue,
+    formatCurrency,
+    prepareComparableRevenuePoints,
+    sumComparablePointValue,
+    type ComparableRevenueChartPoint,
+} from "./revenueDashboardUtils";
 
 type MixedChartType = "bar" | "line";
 
 interface RevenueChartsProps {
+    currentPeriod: ComparisonPeriod;
+    comparisonPeriods?: ComparisonPeriod[];
     points: RevenueChartPoint[];
+    comparisonPoints?: RevenueChartPoint[];
     paymentMethods: PaymentMethodMetric[];
+    mode: RevenueDateMode;
+    comparisonLabel?: string;
+    comparisonCount?: number;
     onPointClick?: (key: string) => void;
 }
 
-export default function RevenueCharts({ points, paymentMethods, onPointClick }: RevenueChartsProps) {
+interface ComparisonPeriod {
+    key: string;
+    label: string;
+    revenue: number;
+    orderCount: number;
+    memberCardAmount: number;
+}
+
+export default function RevenueCharts({
+    currentPeriod,
+    comparisonPeriods = [],
+    points,
+    comparisonPoints,
+    paymentMethods,
+    mode,
+    comparisonLabel,
+    comparisonCount = 0,
+    onPointClick,
+}: RevenueChartsProps) {
     const { t } = useTranslation();
     const d = t.revenue;
+    const periodComparisonPoints = useMemo(
+        () => buildPeriodComparisonPoints(currentPeriod, comparisonPeriods, comparisonCount > 1),
+        [comparisonCount, comparisonPeriods, currentPeriod],
+    );
+    const prepared = useMemo(
+        () => prepareComparableRevenuePoints(points, comparisonPoints, mode),
+        [comparisonPoints, mode, points],
+    );
+    const usePeriodComparison = comparisonCount > 1 || (comparisonCount > 0 && mode === "date");
+    const displayPoints = usePeriodComparison ? periodComparisonPoints : prepared.points;
+    const chartVariant = usePeriodComparison ? "period" : "timeline";
 
     return (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
             <div className="col-span-3 h-full">
-                <RevenueMixedChart points={points} title={d.charts.revenueTitle} onPointClick={onPointClick} />
+                <RevenueMixedChart
+                    points={displayPoints}
+                    comparisonLabel={usePeriodComparison ? undefined : comparisonLabel}
+                    variant={chartVariant}
+                    title={d.charts.revenueTitle}
+                    onPointClick={onPointClick}
+                />
             </div>
             <div className="col-span-1 h-full">
                 <PaymentDonutChart methods={paymentMethods} title={d.charts.paymentTitle} />
             </div>
             <div className="col-span-1 h-full">
-                <ChartSummary points={points} />
+                <ChartSummary points={displayPoints} />
             </div>
             <div className="col-span-3 h-full">
-                <MemberCardChart points={points} title={d.charts.memberCardTitle} onPointClick={onPointClick} />
+                <MemberCardChart
+                    points={displayPoints}
+                    comparisonLabel={usePeriodComparison ? undefined : comparisonLabel}
+                    variant={chartVariant}
+                    title={d.charts.memberCardTitle}
+                    onPointClick={onPointClick}
+                />
             </div>
         </div>
     );
 }
 
+function buildPeriodComparisonPoints(current: ComparisonPeriod, comparisonPeriods: ComparisonPeriod[], selectedOnly: boolean): ComparableRevenueChartPoint[] {
+    const periods = selectedOnly ? comparisonPeriods : [current, ...comparisonPeriods];
+    return periods.map((period, index) => ({
+        key: period.key,
+        label: period.label,
+        tooltipLabel: period.label,
+        revenue: period.revenue,
+        orderCount: period.orderCount,
+        memberCardAmount: period.memberCardAmount,
+        highlighted: !selectedOnly && index === 0,
+        tooltipRole: selectedOnly ? "selected" : index === 0 ? "current" : "comparison",
+    }));
+}
+
 /* ═══════════════ Revenue Mixed Chart ═══════════════ */
 
-function RevenueMixedChart({ points, title, onPointClick }: { points: RevenueChartPoint[]; title: string; onPointClick?: (key: string) => void }) {
+function RevenueMixedChart({
+    points,
+    title,
+    comparisonLabel,
+    variant,
+    onPointClick,
+}: {
+    points: ComparableRevenueChartPoint[];
+    title: string;
+    comparisonLabel?: string;
+    variant: "timeline" | "period";
+    onPointClick?: (key: string) => void;
+}) {
     const { t } = useTranslation();
     const d = t.revenue;
+    const hasComparison = points.some((p) => typeof p.comparisonRevenue === "number");
     const data = useMemo<ChartData<MixedChartType, number[], string>>(
         () => ({
             labels: points.map((p) => p.label),
             datasets: [
+                ...(hasComparison ? [{
+                    type: "bar" as const,
+                    label: withPeriodLabel(d.charts.comparisonRevenue, comparisonLabel),
+                    data: points.map((p) => p.comparisonRevenue ?? 0),
+                    backgroundColor: "rgba(100,116,139,0.24)",
+                    borderRadius: 6,
+                    borderSkipped: "bottom" as const,
+                    order: 3,
+                }] : []),
                 {
                     type: "bar",
-                    label: d.charts.revenueBar,
+                    label: variant === "period" ? d.charts.selectedRevenue : d.charts.currentRevenue,
                     data: points.map((p) => p.revenue),
                     backgroundColor: points.map((p) => (p.highlighted ? chartColors.amber : "rgba(0,102,204,0.6)")),
                     borderRadius: 6,
                     borderSkipped: "bottom",
                     order: 2,
                 },
-                {
-                    type: "line",
-                    label: d.charts.revenueLine,
+                ...(variant === "timeline" ? [{
+                    type: "line" as const,
+                    label: d.charts.currentTrend,
                     data: points.map((p) => p.revenue),
                     borderColor: chartColors.green,
                     backgroundColor: "rgba(22,163,74,0.06)",
@@ -73,10 +164,23 @@ function RevenueMixedChart({ points, title, onPointClick }: { points: RevenueCha
                     fill: true,
                     tension: 0.35,
                     order: 1,
-                },
+                }] : []),
+                ...(hasComparison ? [{
+                    type: "line" as const,
+                    label: withPeriodLabel(d.charts.comparisonTrend, comparisonLabel),
+                    data: points.map((p) => p.comparisonRevenue ?? 0),
+                    borderColor: chartColors.slate,
+                    backgroundColor: "rgba(100,116,139,0.04)",
+                    borderDash: [5, 5],
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    fill: false,
+                    tension: 0.35,
+                    order: 0,
+                }] : []),
             ],
         }),
-        [d.charts.revenueBar, d.charts.revenueLine, points],
+        [comparisonLabel, d.charts.comparisonRevenue, d.charts.comparisonTrend, d.charts.currentRevenue, d.charts.currentTrend, d.charts.selectedRevenue, hasComparison, points, variant],
     );
 
     const options = useMemo<ChartOptions<MixedChartType>>(
@@ -86,6 +190,10 @@ function RevenueMixedChart({ points, title, onPointClick }: { points: RevenueCha
                 tooltip: {
                     ...chartTooltipOptions,
                     callbacks: {
+                        title: (items) => getTooltipTitle(
+                            points[items[0]?.dataIndex],
+                            isComparisonTooltip(items[0]?.dataset.label, comparisonLabel, d.charts.comparisonTrend),
+                        ),
                         label: (ctx: TooltipItem<MixedChartType>) =>
                             `${ctx.dataset.label}: ${formatCurrency(Number(ctx.raw))}`,
                     },
@@ -101,7 +209,7 @@ function RevenueMixedChart({ points, title, onPointClick }: { points: RevenueCha
                 },
             },
         }),
-        [],
+        [comparisonLabel, d, points],
     );
 
     return (
@@ -180,28 +288,58 @@ function PaymentDonutChart({ methods, title }: { methods: PaymentMethodMetric[];
 
 /* ═══════════════ Member Card Chart ═══════════════ */
 
-function MemberCardChart({ points, title, onPointClick }: { points: RevenueChartPoint[]; title: string; onPointClick?: (key: string) => void }) {
+function MemberCardChart({
+    points,
+    title,
+    comparisonLabel,
+    variant,
+    onPointClick,
+}: {
+    points: ComparableRevenueChartPoint[];
+    title: string;
+    comparisonLabel?: string;
+    variant: "timeline" | "period";
+    onPointClick?: (key: string) => void;
+}) {
     const { t } = useTranslation();
     const d = t.revenue;
+    const hasComparison = points.some((p) => typeof p.comparisonMemberCardAmount === "number");
     const data = useMemo<ChartData<"bar", number[], string>>(
         () => ({
             labels: points.map((p) => p.label),
-            datasets: [{
-                label: d.charts.memberCardBar,
-                data: points.map((p) => p.memberCardAmount),
-                backgroundColor: points.map((p) => (p.highlighted ? chartColors.amber : "rgba(22,163,74,0.6)")),
-                borderRadius: 6,
-            }],
+            datasets: [
+                {
+                    label: variant === "period" ? d.charts.selectedMemberCard : d.charts.currentMemberCard,
+                    data: points.map((p) => p.memberCardAmount),
+                    backgroundColor: points.map((p) => (p.highlighted ? chartColors.amber : "rgba(22,163,74,0.6)")),
+                    borderRadius: 6,
+                },
+                ...(hasComparison ? [{
+                    label: withPeriodLabel(d.charts.comparisonMemberCard, comparisonLabel),
+                    data: points.map((p) => p.comparisonMemberCardAmount ?? 0),
+                    backgroundColor: "rgba(100,116,139,0.24)",
+                    borderRadius: 6,
+                }] : []),
+            ],
         }),
-        [d.charts.memberCardBar, points],
+        [comparisonLabel, d.charts.comparisonMemberCard, d.charts.currentMemberCard, d.charts.selectedMemberCard, hasComparison, points, variant],
     );
 
     const options = useMemo<ChartOptions<"bar">>(
         () => ({
             ...responsiveChartOptions,
             plugins: {
-                tooltip: { ...chartTooltipOptions, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(Number(ctx.raw))}` } },
-                legend: { display: false },
+                tooltip: {
+                    ...chartTooltipOptions,
+                    callbacks: {
+                        title: (items) => getTooltipTitle(
+                            points[items[0]?.dataIndex],
+                            isComparisonTooltip(items[0]?.dataset.label, comparisonLabel, d.charts.comparisonMemberCard),
+                        ),
+                        label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(Number(ctx.raw))}`,
+                    },
+                },
+                legend: { display: hasComparison, labels: { color: chartAxisColor, boxWidth: 10, font: { size: 11 } } },
             },
             scales: {
                 x: { ticks: { color: chartAxisColor, font: { size: 10 } }, grid: { display: false } },
@@ -212,7 +350,7 @@ function MemberCardChart({ points, title, onPointClick }: { points: RevenueChart
                 },
             },
         }),
-        [],
+        [comparisonLabel, d, hasComparison, points],
     );
 
     return (
@@ -231,22 +369,47 @@ function MemberCardChart({ points, title, onPointClick }: { points: RevenueChart
 
 /* ═══════════════ Chart Summary ═══════════════ */
 
-function ChartSummary({ points }: { points: RevenueChartPoint[] }) {
+function ChartSummary({ points }: { points: ComparableRevenueChartPoint[] }) {
     const { t } = useTranslation();
     const d = t.revenue;
     const highlighted = points.filter((p) => p.highlighted);
-    const total = highlighted.reduce((s, p) => s + p.revenue, 0);
-    const orders = highlighted.reduce((s, p) => s + p.orderCount, 0);
+    const scoped = highlighted.length > 0 ? highlighted : points;
+    const revenue = sumComparablePointValue(scoped, "revenue");
+    const orders = sumComparablePointValue(scoped, "orderCount");
 
     return (
         <div className="flex h-full flex-col justify-center rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <SummaryBox label={d.charts.highlightedDays} value={highlighted.length.toLocaleString("vi-VN")} />
-                <SummaryBox label={d.stats.totalRevenue} value={formatCurrency(total)} highlight />
-                <SummaryBox label={d.stats.totalOrders} value={orders.toLocaleString("vi-VN")} />
+                <SummaryBox label={d.charts.highlightedDays} value={(highlighted.length || points.length).toLocaleString("vi-VN")} />
+                <SummaryBox label={d.stats.totalRevenue} value={formatCurrency(revenue.current)} comparison={revenue.comparison ? formatCurrency(revenue.comparison) : undefined} highlight />
+                <SummaryBox label={d.stats.totalOrders} value={orders.current.toLocaleString("vi-VN")} comparison={orders.comparison ? orders.comparison.toLocaleString("vi-VN") : undefined} />
             </div>
         </div>
     );
+}
+
+function isComparisonTooltip(label: string | undefined, comparisonLabel: string | undefined, comparisonLineLabel: string): boolean {
+    if (!label) return false;
+    if (label === comparisonLineLabel || label.startsWith(`${comparisonLineLabel} - `)) return true;
+    return Boolean(comparisonLabel && label.includes(comparisonLabel));
+}
+
+function getTooltipTitle(point: ComparableRevenueChartPoint | undefined, comparison: boolean | undefined): string {
+    if (!point) return "";
+    if (comparison && point.comparisonTooltipLabel) return point.comparisonTooltipLabel;
+    const label = point.tooltipLabel ?? formatPointLabel(point.key, point.label);
+    return label;
+}
+
+function withPeriodLabel(label: string, period?: string): string {
+    return period ? `${label} - ${period}` : label;
+}
+
+function formatPointLabel(key: string, fallback: string): string {
+    if (fallback.includes(" - ")) return `Tuần ${fallback}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return `Ngày ${key.slice(8, 10)}/${key.slice(5, 7)}/${key.slice(0, 4)}`;
+    if (/^\d{4}-\d{2}$/.test(key)) return `Tháng ${key.slice(5, 7)}/${key.slice(0, 4)}`;
+    return fallback || key;
 }
 
 /* ═══════════════ Chart Shell ═══════════════ */
@@ -276,13 +439,18 @@ function EmptyChart() {
 
 /* ═══════════════ Summary Box ═══════════════ */
 
-function SummaryBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function SummaryBox({ label, value, comparison, highlight }: { label: string; value: string; comparison?: string; highlight?: boolean }) {
     return (
         <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
             <p className="text-xxs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{label}</p>
             <p className={`mt-1 tabular-nums ${highlight ? "text-lg font-extrabold text-[var(--color-brand-primary)]" : "text-base font-bold text-[var(--color-text-primary)]"}`}>
                 {value}
             </p>
+            {comparison && (
+                <p className="mt-1 truncate text-xxs font-semibold tabular-nums text-[var(--color-text-muted)]">
+                    {comparison}
+                </p>
+            )}
         </div>
     );
 }

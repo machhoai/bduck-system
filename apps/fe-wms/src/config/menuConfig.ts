@@ -6,52 +6,53 @@
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
 import {
-    ArrowRightLeft,
-    Bell,
-    CircleDollarSign,
-    ChartNoAxesCombined,
-    ClipboardCheck,
-    FileClock,
-    FileSpreadsheet,
-    Files,
-    Home,
-    Package,
-    PackagePlus,
-    PackageMinus,
-    PenLine,
-    Users,
-    Warehouse,
-    LucideIcon,
-    FolderSymlink,
-    ScanBarcode,
+  ArrowRightLeft,
+  Bell,
+  CalendarCheck,
+  CircleDollarSign,
+  ChartNoAxesCombined,
+  ClipboardCheck,
+  FileClock,
+  FileSpreadsheet,
+  Files,
+  Home,
+  Package,
+  PackagePlus,
+  PackageMinus,
+  PenLine,
+  Users,
+  Warehouse,
+  LucideIcon,
+  FolderSymlink,
+  ScanBarcode,
 } from "lucide-react";
 import { PERMISSION_REGISTRY } from "@bduck/shared-types";
 
 export interface MenuItem {
-    id: string;
-    labelKey: string;
-    /** SVG path data cho icon (24x24 viewBox) */
-    icon: LucideIcon;
-    href: string;
-    /** Permission key cần check. Nếu undefined = public cho authenticated users */
-    permission?: string;
-    permissionsAny?: string[];
-    /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
-    showInBottomNav?: boolean;
-    /** Key mapping to MenuBadges for realtime count display */
-    badgeKey?: string;
+  id: string;
+  labelKey: string;
+  /** SVG path data cho icon (24x24 viewBox) */
+  icon: LucideIcon;
+  href: string;
+  /** Permission key cần check. Nếu undefined = public cho authenticated users */
+  permission?: string;
+  permissionsAny?: string[];
+  /** Hiển thị trên bottom nav mobile? (chỉ 4-5 items) */
+  showInBottomNav?: boolean;
+  /** Key mapping to MenuBadges for realtime count display */
+  badgeKey?: string;
 }
 
 const userAccessReadPermissions = PERMISSION_REGISTRY.filter(
-    (permission) =>
-        ["users", "roles"].includes(permission.group) &&
-        permission.key.endsWith(".read"),
+  (permission) =>
+    ["users", "roles"].includes(permission.group) &&
+    permission.key.endsWith(".read"),
 ).map((permission) => permission.key);
 
 const notificationPermissions = [
-    "notifications.read",
-    "notifications.send_in_app",
-    "notifications.send_email",
+  "notifications.read",
+  "notifications.send_in_app",
+  "notifications.send_email",
 ];
 
 /**
@@ -59,139 +60,152 @@ const notificationPermissions = [
  * ► labelKey tương ứng với key trong `t.nav.*`
  */
 export const menuItems: MenuItem[] = [
-    {
-        id: "dashboard",
-        labelKey: "dashboard",
-        icon: Home,
-        href: "/dashboard",
-        showInBottomNav: true,
-    },
-    {
-        id: "warehouses",
-        labelKey: "warehouses",
-        icon: Warehouse,
-        href: "/warehouses",
-        permission: "warehouses.read",
-        showInBottomNav: true,
-    },
-    {
-        id: "expenses",
-        labelKey: "expenses",
-        icon: CircleDollarSign,
-        href: "/expenses",
-        permission: "expenses.read",
-    },
-    {
-        id: "revenueManagement",
-        labelKey: "revenueManagement",
-        icon: ChartNoAxesCombined,
-        href: "/revenue-management",
-        permission: "revenue.read",
-    },
-    {
-        id: "notification",
-        labelKey: "notification",
-        icon: Bell,
-        href: "/notification",
-        permissionsAny: notificationPermissions,
-    },
-    {
-        id: "reports",
-        labelKey: "reports",
-        icon: FileSpreadsheet,
-        href: "/reports",
-        permissionsAny: ["reports.templates.read", "reports.export"],
-    },
-    {
-        id: "tasks",
-        labelKey: "tasks",
-        icon: ClipboardCheck,
-        href: "/tasks",
-        showInBottomNav: true,
-        badgeKey: "tasks",
-    },
-    {
-        id: "vouchers",
-        labelKey: "vouchers",
-        icon: PackagePlus,
-        href: "/vouchers",
-        permissionsAny: [
-            "vouchers.read",
-            "vouchers.write",
-            "transfers.read",
-            "transfers.write",
-        ],
-        badgeKey: "vouchers",
-    },
-    {
-        id: "fileLibrary",
-        labelKey: "fileLibrary",
-        icon: Files,
-        href: "/file-library",
-        permissionsAny: ["vouchers.read", "transfers.read"],
-    },
-    {
-        id: "products",
-        labelKey: "products",
-        icon: Package,
-        href: "/products",
-        permission: "products.read",
-    },
-    {
-        id: "processConfigs",
-        labelKey: "processConfigs",
-        icon: FolderSymlink,
-        href: "/process-configs",
-        permission: "workflows.manage",
-    },
-    {
-        id: "expenseEntry",
-        labelKey: "expenseEntry",
-        icon: PenLine,
-        href: "/expenses/entry",
-        permission: "expenses.read",
-    },
-    {
-        id: "users",
-        labelKey: "users",
-        icon: Users,
-        href: "/users",
-        permissionsAny: userAccessReadPermissions,
-    },
-    {
-        id: "auditLogs",
-        labelKey: "auditLogs",
-        icon: FileClock,
-        href: "/audit-logs",
-        permission: "audit.read",
-    },
-    {
-        id: "externalQueue",
-        labelKey: "externalQueue",
-        icon: ScanBarcode,
-        href: "/external/queue",
-        permissionsAny: [
-            "external_scan.view",
-            "external_scan.approve",
-            "external_count.view",
-            "external_count.count",
-        ],
-    },
-    // ── Thêm module mới vào đây ──
+  {
+    id: "dashboard",
+    labelKey: "dashboard",
+    icon: Home,
+    href: "/dashboard",
+    showInBottomNav: true,
+  },
+  {
+    id: "warehouses",
+    labelKey: "warehouses",
+    icon: Warehouse,
+    href: "/warehouses",
+    permission: "warehouses.read",
+    showInBottomNav: true,
+  },
+  {
+    id: "expenses",
+    labelKey: "expenses",
+    icon: CircleDollarSign,
+    href: "/expenses",
+    permission: "expenses.read",
+  },
+  {
+    id: "revenueManagement",
+    labelKey: "revenueManagement",
+    icon: ChartNoAxesCombined,
+    href: "/revenue-management",
+    permission: "revenue.read",
+  },
+  {
+    id: "attendance",
+    labelKey: "attendance",
+    icon: CalendarCheck,
+    href: "/attendance",
+    permissionsAny: [
+      "attendance.check_in",
+      "attendance.view",
+      "attendance.export",
+      "attendance.config",
+    ],
+    showInBottomNav: true,
+  },
+  {
+    id: "notification",
+    labelKey: "notification",
+    icon: Bell,
+    href: "/notification",
+    permissionsAny: notificationPermissions,
+  },
+  {
+    id: "reports",
+    labelKey: "reports",
+    icon: FileSpreadsheet,
+    href: "/reports",
+    permissionsAny: ["reports.templates.read", "reports.export"],
+  },
+  {
+    id: "tasks",
+    labelKey: "tasks",
+    icon: ClipboardCheck,
+    href: "/tasks",
+    showInBottomNav: true,
+    badgeKey: "tasks",
+  },
+  {
+    id: "vouchers",
+    labelKey: "vouchers",
+    icon: PackagePlus,
+    href: "/vouchers",
+    permissionsAny: [
+      "vouchers.read",
+      "vouchers.write",
+      "transfers.read",
+      "transfers.write",
+    ],
+    badgeKey: "vouchers",
+  },
+  {
+    id: "fileLibrary",
+    labelKey: "fileLibrary",
+    icon: Files,
+    href: "/file-library",
+    permissionsAny: ["vouchers.read", "transfers.read"],
+  },
+  {
+    id: "products",
+    labelKey: "products",
+    icon: Package,
+    href: "/products",
+    permission: "products.read",
+  },
+  {
+    id: "processConfigs",
+    labelKey: "processConfigs",
+    icon: FolderSymlink,
+    href: "/process-configs",
+    permission: "workflows.manage",
+  },
+  {
+    id: "expenseEntry",
+    labelKey: "expenseEntry",
+    icon: PenLine,
+    href: "/expenses/entry",
+    permission: "expenses.read",
+  },
+  {
+    id: "users",
+    labelKey: "users",
+    icon: Users,
+    href: "/users",
+    permissionsAny: userAccessReadPermissions,
+  },
+  {
+    id: "auditLogs",
+    labelKey: "auditLogs",
+    icon: FileClock,
+    href: "/audit-logs",
+    permission: "audit.read",
+  },
+  {
+    id: "externalQueue",
+    labelKey: "externalQueue",
+    icon: ScanBarcode,
+    href: "/external/queue",
+    permissionsAny: [
+      "external_scan.view",
+      "external_scan.approve",
+      "external_count.view",
+      "external_count.count",
+    ],
+  },
+  // ── Thêm module mới vào đây ──
 ];
 
 /**
  * Filter menu items theo permissions của user
  */
 export function getVisibleMenuItems(
-    items: MenuItem[],
-    hasPermission: (action: string) => boolean,
+  items: MenuItem[],
+  hasPermission: (action: string) => boolean,
 ): MenuItem[] {
-    return items.filter((item) => {
-        if (item.permission && hasPermission(item.permission)) return true;
-        if (item.permissionsAny?.some((permission) => hasPermission(permission))) {
-            return true;
-        }
-        return !item.permission && !item.permissionsAny;
-    });
+  return items.filter((item) => {
+    if (item.permission && hasPermission(item.permission)) return true;
+    if (item.permissionsAny?.some((permission) => hasPermission(permission))) {
+      return true;
+    }
+    return !item.permission && !item.permissionsAny;
+  });
 }

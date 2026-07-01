@@ -3,6 +3,7 @@
 export type DataInvalidationKey =
   | "all"
   | "audit_logs"
+  | "attendance_logs"
   | "import_vouchers"
   | "inventory"
   | "nonconformity_reports"
@@ -21,6 +22,8 @@ export type DataInvalidationKey =
   | "warehouse_locations"
   | "warehouse_location_slots"
   | "warehouse_location_slot_products"
+  | "warehouse_attendance_exemptions"
+  | "warehouse_attendance_policies"
   | "warehouses"
   | "inventory_stock_policies"
   | "workflow_definitions"

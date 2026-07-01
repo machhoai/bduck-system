@@ -139,10 +139,16 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 15,
   },
   {
+    id: "attendance",
+    label: { vi: "Chấm công", zh: "考勤" },
+    icon: "CalendarCheck",
+    order: 16,
+  },
+  {
     id: "external",
     label: { vi: "Tích hợp ngoài", zh: "外部集成" },
     icon: "ScanBarcode",
-    order: 16,
+    order: 17,
   },
 ];
 
@@ -516,6 +522,43 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 
   // ── Expenses ──
   {
+    key: "attendance.check_in",
+    group: "attendance",
+    label: { vi: "Check-in chấm công", zh: "考勤打卡" },
+    description: {
+      vi: "Cho phép mở trang chấm công cá nhân và thực hiện check-in nếu kho đang bật chấm công.",
+      zh: "允许打开个人考勤页面，并在仓库启用考勤时打卡。",
+    },
+  },
+  {
+    key: "attendance.view",
+    group: "attendance",
+    label: { vi: "Xem chấm công", zh: "查看考勤" },
+    description: {
+      vi: "Xem lịch chấm công và log check-in lỗi trong phạm vi kho được phân quyền.",
+      zh: "查看授权仓库范围内的考勤日历和失败打卡日志。",
+    },
+  },
+  {
+    key: "attendance.export",
+    group: "attendance",
+    label: { vi: "Xuất Excel chấm công", zh: "导出考勤" },
+    description: {
+      vi: "Xuất Excel dữ liệu chấm công theo bộ lọc hiện tại.",
+      zh: "根据当前筛选条件导出考勤数据。",
+    },
+  },
+  {
+    key: "attendance.config",
+    group: "attendance",
+    label: { vi: "Cấu hình chấm công", zh: "配置考勤" },
+    description: {
+      vi: "Bật/tắt chấm công theo kho, cấu hình IP hợp lệ và danh sách nhân viên miễn chấm công.",
+      zh: "按仓库启用/停用考勤，配置允许 IP 和免考勤人员。",
+    },
+  },
+
+  {
     key: "expenses.read",
     group: "expenses",
     label: { vi: "Xem chi phí", zh: "查看费用" },
@@ -679,9 +722,9 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 // ─────────────────────────────────────────────
 
 /** All permission keys (excluding "*") for validation */
-export const ALL_PERMISSION_KEYS = PERMISSION_REGISTRY
-  .filter((p) => p.key !== "*")
-  .map((p) => p.key);
+export const ALL_PERMISSION_KEYS = PERMISSION_REGISTRY.filter(
+  (p) => p.key !== "*",
+).map((p) => p.key);
 
 /** Get permissions grouped by their group id */
 export function getPermissionsByGroup(): Map<string, PermissionDefinition[]> {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChartData, ChartOptions } from "chart.js";
 import {
     Banknote,
     CircleDollarSign,
@@ -15,8 +16,20 @@ import {
     X,
 } from "lucide-react";
 import type { PaymentMethodMetric, RevenueDashboardData, RevenueMetric } from "@/hooks/useRevenueDashboard";
+import ChartCanvas from "@/components/charts/ChartCanvas";
+import { chartAxisColor, chartGridColor, chartTooltipOptions, responsiveChartOptions } from "@/components/charts/chartjs";
 import { useTranslation } from "@/lib/i18n";
-import { formatCurrency, formatNumber, getMetricTone, getPaymentTotal, donutColors } from "./revenueDashboardUtils";
+import {
+    chartColors,
+    formatAxisValue,
+    formatCurrency,
+    formatNumber,
+    getMetricTone,
+    getPaymentTotal,
+    donutColors,
+    prepareComparableRevenuePoints,
+    type ComparableRevenueChartPoint,
+} from "./revenueDashboardUtils";
 
 type StatKey =
     | "totalRevenue"
@@ -31,6 +44,8 @@ type StatKey =
 
 interface RevenueStatsProps {
     data: RevenueDashboardData;
+    comparisonData?: RevenueDashboardData | null;
+    comparisonLabel?: string;
 }
 
 const statIcons = {
@@ -45,10 +60,11 @@ const statIcons = {
     paymentMethods: Banknote,
 };
 
-export default function RevenueStats({ data }: RevenueStatsProps) {
+export default function RevenueStats({ data, comparisonData, comparisonLabel }: RevenueStatsProps) {
     const { t } = useTranslation();
     const d = t.revenue;
     const [selected, setSelected] = useState<StatKey | null>(null);
+    const comparisonEnabled = Boolean(comparisonData);
 
     const cards: {
         key: StatKey;
@@ -133,13 +149,20 @@ export default function RevenueStats({ data }: RevenueStatsProps) {
                         card={card}
                         icon={statIcons[card.key]}
                         isHero={card.key === "totalRevenue"}
+                        showTrend={comparisonEnabled}
                         onClick={() => setSelected(card.key)}
                     />
                 ))}
             </div>
 
             {selected && (
-                <StatDetailModal selected={selected} data={data} onClose={() => setSelected(null)} />
+                <StatDetailModal
+                    selected={selected}
+                    data={data}
+                    comparisonData={comparisonData}
+                    comparisonLabel={comparisonLabel}
+                    onClose={() => setSelected(null)}
+                />
             )}
         </>
     );
@@ -184,11 +207,13 @@ function StatCard({
     card,
     icon: Icon,
     isHero,
+    showTrend,
     onClick,
 }: {
     card: { key: StatKey; label: string; value: number; formatValue: (v: number) => string; metric?: RevenueMetric; hint: string };
     icon: typeof Banknote;
     isHero: boolean;
+    showTrend: boolean;
     onClick: () => void;
 }) {
     const tone = card.metric ? getMetricTone(card.metric) : "flat";
@@ -228,7 +253,7 @@ function StatCard({
                 <span className={`truncate text-xxs ${isHero ? "opacity-60" : "text-[var(--color-text-muted)]"}`}>
                     {card.hint}
                 </span>
-                {card.metric && (
+                {showTrend && card.metric && (
                     <TrendBadge tone={tone} percent={card.metric.changePercent} icon={TrendIcon} isHero={isHero} />
                 )}
             </div>
@@ -274,12 +299,25 @@ function TrendBadge({
 
 /* ═══════════════ Stat Detail Modal ═══════════════ */
 
-function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data: RevenueDashboardData; onClose: () => void }) {
+function StatDetailModal({
+    selected,
+    data,
+    comparisonData,
+    comparisonLabel,
+    onClose,
+}: {
+    selected: StatKey;
+    data: RevenueDashboardData;
+    comparisonData?: RevenueDashboardData | null;
+    comparisonLabel?: string;
+    onClose: () => void;
+}) {
     const { t } = useTranslation();
     const d = t.revenue;
     const paymentTotal = getPaymentTotal(data.stats.paymentMethods);
     const title = d.stats[selected];
     const metric = selected === "paymentMethods" ? undefined : data.stats[selected];
+    const hasComparison = Boolean(comparisonData);
     const comparisonText =
         data.comparisonLabel in d.comparison
             ? d.comparison[data.comparisonLabel as keyof typeof d.comparison]
@@ -288,7 +326,7 @@ function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data:
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 backdrop-blur-sm sm:items-center" onClick={onClose}>
             <div
-                className="flex w-full flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4 shadow-2xl sm:w-[560px]"
+                className="flex max-h-[90vh] w-full flex-col gap-4 overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4 shadow-2xl sm:w-[760px]"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between gap-3">
@@ -308,7 +346,32 @@ function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data:
                     </button>
                 </div>
 
-                {metric && <MetricDetail metric={metric} selected={selected} />}
+                {metric && <MetricDetail metric={metric} selected={selected} showComparison={hasComparison} />}
+
+                {selected !== "paymentMethods" && metric && comparisonData && (
+                    <>
+                        <MetricComparisonChart
+                            selected={selected}
+                            metric={metric}
+                            comparisonMetric={comparisonData?.stats[selected]}
+                            comparisonLabel={comparisonLabel || comparisonText}
+                        />
+                        <MetricTrendChart
+                            selected={selected}
+                            data={data}
+                            comparisonData={comparisonData}
+                            comparisonLabel={comparisonLabel || comparisonText}
+                        />
+                    </>
+                )}
+
+                {selected === "paymentMethods" && comparisonData && (
+                    <PaymentMethodsComparisonChart
+                        current={data.stats.paymentMethods}
+                        comparison={comparisonData?.stats.paymentMethods}
+                        comparisonLabel={comparisonLabel || comparisonText}
+                    />
+                )}
 
                 {(selected === "totalRevenue" || selected === "paymentMethods") && (
                     <div className="flex flex-col gap-2">
@@ -335,7 +398,251 @@ function StatDetailModal({ selected, data, onClose }: { selected: StatKey; data:
 
 /* ═══════════════ Metric Detail ═══════════════ */
 
-function MetricDetail({ metric, selected }: { metric: RevenueMetric; selected: StatKey }) {
+function MetricComparisonChart({
+    selected,
+    metric,
+    comparisonMetric,
+    comparisonLabel,
+}: {
+    selected: Exclude<StatKey, "paymentMethods">;
+    metric: RevenueMetric;
+    comparisonMetric?: RevenueMetric;
+    comparisonLabel: string;
+}) {
+    const { t } = useTranslation();
+    const d = t.revenue;
+    const formatValue = getStatFormatter(selected);
+    const comparisonValue = comparisonMetric?.value ?? metric.previousValue;
+    const data = useMemo<ChartData<"bar", number[], string>>(
+        () => ({
+            labels: [d.detail.current, comparisonLabel],
+            datasets: [{
+                label: d.stats[selected],
+                data: [metric.value, comparisonValue],
+                backgroundColor: [chartColors.blue, "rgba(100,116,139,0.35)"],
+                borderRadius: 6,
+            }],
+        }),
+        [comparisonLabel, comparisonValue, d.detail.current, d.stats, metric.value, selected],
+    );
+    const options = useMemo<ChartOptions<"bar">>(
+        () => ({
+            ...responsiveChartOptions,
+            plugins: {
+                tooltip: {
+                    ...chartTooltipOptions,
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatValue(Number(ctx.raw))}` },
+                },
+                legend: { display: false },
+            },
+            scales: {
+                x: { ticks: { color: chartAxisColor, font: { size: 10 } }, grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: chartAxisColor, font: { size: 10 }, callback: (v) => formatAxisValue(Number(v)) },
+                    grid: { color: chartGridColor },
+                },
+            },
+        }),
+        [formatValue],
+    );
+
+    return (
+        <div className="h-[240px] rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+            <ChartCanvas type="bar" data={data} options={options} />
+        </div>
+    );
+}
+
+function MetricTrendChart({
+    selected,
+    data,
+    comparisonData,
+    comparisonLabel,
+}: {
+    selected: Exclude<StatKey, "paymentMethods">;
+    data: RevenueDashboardData;
+    comparisonData?: RevenueDashboardData | null;
+    comparisonLabel: string;
+}) {
+    const { t } = useTranslation();
+    const d = t.revenue;
+    const formatValue = getStatFormatter(selected);
+    const prepared = useMemo(
+        () => prepareComparableRevenuePoints(data.charts.points, comparisonData?.charts.points, data.mode),
+        [comparisonData?.charts.points, data.charts.points, data.mode],
+    );
+    const values = useMemo(() => getTrendValues(selected, prepared.points), [prepared.points, selected]);
+
+    if (!values) return null;
+
+    const chartData: ChartData<"bar" | "line", number[], string> = {
+        labels: prepared.points.map((point) => point.label),
+        datasets: [
+            {
+                type: "bar",
+                label: d.detail.current,
+                data: values.current,
+                backgroundColor: "rgba(0,102,204,0.58)",
+                borderRadius: 6,
+                order: 2,
+            },
+            {
+                type: "line",
+                label: comparisonLabel,
+                data: values.comparison,
+                borderColor: chartColors.slate,
+                backgroundColor: "rgba(100,116,139,0.08)",
+                borderDash: [5, 5],
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                tension: 0.35,
+                order: 1,
+            },
+        ],
+    };
+    const options: ChartOptions<"bar" | "line"> = {
+        ...responsiveChartOptions,
+        plugins: {
+            tooltip: {
+                ...chartTooltipOptions,
+                callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatValue(Number(ctx.raw))}` },
+            },
+            legend: { labels: { color: chartAxisColor, boxWidth: 10, font: { size: 11 } } },
+        },
+        scales: {
+            x: { ticks: { color: chartAxisColor, font: { size: 10 }, maxRotation: 0 }, grid: { display: false } },
+            y: {
+                beginAtZero: true,
+                ticks: { color: chartAxisColor, font: { size: 10 }, callback: (v) => formatAxisValue(Number(v)) },
+                grid: { color: chartGridColor },
+            },
+        },
+    };
+
+    return (
+        <div className="h-[260px] rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-[var(--color-text-primary)]">{d.detail.trend}</p>
+                <p className="truncate text-xxs font-semibold text-[var(--color-text-muted)]">{comparisonLabel}</p>
+            </div>
+            <div className="h-[220px]">
+                <ChartCanvas type="bar" data={chartData} options={options} />
+            </div>
+        </div>
+    );
+}
+
+function PaymentMethodsComparisonChart({
+    current,
+    comparison,
+    comparisonLabel,
+}: {
+    current: PaymentMethodMetric[];
+    comparison?: PaymentMethodMetric[];
+    comparisonLabel: string;
+}) {
+    const { t } = useTranslation();
+    const d = t.revenue;
+    const rows = useMemo(() => {
+        const comparisonByMethod = new Map((comparison ?? []).map((item) => [item.method, item]));
+        return current.map((item) => ({
+            method: item.method,
+            current: item.amount,
+            comparison: comparisonByMethod.get(item.method)?.amount ?? 0,
+        }));
+    }, [comparison, current]);
+    const data = useMemo<ChartData<"bar", number[], string>>(
+        () => ({
+            labels: rows.map((row) => getTranslatedPaymentLabel(d, row.method)),
+            datasets: [
+                {
+                    label: d.detail.current,
+                    data: rows.map((row) => row.current),
+                    backgroundColor: "rgba(0,102,204,0.58)",
+                    borderRadius: 6,
+                },
+                {
+                    label: comparisonLabel,
+                    data: rows.map((row) => row.comparison),
+                    backgroundColor: "rgba(100,116,139,0.30)",
+                    borderRadius: 6,
+                },
+            ],
+        }),
+        [comparisonLabel, d, rows],
+    );
+    const options = useMemo<ChartOptions<"bar">>(
+        () => ({
+            ...responsiveChartOptions,
+            plugins: {
+                tooltip: {
+                    ...chartTooltipOptions,
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(Number(ctx.raw))}` },
+                },
+                legend: { labels: { color: chartAxisColor, boxWidth: 10, font: { size: 11 } } },
+            },
+            scales: {
+                x: { ticks: { color: chartAxisColor, font: { size: 10 }, maxRotation: 0 }, grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: chartAxisColor, font: { size: 10 }, callback: (v) => formatAxisValue(Number(v)) },
+                    grid: { color: chartGridColor },
+                },
+            },
+        }),
+        [],
+    );
+
+    if (rows.length === 0) return null;
+
+    return (
+        <div className="h-[260px] rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
+            <ChartCanvas type="bar" data={data} options={options} />
+        </div>
+    );
+}
+
+function getTrendValues(
+    selected: Exclude<StatKey, "paymentMethods">,
+    points: ComparableRevenueChartPoint[],
+): { current: number[]; comparison: number[] } | null {
+    if (selected === "totalRevenue") {
+        return {
+            current: points.map((point) => point.revenue),
+            comparison: points.map((point) => point.comparisonRevenue ?? 0),
+        };
+    }
+    if (selected === "totalOrders") {
+        return {
+            current: points.map((point) => point.orderCount),
+            comparison: points.map((point) => point.comparisonOrderCount ?? 0),
+        };
+    }
+    if (selected === "averageOrderValue") {
+        return {
+            current: points.map((point) => (point.orderCount > 0 ? point.revenue / point.orderCount : 0)),
+            comparison: points.map((point) => {
+                const orders = point.comparisonOrderCount ?? 0;
+                return orders > 0 ? (point.comparisonRevenue ?? 0) / orders : 0;
+            }),
+        };
+    }
+    if (selected === "memberCardSales") {
+        return {
+            current: points.map((point) => point.memberCardAmount),
+            comparison: points.map((point) => point.comparisonMemberCardAmount ?? 0),
+        };
+    }
+    return null;
+}
+
+function getStatFormatter(selected: Exclude<StatKey, "paymentMethods">): (value: number) => string {
+    if (selected === "totalOrders" || selected === "deviceConsumption" || selected === "memberCount") return formatNumber;
+    return formatCurrency;
+}
+
+function MetricDetail({ metric, selected, showComparison }: { metric: RevenueMetric; selected: StatKey; showComparison: boolean }) {
     const { t } = useTranslation();
     const d = t.revenue;
     const tone = getMetricTone(metric);
@@ -345,14 +652,18 @@ function MetricDetail({ metric, selected }: { metric: RevenueMetric; selected: S
         : formatCurrency;
 
     return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className={`grid grid-cols-1 gap-3 ${showComparison ? "sm:grid-cols-3" : ""}`}>
             <DetailBox label={d.detail.current} value={fmtVal(metric.value)} bold />
-            <DetailBox label={d.detail.previous} value={fmtVal(metric.previousValue)} />
-            <DetailBox
-                label={d.detail.change}
-                value={`${metric.changePercent > 0 ? "+" : ""}${metric.changePercent.toFixed(1)}%`}
-                color={color}
-            />
+            {showComparison && (
+                <>
+                    <DetailBox label={d.detail.previous} value={fmtVal(metric.previousValue)} />
+                    <DetailBox
+                        label={d.detail.change}
+                        value={`${metric.changePercent > 0 ? "+" : ""}${metric.changePercent.toFixed(1)}%`}
+                        color={color}
+                    />
+                </>
+            )}
         </div>
     );
 }
