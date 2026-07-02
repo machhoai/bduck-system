@@ -365,6 +365,7 @@ const vi = {
     formatFilter: "Định dạng",
     allSources: "Tất cả nguồn",
     allFormats: "Tất cả",
+    allCategories: "Tất cả phân loại",
     metrics: {
       total: "Tổng tệp",
     },

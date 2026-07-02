@@ -87,7 +87,7 @@ export default function FileTemplateGrid({
     }
 
     return (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {templates.map((template) => {
                 const category = template.category || "general";
                 const canOpenMenu =

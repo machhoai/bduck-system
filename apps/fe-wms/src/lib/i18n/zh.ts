@@ -361,6 +361,7 @@ const zh: Dictionary = {
     formatFilter: "格式",
     allSources: "全部来源",
     allFormats: "全部",
+    allCategories: "全部分类",
     metrics: {
       total: "文件总数",
     },

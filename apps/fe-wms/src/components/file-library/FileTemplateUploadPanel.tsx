@@ -225,7 +225,7 @@ export default function FileTemplateUploadPanel({
                                         <button
                                             type="button"
                                             onClick={() => inputRef.current?.click()}
-                                            className="flex h-full items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
+                                            className="flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
                                         >
                                             <UploadCloud size={14} />
                                             {t.templates.changeFile}
@@ -248,7 +248,7 @@ export default function FileTemplateUploadPanel({
                             type="button"
                             disabled={isSubmitting}
                             onClick={() => inputRef.current?.click()}
-                            className={`flex h-full w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isDragging ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]" : "border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"}`}
+                            className={`flex h-fit w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isDragging ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]" : "border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"}`}
                         >
                             <UploadCloud size={18} />
                             {isDragging ? t.templates.dropFileHere : t.templates.chooseFile}

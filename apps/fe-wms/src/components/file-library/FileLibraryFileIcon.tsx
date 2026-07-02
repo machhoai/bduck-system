@@ -21,8 +21,8 @@ const formatClassMap: Record<FileLibraryFormat, string> = {
 export function FileLibraryFileIcon({
     format,
     extension,
-    className = "h-10 w-10 rounded-[var(--radius-sm)]",
-    iconClassName = "h-5 w-5",
+    className = "rounded-[var(--radius-sm)]",
+    iconClassName = "",
 }: {
     format: FileLibraryFormat;
     extension: string;
@@ -33,10 +33,10 @@ export function FileLibraryFileIcon({
 
     return (
         <div
-            className={`relative flex shrink-0 items-center justify-center ${className} ${formatClassMap[format]}`}
+            className={`relative h-full aspect-square flex shrink-0 p-4 items-center justify-center ${className} ${formatClassMap[format]}`}
         >
-            <Icon className={iconClassName} />
-            <span className="absolute -bottom-1 -right-1 rounded-[var(--radius-xs)] bg-[var(--color-surface-elevated)] px-1 text-micro font-bold uppercase text-[var(--color-text-muted)] shadow-sm">
+            <Icon className={`size-full aspect-square ${iconClassName}`} />
+            <span className="absolute bottom-3 right-4 rounded-full px-2 bg-[var(--color-surface-elevated)] px-1 text-xs font-bold text-[var(--color-text-muted)] shadow-sm">
                 {extension || "file"}
             </span>
         </div>

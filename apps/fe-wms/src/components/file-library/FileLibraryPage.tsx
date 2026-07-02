@@ -35,6 +35,7 @@ const defaultFilters: FileLibraryFilters = {
     search: "",
     sourceType: "ALL",
     format: "ALL",
+    templateCategory: "ALL",
 };
 
 const metricTone: Record<FileLibraryFormat, string> = {
@@ -120,6 +121,12 @@ export default function FileLibraryPage() {
     const filteredTemplates = useMemo(() => {
         const keyword = templateFilters.search.trim().toLowerCase();
         return templates.filter((template) => {
+            if (
+                templateFilters.templateCategory !== "ALL" &&
+                template.category !== templateFilters.templateCategory
+            ) {
+                return false;
+            }
             if (
                 templateFilters.format !== "ALL" &&
                 template.file_format !== templateFilters.format
@@ -249,6 +256,7 @@ export default function FileLibraryPage() {
                                 onChange={setTemplateFilters}
                                 t={copy}
                                 hideSourceFilter
+                                showTemplateCategoryFilter
                             />
                             {templatesLoading ? (
                                 <FileLibrarySkeleton compact />

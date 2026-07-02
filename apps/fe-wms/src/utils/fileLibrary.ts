@@ -2,6 +2,7 @@
 
 import type {
   ExportVoucher,
+  FileTemplateCategory,
   ImportVoucher,
   TransferOrder,
   User,
@@ -34,6 +35,7 @@ export interface FileLibraryFilters {
   search: string;
   sourceType: FileLibrarySourceType | "ALL";
   format: FileLibraryFormat | "ALL";
+  templateCategory: FileTemplateCategory | "ALL";
 }
 
 const IMAGE_EXTENSIONS = new Set([
