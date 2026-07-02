@@ -126,18 +126,30 @@ export default function FileLibraryPage() {
         });
     }, [getUploaderName, templateFilters, templates]);
 
-    const counts = useMemo(
-        () =>
-            files.reduce(
-                (acc, file) => {
-                    acc.total += 1;
-                    acc[file.format] += 1;
-                    return acc;
-                },
-                { total: 0, pdf: 0, docx: 0, xlsx: 0, csv: 0, other: 0 },
-            ),
-        [files],
-    );
+    const counts = useMemo(() => {
+        const baseCounts = { total: 0, pdf: 0, docx: 0, xlsx: 0, csv: 0, other: 0 };
+        if (activeTab === "uploaded") {
+            return files.reduce((acc, file) => {
+                acc.total += 1;
+                if (file.format in acc) {
+                    acc[file.format as keyof typeof baseCounts] += 1;
+                } else {
+                    acc.other += 1;
+                }
+                return acc;
+            }, { ...baseCounts });
+        } else {
+            return templates.reduce((acc, template) => {
+                acc.total += 1;
+                if (template.file_format in acc) {
+                    acc[template.file_format as keyof typeof baseCounts] += 1;
+                } else {
+                    acc.other += 1;
+                }
+                return acc;
+            }, { ...baseCounts });
+        }
+    }, [files, templates, activeTab]);
 
     if (loading) {
         return <FileLibrarySkeleton />;
