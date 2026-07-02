@@ -543,6 +543,24 @@
   ],
   "fieldOverrides": [
     {
+      "collectionGroup": "lan_transfer_presence",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "lan_transfer_requests",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "signals",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "tasks",
       "fieldPath": "status",
       "ttl": false,

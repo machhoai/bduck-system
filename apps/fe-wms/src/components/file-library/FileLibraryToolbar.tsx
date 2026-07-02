@@ -1,12 +1,21 @@
 "use client";
 
-import { FileSpreadsheet, FileText, Filter, Search, Tags, X } from "lucide-react";
+import {
+    ArrowDownUp,
+    FileSpreadsheet,
+    FileText,
+    Filter,
+    Search,
+    Tags,
+    X,
+} from "lucide-react";
 import type { FileTemplateCategory } from "@bduck/shared-types";
 import type { Dictionary } from "@/lib/i18n";
 import { FILE_TEMPLATE_CATEGORY_OPTIONS } from "@/utils/fileTemplateCategories";
 import type {
     FileLibraryFilters,
     FileLibraryFormat,
+    FileLibrarySortBy,
     FileLibrarySourceType,
 } from "@/utils/fileLibrary";
 
@@ -38,6 +47,8 @@ const templateCategoryOptions: Array<FileTemplateCategory | "ALL"> = [
     ...FILE_TEMPLATE_CATEGORY_OPTIONS,
 ];
 
+const sortOptions: FileLibrarySortBy[] = ["uploadedAt", "size", "name"];
+
 export default function FileLibraryToolbar({
     filters,
     onChange,
@@ -56,6 +67,8 @@ export default function FileLibraryToolbar({
             sourceType: "ALL",
             format: "ALL",
             templateCategory: "ALL",
+            sortBy: "uploadedAt",
+            sortDirection: "desc",
         });
     };
 
@@ -63,7 +76,9 @@ export default function FileLibraryToolbar({
         Boolean(filters.search) ||
         filters.sourceType !== "ALL" ||
         filters.format !== "ALL" ||
-        filters.templateCategory !== "ALL";
+        filters.templateCategory !== "ALL" ||
+        filters.sortBy !== "uploadedAt" ||
+        filters.sortDirection !== "desc";
 
     return (
         <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
@@ -91,6 +106,42 @@ export default function FileLibraryToolbar({
                         {t.clearFilters}
                     </button>
                 )}
+            </div>
+
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                <label className="flex h-8 w-full items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-xs font-semibold text-[var(--color-text-muted)] lg:w-fit">
+                    <ArrowDownUp size={13} className="shrink-0" />
+                    <span className="shrink-0">{t.sortFilter}</span>
+                    <select
+                        value={filters.sortBy}
+                        onChange={(event) =>
+                            update("sortBy", event.target.value as FileLibrarySortBy)
+                        }
+                        className="h-full min-w-0 bg-transparent text-xs font-semibold text-[var(--color-text-primary)] outline-none"
+                    >
+                        {sortOptions.map((option) => (
+                            <option key={option} value={option}>
+                                {t.sortOptions[option]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        update(
+                            "sortDirection",
+                            filters.sortDirection === "asc" ? "desc" : "asc",
+                        )
+                    }
+                    className="flex h-8 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
+                >
+                    <ArrowDownUp size={13} />
+                    {filters.sortDirection === "asc"
+                        ? t.sortDirection.asc
+                        : t.sortDirection.desc}
+                </button>
             </div>
 
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">

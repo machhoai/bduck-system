@@ -14,6 +14,8 @@ export type FileLibrarySourceType =
   | "TRANSFER_ORDER";
 
 export type FileLibraryFormat = "pdf" | "docx" | "xlsx" | "csv" | "other";
+export type FileLibrarySortBy = "uploadedAt" | "size" | "name";
+export type FileLibrarySortDirection = "asc" | "desc";
 
 export interface FileLibraryItem {
   id: string;
@@ -28,6 +30,7 @@ export interface FileLibraryItem {
   uploaderId: string;
   uploaderName: string;
   uploadedAt: Date | null;
+  fileSize?: number | null;
   purposeKey: "importEvidence" | "exportEvidence" | "transferEvidence";
 }
 
@@ -36,6 +39,8 @@ export interface FileLibraryFilters {
   sourceType: FileLibrarySourceType | "ALL";
   format: FileLibraryFormat | "ALL";
   templateCategory: FileTemplateCategory | "ALL";
+  sortBy: FileLibrarySortBy;
+  sortDirection: FileLibrarySortDirection;
 }
 
 const IMAGE_EXTENSIONS = new Set([
@@ -58,6 +63,16 @@ const formatByExtension: Record<string, FileLibraryFormat> = {
   xls: "xlsx",
   csv: "csv",
 };
+
+export function normalizeFileLibrarySearch(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
+}
 
 function hasToDate(value: unknown): value is { toDate: () => Date } {
   return (
@@ -245,9 +260,9 @@ export function filterFileLibraryItems(
   filters: FileLibraryFilters,
   purposeResolver: (key: FileLibraryItem["purposeKey"]) => string,
 ) {
-  const keyword = filters.search.trim().toLowerCase();
+  const keyword = normalizeFileLibrarySearch(filters.search);
 
-  return items.filter((item) => {
+  const filtered = items.filter((item) => {
     if (filters.sourceType !== "ALL" && item.sourceType !== filters.sourceType) {
       return false;
     }
@@ -256,15 +271,46 @@ export function filterFileLibraryItems(
     }
     if (!keyword) return true;
 
-    return [
+    return normalizeFileLibrarySearch([
       item.fileName,
       item.extension,
       item.sourceNumber,
       item.uploaderName,
       purposeResolver(item.purposeKey),
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(keyword);
+    ].join(" ")).includes(keyword);
+  });
+
+  return sortFileLibraryItems(filtered, filters);
+}
+
+export function sortFileLibraryItems(
+  items: FileLibraryItem[],
+  filters: Pick<FileLibraryFilters, "sortBy" | "sortDirection">,
+) {
+  const directionFactor = filters.sortDirection === "asc" ? 1 : -1;
+
+  return [...items].sort((a, b) => {
+    if (filters.sortBy === "name") {
+      return (
+        a.fileName.localeCompare(b.fileName, "vi", { sensitivity: "base" }) *
+        directionFactor
+      );
+    }
+
+    const aValue =
+      filters.sortBy === "size" ? a.fileSize ?? null : a.uploadedAt?.getTime() ?? null;
+    const bValue =
+      filters.sortBy === "size" ? b.fileSize ?? null : b.uploadedAt?.getTime() ?? null;
+
+    if (aValue === null && bValue === null) {
+      return a.fileName.localeCompare(b.fileName, "vi", { sensitivity: "base" });
+    }
+    if (aValue === null) return 1;
+    if (bValue === null) return -1;
+    if (aValue === bValue) {
+      return a.fileName.localeCompare(b.fileName, "vi", { sensitivity: "base" });
+    }
+
+    return (aValue - bValue) * directionFactor;
   });
 }

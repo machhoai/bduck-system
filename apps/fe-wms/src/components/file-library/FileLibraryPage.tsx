@@ -16,6 +16,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
     filterFileLibraryItems,
+    normalizeFileLibrarySearch,
+    toFileLibraryDate,
     type FileLibraryFilters,
     type FileLibraryFormat,
 } from "@/utils/fileLibrary";
@@ -36,6 +38,8 @@ const defaultFilters: FileLibraryFilters = {
     sourceType: "ALL",
     format: "ALL",
     templateCategory: "ALL",
+    sortBy: "uploadedAt",
+    sortDirection: "desc",
 };
 
 const metricTone: Record<FileLibraryFormat, string> = {
@@ -72,6 +76,42 @@ function MetricCard({
             </div>
         </div>
     );
+}
+
+function sortTemplates(
+    templates: FileTemplate[],
+    filters: Pick<FileLibraryFilters, "sortBy" | "sortDirection">,
+) {
+    const directionFactor = filters.sortDirection === "asc" ? 1 : -1;
+
+    return [...templates].sort((a, b) => {
+        if (filters.sortBy === "name") {
+            return (
+                a.title.localeCompare(b.title, "vi", { sensitivity: "base" }) *
+                directionFactor
+            );
+        }
+
+        const aValue =
+            filters.sortBy === "size"
+                ? a.file_size ?? null
+                : toFileLibraryDate(a.created_at)?.getTime() ?? null;
+        const bValue =
+            filters.sortBy === "size"
+                ? b.file_size ?? null
+                : toFileLibraryDate(b.created_at)?.getTime() ?? null;
+
+        if (aValue === null && bValue === null) {
+            return a.title.localeCompare(b.title, "vi", { sensitivity: "base" });
+        }
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+        if (aValue === bValue) {
+            return a.title.localeCompare(b.title, "vi", { sensitivity: "base" });
+        }
+
+        return (aValue - bValue) * directionFactor;
+    });
 }
 
 export default function FileLibraryPage() {
@@ -119,8 +159,8 @@ export default function FileLibraryPage() {
     );
 
     const filteredTemplates = useMemo(() => {
-        const keyword = templateFilters.search.trim().toLowerCase();
-        return templates.filter((template) => {
+        const keyword = normalizeFileLibrarySearch(templateFilters.search);
+        const filtered = templates.filter((template) => {
             if (
                 templateFilters.templateCategory !== "ALL" &&
                 template.category !== templateFilters.templateCategory
@@ -139,13 +179,15 @@ export default function FileLibraryPage() {
                 template.description || "",
                 template.file_name,
                 template.file_format,
+                copy.templates.categories[template.category],
                 getUploaderName(template.uploaded_by),
             ]
+                .map(normalizeFileLibrarySearch)
                 .join(" ")
-                .toLowerCase()
                 .includes(keyword);
         });
-    }, [getUploaderName, templateFilters, templates]);
+        return sortTemplates(filtered, templateFilters);
+    }, [copy.templates.categories, getUploaderName, templateFilters, templates]);
 
     const counts = useMemo(() => {
         const baseCounts = { total: 0, pdf: 0, docx: 0, xlsx: 0, csv: 0, other: 0 };

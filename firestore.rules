@@ -89,6 +89,53 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /lan_transfer_presence/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /lan_transfer_requests/{requestId} {
+      function isParticipant() {
+        return resource.data.from_user_id == request.auth.uid
+          || resource.data.to_user_id == request.auth.uid;
+      }
+
+      function isRequestParticipant() {
+        return request.resource.data.from_user_id == request.auth.uid
+          || request.resource.data.to_user_id == request.auth.uid;
+      }
+
+      allow read: if isAuthenticated() && isParticipant();
+      allow create: if isAuthenticated()
+        && request.resource.data.from_user_id == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow update: if isAuthenticated()
+        && isParticipant()
+        && isRequestParticipant()
+        && request.resource.data.from_user_id == resource.data.from_user_id
+        && request.resource.data.to_user_id == resource.data.to_user_id;
+      allow delete: if false;
+
+      match /signals/{signalId} {
+        function parent() {
+          return get(/databases/$(database)/documents/lan_transfer_requests/$(requestId)).data;
+        }
+
+        function isSignalParticipant() {
+          return parent().from_user_id == request.auth.uid
+            || parent().to_user_id == request.auth.uid;
+        }
+
+        allow read: if isAuthenticated() && isSignalParticipant();
+        allow create: if isAuthenticated()
+          && isSignalParticipant()
+          && request.resource.data.sender_id == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
     // ── Product BOM: Authenticated read ──
     match /product_bom/{docId} {
       allow read: if isAuthenticated();

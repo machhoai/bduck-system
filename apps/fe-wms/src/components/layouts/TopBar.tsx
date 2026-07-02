@@ -8,6 +8,7 @@ import { useNextStep } from "nextstepjs";
 import NotificationBell from "../ui/NotificationBell";
 import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
+import LanFileTransferButton from "../lan-transfer/LanFileTransferButton";
 import { BreadcrumbNav } from "../ui/BreadcrumbNav";
 import { useExportStore } from "../../stores/useExportStore";
 import { WarehouseExportModal } from "./WarehouseExportModal";
@@ -134,6 +135,7 @@ export default function TopBar() {
                 >
                     <HelpCircle size={18} strokeWidth={2} />
                 </button>
+                <LanFileTransferButton />
                 <NotificationBell />
             </div>
             {exportConfig?.dialog?.type === "warehouse" && (
