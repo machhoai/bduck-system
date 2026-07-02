@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useUserStore } from "@/stores/useUserStore";
 import { createApiErrorFromResponse } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 import { FILE_TEMPLATE_CATEGORY_SET } from "@/utils/fileTemplateCategories";
 import { toFileLibraryDate } from "@/utils/fileLibrary";
 import { useUsers } from "./useUsers";
@@ -61,9 +62,8 @@ function normalizeTemplate(template: FileTemplate): FileTemplate {
 }
 
 async function createTemplateRequest(payload: CreateFileTemplatePayload) {
-  const response = await fetch(`${API_BASE_URL}/api/file-templates`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -82,9 +82,8 @@ async function updateTemplateRequest(
   id: string,
   payload: UpdateFileTemplatePayload,
 ) {
-  const response = await fetch(`${API_BASE_URL}/api/file-templates/${id}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates/${id}`, {
     method: "PATCH",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -100,9 +99,8 @@ async function updateTemplateRequest(
 }
 
 async function deleteTemplateRequest(id: string) {
-  const response = await fetch(`${API_BASE_URL}/api/file-templates/${id}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates/${id}`, {
     method: "DELETE",
-    credentials: "include",
   });
 
   if (!response.ok) {
@@ -116,11 +114,10 @@ async function uploadNewVersionRequest(
   id: string,
   payload: UploadNewTemplateVersionPayload,
 ) {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${API_BASE_URL}/api/file-templates/${id}/version`,
     {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     },
@@ -137,9 +134,8 @@ async function uploadNewVersionRequest(
 }
 
 async function fetchTemplatesFromApi(signal?: AbortSignal) {
-  const response = await fetch(`${API_BASE_URL}/api/file-templates`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates`, {
     method: "GET",
-    credentials: "include",
     signal,
   });
 
