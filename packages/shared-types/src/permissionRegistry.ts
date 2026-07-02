@@ -85,6 +85,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 7,
   },
   {
+    id: "file_library",
+    label: { vi: "Thư viện tệp", zh: "文件库" },
+    icon: "Files",
+    order: 7,
+  },
+  {
     id: "vouchers",
     label: { vi: "Phiếu nhập / xuất", zh: "入库/出库单" },
     icon: "FileText",
@@ -365,6 +371,35 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Preview và xuất file báo cáo từ template đã lưu.",
       zh: "预览并从已保存模板导出报表文件。",
+    },
+  },
+
+  // ── File Library ──
+  {
+    key: "file_templates.upload",
+    group: "file_library",
+    label: { vi: "Upload biểu mẫu", zh: "上传表单模板" },
+    description: {
+      vi: "Cho phép tải lên biểu mẫu PDF, DOCX, XLSX hoặc CSV để người khác tải xuống.",
+      zh: "允许上传 PDF、DOCX、XLSX 或 CSV 表单模板供他人下载。",
+    },
+  },
+  {
+    key: "file_templates.view",
+    group: "file_library",
+    label: { vi: "Xem biểu mẫu", zh: "查看表单模板" },
+    description: {
+      vi: "Xem và tải xuống các biểu mẫu đã được upload.",
+      zh: "查看并下载已上传的表单模板。",
+    },
+  },
+  {
+    key: "file_library.uploaded_files.view_all",
+    group: "file_library",
+    label: { vi: "Xem tất cả tệp đã tải lên", zh: "查看所有已上传文件" },
+    description: {
+      vi: "Xem tất cả tệp đính kèm từ phiếu. Nếu không có quyền này, user chỉ thấy tệp do chính mình upload.",
+      zh: "查看所有单据附件。没有此权限时，用户只能看到自己上传的文件。",
     },
   },
 

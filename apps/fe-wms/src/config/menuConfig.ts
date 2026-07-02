@@ -143,7 +143,6 @@ export const menuItems: MenuItem[] = [
     labelKey: "fileLibrary",
     icon: Files,
     href: "/file-library",
-    permissionsAny: ["vouchers.read", "transfers.read"],
   },
   {
     id: "products",

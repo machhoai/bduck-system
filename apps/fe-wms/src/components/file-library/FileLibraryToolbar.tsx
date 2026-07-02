@@ -12,6 +12,7 @@ interface FileLibraryToolbarProps {
   filters: FileLibraryFilters;
   onChange: (filters: FileLibraryFilters) => void;
   t: Dictionary["fileLibrary"];
+  hideSourceFilter?: boolean;
 }
 
 const sourceOptions: Array<FileLibrarySourceType | "ALL"> = [
@@ -33,6 +34,7 @@ export default function FileLibraryToolbar({
   filters,
   onChange,
   t,
+  hideSourceFilter = false,
 }: FileLibraryToolbarProps) {
   const update = <K extends keyof FileLibraryFilters>(
     key: K,
@@ -51,16 +53,16 @@ export default function FileLibraryToolbar({
   return (
     <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <label className="relative flex-1">
+        <label className="flex h-8 flex-1 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 transition focus-within:border-[var(--color-border-focus)]">
           <Search
             size={15}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+            className="shrink-0 text-[var(--color-text-muted)]"
           />
           <input
             value={filters.search}
             onChange={(event) => update("search", event.target.value)}
             placeholder={t.searchPlaceholder}
-            className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-8 pr-3 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)]"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-[var(--color-text-primary)] outline-none"
           />
         </label>
 
@@ -77,26 +79,28 @@ export default function FileLibraryToolbar({
       </div>
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-1 overflow-x-auto">
-          <span className="flex h-7 shrink-0 items-center gap-1 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-muted)]">
-            <Filter size={13} />
-            {t.sourceFilter}
-          </span>
-          {sourceOptions.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => update("sourceType", option)}
-              className={`h-7 shrink-0 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition ${
-                filters.sourceType === option
-                  ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
-                  : "bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
-              }`}
-            >
-              {option === "ALL" ? t.allSources : t.sources[option]}
-            </button>
-          ))}
-        </div>
+        {!hideSourceFilter && (
+          <div className="flex items-center gap-1 overflow-x-auto">
+            <span className="flex h-7 shrink-0 items-center gap-1 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-muted)]">
+              <Filter size={13} />
+              {t.sourceFilter}
+            </span>
+            {sourceOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => update("sourceType", option)}
+                className={`h-7 shrink-0 rounded-[var(--radius-sm)] px-2 text-xs font-semibold transition ${
+                  filters.sourceType === option
+                    ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                    : "bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"
+                }`}
+              >
+                {option === "ALL" ? t.allSources : t.sources[option]}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-1 overflow-x-auto">
           <span className="flex h-7 shrink-0 items-center gap-1 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-muted)]">

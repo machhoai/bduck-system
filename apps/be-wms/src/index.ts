@@ -29,6 +29,7 @@ import externalRoutes from "./api/routes/externalRoutes.js";
 import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
 import attendanceRoutes from "./api/routes/attendanceRoutes.js";
 import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
+import fileTemplateRoutes from "./api/routes/fileTemplateRoutes.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -79,6 +80,7 @@ app.use("/api/external/v1", externalRoutes);
 app.use("/api/external-queue", externalQueueRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/employee-profiles", employeeProfileRoutes);
+app.use("/api/file-templates", fileTemplateRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({

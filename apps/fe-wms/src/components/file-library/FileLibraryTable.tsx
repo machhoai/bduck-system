@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRightLeft, Download, ExternalLink, PackageMinus, PackagePlus } from "lucide-react";
 import type { Dictionary, Language } from "@/lib/i18n";
 import type {

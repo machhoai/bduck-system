@@ -84,6 +84,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /file_templates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Product BOM: Authenticated read ──
     match /product_bom/{docId} {
       allow read: if isAuthenticated();

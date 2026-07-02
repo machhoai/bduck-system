@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FileSpreadsheet, FileText, Files, FolderOpen } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  FileSpreadsheet,
+  FileText,
+  Files,
+  FolderOpen,
+  Library,
+  LockKeyhole,
+} from "lucide-react";
 import { useFileLibrary } from "@/hooks/useFileLibrary";
+import { useFileTemplates } from "@/hooks/useFileTemplates";
 import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
 import {
   filterFileLibraryItems,
   type FileLibraryFilters,
@@ -12,6 +21,10 @@ import {
 import FileLibrarySkeleton from "./FileLibrarySkeleton";
 import FileLibraryTable from "./FileLibraryTable";
 import FileLibraryToolbar from "./FileLibraryToolbar";
+import FileTemplateGrid from "./FileTemplateGrid";
+import FileTemplateUploadPanel from "./FileTemplateUploadPanel";
+
+type FileLibraryTab = "uploaded" | "templates";
 
 const defaultFilters: FileLibraryFilters = {
   search: "",
@@ -36,7 +49,7 @@ function MetricCard({
   label: string;
   value: number;
   tone: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
@@ -57,17 +70,61 @@ function MetricCard({
 
 export default function FileLibraryPage() {
   const { t, lang } = useTranslation();
-  const { files, loading } = useFileLibrary();
-  const [filters, setFilters] = useState<FileLibraryFilters>(defaultFilters);
+  const hasPermission = useUserStore((state) => state.hasPermission);
+  const { files, loading, canViewAll } = useFileLibrary();
+  const canViewTemplates = hasPermission("file_templates.view");
+  const canUploadTemplates = hasPermission("file_templates.upload");
+  const canAccessTemplates = canViewTemplates || canUploadTemplates;
+  const {
+    templates,
+    loading: templatesLoading,
+    getUploaderName,
+    createTemplate,
+  } = useFileTemplates(canViewTemplates);
+
+  const [activeTab, setActiveTab] = useState<FileLibraryTab>("uploaded");
+  const [uploadedFilters, setUploadedFilters] =
+    useState<FileLibraryFilters>(defaultFilters);
+  const [templateFilters, setTemplateFilters] =
+    useState<FileLibraryFilters>(defaultFilters);
 
   const copy = t.fileLibrary;
   const purposeResolver = (key: (typeof files)[number]["purposeKey"]) =>
     copy.purposes[key];
 
+  useEffect(() => {
+    if (!canAccessTemplates && activeTab === "templates") {
+      setActiveTab("uploaded");
+    }
+  }, [activeTab, canAccessTemplates]);
+
   const filteredFiles = useMemo(
-    () => filterFileLibraryItems(files, filters, purposeResolver),
-    [files, filters, purposeResolver],
+    () => filterFileLibraryItems(files, uploadedFilters, purposeResolver),
+    [files, uploadedFilters, purposeResolver],
   );
+
+  const filteredTemplates = useMemo(() => {
+    const keyword = templateFilters.search.trim().toLowerCase();
+    return templates.filter((template) => {
+      if (
+        templateFilters.format !== "ALL" &&
+        template.file_format !== templateFilters.format
+      ) {
+        return false;
+      }
+      if (!keyword) return true;
+      return [
+        template.title,
+        template.description || "",
+        template.file_name,
+        template.file_format,
+        getUploaderName(template.uploaded_by),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword);
+    });
+  }, [getUploaderName, templateFilters, templates]);
 
   const counts = useMemo(
     () =>
@@ -87,8 +144,8 @@ export default function FileLibraryPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-3 pb-24 lg:pb-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex min-h-full flex-col gap-3 pb-4">
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
             <FolderOpen size={21} />
@@ -103,13 +160,25 @@ export default function FileLibraryPage() {
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2">
-          <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-            {copy.visibleCount}
-          </p>
-          <p className="text-base font-bold text-[var(--color-text-primary)]">
-            {filteredFiles.length}/{files.length}
-          </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2">
+            <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+              {copy.visibleCount}
+            </p>
+            <p className="text-base font-bold text-[var(--color-text-primary)]">
+              {activeTab === "uploaded"
+                ? `${filteredFiles.length}/${files.length}`
+                : `${filteredTemplates.length}/${templates.length}`}
+            </p>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 py-2">
+            <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+              {copy.scope}
+            </p>
+            <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+              {canViewAll ? copy.allUploadedFiles : copy.myUploadedFiles}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -120,35 +189,88 @@ export default function FileLibraryPage() {
           tone="bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
           icon={<Files size={17} />}
         />
-        <MetricCard
-          label="PDF"
-          value={counts.pdf}
-          tone={metricTone.pdf}
-          icon={<FileText size={17} />}
-        />
-        <MetricCard
-          label="DOCX"
-          value={counts.docx}
-          tone={metricTone.docx}
-          icon={<FileText size={17} />}
-        />
-        <MetricCard
-          label="XLSX"
-          value={counts.xlsx}
-          tone={metricTone.xlsx}
-          icon={<FileSpreadsheet size={17} />}
-        />
-        <MetricCard
-          label="CSV"
-          value={counts.csv}
-          tone={metricTone.csv}
-          icon={<FileSpreadsheet size={17} />}
-        />
+        <MetricCard label="PDF" value={counts.pdf} tone={metricTone.pdf} icon={<FileText size={17} />} />
+        <MetricCard label="DOCX" value={counts.docx} tone={metricTone.docx} icon={<FileText size={17} />} />
+        <MetricCard label="XLSX" value={counts.xlsx} tone={metricTone.xlsx} icon={<FileSpreadsheet size={17} />} />
+        <MetricCard label="CSV" value={counts.csv} tone={metricTone.csv} icon={<FileSpreadsheet size={17} />} />
       </div>
 
-      <FileLibraryToolbar filters={filters} onChange={setFilters} t={copy} />
+      <div className="grid grid-cols-1 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("uploaded")}
+          className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+            activeTab === "uploaded"
+              ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+          }`}
+        >
+          <Files size={16} />
+          {copy.tabs.uploadedFiles}
+        </button>
+        {canAccessTemplates && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("templates")}
+            className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+              activeTab === "templates"
+                ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+            }`}
+          >
+            <Library size={16} />
+            {copy.tabs.templates}
+          </button>
+        )}
+      </div>
 
-      <FileLibraryTable files={filteredFiles} t={copy} lang={lang} />
+      {activeTab === "uploaded" ? (
+        <>
+          <FileLibraryToolbar
+            filters={uploadedFilters}
+            onChange={setUploadedFilters}
+            t={copy}
+          />
+          <FileLibraryTable files={filteredFiles} t={copy} lang={lang} />
+        </>
+      ) : (
+        <div className="grid gap-3">
+          {canUploadTemplates && (
+            <FileTemplateUploadPanel t={copy} onCreate={createTemplate} />
+          )}
+
+          {canViewTemplates ? (
+            <>
+              <FileLibraryToolbar
+                filters={templateFilters}
+                onChange={setTemplateFilters}
+                t={copy}
+                hideSourceFilter
+              />
+              {templatesLoading ? (
+                <FileLibrarySkeleton compact />
+              ) : (
+                <FileTemplateGrid
+                  templates={filteredTemplates}
+                  t={copy}
+                  lang={lang}
+                  getUploaderName={getUploaderName}
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 text-center">
+              <LockKeyhole size={28} className="text-[var(--color-text-muted)]" />
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                {copy.templates.noViewTitle}
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {copy.templates.noViewHint}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
