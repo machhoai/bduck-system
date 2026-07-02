@@ -394,6 +394,24 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "file_templates.edit",
+    group: "file_library",
+    label: { vi: "Chỉnh sửa biểu mẫu", zh: "编辑表单模板" },
+    description: {
+      vi: "Chỉnh sửa tên, mô tả, phân loại và cập nhật phiên bản mới cho biểu mẫu.",
+      zh: "编辑表单模板的名称、说明、分类并上传新版本。",
+    },
+  },
+  {
+    key: "file_templates.delete",
+    group: "file_library",
+    label: { vi: "Xóa biểu mẫu", zh: "删除表单模板" },
+    description: {
+      vi: "Xóa mềm biểu mẫu khỏi thư viện biểu mẫu.",
+      zh: "从表单模板库中软删除表单模板。",
+    },
+  },
+  {
     key: "file_library.uploaded_files.view_all",
     group: "file_library",
     label: { vi: "Xem tất cả tệp đã tải lên", zh: "查看所有已上传文件" },

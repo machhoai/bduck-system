@@ -3,10 +3,11 @@
 import { useRef, useState } from "react";
 import { UploadCloud, X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { ManagedFileFormat } from "@bduck/shared-types";
+import type { FileTemplateCategory, ManagedFileFormat } from "@bduck/shared-types";
 import type { Dictionary } from "@/lib/i18n";
 import { uploadFile, validateFile, formatFileSize } from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
+import { FILE_TEMPLATE_CATEGORY_OPTIONS } from "@/utils/fileTemplateCategories";
 import {
     getFileExtension,
     getFileFormat,
@@ -30,6 +31,7 @@ export default function FileTemplateUploadPanel({
     const userId = useUserStore((state) => state.user?.id);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [category, setCategory] = useState<FileTemplateCategory>("general");
     const [file, setFile] = useState<File | null>(null);
     const [progress, setProgress] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +99,7 @@ export default function FileTemplateUploadPanel({
             await onCreate({
                 title: title.trim(),
                 description: description.trim() || null,
+                category,
                 file_name: file.name,
                 file_url: url,
                 file_size: file.size,
@@ -104,6 +107,7 @@ export default function FileTemplateUploadPanel({
             });
             setTitle("");
             setDescription("");
+            setCategory("general");
             setFile(null);
             setProgress(0);
         };
@@ -158,6 +162,25 @@ export default function FileTemplateUploadPanel({
                         placeholder={t.templates.descriptionPlaceholder}
                     />
                 </label>
+                <label className="grid gap-1">
+                    <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                        {t.templates.categoryLabel}
+                    </span>
+                    <select
+                        value={category}
+                        onChange={(event) =>
+                            setCategory(event.target.value as FileTemplateCategory)
+                        }
+                        disabled={isSubmitting}
+                        className="h-9 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)]"
+                    >
+                        {FILE_TEMPLATE_CATEGORY_OPTIONS.map((item) => (
+                            <option key={item} value={item}>
+                                {t.templates.categories[item]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -180,7 +203,7 @@ export default function FileTemplateUploadPanel({
                         <div className={`flex w-full h-full items-center justify-between rounded-[var(--radius-sm)] border bg-[var(--color-surface-card)] px-3 py-2 transition ${isDragging ? "border-[var(--color-brand-primary)]" : "border-[var(--color-border-subtle)]"}`}>
                             <div className="flex min-w-0 flex-1 h-full items-center gap-3">
                                 <FileLibraryFileIcon format={format} extension={extension} />
-                                <div className="min-w-0 h-full flex-1">
+                                <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                         {file.name}
                                     </p>

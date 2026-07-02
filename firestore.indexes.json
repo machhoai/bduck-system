@@ -209,6 +209,25 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "file_templates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "category",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "import_vouchers",
       "queryScope": "COLLECTION",
       "fields": [

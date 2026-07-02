@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import type { FileTemplate, ManagedFileFormat } from "@bduck/shared-types";
+import type {
+  FileTemplate,
+  FileTemplateCategory,
+  FileTemplateVersionEntry,
+  ManagedFileFormat,
+} from "@bduck/shared-types";
 import { db } from "@/lib/firebase";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useUserStore } from "@/stores/useUserStore";
 import { createApiErrorFromResponse } from "@/utils/apiError";
+import { FILE_TEMPLATE_CATEGORY_SET } from "@/utils/fileTemplateCategories";
 import { toFileLibraryDate } from "@/utils/fileLibrary";
 import { useUsers } from "./useUsers";
 
@@ -16,10 +22,42 @@ const API_BASE_URL =
 export interface CreateFileTemplatePayload {
   title: string;
   description?: string | null;
+  category?: FileTemplateCategory;
   file_name: string;
   file_url: string;
   file_size: number;
   file_format: ManagedFileFormat;
+}
+
+export interface UpdateFileTemplatePayload {
+  title?: string;
+  description?: string | null;
+  category?: FileTemplateCategory;
+}
+
+export type UploadNewTemplateVersionPayload = Pick<
+  CreateFileTemplatePayload,
+  "file_name" | "file_url" | "file_size" | "file_format"
+>;
+
+function normalizeVersionEntry(entry: FileTemplateVersionEntry) {
+  return {
+    ...entry,
+    uploaded_at: toFileLibraryDate(entry.uploaded_at) || new Date(0),
+  };
+}
+
+function normalizeTemplate(template: FileTemplate): FileTemplate {
+  return {
+    ...template,
+    category: FILE_TEMPLATE_CATEGORY_SET.has(template.category)
+      ? template.category
+      : "general",
+    version: template.version || 1,
+    version_history: Array.isArray(template.version_history)
+      ? template.version_history.map(normalizeVersionEntry)
+      : [],
+  };
 }
 
 async function createTemplateRequest(payload: CreateFileTemplatePayload) {
@@ -34,6 +72,64 @@ async function createTemplateRequest(payload: CreateFileTemplatePayload) {
     throw await createApiErrorFromResponse(
       response,
       "Khong the upload bieu mau.",
+    );
+  }
+
+  return response.json();
+}
+
+async function updateTemplateRequest(
+  id: string,
+  payload: UpdateFileTemplatePayload,
+) {
+  const response = await fetch(`${API_BASE_URL}/api/file-templates/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await createApiErrorFromResponse(
+      response,
+      "Khong the cap nhat bieu mau.",
+    );
+  }
+
+  return response.json();
+}
+
+async function deleteTemplateRequest(id: string) {
+  const response = await fetch(`${API_BASE_URL}/api/file-templates/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw await createApiErrorFromResponse(response, "Khong the xoa bieu mau.");
+  }
+
+  return response.json();
+}
+
+async function uploadNewVersionRequest(
+  id: string,
+  payload: UploadNewTemplateVersionPayload,
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/file-templates/${id}/version`,
+    {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    throw await createApiErrorFromResponse(
+      response,
+      "Khong the cap nhat phien ban bieu mau.",
     );
   }
 
@@ -55,7 +151,7 @@ async function fetchTemplatesFromApi(signal?: AbortSignal) {
   }
 
   const body = await response.json();
-  return (body.data || []) as FileTemplate[];
+  return ((body.data || []) as FileTemplate[]).map(normalizeTemplate);
 }
 
 function sortTemplates(rows: FileTemplate[]) {
@@ -73,6 +169,8 @@ export function useFileTemplates(canViewTemplates: boolean) {
   const { users } = useUsers();
 
   const canUploadTemplates = hasPermission("file_templates.upload");
+  const canEditTemplates = hasPermission("file_templates.edit");
+  const canDeleteTemplates = hasPermission("file_templates.delete");
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -82,7 +180,7 @@ export function useFileTemplates(canViewTemplates: boolean) {
       try {
         const rows = await fetchTemplatesFromApi(abortController.signal);
         if (disposed) return;
-        setTemplates(sortTemplates(rows));
+        setTemplates(sortTemplates(rows.map(normalizeTemplate)));
       } catch (error) {
         if (!disposed) {
           console.error("[useFileTemplates] API fallback error:", error);
@@ -115,7 +213,7 @@ export function useFileTemplates(canViewTemplates: boolean) {
           id: doc.id,
           ...doc.data(),
         })) as FileTemplate[];
-        setTemplates(sortTemplates(rows));
+        setTemplates(sortTemplates(rows.map(normalizeTemplate)));
         setLoading(false);
       },
       (error) => {
@@ -149,7 +247,9 @@ export function useFileTemplates(canViewTemplates: boolean) {
       const result = await createTemplateRequest(payload);
       const created = result?.data as FileTemplate | undefined;
       if (created && canViewTemplates) {
-        setTemplates((current) => sortTemplates([created, ...current]));
+        setTemplates((current) =>
+          sortTemplates([normalizeTemplate(created), ...current]),
+        );
       }
       emitDataMutation(["file_templates", "audit_logs"]);
       return result;
@@ -157,11 +257,61 @@ export function useFileTemplates(canViewTemplates: boolean) {
     [canViewTemplates],
   );
 
+  const updateTemplate = useCallback(
+    async (id: string, payload: UpdateFileTemplatePayload) => {
+      const result = await updateTemplateRequest(id, payload);
+      const updated = result?.data as FileTemplate | undefined;
+      if (updated) {
+        setTemplates((current) =>
+          sortTemplates(
+            current.map((template) =>
+              template.id === id ? normalizeTemplate(updated) : template,
+            ),
+          ),
+        );
+      }
+      emitDataMutation(["file_templates", "audit_logs"]);
+      return result;
+    },
+    [],
+  );
+
+  const deleteTemplate = useCallback(async (id: string) => {
+    const result = await deleteTemplateRequest(id);
+    setTemplates((current) => current.filter((template) => template.id !== id));
+    emitDataMutation(["file_templates", "audit_logs"]);
+    return result;
+  }, []);
+
+  const uploadNewVersionForTemplate = useCallback(
+    async (id: string, payload: UploadNewTemplateVersionPayload) => {
+      const result = await uploadNewVersionRequest(id, payload);
+      const updated = result?.data as FileTemplate | undefined;
+      if (updated) {
+        setTemplates((current) =>
+          sortTemplates(
+            current.map((template) =>
+              template.id === id ? normalizeTemplate(updated) : template,
+            ),
+          ),
+        );
+      }
+      emitDataMutation(["file_templates", "audit_logs"]);
+      return result;
+    },
+    [],
+  );
+
   return {
     templates,
     loading,
     canUploadTemplates,
+    canEditTemplates,
+    canDeleteTemplates,
     getUploaderName,
     createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    uploadNewVersion: uploadNewVersionForTemplate,
   };
 }

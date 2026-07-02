@@ -9,6 +9,7 @@ import {
     Library,
     LockKeyhole,
 } from "lucide-react";
+import type { FileTemplate } from "@bduck/shared-types";
 import { useFileLibrary } from "@/hooks/useFileLibrary";
 import { useFileTemplates } from "@/hooks/useFileTemplates";
 import { useTranslation } from "@/lib/i18n";
@@ -21,8 +22,12 @@ import {
 import FileLibrarySkeleton from "./FileLibrarySkeleton";
 import FileLibraryTable from "./FileLibraryTable";
 import FileLibraryToolbar from "./FileLibraryToolbar";
+import FileTemplateDeleteModal from "./FileTemplateDeleteModal";
+import FileTemplateEditModal from "./FileTemplateEditModal";
 import FileTemplateGrid from "./FileTemplateGrid";
 import FileTemplateUploadPanel from "./FileTemplateUploadPanel";
+import FileTemplateVersionHistory from "./FileTemplateVersionHistory";
+import FileTemplateVersionModal from "./FileTemplateVersionModal";
 
 type FileLibraryTab = "uploaded" | "templates";
 
@@ -78,8 +83,13 @@ export default function FileLibraryPage() {
     const {
         templates,
         loading: templatesLoading,
+        canEditTemplates,
+        canDeleteTemplates,
         getUploaderName,
         createTemplate,
+        updateTemplate,
+        deleteTemplate,
+        uploadNewVersion,
     } = useFileTemplates(canViewTemplates);
 
     const [activeTab, setActiveTab] = useState<FileLibraryTab>("uploaded");
@@ -87,6 +97,10 @@ export default function FileLibraryPage() {
         useState<FileLibraryFilters>(defaultFilters);
     const [templateFilters, setTemplateFilters] =
         useState<FileLibraryFilters>(defaultFilters);
+    const [editingTemplate, setEditingTemplate] = useState<FileTemplate | null>(null);
+    const [versionTemplate, setVersionTemplate] = useState<FileTemplate | null>(null);
+    const [historyTemplate, setHistoryTemplate] = useState<FileTemplate | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<FileTemplate | null>(null);
 
     const copy = t.fileLibrary;
     const purposeResolver = (key: (typeof files)[number]["purposeKey"]) =>
@@ -244,6 +258,12 @@ export default function FileLibraryPage() {
                                     t={copy}
                                     lang={lang}
                                     getUploaderName={getUploaderName}
+                                    canEdit={canEditTemplates}
+                                    canDelete={canDeleteTemplates}
+                                    onEdit={setEditingTemplate}
+                                    onUploadVersion={setVersionTemplate}
+                                    onShowHistory={setHistoryTemplate}
+                                    onDelete={setDeleteTarget}
                                 />
                             )}
                         </>
@@ -259,6 +279,40 @@ export default function FileLibraryPage() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {editingTemplate && (
+                <FileTemplateEditModal
+                    template={editingTemplate}
+                    t={copy}
+                    onClose={() => setEditingTemplate(null)}
+                    onSave={(payload) => updateTemplate(editingTemplate.id, payload)}
+                />
+            )}
+            {versionTemplate && (
+                <FileTemplateVersionModal
+                    template={versionTemplate}
+                    t={copy}
+                    onClose={() => setVersionTemplate(null)}
+                    onUpload={(payload) => uploadNewVersion(versionTemplate.id, payload)}
+                />
+            )}
+            {historyTemplate && (
+                <FileTemplateVersionHistory
+                    template={historyTemplate}
+                    t={copy}
+                    lang={lang}
+                    getUploaderName={getUploaderName}
+                    onClose={() => setHistoryTemplate(null)}
+                />
+            )}
+            {deleteTarget && (
+                <FileTemplateDeleteModal
+                    template={deleteTarget}
+                    t={copy}
+                    onClose={() => setDeleteTarget(null)}
+                    onConfirm={() => deleteTemplate(deleteTarget.id)}
+                />
             )}
         </div>
     );
