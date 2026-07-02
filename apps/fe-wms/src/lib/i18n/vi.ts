@@ -17,6 +17,7 @@ const vi = {
     pos: "Bán hàng",
     reports: "Báo cáo",
     users: "Người dùng",
+    employees: "Nhân viên",
     roles: "Phân quyền",
     auditLogs: "Audit log",
     settings: "Cài đặt",

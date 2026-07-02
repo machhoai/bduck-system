@@ -18,6 +18,7 @@ const zh: Dictionary = {
     pos: "销售",
     reports: "报表",
     users: "用户",
+    employees: "员工",
     roles: "权限",
     auditLogs: "审计日志",
     settings: "设置",

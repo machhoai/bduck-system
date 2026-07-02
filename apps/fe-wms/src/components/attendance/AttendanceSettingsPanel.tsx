@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  EmployeeProfile,
   User,
   UserWarehouseRole,
   Warehouse,
@@ -11,13 +12,13 @@ import { motion } from "framer-motion";
 import { Plus, Save, Settings2, Trash2 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { useEffect, useMemo, useState } from "react";
-import { getActiveWarehouseIds } from "@/utils/attendance";
 
 interface AttendanceSettingsPanelProps {
   labels: Record<string, string>;
   canConfigure: boolean;
   warehouses: Warehouse[];
   users: Array<User & { assignments?: UserWarehouseRole[] }>;
+  profiles: EmployeeProfile[];
   selectedWarehouseId: string;
   policies: Map<string, WarehouseAttendancePolicy>;
   exemptions: WarehouseAttendanceExemption[];
@@ -37,6 +38,7 @@ export function AttendanceSettingsPanel({
   canConfigure,
   warehouses,
   users,
+  profiles,
   selectedWarehouseId,
   policies,
   exemptions,
@@ -64,14 +66,19 @@ export function AttendanceSettingsPanel({
     setExcludedUserIds(exemptions.map((item) => item.user_id));
   }, [exemptions]);
 
-  const warehouseUsers = useMemo(
+  const userById = useMemo(
+    () => new Map(users.map((item) => [item.id, item])),
+    [users],
+  );
+  const warehouseProfiles = useMemo(
     () =>
-      users.filter((user) =>
-        getActiveWarehouseIds(user.assignments || []).includes(
-          activeWarehouseId,
-        ),
+      profiles.filter(
+        (profile) =>
+          profile.user_id &&
+          profile.workplace_warehouse_id === activeWarehouseId &&
+          userById.has(profile.user_id),
       ),
-    [activeWarehouseId, users],
+    [activeWarehouseId, profiles, userById],
   );
 
   if (!canConfigure || warehouses.length === 0) return null;
@@ -164,7 +171,7 @@ export function AttendanceSettingsPanel({
             />
           </label>
 
-          <div className="space-y-2">
+          <div className="grid gap-2">
             <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
               {labels.allowedIps}
             </p>
@@ -239,11 +246,12 @@ export function AttendanceSettingsPanel({
           </div>
 
           <div className="grid max-h-72 gap-2 overflow-auto sm:grid-cols-2">
-            {warehouseUsers.map((user) => {
-              const checked = excludedUserIds.includes(user.id);
+            {warehouseProfiles.map((profile) => {
+              const userId = profile.user_id || "";
+              const checked = excludedUserIds.includes(userId);
               return (
                 <label
-                  key={user.id}
+                  key={profile.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-[var(--radius-sm)] border p-3 transition-colors ${
                     checked
                       ? "border-[#f59e0b55] bg-[#f59e0b0d]"
@@ -256,18 +264,18 @@ export function AttendanceSettingsPanel({
                     onChange={(event) =>
                       setExcludedUserIds((current) =>
                         event.target.checked
-                          ? [...current, user.id]
-                          : current.filter((id) => id !== user.id),
+                          ? [...current, userId]
+                          : current.filter((id) => id !== userId),
                       )
                     }
                     className="h-4 w-4 accent-[var(--color-brand-primary)]"
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                      {user.full_name}
+                      {profile.full_name}
                     </span>
                     <span className="block truncate text-micro text-[var(--color-text-muted)]">
-                      {user.employee_id}
+                      {profile.employee_code}
                     </span>
                   </span>
                 </label>

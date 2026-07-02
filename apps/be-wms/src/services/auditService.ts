@@ -36,6 +36,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   organizations: "organizations",
   roles: "roles",
   users: "users",
+  employee_profiles: "employee_profiles",
   expenses: "expenses",
   notification_dispatches: "notification_dispatches",
   account_invitations: "account_invitations",
@@ -70,6 +71,7 @@ const ENTITY_NAME_FIELDS = [
   "username",
   "email",
   "employee_id",
+  "employee_code",
 ];
 
 function cleanString(value: unknown): string | null {

@@ -61,6 +61,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /employee_profiles/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Roles: Authenticated users can read (for RBAC) ──
     match /roles/{docId} {
       allow read: if isAuthenticated();

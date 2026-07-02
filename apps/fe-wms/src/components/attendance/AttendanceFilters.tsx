@@ -99,8 +99,8 @@ export function AttendanceFilters({
               >
                 <option value="ALL">{labels.allEmployees}</option>
                 {employeeRows.map((row) => (
-                  <option key={row.user.id} value={row.user.id}>
-                    {row.user.full_name}
+                  <option key={row.profile.id} value={row.user.id}>
+                    {row.profile.full_name}
                   </option>
                 ))}
               </select>

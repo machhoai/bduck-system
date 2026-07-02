@@ -16,6 +16,7 @@ import {
   FileSpreadsheet,
   Files,
   Home,
+  IdCard,
   Package,
   PackagePlus,
   PackageMinus,
@@ -171,6 +172,13 @@ export const menuItems: MenuItem[] = [
     icon: Users,
     href: "/users",
     permissionsAny: userAccessReadPermissions,
+  },
+  {
+    id: "employees",
+    labelKey: "employees",
+    icon: IdCard,
+    href: "/employees",
+    permission: "employees.read",
   },
   {
     id: "auditLogs",

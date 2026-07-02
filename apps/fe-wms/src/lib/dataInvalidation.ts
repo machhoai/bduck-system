@@ -4,6 +4,7 @@ export type DataInvalidationKey =
   | "all"
   | "audit_logs"
   | "attendance_logs"
+  | "employee_profiles"
   | "import_vouchers"
   | "inventory"
   | "nonconformity_reports"

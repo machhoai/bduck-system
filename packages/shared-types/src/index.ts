@@ -18,3 +18,4 @@ export * from './expenses.js';
 export * from './externalScan.js';
 export * from './reports.js';
 export * from './attendance.js';
+export * from './employeeProfiles.js';

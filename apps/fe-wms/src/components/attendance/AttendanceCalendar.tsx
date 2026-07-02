@@ -92,16 +92,16 @@ export function AttendanceCalendar({
             <tbody>
               {rows.map((row, index) => (
                 <tr
-                  key={row.user.id}
+                  key={row.profile.id}
                   className={loading ? "opacity-60" : undefined}
                 >
                   <td className="sticky left-0 z-[5] border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                        {row.user.full_name}
+                        {row.profile.full_name}
                       </p>
                       <p className="truncate text-micro text-[var(--color-text-muted)]">
-                        {row.user.employee_id} ·{" "}
+                        {row.profile.employee_code} ·{" "}
                         {row.warehouse?.name || labels.unknownWarehouse}
                       </p>
                     </div>
@@ -110,7 +110,7 @@ export function AttendanceCalendar({
                     const log = successMap.get(`${row.user.id}:${day.key}`);
                     return (
                       <td
-                        key={`${row.user.id}-${day.key}`}
+                        key={`${row.profile.id}-${day.key}`}
                         className={`h-11 border-b border-r border-[var(--color-border-soft)] px-2 text-center tabular-nums ${
                           day.isSunday
                             ? "bg-[#b4231805]"

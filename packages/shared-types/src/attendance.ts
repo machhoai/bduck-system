@@ -36,6 +36,7 @@ export interface WarehouseAttendanceExemption {
 export interface AttendanceLog {
   id: string;
   user_id: string;
+  employee_profile_id: string | null;
   employee_id: string;
   employee_name: string;
   warehouse_id: string;

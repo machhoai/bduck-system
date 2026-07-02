@@ -23,8 +23,8 @@ export function buildAttendanceExportConfig({
   const successMap = buildSuccessLogMap(logs);
   const data = rows.map((row) => {
     const item: Record<string, string> = {
-      employee_id: row.user.employee_id,
-      employee_name: row.user.full_name,
+      employee_id: row.profile.employee_code,
+      employee_name: row.profile.full_name,
       warehouse: row.warehouse?.name || "",
     };
     days.forEach((day) => {

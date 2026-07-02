@@ -17,6 +17,10 @@ import {
   useAttendanceLogs,
   useAttendancePolicies,
 } from "@/hooks/useAttendance";
+import {
+  useEmployeeProfiles,
+  useMyEmployeeProfile,
+} from "@/hooks/useEmployeeProfiles";
 import { useExportRegistration } from "@/hooks/useExportRegistration";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
@@ -24,7 +28,6 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
   buildAttendanceDays,
-  getActiveWarehouseIds,
   getCurrentMonthKey,
   getWeekStartKey,
   type AttendanceRangeMode,
@@ -58,9 +61,11 @@ export function AttendancePage() {
   const labels = fallbackLabels(t);
   const user = useUserStore((state) => state.user);
   const permissions = useUserStore((state) => state.permissions);
-  const roleAssignments = useUserStore((state) => state.roleAssignments);
   const hasPermission = useUserStore((state) => state.hasPermission);
   const { users, isLoading: usersLoading } = useUsers();
+  const { profiles, isLoading: profilesLoading } = useEmployeeProfiles();
+  const { profile: myProfile, isLoading: myProfileLoading } =
+    useMyEmployeeProfile();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const {
     context,
@@ -128,6 +133,10 @@ export function AttendancePage() {
     () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
     [warehouses],
   );
+  const userById = useMemo(
+    () => new Map((users as UserWithAssignments[]).map((item) => [item.id, item])),
+    [users],
+  );
   const exemptUserWarehouseKeys = useMemo(
     () =>
       new Set(
@@ -142,13 +151,11 @@ export function AttendancePage() {
     if (!user) return [];
 
     if (!canViewAttendance) {
-      const personalUser: UserWithAssignments = {
-        ...user,
-        assignments: roleAssignments,
-      };
-      return context?.can_check_in
+      const personalUser = userById.get(user.id) || user;
+      return context?.can_check_in && myProfile
         ? [
             {
+              profile: myProfile,
               user: personalUser,
               warehouse: warehouseById.get(context.warehouse_id || "") || null,
             },
@@ -161,23 +168,24 @@ export function AttendancePage() {
         ? visibleWarehouseIds
         : new Set([selectedWarehouseId]);
 
-    return (users as UserWithAssignments[])
-      .flatMap((item) => {
-        const activeWarehouseIds = getActiveWarehouseIds(
-          item.assignments || [],
-        );
-        const targetWarehouseId = activeWarehouseIds.find((warehouseId) => {
-          const policy = policyByWarehouse.get(warehouseId);
-          return (
-            selectedWarehouseScope.has(warehouseId) &&
-            policy?.enabled &&
-            !exemptUserWarehouseKeys.has(`${item.id}:${warehouseId}`)
-          );
-        });
-        if (!targetWarehouseId) return [];
+    return profiles
+      .flatMap((profile) => {
+        if (!profile.user_id) return [];
+        const targetWarehouseId = profile.workplace_warehouse_id;
+        const policy = policyByWarehouse.get(targetWarehouseId);
+        const linkedUser = userById.get(profile.user_id);
+        if (
+          !linkedUser ||
+          !selectedWarehouseScope.has(targetWarehouseId) ||
+          !policy?.enabled ||
+          exemptUserWarehouseKeys.has(`${profile.user_id}:${targetWarehouseId}`)
+        ) {
+          return [];
+        }
         return [
           {
-            user: item,
+            profile,
+            user: linkedUser,
             warehouse: warehouseById.get(targetWarehouseId) || null,
           },
         ];
@@ -190,12 +198,13 @@ export function AttendancePage() {
     context?.can_check_in,
     context?.warehouse_id,
     exemptUserWarehouseKeys,
+    myProfile,
     policyByWarehouse,
-    roleAssignments,
+    profiles,
     selectedUserId,
     selectedWarehouseId,
     user,
-    users,
+    userById,
     visibleWarehouseIds,
     warehouseById,
   ]);
@@ -235,14 +244,19 @@ export function AttendancePage() {
   useExportRegistration(exportConfig);
 
   const isLoading =
-    contextLoading || usersLoading || warehousesLoading || policiesLoading;
+    contextLoading ||
+    usersLoading ||
+    profilesLoading ||
+    myProfileLoading ||
+    warehousesLoading ||
+    policiesLoading;
 
   if (isLoading) return <AttendanceSkeleton />;
 
   if (error || !context?.can_access_page) {
     return (
       <div className="flex min-h-96 items-center justify-center">
-        <div className="max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-6 text-center">
+        <div className="max-w-[680px] rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-center">
           <AlertTriangle className="mx-auto mb-3 text-[#b42318]" size={28} />
           <h1 className="text-base font-semibold text-[var(--color-text-primary)]">
             {labels.noAccessTitle}
@@ -324,6 +338,7 @@ export function AttendancePage() {
             : (warehouses as Warehouse[])
         }
         users={users as UserWithAssignments[]}
+        profiles={profiles}
         selectedWarehouseId={settingsWarehouseId || "ALL"}
         policies={policyByWarehouse}
         exemptions={settingsExemptions}

@@ -1,204 +1,286 @@
 "use client";
 
-import { useUserStore } from "@/stores/useUserStore";
-import { useUsers } from "@/hooks/useUsers";
-import { useRoles } from "@/hooks/useRoles";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { useMemo, useState } from "react";
+import {
+  BriefcaseBusiness,
+  IdCard,
+  Mail,
+  Phone,
+  ShieldCheck,
+  UserRound,
+  Warehouse as WarehouseIcon,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { EmployeeProfileStatus } from "@bduck/shared-types";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyEmployeeProfile } from "@/hooks/useEmployeeProfiles";
+import { useRoles } from "@/hooks/useRoles";
+import { useUsers } from "@/hooks/useUsers";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation, type Language } from "@/lib/i18n";
 import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
-import { useState } from "react";
+import { useUserStore } from "@/stores/useUserStore";
 import { MFASetupModal } from "./MFASetupModal";
-import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 
-function formatDate(dateVal: any, lang: Language) {
+function formatDate(dateVal: unknown, lang: Language) {
   if (!dateVal) return "-";
   try {
-      let d: Date;
-      if (typeof dateVal.toDate === 'function') d = dateVal.toDate();
-      else if (dateVal._seconds !== undefined) d = new Date(dateVal._seconds * 1000);
-      else d = new Date(dateVal);
-      
-      if (isNaN(d.getTime())) return "N/A";
-      return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "vi-VN", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(d);
+    let date: Date;
+    if (
+      typeof dateVal === "object" &&
+      dateVal !== null &&
+      "toDate" in dateVal &&
+      typeof (dateVal as { toDate: () => Date }).toDate === "function"
+    ) {
+      date = (dateVal as { toDate: () => Date }).toDate();
+    } else if (
+      typeof dateVal === "object" &&
+      dateVal !== null &&
+      "_seconds" in dateVal
+    ) {
+      date = new Date((dateVal as { _seconds: number })._seconds * 1000);
+    } else {
+      date = new Date(dateVal as string | number | Date);
+    }
+
+    if (Number.isNaN(date.getTime())) return "N/A";
+    return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "vi-VN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
   } catch {
-      return "N/A";
+    return "N/A";
   }
 }
 
 export default function UserProfilePage() {
   const { t, lang } = useTranslation();
   const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
-  const authUser = useUserStore((s) => s.user);
+  const authUser = useUserStore((state) => state.user);
   const { resetPassword, isLoading: authLoading } = useAuth();
   const { users, isLoading: usersLoading } = useUsers();
   const { roles, isLoading: rolesLoading } = useRoles();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const {
+    profile,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useMyEmployeeProfile();
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
 
-  // Show a simple skeleton when loading
-  if (usersLoading || rolesLoading || warehousesLoading) {
+  const currentUser = users.find((user) => user.id === authUser?.id) || authUser;
+  const assignments =
+    currentUser && "assignments" in currentUser
+      ? ((currentUser as { assignments?: any[] }).assignments || [])
+      : [];
+  const warehouseById = useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
+    [warehouses],
+  );
+
+  if (usersLoading || rolesLoading || warehousesLoading || profileLoading) {
     return (
-      <div className="flex w-full flex-col gap-4 p-4">
+      <div className="grid w-full gap-4 p-4">
         <div className="h-40 w-full animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]" />
         <div className="h-64 w-full animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]" />
       </div>
     );
   }
 
-  // Find the complete user object including assignments
-  const currentUser = users.find((u) => u.id === authUser?.id) || authUser;
-  if (!currentUser) {
-    return null; // or an error state
-  }
+  if (!currentUser) return null;
 
-  const assignments = ("assignments" in currentUser ? (currentUser as any).assignments : []) as any[];
+  const workplace = profile
+    ? warehouseById.get(profile.workplace_warehouse_id)
+    : null;
 
   return (
-    <div className="flex w-full flex-col gap-4 p-4 lg:flex-row">
-      {/* Left Column: General Info */}
-      <div className="flex flex-col gap-3 lg:w-1/3">
-        <div className="flex flex-col rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-          <div className="mb-4 flex items-center justify-between border-b border-[var(--color-border-soft)] pb-2">
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-              {t.profile.generalInfo}
-            </h2>
+    <div className="grid w-full gap-4 p-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <section className="grid gap-4">
+        <div className="grid gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-soft)] pb-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-brand-primary)]/10 text-[var(--color-brand-primary)]">
+                <UserRound size={22} />
+              </span>
+              <div className="grid gap-1">
+                <h1 className="text-base font-semibold text-[var(--color-text-primary)]">
+                  {currentUser.full_name}
+                </h1>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  {currentUser.username}
+                </p>
+              </div>
+            </div>
             <span
-              className={`rounded-[var(--radius-xs)] px-1.5 py-1 text-xs font-bold uppercase ${
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                 currentUser.status === "ACTIVE"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
+                  ? "border-[var(--color-accent-success)] text-[var(--color-accent-success)]"
+                  : "border-[var(--color-border-subtle)] text-[var(--color-text-muted)]"
               }`}
             >
-              {currentUser.status === "ACTIVE" ? t.profile.active : t.profile.inactive}
+              {currentUser.status}
             </span>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col">
-              <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t.users.fullName}
-              </span>
-              <span className="text-sm text-[var(--color-text-primary)]">
-                {currentUser.full_name}
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t.profile.employeeId}
-              </span>
-              <span className="text-sm font-medium text-[var(--color-text-secondary)]">
-                {currentUser.employee_id}
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t.users.username}
-              </span>
-              <span className="text-sm text-[var(--color-text-primary)]">
-                {currentUser.username}
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t.profile.email}
-              </span>
-              <span className="text-sm text-[var(--color-text-primary)]">
-                {currentUser.email}
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t.profile.joinDate}
-              </span>
-              <span className="text-sm text-[var(--color-text-primary)]">
-                {currentUser.created_at
-                  ? formatDate(currentUser.created_at, lang)
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
+          <InfoLine icon={Mail} label="Email" value={currentUser.email} />
+          <InfoLine
+            icon={IdCard}
+            label="Mã tài khoản nhân viên"
+            value={currentUser.employee_id}
+          />
+          <InfoLine
+            icon={ShieldCheck}
+            label="Ngày tạo tài khoản"
+            value={formatDate(currentUser.created_at, lang)}
+          />
         </div>
 
-        {/* Action: Change Password */}
         <button
           type="button"
           disabled={authLoading}
           onClick={() => resetPassword(currentUser.email)}
-          className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)] py-2 text-sm font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+          className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
         >
           {t.profile.changePassword || "Đổi mật khẩu"}
         </button>
 
-        {/* Action: Google Authenticator */}
-        <div className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)] p-4">
+        <div className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
           <div className="flex items-center gap-3">
-            <ShieldCheckIcon className={`w-6 h-6 ${currentUser.mfa_enabled ? 'text-green-500' : 'text-gray-400'}`} />
-            <div className="flex flex-col flex-1">
-              <span className="text-sm font-semibold text-gray-900">{misc.mfa2fa}</span>
-              <span className="text-xs text-gray-500">
+            <ShieldCheck
+              className={`h-6 w-6 ${
+                currentUser.mfa_enabled ? "text-green-500" : "text-gray-400"
+              }`}
+            />
+            <div className="grid flex-1 gap-1">
+              <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+                {misc.mfa2fa}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">
                 {currentUser.mfa_enabled ? misc.mfaLinked : misc.mfaNotSetup}
               </span>
             </div>
-            {!currentUser.mfa_enabled && (
+            {!currentUser.mfa_enabled ? (
               <button
+                type="button"
                 onClick={() => setIsMfaModalOpen(true)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors"
+                className="h-8 rounded-full bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition-all active:scale-95"
               >
                 {misc.link}
               </button>
-            )}
-            {currentUser.mfa_enabled && (
-              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-md">
+            ) : (
+              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold uppercase text-green-700">
                 {misc.enabled}
               </span>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Right Column: Roles & Scopes */}
-      <div className="flex flex-col gap-3 lg:flex-1">
-        <div className="flex flex-col rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
-          <div className="mb-4 border-b border-[var(--color-border-soft)] pb-2">
+      <section className="grid gap-4">
+        <div className="grid gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
+          <div className="grid gap-1 border-b border-[var(--color-border-soft)] pb-3">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              Hồ sơ nhân sự
+            </h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Nơi làm việc được lấy từ bảng profile, không lấy từ phạm vi quyền
+              warehouse của tài khoản.
+            </p>
+          </div>
+
+          {profileError && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-accent-error)] p-3 text-sm text-[var(--color-accent-error)]">
+              {profileError}
+            </div>
+          )}
+
+          {profile ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <InfoTile
+                icon={IdCard}
+                label="Mã nhân viên"
+                value={profile.employee_code}
+              />
+              <InfoTile
+                icon={BriefcaseBusiness}
+                label="Chức danh"
+                value={profile.job_title || "-"}
+              />
+              <InfoTile
+                icon={WarehouseIcon}
+                label="Nơi làm việc"
+                value={workplace?.name || profile.workplace_warehouse_id}
+              />
+              <InfoTile
+                icon={Phone}
+                label="Điện thoại"
+                value={profile.phone || "-"}
+              />
+              <InfoTile
+                icon={Mail}
+                label="Email hồ sơ"
+                value={profile.email || "-"}
+              />
+              <InfoTile
+                icon={ShieldCheck}
+                label="Trạng thái hồ sơ"
+                value={profileStatusLabel(profile.status)}
+              />
+            </div>
+          ) : (
+            <div className="grid min-h-44 place-items-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] p-4 text-center">
+              <div className="grid gap-2">
+                <IdCard
+                  size={38}
+                  className="mx-auto text-[var(--color-text-muted)]"
+                />
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  Chưa có hồ sơ nhân viên
+                </h3>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Admin cần tạo profile và liên kết với tài khoản này.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-4">
+          <div className="grid gap-1 border-b border-[var(--color-border-soft)] pb-3">
             <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
               {t.profile.managementScope} &amp; {t.profile.roles}
             </h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Phần này là phạm vi quyền thao tác trong hệ thống.
+            </p>
           </div>
 
           {assignments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="grid min-h-32 place-items-center text-center">
               <p className="text-sm text-[var(--color-text-muted)]">
                 {t.profile.noRoles}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               {assignments.map((assignment) => {
-                const role = roles.find((r) => r.id === assignment.role_id);
+                const role = roles.find((item) => item.id === assignment.role_id);
                 const warehouse = assignment.warehouse_id
-                  ? warehouses.find((w) => w.id === assignment.warehouse_id)
+                  ? warehouses.find((item) => item.id === assignment.warehouse_id)
                   : null;
 
                 return (
                   <div
                     key={assignment.id}
-                    className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] p-3"
+                    className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-[var(--color-text-primary)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-[var(--color-text-primary)]">
                         {warehouse ? warehouse.name : t.profile.globalScope}
                       </span>
                       {role ? (
                         <span
-                          className="rounded-[var(--radius-xs)] px-1.5 py-0.5 text-xs font-medium"
+                          className="rounded-full px-3 py-1 text-xs font-semibold"
                           style={{
                             backgroundColor: `${role.color}20`,
                             color: role.color,
@@ -208,24 +290,84 @@ export default function UserProfilePage() {
                         </span>
                       ) : (
                         <span className="text-xs text-[var(--color-text-muted)]">
-                          Unknown Role
+                          Unknown role
                         </span>
                       )}
                     </div>
-                    {!warehouse && (
-                      <span className="text-micro text-[var(--color-text-muted)]">
-                        {t.profile.globalScope} - {t.profile.warehouseScope}
-                      </span>
-                    )}
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {assignment.is_active ? "Active" : "Inactive"}
+                    </span>
                   </div>
                 );
               })}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <MFASetupModal isOpen={isMfaModalOpen} onClose={() => setIsMfaModalOpen(false)} />
+      <MFASetupModal
+        isOpen={isMfaModalOpen}
+        onClose={() => setIsMfaModalOpen(false)}
+      />
     </div>
   );
+}
+
+function InfoLine({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-text-secondary)]">
+        <Icon size={17} />
+      </span>
+      <div className="grid gap-1">
+        <span className="text-xs uppercase text-[var(--color-text-muted)]">
+          {label}
+        </span>
+        <span className="text-sm text-[var(--color-text-primary)]">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[var(--color-brand-primary)]">
+        <Icon size={17} />
+      </span>
+      <div className="grid gap-1">
+        <span className="text-xs uppercase text-[var(--color-text-muted)]">
+          {label}
+        </span>
+        <span className="break-words text-sm font-semibold text-[var(--color-text-primary)]">
+          {value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function profileStatusLabel(status: EmployeeProfileStatus) {
+  const labels: Record<string, string> = {
+    ACTIVE: "Đang làm việc",
+    INACTIVE: "Ngừng làm việc",
+    ON_LEAVE: "Tạm nghỉ",
+  };
+  return labels[status] || status;
 }

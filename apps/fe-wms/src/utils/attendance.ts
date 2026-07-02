@@ -1,5 +1,6 @@
 import type {
   AttendanceLog,
+  EmployeeProfile,
   User,
   UserWarehouseRole,
   Warehouse,
@@ -18,6 +19,7 @@ export interface AttendanceDay {
 }
 
 export interface AttendanceEmployeeRow {
+  profile: EmployeeProfile;
   user: User & { assignments?: UserWarehouseRole[] };
   warehouse: Warehouse | null;
 }

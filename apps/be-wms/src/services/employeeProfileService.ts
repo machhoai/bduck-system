@@ -1,0 +1,243 @@
+import {
+  AuditAction,
+  UserStatus,
+} from "@bduck/shared-types";
+import type { EmployeeProfile } from "@bduck/shared-types";
+import { randomUUID } from "crypto";
+import type { z } from "zod";
+import {
+  createEmployeeProfileRecord,
+  findEmployeeProfileByCode,
+  findEmployeeProfiles,
+  getEmployeeProfileById,
+  getEmployeeProfileByUserId,
+  softDeleteEmployeeProfileRecord,
+  updateEmployeeProfileRecord,
+} from "../repositories/employeeProfileRepository.js";
+import { getUserById } from "../repositories/userRepository.js";
+import {
+  createEmployeeProfileSchema,
+  updateEmployeeProfileSchema,
+} from "../utils/zodSchemas.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
+import { createUser, type CreateUserResult } from "./userService.js";
+
+type CreateEmployeeProfileInput = z.infer<typeof createEmployeeProfileSchema>;
+type UpdateEmployeeProfileInput = z.infer<typeof updateEmployeeProfileSchema>;
+
+export interface CreateEmployeeProfileResult {
+  profile: EmployeeProfile;
+  account: CreateUserResult | null;
+}
+
+const notFoundError = {
+  statusCode: 404,
+  messages: {
+    vi: "Hồ sơ nhân viên không tồn tại hoặc đã bị xóa.",
+    zh: "员工档案不存在或已被删除。",
+  },
+};
+
+const conflictError = (messageVi: string, messageZh: string) => ({
+  statusCode: 409,
+  messages: {
+    vi: messageVi,
+    zh: messageZh,
+  },
+});
+
+const cleanNullable = (value: string | null | undefined) =>
+  value?.trim() ? value.trim() : null;
+
+const assertUniqueProfileFields = async (
+  input: Partial<Pick<EmployeeProfile, "employee_code" | "user_id">>,
+  currentProfileId?: string,
+) => {
+  if (input.employee_code) {
+    const existing = await findEmployeeProfileByCode(input.employee_code);
+    if (existing && existing.id !== currentProfileId) {
+      throw conflictError(
+        `Mã nhân viên "${input.employee_code}" đã tồn tại.`,
+        `员工编号 "${input.employee_code}" 已存在。`,
+      );
+    }
+  }
+
+  if (input.user_id) {
+    const existing = await getEmployeeProfileByUserId(input.user_id);
+    if (existing && existing.id !== currentProfileId) {
+      throw conflictError(
+        "Tài khoản này đã được liên kết với một hồ sơ nhân viên khác.",
+        "该账户已关联到其他员工档案。",
+      );
+    }
+  }
+};
+
+const assertLinkedUserExists = async (userId: string | null | undefined) => {
+  if (!userId) return;
+  const user = await getUserById(userId);
+  if (!user || user.is_deleted) {
+    throw {
+      statusCode: 400,
+      messages: {
+        vi: "Tài khoản liên kết không tồn tại hoặc đã bị xóa.",
+        zh: "关联账户不存在或已被删除。",
+      },
+    };
+  }
+};
+
+const buildProfilePayload = (
+  input: CreateEmployeeProfileInput | UpdateEmployeeProfileInput,
+): Partial<
+  Omit<EmployeeProfile, "id" | "created_at" | "updated_at" | "is_deleted">
+> => {
+  const payload: Partial<
+    Omit<EmployeeProfile, "id" | "created_at" | "updated_at" | "is_deleted">
+  > = {};
+
+  if ("user_id" in input) payload.user_id = input.user_id ?? null;
+  if ("employee_code" in input) payload.employee_code = input.employee_code;
+  if ("full_name" in input) payload.full_name = input.full_name;
+  if ("email" in input) payload.email = cleanNullable(input.email);
+  if ("phone" in input) payload.phone = cleanNullable(input.phone);
+  if ("job_title" in input) payload.job_title = cleanNullable(input.job_title);
+  if ("department" in input) {
+    payload.department = cleanNullable(input.department);
+  }
+  if ("workplace_warehouse_id" in input) {
+    payload.workplace_warehouse_id = input.workplace_warehouse_id;
+  }
+  if ("status" in input) payload.status = input.status;
+  if ("notes" in input) payload.notes = cleanNullable(input.notes);
+
+  return payload;
+};
+
+export const fetchEmployeeProfiles = async (): Promise<EmployeeProfile[]> =>
+  findEmployeeProfiles();
+
+export const fetchEmployeeProfileById = async (
+  profileId: string,
+): Promise<EmployeeProfile> => {
+  const profile = await getEmployeeProfileById(profileId);
+  if (!profile) throw notFoundError;
+  return profile;
+};
+
+export const fetchEmployeeProfileByUserId = async (
+  userId: string,
+): Promise<EmployeeProfile | null> => getEmployeeProfileByUserId(userId);
+
+export const createEmployeeProfile = async (
+  input: CreateEmployeeProfileInput,
+  actorId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<CreateEmployeeProfileResult> => {
+  await assertUniqueProfileFields({
+    employee_code: input.employee_code,
+    user_id: input.user_id ?? undefined,
+  });
+  await assertLinkedUserExists(input.user_id);
+
+  let account: CreateUserResult | null = null;
+  let linkedUserId = input.user_id ?? null;
+
+  if (input.create_account && input.account) {
+    account = await createUser(
+      {
+        username: input.account.username,
+        email: input.account.email,
+        password: input.account.password,
+        full_name: input.full_name,
+        employee_id: input.employee_code,
+        status: input.account.status ?? UserStatus.ACTIVE,
+        assignments: input.account.assignments ?? [],
+      },
+      actorId,
+      auditMetadata,
+    );
+    linkedUserId = account.user.id;
+  }
+
+  const profile = await createEmployeeProfileRecord(randomUUID(), {
+    ...(buildProfilePayload(input) as Omit<
+      EmployeeProfile,
+      "id" | "created_at" | "updated_at" | "is_deleted"
+    >),
+    user_id: linkedUserId,
+  });
+
+  await logAudit({
+    entity_type: "employee_profiles",
+    entity_id: profile.id,
+    warehouse_id: profile.workplace_warehouse_id,
+    action: AuditAction.CREATE,
+    user_id: actorId,
+    old_value: null,
+    new_value: profile as unknown as Record<string, unknown>,
+    ...auditMetadata,
+  });
+
+  return { profile, account };
+};
+
+export const updateEmployeeProfile = async (
+  profileId: string,
+  input: UpdateEmployeeProfileInput,
+  actorId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<EmployeeProfile> => {
+  const existing = await fetchEmployeeProfileById(profileId);
+  await assertUniqueProfileFields(
+    {
+      employee_code: input.employee_code,
+      user_id: input.user_id ?? undefined,
+    },
+    profileId,
+  );
+  await assertLinkedUserExists(input.user_id);
+
+  const updateData = Object.fromEntries(
+    Object.entries(buildProfilePayload(input)).filter(
+      ([, value]) => value !== undefined,
+    ),
+  ) as Parameters<typeof updateEmployeeProfileRecord>[1];
+
+  await updateEmployeeProfileRecord(profileId, updateData);
+  const updated = await fetchEmployeeProfileById(profileId);
+
+  await logAudit({
+    entity_type: "employee_profiles",
+    entity_id: profileId,
+    warehouse_id: updated.workplace_warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: actorId,
+    old_value: existing as unknown as Record<string, unknown>,
+    new_value: updated as unknown as Record<string, unknown>,
+    ...auditMetadata,
+  });
+
+  return updated;
+};
+
+export const deleteEmployeeProfile = async (
+  profileId: string,
+  actorId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<void> => {
+  const existing = await fetchEmployeeProfileById(profileId);
+  await softDeleteEmployeeProfileRecord(profileId);
+
+  await logAudit({
+    entity_type: "employee_profiles",
+    entity_id: profileId,
+    warehouse_id: existing.workplace_warehouse_id,
+    action: AuditAction.SOFT_DELETE,
+    user_id: actorId,
+    old_value: existing as unknown as Record<string, unknown>,
+    new_value: { is_deleted: true },
+    ...auditMetadata,
+  });
+};

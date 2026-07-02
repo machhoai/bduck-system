@@ -121,34 +121,40 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 12,
   },
   {
+    id: "employees",
+    label: { vi: "Nhân viên", zh: "员工" },
+    icon: "IdCard",
+    order: 13,
+  },
+  {
     id: "expenses",
     label: { vi: "Quản lý chi phí", zh: "费用管理" },
     icon: "Receipt",
-    order: 13,
+    order: 14,
   },
   {
     id: "revenue",
     label: { vi: "Quản lý doanh thu", zh: "营收管理" },
     icon: "ChartNoAxesCombined",
-    order: 14,
+    order: 15,
   },
   {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
-    order: 15,
+    order: 16,
   },
   {
     id: "attendance",
     label: { vi: "Chấm công", zh: "考勤" },
     icon: "CalendarCheck",
-    order: 16,
+    order: 17,
   },
   {
     id: "external",
     label: { vi: "Tích hợp ngoài", zh: "外部集成" },
     icon: "ScanBarcode",
-    order: 17,
+    order: 18,
   },
 ];
 
@@ -486,6 +492,26 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Tạo, sửa, xóa mềm tài khoản và gán role.",
       zh: "创建、编辑、软删除账户并分配角色。",
+    },
+  },
+
+  // ── Employees ──
+  {
+    key: "employees.read",
+    group: "employees",
+    label: { vi: "Xem hồ sơ nhân viên", zh: "查看员工档案" },
+    description: {
+      vi: "Xem danh sách hồ sơ nhân viên, thông tin liên kết tài khoản và nơi làm việc.",
+      zh: "查看员工档案、账户关联和工作地点。",
+    },
+  },
+  {
+    key: "employees.write",
+    group: "employees",
+    label: { vi: "Quản lý hồ sơ nhân viên", zh: "管理员工档案" },
+    description: {
+      vi: "Tạo, cập nhật, xóa mềm hồ sơ nhân viên và liên kết tài khoản người dùng.",
+      zh: "创建、更新、软删除员工档案并关联用户账户。",
     },
   },
 

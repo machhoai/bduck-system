@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  EmployeeProfileStatus,
   IssueType,
   NonconformitySourceType,
   NonconformityStatus,
@@ -232,6 +233,57 @@ export const updateUserSchema = createUserSchema
     password: z.string().min(8).max(128).optional(),
     assignments: z.array(userRoleAssignmentSchema).optional(),
   });
+
+const createEmployeeAccountSchema = createUserSchema
+  .pick({
+    username: true,
+    email: true,
+    password: true,
+    status: true,
+    assignments: true,
+  })
+  .partial({
+    password: true,
+    status: true,
+    assignments: true,
+  });
+
+const employeeProfileCoreSchema = z.object({
+  user_id: userIdSchema.nullable().optional(),
+  employee_code: z.string().trim().min(1).max(80),
+  full_name: z.string().trim().min(1).max(160),
+  email: z.string().trim().email().max(160).nullable().optional(),
+  phone: z.string().trim().max(40).nullable().optional(),
+  job_title: z.string().trim().max(120).nullable().optional(),
+  department: z.string().trim().max(120).nullable().optional(),
+  workplace_warehouse_id: z.string().uuid(),
+  status: z.nativeEnum(EmployeeProfileStatus).default(EmployeeProfileStatus.ACTIVE),
+  notes: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const createEmployeeProfileSchema = employeeProfileCoreSchema
+  .extend({
+    create_account: z.boolean().default(false),
+    account: createEmployeeAccountSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.create_account && !value.account) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["account"],
+        message: "Account information is required when create_account is true",
+      });
+    }
+    if (value.create_account && value.user_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["user_id"],
+        message: "Cannot link an existing user and create a new account at once",
+      });
+    }
+  });
+
+export const updateEmployeeProfileSchema = employeeProfileCoreSchema.partial();
 
 // Audit logs
 export const auditLogQuerySchema = z.object({

@@ -4,6 +4,7 @@ import {
   AuditAction,
   type AttendanceCheckInContext,
   type AttendanceLog,
+  type EmployeeProfile,
   type User,
   type UserWarehouseRole,
   type WarehouseAttendancePolicy,
@@ -18,6 +19,7 @@ import {
   replaceActiveAttendancePolicy,
   replaceAttendanceExemptions,
 } from "../repositories/attendanceRepository.js";
+import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 
 const TIMEZONE = "Asia/Ho_Chi_Minh" as const;
@@ -64,35 +66,6 @@ const accessibleWarehouseIdsForAction = (
     .map(([scope]) => scope);
 };
 
-const isAssignmentActive = (
-  assignment: UserWarehouseRole,
-  now = new Date(),
-) => {
-  if (!assignment.is_active || !assignment.warehouse_id) return false;
-  const validFrom = assignment.valid_from
-    ? new Date(assignment.valid_from)
-    : null;
-  if (validFrom && validFrom > now) return false;
-  const validUntil = assignment.valid_until
-    ? new Date(assignment.valid_until)
-    : null;
-  if (validUntil && validUntil < now) return false;
-  return true;
-};
-
-const resolveSingleWorkplace = (user: RequestUser): string | null => {
-  const warehouseIds = Array.from(
-    new Set(
-      (user.roleAssignments || [])
-        .filter((assignment) => isAssignmentActive(assignment))
-        .map((assignment) => assignment.warehouse_id)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  );
-
-  return warehouseIds.length === 1 ? warehouseIds[0] : null;
-};
-
 const getVietnamDateKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TIMEZONE,
@@ -120,6 +93,7 @@ const isAttendanceRequired = async (userId: string, warehouseId: string) => {
 
 const buildLog = (
   user: RequestUser,
+  profile: EmployeeProfile,
   warehouseId: string,
   policy: WarehouseAttendancePolicy | null,
   status: AttendanceLogStatus,
@@ -130,8 +104,9 @@ const buildLog = (
   const syncTime = new Date();
   return {
     user_id: user.id,
-    employee_id: user.employee_id,
-    employee_name: user.full_name,
+    employee_profile_id: profile.id,
+    employee_id: profile.employee_code,
+    employee_name: profile.full_name,
     warehouse_id: warehouseId,
     policy_id: policy?.id || null,
     attendance_date: getVietnamDateKey(actionTime),
@@ -176,7 +151,8 @@ const auditAttendanceLog = async (
 export const fetchAttendanceContext = async (
   user: RequestUser,
 ): Promise<AttendanceCheckInContext> => {
-  const warehouseId = resolveSingleWorkplace(user);
+  const profile = await getEmployeeProfileByUserId(user.id);
+  const warehouseId = profile?.workplace_warehouse_id ?? null;
   const canViewAttendance = permissionAllowed(user, "attendance.view");
   const hasCheckInPermission = permissionAllowed(
     user,
@@ -186,7 +162,7 @@ export const fetchAttendanceContext = async (
   const canConfigureAttendance = permissionAllowed(user, "attendance.config");
   const canExportAttendance = permissionAllowed(user, "attendance.export");
 
-  if (!warehouseId) {
+  if (!profile || !warehouseId) {
     return {
       can_access_page:
         canViewAttendance || canConfigureAttendance || canExportAttendance,
@@ -235,13 +211,14 @@ export const checkInAttendance = async (
   requestIp: string | null | undefined,
   auditMetadata?: AuditMetadata,
 ): Promise<AttendanceLog> => {
-  const warehouseId = resolveSingleWorkplace(user);
+  const profile = await getEmployeeProfileByUserId(user.id);
+  const warehouseId = profile?.workplace_warehouse_id ?? null;
   const ipAddress = normalizeIp(requestIp);
   const actionTime = input.action_time
     ? new Date(input.action_time)
     : new Date();
 
-  if (!warehouseId) {
+  if (!profile || !warehouseId) {
     throw createApiError(
       400,
       "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
@@ -264,6 +241,7 @@ export const checkInAttendance = async (
     const log = await createAttendanceLog(
       buildLog(
         user,
+        profile,
         warehouseId,
         policy,
         AttendanceLogStatus.REJECTED,
@@ -306,6 +284,7 @@ export const checkInAttendance = async (
     const log = await createAttendanceLog(
       buildLog(
         user,
+        profile,
         warehouseId,
         policy,
         AttendanceLogStatus.REJECTED,
@@ -326,6 +305,7 @@ export const checkInAttendance = async (
   const { log, existing: duplicate } = await createSuccessAttendanceLogOnce(
     buildLog(
       user,
+      profile,
       warehouseId,
       policy,
       AttendanceLogStatus.SUCCESS,
