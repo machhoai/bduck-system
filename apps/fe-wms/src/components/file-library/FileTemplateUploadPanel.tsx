@@ -147,10 +147,10 @@ export default function FileTemplateUploadPanel({
                 />
 
                 {file && format !== "other" ? (
-                    <div className="flex w-full h-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-3 py-2 min-h-12">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex w-full h-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-3 py-2">
+                        <div className="flex min-w-0 flex-1 h-full items-center gap-3">
                             <FileLibraryFileIcon format={format} extension={extension} />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 h-full flex-1">
                                 <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                     {file.name}
                                 </p>
@@ -172,7 +172,7 @@ export default function FileTemplateUploadPanel({
                                     <button
                                         type="button"
                                         onClick={() => inputRef.current?.click()}
-                                        className="flex h-8 items-center  justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
+                                        className="flex h-full items-center  justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
                                     >
                                         <UploadCloud size={14} />
                                         {t.templates.changeFile}
@@ -195,7 +195,7 @@ export default function FileTemplateUploadPanel({
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => inputRef.current?.click()}
-                        className="flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="flex h-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <UploadCloud size={18} />
                         {t.templates.chooseFile}
