@@ -393,6 +393,7 @@ const vi = {
       descriptionLabel: "Mô tả",
       descriptionPlaceholder: "Ghi chú ngắn về cách dùng",
       chooseFile: "Chọn tệp biểu mẫu",
+      dropFileHere: "Thả tệp vào đây",
       changeFile: "Đổi tệp",
       uploadButton: "Upload",
       removeFile: "Bỏ tệp",

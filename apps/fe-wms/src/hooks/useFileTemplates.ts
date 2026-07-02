@@ -40,6 +40,32 @@ async function createTemplateRequest(payload: CreateFileTemplatePayload) {
   return response.json();
 }
 
+async function fetchTemplatesFromApi(signal?: AbortSignal) {
+  const response = await fetch(`${API_BASE_URL}/api/file-templates`, {
+    method: "GET",
+    credentials: "include",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw await createApiErrorFromResponse(
+      response,
+      "Khong the tai danh sach bieu mau.",
+    );
+  }
+
+  const body = await response.json();
+  return (body.data || []) as FileTemplate[];
+}
+
+function sortTemplates(rows: FileTemplate[]) {
+  return [...rows].sort((a, b) => {
+    const aTime = toFileLibraryDate(a.created_at)?.getTime() ?? 0;
+    const bTime = toFileLibraryDate(b.created_at)?.getTime() ?? 0;
+    return bTime - aTime;
+  });
+}
+
 export function useFileTemplates(canViewTemplates: boolean) {
   const [templates, setTemplates] = useState<FileTemplate[]>([]);
   const [loading, setLoading] = useState(canViewTemplates);
@@ -49,10 +75,31 @@ export function useFileTemplates(canViewTemplates: boolean) {
   const canUploadTemplates = hasPermission("file_templates.upload");
 
   useEffect(() => {
+    const abortController = new AbortController();
+    let disposed = false;
+
+    const loadApiFallback = async () => {
+      try {
+        const rows = await fetchTemplatesFromApi(abortController.signal);
+        if (disposed) return;
+        setTemplates(sortTemplates(rows));
+      } catch (error) {
+        if (!disposed) {
+          console.error("[useFileTemplates] API fallback error:", error);
+          setTemplates([]);
+        }
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    };
+
     if (!canViewTemplates) {
       setTemplates([]);
       setLoading(false);
-      return;
+      return () => {
+        disposed = true;
+        abortController.abort();
+      };
     }
 
     setLoading(true);
@@ -64,23 +111,24 @@ export function useFileTemplates(canViewTemplates: boolean) {
     const unsubscribe = onSnapshot(
       templatesQuery,
       (snapshot) => {
-        const rows = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }) as FileTemplate)
-          .sort((a, b) => {
-            const aTime = toFileLibraryDate(a.created_at)?.getTime() ?? 0;
-            const bTime = toFileLibraryDate(b.created_at)?.getTime() ?? 0;
-            return bTime - aTime;
-          });
-        setTemplates(rows);
+        const rows = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as FileTemplate[];
+        setTemplates(sortTemplates(rows));
         setLoading(false);
       },
       (error) => {
         console.error("[useFileTemplates] listener error:", error);
-        setLoading(false);
+        void loadApiFallback();
       },
     );
 
-    return () => unsubscribe();
+    return () => {
+      disposed = true;
+      abortController.abort();
+      unsubscribe();
+    };
   }, [canViewTemplates]);
 
   const uploadersById = useMemo(
@@ -99,10 +147,14 @@ export function useFileTemplates(canViewTemplates: boolean) {
   const createTemplate = useCallback(
     async (payload: CreateFileTemplatePayload) => {
       const result = await createTemplateRequest(payload);
+      const created = result?.data as FileTemplate | undefined;
+      if (created && canViewTemplates) {
+        setTemplates((current) => sortTemplates([created, ...current]));
+      }
       emitDataMutation(["file_templates", "audit_logs"]);
       return result;
     },
-    [],
+    [canViewTemplates],
   );
 
   return {

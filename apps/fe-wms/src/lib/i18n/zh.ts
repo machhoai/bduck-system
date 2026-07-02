@@ -389,6 +389,7 @@ const zh: Dictionary = {
       descriptionLabel: "描述",
       descriptionPlaceholder: "简短说明使用方式",
       chooseFile: "选择表单模板",
+      dropFileHere: "将文件拖放到这里",
       changeFile: "更换文件",
       uploadButton: "上传",
       removeFile: "移除文件",

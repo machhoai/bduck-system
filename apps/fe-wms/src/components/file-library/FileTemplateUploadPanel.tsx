@@ -33,9 +33,33 @@ export default function FileTemplateUploadPanel({
     const [file, setFile] = useState<File | null>(null);
     const [progress, setProgress] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     const extension = file ? getFileExtension(file.name) : "";
     const format = getFileFormat(extension);
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isSubmitting) setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (isSubmitting) return;
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile) {
+            handleFile(droppedFile);
+        }
+    };
 
     const handleFile = (nextFile: File | undefined) => {
         if (!nextFile) return;
@@ -137,76 +161,92 @@ export default function FileTemplateUploadPanel({
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                <input
-                    ref={inputRef}
-                    type="file"
-                    accept={ACCEPT}
-                    className="hidden"
-                    disabled={isSubmitting}
-                    onChange={(event) => handleFile(event.target.files?.[0])}
-                />
+                <div
+                    className="relative w-full h-full"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept={ACCEPT}
+                        className="hidden"
+                        disabled={isSubmitting}
+                        onChange={(event) => handleFile(event.target.files?.[0])}
+                    />
 
-                {file && format !== "other" ? (
-                    <div className="flex w-full h-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] px-3 py-2">
-                        <div className="flex min-w-0 flex-1 h-full items-center gap-3">
-                            <FileLibraryFileIcon format={format} extension={extension} />
-                            <div className="min-w-0 h-full flex-1">
-                                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                                    {file.name}
-                                </p>
-                                <p className="text-xs text-[var(--color-text-muted)]">
-                                    {formatFileSize(file.size)}
-                                </p>
-                                {isSubmitting && (
-                                    <progress
-                                        className="mt-2 h-1 w-full"
-                                        value={progress}
-                                        max={100}
-                                    />
+                    {file && format !== "other" ? (
+                        <div className={`flex w-full h-full items-center justify-between rounded-[var(--radius-sm)] border bg-[var(--color-surface-card)] px-3 py-2 transition ${isDragging ? "border-[var(--color-brand-primary)]" : "border-[var(--color-border-subtle)]"}`}>
+                            <div className="flex min-w-0 flex-1 h-full items-center gap-3">
+                                <FileLibraryFileIcon format={format} extension={extension} />
+                                <div className="min-w-0 h-full flex-1">
+                                    <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                        {file.name}
+                                    </p>
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        {formatFileSize(file.size)}
+                                    </p>
+                                    {isSubmitting && (
+                                        <progress
+                                            className="mt-2 h-1 w-full"
+                                            value={progress}
+                                            max={100}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="ml-3 h-full flex shrink-0 items-center gap-1">
+                                {!isSubmitting && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => inputRef.current?.click()}
+                                            className="flex h-full items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
+                                        >
+                                            <UploadCloud size={14} />
+                                            {t.templates.changeFile}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFile(null)}
+                                            className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-subtle)]"
+                                            aria-label={t.templates.removeFile}
+                                            title={t.templates.removeFile}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
-                        <div className="ml-3 h-full flex shrink-0 items-center gap-1">
-                            {!isSubmitting && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => inputRef.current?.click()}
-                                        className="flex h-full items-center  justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-subtle)]"
-                                    >
-                                        <UploadCloud size={14} />
-                                        {t.templates.changeFile}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFile(null)}
-                                        className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-subtle)]"
-                                        aria-label={t.templates.removeFile}
-                                        title={t.templates.removeFile}
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </>
-                            )}
+                    ) : (
+                        <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => inputRef.current?.click()}
+                            className={`flex h-full w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isDragging ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]" : "border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)]"}`}
+                        >
+                            <UploadCloud size={18} />
+                            {isDragging ? t.templates.dropFileHere : t.templates.chooseFile}
+                        </button>
+                    )}
+
+                    {isDragging && file && format !== "other" && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[var(--radius-sm)] border-2 border-dashed border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] bg-opacity-90">
+                            <span className="text-sm font-bold text-[var(--color-brand-primary)] flex items-center gap-2">
+                                <UploadCloud size={18} />
+                                {t.templates.dropFileHere}
+                            </span>
                         </div>
-                    </div>
-                ) : (
-                    <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => inputRef.current?.click()}
-                        className="flex h-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-muted)] hover:text-[var(--color-brand-primary)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        <UploadCloud size={18} />
-                        {t.templates.chooseFile}
-                    </button>
-                )}
+                    )}
+                </div>
 
                 <button
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => void submit()}
-                    className="h-full rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-6 text-sm font-bold text-[var(--color-text-on-dark)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-full rounded-[var(--radius-sm)] bg-[var(--color-brand-primary)] px-4 text-sm font-bold text-[var(--color-text-on-dark)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {t.templates.uploadButton}
                 </button>
