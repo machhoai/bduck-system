@@ -67,11 +67,13 @@ export function buildRequest(id: string, data: Record<string, unknown>) {
     to_device_id: String(data.to_device_id || ""),
     to_display_name: String(data.to_display_name || ""),
     files: Array.isArray(data.files) ? (data.files as LanTransferFileMeta[]) : [],
+    message: typeof data.message === "string" ? data.message : null,
     status: (data.status || "pending") as LanTransferRequest["status"],
     created_at: toLanDate(data.created_at),
     expires_at: toLanDate(data.expires_at),
     accepted_at: data.accepted_at ? toLanDate(data.accepted_at) : null,
     completed_at: data.completed_at ? toLanDate(data.completed_at) : null,
+    is_mock: data.is_mock === true,
   } satisfies LanTransferRequest;
 }
 
@@ -95,4 +97,40 @@ export function formatLanFileSize(bytes: number) {
 
 export function isRequestActive(request: LanTransferRequest, now = new Date()) {
   return request.status === "pending" && request.expires_at.getTime() > now.getTime();
+}
+
+export function getDevLanMockPeers(now = new Date()): LanPresence[] {
+  const expiresAt = new Date(now.getTime() + 60_000);
+  return [
+    {
+      id: "dev-lan-peer-admin",
+      user_id: "dev-lan-user-admin",
+      device_id: "dev-device-admin",
+      display_name: "Nguyễn Minh Anh",
+      email: "minh.anh@demo.local",
+      last_seen_at: now,
+      expires_at: expiresAt,
+      is_mock: true,
+    },
+    {
+      id: "dev-lan-peer-ops",
+      user_id: "dev-lan-user-ops",
+      device_id: "dev-device-ops",
+      display_name: "Trần Gia Bảo",
+      email: "gia.bao@demo.local",
+      last_seen_at: now,
+      expires_at: expiresAt,
+      is_mock: true,
+    },
+    {
+      id: "dev-lan-peer-finance",
+      user_id: "dev-lan-user-finance",
+      device_id: "dev-device-finance",
+      display_name: "Lý Thanh Hà",
+      email: "thanh.ha@demo.local",
+      last_seen_at: now,
+      expires_at: expiresAt,
+      is_mock: true,
+    },
+  ];
 }

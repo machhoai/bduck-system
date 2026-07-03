@@ -18,6 +18,7 @@ export interface LanPresence {
   email: string | null;
   last_seen_at: Date;
   expires_at: Date;
+  is_mock?: boolean;
 }
 
 export interface LanTransferFileMeta {
@@ -36,11 +37,13 @@ export interface LanTransferRequest {
   to_device_id: string;
   to_display_name: string;
   files: LanTransferFileMeta[];
+  message: string | null;
   status: LanTransferStatus;
   created_at: Date;
   expires_at: Date;
   accepted_at?: Date | null;
   completed_at?: Date | null;
+  is_mock?: boolean;
 }
 
 export interface LanSignalMessage {
@@ -57,4 +60,10 @@ export interface LanTransferProgress {
   sentBytes: number;
   totalBytes: number;
   status: "idle" | "connecting" | "transferring" | "completed" | "failed";
+}
+
+export interface LanTransferPayload {
+  recipients: LanPresence[];
+  files: File[];
+  message: string;
 }

@@ -14,6 +14,7 @@ import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import type {
   LanPresence,
+  LanTransferPayload,
   LanTransferProgress,
   LanTransferRequest,
 } from "@/types/lanFileTransfer";
@@ -30,19 +31,41 @@ import { getLanDisplayName, useLanPresence } from "./useLanPresence";
 
 const REQUEST_TTL_MS = 60_000;
 
-type DirectoryHandle =
-  | {
-      getFileHandle: (
-        name: string,
-        options: { create: boolean },
-      ) => Promise<{ createWritable: () => Promise<FileSystemWritableFileStream> }>;
-    }
-  | null;
+type SaveFileHandle = {
+  createWritable: () => Promise<FileSystemWritableFileStream>;
+};
+
+type SaveFilePickerOptions = {
+  suggestedName?: string;
+};
 
 declare global {
   interface Window {
-    showDirectoryPicker?: () => Promise<DirectoryHandle>;
+    showSaveFilePicker?: (
+      options?: SaveFilePickerOptions,
+    ) => Promise<SaveFileHandle>;
   }
+}
+
+async function selectSaveFileHandles(request: LanTransferRequest) {
+  if (request.files.length === 0) return new Map<string, SaveFileHandle>();
+  if (!window.showSaveFilePicker) {
+    throw new Error("File save picker is not supported by this browser.");
+  }
+
+  const handles = new Map<string, SaveFileHandle>();
+  for (const file of request.files) {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: file.name,
+    });
+    handles.set(file.id, handle);
+  }
+  return handles;
+}
+
+function normalizeMessage(value: string) {
+  const message = value.trim();
+  return message.length > 0 ? message : null;
 }
 
 export function useLanFileTransfer() {
@@ -162,22 +185,42 @@ export function useLanFileTransfer() {
   const isAvailable = peers.length > 0 || pendingCount > 0;
 
   const sendRequest = useCallback(
-    async (peer: LanPresence, files: File[]) => {
-      if (!user?.id || files.length === 0) return;
+    async ({ recipients, files, message }: LanTransferPayload) => {
+      if (!user?.id || recipients.length === 0) return;
+      if (files.length === 0 && message.trim().length === 0) return;
       const now = new Date();
-      const requestRef = await addDoc(collection(db, "lan_transfer_requests"), {
-        from_user_id: user.id,
-        from_device_id: deviceId,
-        from_display_name: getLanDisplayName(user),
-        to_user_id: peer.user_id,
-        to_device_id: peer.device_id,
-        to_display_name: peer.display_name,
-        files: filesToMeta(files),
-        status: "pending",
-        created_at: now,
-        expires_at: new Date(now.getTime() + REQUEST_TTL_MS),
-      });
-      outgoingFiles.current.set(requestRef.id, files);
+      const fileMeta = filesToMeta(files);
+      const textMessage = normalizeMessage(message);
+      const realRecipients = recipients.filter((peer) => !peer.is_mock);
+
+      if (recipients.some((peer) => peer.is_mock)) {
+        setProgress({
+          requestId: "dev-mock-request",
+          fileName: textMessage || files[0]?.name || "",
+          sentBytes: files.reduce((sum, file) => sum + file.size, 0),
+          totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+          status: "completed",
+        });
+      }
+
+      await Promise.all(
+        realRecipients.map(async (peer) => {
+          const requestRef = await addDoc(collection(db, "lan_transfer_requests"), {
+            from_user_id: user.id,
+            from_device_id: deviceId,
+            from_display_name: getLanDisplayName(user),
+            to_user_id: peer.user_id,
+            to_device_id: peer.device_id,
+            to_display_name: peer.display_name,
+            files: fileMeta,
+            message: textMessage,
+            status: "pending",
+            created_at: now,
+            expires_at: new Date(now.getTime() + REQUEST_TTL_MS),
+          });
+          if (files.length > 0) outgoingFiles.current.set(requestRef.id, files);
+        }),
+      );
     },
     [deviceId, user],
   );
@@ -192,11 +235,16 @@ export function useLanFileTransfer() {
   const acceptRequest = useCallback(
     async (request: LanTransferRequest) => {
       if (!user?.id) return;
-      let directoryHandle: DirectoryHandle = null;
-      if (!window.showDirectoryPicker) {
-        throw new Error("Directory picker is not supported by this browser.");
+      const fileHandles = await selectSaveFileHandles(request);
+
+      if (request.files.length === 0) {
+        await updateDoc(doc(db, "lan_transfer_requests", request.id), {
+          status: "completed",
+          accepted_at: new Date(),
+          completed_at: new Date(),
+        });
+        return;
       }
-      directoryHandle = await window.showDirectoryPicker();
 
       await updateDoc(doc(db, "lan_transfer_requests", request.id), {
         status: "accepted",
@@ -208,7 +256,7 @@ export function useLanFileTransfer() {
         db,
         request,
         receiverId: user.id,
-        directoryHandle,
+        fileHandles,
         callbacks: {
           onProgress: setProgress,
           onComplete: () => {

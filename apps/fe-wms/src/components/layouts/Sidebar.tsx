@@ -10,6 +10,7 @@ import SidebarActions from "./SidebarActions";
 import Image from "next/image";
 import SidebarMenuItem from "./SidebarMenuItem";
 import SidebarUserPanel from "./SidebarUserPanel";
+import LanFileTransferButton from "../lan-transfer/LanFileTransferButton";
 
 export default function Sidebar() {
     const { t } = useTranslation();
@@ -50,7 +51,7 @@ export default function Sidebar() {
                     </p>
                 )}
 
-                <nav className="space-y-1">
+                <nav className="grid gap-1">
                     {visibleItems.map((item) => (
                         <SidebarMenuItem
                             key={item.id}
@@ -69,9 +70,10 @@ export default function Sidebar() {
                 </nav>
             </div>
 
-            <div className="border-t border-white/10 px-2.5 py-3">
+            <div className="grid gap-2.5 border-t border-white/10 px-2.5 py-3">
+                <LanFileTransferButton isCollapsed={isCollapsed} />
                 <SidebarUserPanel isCollapsed={isCollapsed} />
-                <div className="mt-2.5">
+                <div>
                     <SidebarActions isCollapsed={isCollapsed} showCollapse />
                 </div>
             </div>

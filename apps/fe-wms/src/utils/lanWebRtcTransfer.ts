@@ -19,11 +19,8 @@ import {
 const CHUNK_SIZE = 64 * 1024;
 const BUFFER_LIMIT = 1024 * 1024;
 
-type FileSystemDirectoryHandleLike = {
-  getFileHandle: (
-    name: string,
-    options: { create: boolean },
-  ) => Promise<{ createWritable: () => Promise<FileSystemWritableFileStream> }>;
+type SaveFileHandleLike = {
+  createWritable: () => Promise<FileSystemWritableFileStream>;
 };
 
 type FileEnvelope =
@@ -63,8 +60,8 @@ async function sendFiles(
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
   let sentBytes = 0;
 
-  for (const file of files) {
-    const meta = request.files.find((item) => item.name === file.name) || {
+  for (const [index, file] of files.entries()) {
+    const meta = request.files[index] || {
       id: file.name,
       name: file.name,
       size: file.size,
@@ -181,18 +178,17 @@ export async function startLanReceiverTransfer({
   db,
   request,
   receiverId,
-  directoryHandle,
+  fileHandles,
   callbacks,
 }: {
   db: Firestore;
   request: LanTransferRequest;
   receiverId: string;
-  directoryHandle: FileSystemDirectoryHandleLike | null;
+  fileHandles: Map<string, SaveFileHandleLike>;
   callbacks: TransferCallbacks;
 }) {
   const pc = createLanPeerConnection();
   const processedSignals = new Set<string>();
-  const bufferedFallback = new Map<string, BlobPart[]>();
   let currentMeta: LanTransferFileMeta | null = null;
   let currentWritable: FileSystemWritableFileStream | null = null;
   let receivedBytes = 0;
@@ -214,14 +210,11 @@ export async function startLanReceiverTransfer({
           const envelope = JSON.parse(messageEvent.data) as FileEnvelope;
           if (envelope.kind === "file-start") {
             currentMeta = envelope.meta;
-            if (directoryHandle) {
-              const handle = await directoryHandle.getFileHandle(currentMeta.name, {
-                create: true,
-              });
-              currentWritable = await handle.createWritable();
-            } else {
-              bufferedFallback.set(currentMeta.id, []);
+            const handle = fileHandles.get(currentMeta.id);
+            if (!handle) {
+              throw new Error(`Missing save target for ${currentMeta.name}`);
             }
+            currentWritable = await handle.createWritable();
             return;
           }
 
@@ -233,16 +226,6 @@ export async function startLanReceiverTransfer({
           }
 
           if (envelope.kind === "all-complete") {
-            for (const meta of request.files) {
-              const parts = bufferedFallback.get(meta.id);
-              if (!parts) continue;
-              const url = URL.createObjectURL(new Blob(parts, { type: meta.type }));
-              const link = document.createElement("a");
-              link.href = url;
-              link.download = meta.name;
-              link.click();
-              URL.revokeObjectURL(url);
-            }
             channel.send(JSON.stringify({ kind: "receiver-complete" }));
             callbacks.onComplete();
             channel.close();
@@ -254,8 +237,6 @@ export async function startLanReceiverTransfer({
         receivedBytes += chunk.byteLength;
         if (currentWritable) {
           await currentWritable.write(chunk);
-        } else if (currentMeta) {
-          bufferedFallback.get(currentMeta.id)?.push(chunk);
         }
         callbacks.onProgress({
           requestId: request.id,

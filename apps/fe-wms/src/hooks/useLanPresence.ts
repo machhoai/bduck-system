@@ -6,7 +6,11 @@ import type { User } from "@bduck/shared-types";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import type { LanPresence } from "@/types/lanFileTransfer";
-import { buildPresence, getLanDeviceId } from "@/utils/lanFileTransfer";
+import {
+  buildPresence,
+  getDevLanMockPeers,
+  getLanDeviceId,
+} from "@/utils/lanFileTransfer";
 
 const PRESENCE_TTL_MS = 35_000;
 const HEARTBEAT_MS = 12_000;
@@ -20,6 +24,11 @@ export function useLanPresence() {
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const deviceId = useMemo(() => getLanDeviceId(), []);
   const [peers, setPeers] = useState<LanPresence[]>([]);
+  const isDevMode = process.env.NODE_ENV === "development";
+  const visiblePeers = useMemo(
+    () => (isDevMode ? [...peers, ...getDevLanMockPeers()] : peers),
+    [isDevMode, peers],
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
@@ -85,5 +94,5 @@ export function useLanPresence() {
     return unsubscribe;
   }, [deviceId, isAuthenticated, user?.id]);
 
-  return { deviceId, peers };
+  return { deviceId, peers: visiblePeers };
 }
