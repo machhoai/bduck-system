@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { auth } from "../../config/firebase.js";
 import {
   getUserById,
@@ -17,18 +18,17 @@ export const requireAuth = async (
   next: NextFunction,
 ) => {
   try {
-    let token = "";
-    let isSessionCookie = false;
+    let decodedClaims: DecodedIdToken | null = null;
+    let lastVerificationError: unknown = null;
 
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.split("Bearer ")[1];
-    } else {
-      token = req.cookies?.__session || "";
-      isSessionCookie = true;
-    }
+    const bearerToken =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.slice("Bearer ".length)
+        : "";
+    const sessionCookie = req.cookies?.__session || "";
 
-    if (!token) {
+    if (!bearerToken && !sessionCookie) {
       return res.status(401).json({
         success: false,
         data: null,
@@ -39,10 +39,25 @@ export const requireAuth = async (
       });
     }
 
-    // Verify the token
-    const decodedClaims = isSessionCookie
-      ? await auth.verifySessionCookie(token, true)
-      : await auth.verifyIdToken(token, true);
+    if (bearerToken) {
+      try {
+        decodedClaims = await auth.verifyIdToken(bearerToken, true);
+      } catch (error) {
+        lastVerificationError = error;
+      }
+    }
+
+    if (!decodedClaims && sessionCookie) {
+      try {
+        decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+      } catch (error) {
+        lastVerificationError = error;
+      }
+    }
+
+    if (!decodedClaims) {
+      throw lastVerificationError ?? new Error("Missing valid auth token");
+    }
 
     // We could re-fetch the user and permissions here to ensure they are fully up-to-date
     // Or we could attach just the UID and rely on the database for permissions.

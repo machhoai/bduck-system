@@ -18,6 +18,29 @@ export interface UserWithAssignments extends User {
   assignments: UserWarehouseRole[];
 }
 
+function assignmentKey(assignment: UserWarehouseRole) {
+  return `${assignment.user_id}:${assignment.warehouse_id || "global"}:${assignment.role_id}`;
+}
+
+function activeUniqueAssignments(assignments: UserWarehouseRole[]) {
+  const byUserScopeRole = new Map<string, UserWarehouseRole>();
+
+  assignments
+    .filter((assignment) => assignment.is_active)
+    .forEach((assignment) => {
+      byUserScopeRole.set(assignmentKey(assignment), assignment);
+    });
+
+  return Array.from(byUserScopeRole.values());
+}
+
+function withActiveUniqueAssignments(users: UserWithAssignments[]) {
+  return users.map((user) => ({
+    ...user,
+    assignments: activeUniqueAssignments(user.assignments || []),
+  }));
+}
+
 async function fetchUsersFromApi(signal?: AbortSignal) {
   const response = await fetch(`${API_BASE_URL}/api/users`, {
     method: "GET",
@@ -27,10 +50,14 @@ async function fetchUsersFromApi(signal?: AbortSignal) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the tai danh sach nguoi dung.");
+    throw createDetailedApiError(
+      response,
+      body,
+      "Khong the tai danh sach nguoi dung.",
+    );
   }
 
-  return (body.data || []) as UserWithAssignments[];
+  return withActiveUniqueAssignments((body.data || []) as UserWithAssignments[]);
 }
 
 async function mutateUser(
@@ -67,7 +94,8 @@ export function useUsers() {
     let latestAssignments: UserWarehouseRole[] = [];
 
     const publish = () => {
-      const assignmentsByUser = latestAssignments.reduce<
+      const activeAssignments = activeUniqueAssignments(latestAssignments);
+      const assignmentsByUser = activeAssignments.reduce<
         Record<string, UserWarehouseRole[]>
       >((acc, assignment) => {
         acc[assignment.user_id] = acc[assignment.user_id] || [];

@@ -69,8 +69,13 @@ const buildAssignments = async (
   assignments: CreateUserInput["assignments"],
 ): Promise<Omit<UserWarehouseRole, "created_at">[]> => {
   const result: Omit<UserWarehouseRole, "created_at">[] = [];
+  const seen = new Set<string>();
 
   for (const assignment of assignments) {
+    const scopeRoleKey = `${assignment.warehouse_id ?? "global"}:${assignment.role_id}`;
+    if (seen.has(scopeRoleKey)) continue;
+    seen.add(scopeRoleKey);
+
     const role = await getRoleById(assignment.role_id);
     if (!role) {
       throw {

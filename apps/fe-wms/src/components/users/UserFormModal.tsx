@@ -58,8 +58,10 @@ export function UserFormModal({
         status: user.status,
       });
       setAssignments(
-        user.assignments.length > 0
-          ? user.assignments.map(toAssignmentDraft)
+        user.assignments.filter((assignment) => assignment.is_active).length > 0
+          ? user.assignments
+              .filter((assignment) => assignment.is_active)
+              .map(toAssignmentDraft)
           : [createEmptyAssignment()],
       );
       return;
@@ -89,7 +91,7 @@ export function UserFormModal({
         employee_id: formData.employee_id,
         status: formData.status,
         ...(formData.password ? { password: formData.password } : {}),
-        assignments: assignments
+        assignments: dedupeAssignments(assignments)
           .filter((assignment) => assignment.role_id)
           .map((assignment) => ({
             warehouse_id: assignment.warehouse_id || null,
@@ -237,6 +239,21 @@ export function UserFormModal({
 
 const inputClassName =
   "h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
+
+function assignmentKey(assignment: AssignmentDraft) {
+  return `${assignment.warehouse_id || "global"}:${assignment.role_id}`;
+}
+
+function dedupeAssignments(assignments: AssignmentDraft[]) {
+  const byScopeAndRole = new Map<string, AssignmentDraft>();
+
+  assignments.forEach((assignment) => {
+    if (!assignment.role_id) return;
+    byScopeAndRole.set(assignmentKey(assignment), assignment);
+  });
+
+  return Array.from(byScopeAndRole.values());
+}
 
 function toAssignmentDraft(assignment: UserWarehouseRole): AssignmentDraft {
   return {

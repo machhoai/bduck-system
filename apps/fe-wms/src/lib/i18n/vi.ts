@@ -2379,6 +2379,47 @@ Object.assign(vi, {
     },
 });
 
+Object.assign(vi.profile, {
+    title: "Hồ sơ của tôi",
+    accountOverview: "Tổng quan tài khoản",
+    generalInfo: "Thông tin chung",
+    employeeId: "Mã tài khoản nhân viên",
+    employeeCode: "Mã nhân viên",
+    profileEmail: "Email hồ sơ",
+    phone: "Điện thoại",
+    jobTitle: "Chức danh",
+    workplace: "Nơi làm việc",
+    profileStatus: "Trạng thái hồ sơ",
+    joinDate: "Ngày tham gia",
+    activeRoles: "Vai trò đang hiệu lực",
+    scopedWarehouses: "Kho trong phạm vi",
+    security: "Bảo mật",
+    mfaEnabledDescription: "Tài khoản đã bật xác thực 2 lớp cho các thao tác nhạy cảm.",
+    mfaDisabledDescription: "Bật xác thực 2 lớp để bảo vệ các thao tác quan trọng trong hệ thống.",
+    employeeProfile: "Hồ sơ nhân sự",
+    employeeProfileDescription:
+        "Thông tin nhân sự và nơi làm việc chính được lấy từ profile nhân viên.",
+    managementScope: "Phạm vi quản lý",
+    roles: "Vai trò",
+    globalScope: "Toàn hệ thống",
+    warehouseScope: "Kho cụ thể",
+    noRoles: "Chưa có vai trò nào được gán",
+    noRolesHint: "Khi admin gán role, phạm vi quyền thao tác sẽ xuất hiện tại đây.",
+    noEmployeeProfile: "Chưa có hồ sơ nhân viên",
+    noEmployeeProfileHint: "Admin cần tạo profile và liên kết với tài khoản này.",
+    unknownRole: "Role không xác định",
+    validFrom: "Hiệu lực từ",
+    validUntil: "Hiệu lực đến",
+    active: "Hoạt động",
+    inactive: "Ngừng hoạt động",
+    changePassword: "Đổi mật khẩu",
+    profileStatuses: {
+        ACTIVE: "Đang làm việc",
+        INACTIVE: "Ngừng làm việc",
+        ON_LEAVE: "Tạm nghỉ",
+    },
+});
+
 export type AppTranslation = typeof vi;
 export type Dictionary = typeof vi;
 export default vi;
