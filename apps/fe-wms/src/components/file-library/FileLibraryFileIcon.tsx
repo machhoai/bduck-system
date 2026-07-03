@@ -33,10 +33,10 @@ export function FileLibraryFileIcon({
 
     return (
         <div
-            className={`relative h-full aspect-square flex shrink-0 p-4 items-center justify-center ${className} ${formatClassMap[format]}`}
+            className={`relative h-full max-h-26 aspect-square flex shrink-0 p-4 items-center justify-center ${className} ${formatClassMap[format]}`}
         >
             <Icon className={`size-full aspect-square ${iconClassName}`} />
-            <span className="absolute bottom-3 right-4 rounded-full px-2 bg-[var(--color-surface-elevated)] px-1 text-xs font-bold text-[var(--color-text-muted)] shadow-sm">
+            <span className="absolute bottom-1 right-4 rounded-full px-2 bg-[var(--color-surface-elevated)] px-1 text-xs font-bold text-[var(--color-text-muted)] shadow-sm">
                 {extension || "file"}
             </span>
         </div>

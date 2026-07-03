@@ -69,7 +69,7 @@ function FileActions({
         : file.url;
 
     return (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex shrink-0 items-center justify-end gap-1">
             <a
                 href={viewUrl}
                 target="_blank"
@@ -108,7 +108,7 @@ function MobileFileCard({
         <article className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
             <div className="h-full flex gap-2">
                 <FileLibraryFileIcon format={file.format} extension={file.extension} />
-                <div className="flex h-full w-full flex-col">
+                <div className="flex h-full w-full min-w-0 flex-col">
                     <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
@@ -174,7 +174,7 @@ export default function FileLibraryTable({
     }
 
     return (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {files.map((file) => (
                 <MobileFileCard key={file.id} file={file} t={t} lang={lang} />
             ))}

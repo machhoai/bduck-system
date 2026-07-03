@@ -133,7 +133,9 @@ export default function FileLibraryPage() {
         uploadNewVersion,
     } = useFileTemplates(canViewTemplates);
 
-    const [activeTab, setActiveTab] = useState<FileLibraryTab>("uploaded");
+    const [activeTab, setActiveTab] = useState<FileLibraryTab>(
+        canAccessTemplates ? "templates" : "uploaded",
+    );
     const [uploadedFilters, setUploadedFilters] =
         useState<FileLibraryFilters>(defaultFilters);
     const [templateFilters, setTemplateFilters] =
