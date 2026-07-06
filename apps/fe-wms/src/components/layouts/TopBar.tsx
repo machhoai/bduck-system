@@ -12,17 +12,10 @@ import { BreadcrumbNav } from "../ui/BreadcrumbNav";
 import { useExportStore } from "../../stores/useExportStore";
 import { WarehouseExportModal } from "./WarehouseExportModal";
 import type { ExportRequestOptions } from "@/utils/exportExcel";
-import { tours } from "../../config/tours";
+import { getGuideTourName } from "../../config/tours";
 import { gooeyToast } from "goey-toast";
 import IonIcon from "../ui/IonIcon";
 import { folder } from "ionicons/icons";
-
-function getTourName(pathname: string) {
-    const routeName = pathname.replace(/^\/+|\/+$/g, "").replace(/\//g, "-");
-    const tourName = routeName ? `${routeName}Tour` : "dashboardTour";
-
-    return tours.some((tour) => tour.tour === tourName) ? tourName : "dashboardTour";
-}
 
 export default function TopBar() {
     const { lang, t } = useTranslation();
@@ -110,6 +103,7 @@ export default function TopBar() {
             <div className="flex h-full gap-2">
                 <div className="overflow-hidden z-50">
                     <button
+                        id="wms-export-button"
                         onClick={() => {
                             if (exportConfig?.dialog?.type === "warehouse") {
                                 setIsExportModalOpen(true);
@@ -126,8 +120,9 @@ export default function TopBar() {
                     </button>
                 </div>
                 <button
+                    id="wms-help-button"
                     onClick={() => {
-                        startNextStep(getTourName(pathname));
+                        startNextStep(getGuideTourName(pathname));
                     }}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-[var(--color-surface-card)] hover:text-[var(--color-brand-primary)] z-50"
                     title="Hướng dẫn sử dụng"

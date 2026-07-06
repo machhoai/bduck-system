@@ -1982,6 +1982,78 @@ const zh: Dictionary = {
     processing: "处理中...",
     notesPlaceholder: "备注...",
   },
+
+  guide: {
+    card: {
+      step: "步骤",
+      previous: "上一步",
+      next: "下一步",
+      finish: "完成",
+      skip: "跳过",
+    },
+    common: {
+      workspaceTitle: "工作区",
+      workspaceContent:
+        "这里是当前页面的主要内容区域。表格、筛选器、图表和业务操作会随当前模块变化。",
+      topbarTitle: "顶部工具栏",
+      topbarContent:
+        "这里集中放置常用操作，例如返回、面包屑、设备状态、导出数据、打开指引和查看通知。",
+      helpTitle: "帮助按钮",
+      helpContent:
+        "在任意页面点击此按钮即可打开当前页面的引导。如果该页面还没有专属引导，系统会显示通用说明。",
+      exportTitle: "导出数据",
+      exportContent:
+        "当页面支持 Excel 导出时，此按钮会可用。有些页面会先让你选择仓库或数据范围。",
+      notificationsTitle: "通知",
+      notificationsContent:
+        "这里显示最新通知、未读数量，以及系统中需要关注或处理的更新。",
+      sidebarTitle: "侧边导航",
+      sidebarContent:
+        "侧边栏是系统功能地图。菜单会根据账号权限显示，也可以收起以扩大工作区域。",
+    },
+    dashboard: {
+      introTitle: "系统总览",
+      introContent:
+        "首页汇总仓库状态，包括库存数量、库存状态、预警和图表，帮助你快速发现异常。",
+      filterTitle: "选择仓库范围",
+      filterContent:
+        "使用此控件查看全部仓库或聚焦某一个仓库。下方指标会随所选范围更新。",
+      kpiTitle: "快速指标",
+      kpiContent:
+        "这些卡片展示仓库或库位数、SKU、总库存、ATP、隔离、在途和暂挂数量。查看全部仓库时，可点击卡片查看按仓库拆分的数据。",
+      chartsTitle: "分析图表",
+      chartsContent:
+        "图表用于查看商品结构和不同仓库的库存状态对比。选择单个仓库后，这里会切换为更细的视角。",
+      lowStockTitle: "低库存预警",
+      lowStockContent:
+        "该表优先列出 ATP 较低或为 0 的商品，便于及时补货、调拨或核对实际库存。",
+      rankingTitle: "库存排行",
+      rankingContent:
+        "这里展示库存最多或最少的商品。可通过两个标签切换视角，便于排查滞销或短缺商品。",
+    },
+    modules: {
+      vouchers: {
+        title: "单据管理",
+        content:
+          "单据页面集中处理入库、出库和调拨。可从状态标签开始创建、跟踪进度或查看历史。",
+      },
+      "import-vouchers": {
+        title: "入库单",
+        content:
+          "该页面用于创建、导入 Excel、检查并跟踪入库单，直到完成收货流程。",
+      },
+      "export-vouchers": {
+        title: "出库单",
+        content:
+          "该页面用于创建出库单、跟踪拣货过程，并检查出库任务的处理状态。",
+      },
+      transfers: {
+        title: "仓库调拨",
+        content:
+          "调拨页面支持创建仓库间转货任务、跟踪路线并确认收货。",
+      },
+    },
+  },
 };
 
 Object.assign(zh.importVoucher, {

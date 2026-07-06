@@ -130,7 +130,10 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-col gap-2">
             {/* ── Header ── */}
-            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header
+                id="wms-dashboard-header"
+                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div>
                     <p className="text-sm font-normal text-[var(--color-text-muted)]">
                         {t.dashboard.welcome}
@@ -144,11 +147,13 @@ export default function DashboardPage() {
                     </p>
                 </div>
 
-                <WarehouseSelector
-                    warehouses={warehouses}
-                    selectedId={selectedWarehouseId}
-                    onSelect={setSelectedWarehouseId}
-                />
+                <div id="wms-dashboard-warehouse-filter">
+                    <WarehouseSelector
+                        warehouses={warehouses}
+                        selectedId={selectedWarehouseId}
+                        onSelect={setSelectedWarehouseId}
+                    />
+                </div>
             </header>
 
             {/* ── Expense Dashboard Widgets ── */}
@@ -171,16 +176,18 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Stat Cards ── */}
-                <StatCardGrid
-                    kpis={kpis}
-                    loading={false}
-                    isAllWarehouses={isAllWarehouses}
-                    locationCount={locations.length}
-                    onCardClick={(metric) => setPopupMetric(metric)}
-                />
+                <div id="wms-dashboard-kpis">
+                    <StatCardGrid
+                        kpis={kpis}
+                        loading={false}
+                        isAllWarehouses={isAllWarehouses}
+                        locationCount={locations.length}
+                        onCardClick={(metric) => setPopupMetric(metric)}
+                    />
+                </div>
 
                 {/* ── Charts Row ── */}
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                <div id="wms-dashboard-charts" className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                     <StockDistributionChart data={typeDistribution} loading={false} />
                     {isAllWarehouses ? (
                         <StockComparisonChart data={stockComparison} loading={false} />
@@ -191,12 +198,16 @@ export default function DashboardPage() {
 
                 {/* ── Tables Row ── */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <LowStockTable products={lowStockProducts} loading={false} />
-                    <TopProductsRanking
-                        mostStocked={topMost}
-                        leastStocked={topLeast}
-                        loading={false}
-                    />
+                    <div id="wms-dashboard-low-stock">
+                        <LowStockTable products={lowStockProducts} loading={false} />
+                    </div>
+                    <div id="wms-dashboard-top-products">
+                        <TopProductsRanking
+                            mostStocked={topMost}
+                            leastStocked={topLeast}
+                            loading={false}
+                        />
+                    </div>
                 </div>
 
                 {/* ── Warehouse Detail Popup ── */}

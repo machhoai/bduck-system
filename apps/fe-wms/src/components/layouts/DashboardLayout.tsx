@@ -1,5 +1,6 @@
 "use client";
 
+import { NextStepViewport } from "nextstepjs";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
@@ -35,7 +36,9 @@ export default function DashboardLayout({
             >
                 <TopBar />
                 <div className="relative flex w-full flex-1 flex-col overflow-y-auto px-4 pt-12">
-                    {children}
+                    <NextStepViewport id="wms-content-viewport">
+                        {children}
+                    </NextStepViewport>
                 </div>
             </main>
 

@@ -2037,6 +2037,78 @@ const vi = {
         processing: "Đang xử lý...",
         notesPlaceholder: "Ghi chú...",
     },
+
+    guide: {
+        card: {
+            step: "Bước",
+            previous: "Trước",
+            next: "Tiếp",
+            finish: "Hoàn tất",
+            skip: "Bỏ qua",
+        },
+        common: {
+            workspaceTitle: "Khu vực làm việc",
+            workspaceContent:
+                "Đây là phần nội dung chính của trang hiện tại. Các bảng, bộ lọc, biểu đồ và thao tác nghiệp vụ sẽ thay đổi theo module bạn đang mở.",
+            topbarTitle: "Thanh công cụ trên cùng",
+            topbarContent:
+                "Thanh này gom các thao tác dùng thường xuyên như quay lại, xem breadcrumb, theo dõi trạng thái thiết bị, xuất dữ liệu, mở hướng dẫn và xem thông báo.",
+            helpTitle: "Nút hướng dẫn",
+            helpContent:
+                "Bấm nút này ở bất kỳ trang nào để mở tour hướng dẫn tương ứng với trang hiện tại. Nếu trang chưa có tour riêng, hệ thống sẽ hiển thị hướng dẫn tổng quát.",
+            exportTitle: "Xuất dữ liệu",
+            exportContent:
+                "Khi trang hỗ trợ xuất Excel, nút này sẽ sáng lên. Một số trang có hộp thoại chọn kho hoặc phạm vi dữ liệu trước khi tải file.",
+            notificationsTitle: "Thông báo",
+            notificationsContent:
+                "Khu vực này hiển thị thông báo mới nhất, số lượng chưa đọc và các cập nhật cần xử lý trong hệ thống.",
+            sidebarTitle: "Sidebar điều hướng",
+            sidebarContent:
+                "Sidebar là bản đồ chức năng của hệ thống. Các mục được hiển thị theo quyền của tài khoản; bạn có thể thu gọn để tăng diện tích làm việc.",
+        },
+        dashboard: {
+            introTitle: "Tổng quan hệ thống",
+            introContent:
+                "Dashboard tóm tắt tình hình kho: số lượng hàng, trạng thái tồn, cảnh báo và các biểu đồ giúp bạn phát hiện vấn đề nhanh.",
+            filterTitle: "Chọn phạm vi kho",
+            filterContent:
+                "Dùng bộ chọn này để xem toàn hệ thống hoặc tập trung vào một kho cụ thể. Các chỉ số bên dưới sẽ đổi theo phạm vi đã chọn.",
+            kpiTitle: "Các chỉ số nhanh",
+            kpiContent:
+                "Nhóm thẻ này cho biết số kho hoặc vị trí, số mặt hàng, tổng tồn, ATP, hàng cách ly, hàng đang chuyển và hàng tạm giữ. Khi xem tất cả kho, bấm vào thẻ để mở chi tiết theo kho.",
+            chartsTitle: "Biểu đồ phân tích",
+            chartsContent:
+                "Biểu đồ giúp đọc cơ cấu hàng hóa và so sánh trạng thái tồn giữa các kho. Khi chọn một kho, khu vực này chuyển sang góc nhìn chi tiết hơn.",
+            lowStockTitle: "Cảnh báo sắp hết hàng",
+            lowStockContent:
+                "Bảng này ưu tiên các sản phẩm có ATP thấp hoặc bằng 0 để bạn bổ sung, chuyển kho hoặc kiểm tra tồn thực tế kịp thời.",
+            rankingTitle: "Xếp hạng tồn kho",
+            rankingContent:
+                "Khu vực này cho biết sản phẩm tồn nhiều nhất hoặc ít nhất. Dùng hai tab để đổi góc nhìn khi cần rà soát hàng chậm hoặc hàng thiếu.",
+        },
+        modules: {
+            vouchers: {
+                title: "Quản lý phiếu",
+                content:
+                    "Trang phiếu tập trung các lệnh nhập, xuất và điều chuyển. Hãy bắt đầu từ các tab trạng thái để tạo mới, theo dõi tiến độ hoặc xem lịch sử.",
+            },
+            "import-vouchers": {
+                title: "Phiếu nhập kho",
+                content:
+                    "Trang này dùng để tạo, nhập Excel, kiểm tra và theo dõi phiếu nhập kho trước khi hoàn tất quy trình nhận hàng.",
+            },
+            "export-vouchers": {
+                title: "Phiếu xuất kho",
+                content:
+                    "Trang này dùng để tạo phiếu xuất, theo dõi phiên nhặt hàng và kiểm tra trạng thái xử lý của các lệnh xuất kho.",
+            },
+            transfers: {
+                title: "Điều chuyển kho",
+                content:
+                    "Trang điều chuyển hỗ trợ tạo lệnh chuyển hàng giữa các kho, theo dõi tuyến chuyển và xác nhận nhận hàng.",
+            },
+        },
+    },
 };
 
 Object.assign(vi.importVoucher, {

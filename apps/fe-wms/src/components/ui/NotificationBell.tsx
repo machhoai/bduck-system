@@ -76,6 +76,7 @@ export default function NotificationBell() {
 
   return (
     <div
+      id="wms-notification-bell"
       className="relative h-8 bg-white rounded-full aspect-square cursor-pointer shadow-sm"
       ref={dropdownRef}
     >

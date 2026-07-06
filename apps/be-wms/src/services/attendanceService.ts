@@ -208,7 +208,10 @@ export const fetchAttendanceContext = async (
   if (!profile || !warehouseId) {
     return {
       can_access_page:
-        canViewAttendance || canConfigureAttendance || canExportAttendance,
+        hasCheckInPermission ||
+        canViewAttendance ||
+        canConfigureAttendance ||
+        canExportAttendance,
       can_check_in: false,
       can_view_attendance: canViewAttendance,
       can_configure_attendance: canConfigureAttendance,
@@ -239,7 +242,10 @@ export const fetchAttendanceContext = async (
 
   return {
     can_access_page:
-      canCheckIn || canViewAttendance || canConfigureAttendance || canExportAttendance,
+      hasCheckInPermission ||
+      canViewAttendance ||
+      canConfigureAttendance ||
+      canExportAttendance,
     can_check_in: canCheckIn,
     can_view_attendance: canViewAttendance,
     can_configure_attendance: canConfigureAttendance,
