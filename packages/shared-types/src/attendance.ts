@@ -60,6 +60,8 @@ export interface AttendanceCheckInContext {
   warehouse_id: string | null;
   policy: WarehouseAttendancePolicy | null;
   today_success_log: AttendanceLog | null;
+  current_ip_address: string | null;
+  is_company_network: boolean | null;
   messages?: {
     vi: string;
     zh: string;

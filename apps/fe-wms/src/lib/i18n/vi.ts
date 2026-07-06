@@ -2151,6 +2151,9 @@ Object.assign(vi, {
         waitingCheckIn: "Sẵn sàng check-in",
         companyNetworkRequired:
             "Bạn đang không dùng mạng công ty. Vui lòng kết nối mạng công ty để check-in.",
+        companyNetworkReady: "Đã kết nối IP công ty",
+        currentIp: "IP hiện tại",
+        networkChecking: "Đang kiểm tra IP hiện tại",
         checkIn: "Check-in",
         checkInTime: "Giờ check-in",
         checkingIn: "Đang check-in...",

@@ -280,7 +280,7 @@ export default function CreateVoucherTab({
             default:
                 return true;
         }
-    }, [files, formData, step]);
+    }, [files, formData, processConfig, step]);
 
     const addProductToList = useCallback(
         (productId: string) => {

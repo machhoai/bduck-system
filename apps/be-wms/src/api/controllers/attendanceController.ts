@@ -37,10 +37,18 @@ const updateExemptionsSchema = z.object({
 });
 
 const getRequestUser = (req: Request) => (req as any).user;
-const getRequestIp = (req: Request) =>
-  (req.headers["x-forwarded-for"] as string | undefined) ||
-  req.socket.remoteAddress ||
-  req.ip;
+const getHeaderValue = (req: Request, headerName: string) => {
+  const value = req.headers[headerName.toLowerCase()];
+  return Array.isArray(value) ? value.join(",") : value;
+};
+
+const getRequestIpCandidates = (req: Request) => [
+  getHeaderValue(req, "cf-connecting-ip"),
+  getHeaderValue(req, "x-real-ip"),
+  getHeaderValue(req, "x-forwarded-for"),
+  req.socket.remoteAddress,
+  req.ip,
+];
 
 const handleAttendanceError = (res: Response, error: unknown) => {
   console.error("[attendanceController] error:", error);
@@ -80,7 +88,10 @@ export const getAttendanceContextHandler = async (
   res: Response,
 ) => {
   try {
-    const context = await fetchAttendanceContext(getRequestUser(req));
+    const context = await fetchAttendanceContext(
+      getRequestUser(req),
+      getRequestIpCandidates(req),
+    );
     return sendSuccess(res, context, {
       vi: "Lấy ngữ cảnh chấm công thành công.",
       zh: "成功获取考勤上下文。",
@@ -96,7 +107,7 @@ export const checkInAttendanceHandler = async (req: Request, res: Response) => {
     const log = await checkInAttendance(
       getRequestUser(req),
       input,
-      getRequestIp(req),
+      getRequestIpCandidates(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(

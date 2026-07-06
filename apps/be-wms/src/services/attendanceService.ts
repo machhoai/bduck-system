@@ -80,8 +80,48 @@ const getVietnamDateKey = (date = new Date()) => {
 
 const normalizeIp = (ip: string | null | undefined) => {
   if (!ip) return null;
-  const first = ip.split(",")[0]?.trim() || "";
-  return first.replace(/^::ffff:/, "") || null;
+  const cleaned = ip.trim().replace(/^"|"$/g, "");
+  return cleaned.replace(/^::ffff:/, "") || null;
+};
+
+const normalizeIpCandidates = (
+  input: string | Array<string | null | undefined> | null | undefined,
+) => {
+  const rawItems = Array.isArray(input) ? input : [input];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  for (const item of rawItems) {
+    if (!item) continue;
+    for (const part of item.split(",")) {
+      const normalized = normalizeIp(part);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      candidates.push(normalized);
+    }
+  }
+
+  return candidates;
+};
+
+const getMatchingPolicyIp = (
+  requestIps: string[],
+  policyIps: string[] | undefined,
+) => {
+  const allowedIps = new Set(
+    (policyIps || [])
+      .map((ip) => normalizeIp(ip))
+      .filter((ip): ip is string => Boolean(ip)),
+  );
+  return requestIps.find((ip) => allowedIps.has(ip)) || null;
+};
+
+const isCompanyNetwork = (
+  requestIps: string[],
+  policy: WarehouseAttendancePolicy | null,
+) => {
+  if (!policy?.enabled) return null;
+  return Boolean(getMatchingPolicyIp(requestIps, policy.ip_addresses));
 };
 
 const isAttendanceRequired = async (userId: string, warehouseId: string) => {
@@ -150,7 +190,10 @@ const auditAttendanceLog = async (
 
 export const fetchAttendanceContext = async (
   user: RequestUser,
+  requestIpInput?: string | Array<string | null | undefined> | null,
 ): Promise<AttendanceCheckInContext> => {
+  const requestIps = normalizeIpCandidates(requestIpInput);
+  const currentIpAddress = requestIps[0] ?? null;
   const profile = await getEmployeeProfileByUserId(user.id);
   const warehouseId = profile?.workplace_warehouse_id ?? null;
   const canViewAttendance = permissionAllowed(user, "attendance.view");
@@ -173,6 +216,8 @@ export const fetchAttendanceContext = async (
       warehouse_id: null,
       policy: null,
       today_success_log: null,
+      current_ip_address: currentIpAddress,
+      is_company_network: null,
       messages: {
         vi: "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
         zh: "账号尚未配置唯一的考勤工作地点。",
@@ -202,18 +247,21 @@ export const fetchAttendanceContext = async (
     warehouse_id: warehouseId,
     policy,
     today_success_log: todaySuccessLog,
+    current_ip_address: currentIpAddress,
+    is_company_network: isCompanyNetwork(requestIps, policy),
   };
 };
 
 export const checkInAttendance = async (
   user: RequestUser,
   input: { action_time?: string },
-  requestIp: string | null | undefined,
+  requestIpInput: string | Array<string | null | undefined> | null | undefined,
   auditMetadata?: AuditMetadata,
 ): Promise<AttendanceLog> => {
   const profile = await getEmployeeProfileByUserId(user.id);
   const warehouseId = profile?.workplace_warehouse_id ?? null;
-  const ipAddress = normalizeIp(requestIp);
+  const requestIps = normalizeIpCandidates(requestIpInput);
+  const ipAddress = requestIps[0] ?? null;
   const actionTime = input.action_time
     ? new Date(input.action_time)
     : new Date();
@@ -280,7 +328,9 @@ export const checkInAttendance = async (
     );
   }
 
-  if (!ipAddress || !policy.ip_addresses.includes(ipAddress)) {
+  const matchedIp = getMatchingPolicyIp(requestIps, policy.ip_addresses);
+
+  if (!matchedIp) {
     const log = await createAttendanceLog(
       buildLog(
         user,
@@ -310,7 +360,7 @@ export const checkInAttendance = async (
       policy,
       AttendanceLogStatus.SUCCESS,
       null,
-      ipAddress,
+      matchedIp,
       actionTime,
     ),
   );
@@ -351,7 +401,11 @@ export const updateAttendancePolicy = async (
   const policy = await replaceActiveAttendancePolicy(warehouseId, {
     enabled: input.enabled,
     ip_addresses: Array.from(
-      new Set(input.ip_addresses.map((ip) => ip.trim()).filter(Boolean)),
+      new Set(
+        input.ip_addresses
+          .map((ip) => normalizeIp(ip))
+          .filter((ip): ip is string => Boolean(ip)),
+      ),
     ),
     actorId: user.id,
   });

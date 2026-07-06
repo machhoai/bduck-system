@@ -2,7 +2,7 @@
 
 import type { AttendanceCheckInContext } from "@bduck/shared-types";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock3, LogIn, WifiOff } from "lucide-react";
+import { CheckCircle2, Clock3, LogIn, Wifi, WifiOff } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { formatCheckInTime } from "@/utils/attendance";
 
@@ -20,6 +20,11 @@ export function AttendanceCheckInPanel({
   if (!context?.can_check_in) return null;
 
   const checkedIn = Boolean(context.today_success_log);
+  const networkVerified = context.is_company_network === true;
+  const networkRejected = context.is_company_network === false;
+  const currentIpLabel = context.current_ip_address
+    ? `${labels.currentIp || "IP hien tai"}: ${context.current_ip_address}`
+    : labels.networkChecking || labels.waitingCheckIn;
 
   const handleCheckIn = async () => {
     const task = onCheckIn();
@@ -65,15 +70,31 @@ export function AttendanceCheckInPanel({
       <div className="p-4">
         <div
           className={`mb-4 rounded-[var(--radius-sm)] border p-3 ${
-            checkedIn
+            checkedIn || networkVerified
               ? "border-[#257a3e33] bg-[#257a3e0d] text-[#257a3e]"
-              : "border-[#f59e0b33] bg-[#f59e0b0d] text-[#9a5b00]"
+              : networkRejected
+                ? "border-[#dc262633] bg-[#dc26260d] text-[#991b1b]"
+                : "border-[#f59e0b33] bg-[#f59e0b0d] text-[#9a5b00]"
           }`}
         >
           <div className="flex items-center gap-2 text-sm font-semibold">
-            {checkedIn ? <CheckCircle2 size={16} /> : <WifiOff size={16} />}
+            {checkedIn ? (
+              <CheckCircle2 size={16} />
+            ) : networkVerified ? (
+              <Wifi size={16} />
+            ) : networkRejected ? (
+              <WifiOff size={16} />
+            ) : (
+              <Clock3 size={16} />
+            )}
             <span>
-              {checkedIn ? labels.checkedInToday : labels.waitingCheckIn}
+              {checkedIn
+                ? labels.checkedInToday
+                : networkVerified
+                  ? labels.companyNetworkReady || labels.waitingCheckIn
+                  : networkRejected
+                    ? labels.companyNetworkRequired
+                    : labels.waitingCheckIn}
             </span>
           </div>
           {checkedIn && (
@@ -82,8 +103,11 @@ export function AttendanceCheckInPanel({
               {formatCheckInTime(context.today_success_log?.check_in_at)}
             </p>
           )}
-          {!checkedIn && (
+          {!checkedIn && networkRejected && (
             <p className="mt-1 text-xs">{labels.companyNetworkRequired}</p>
+          )}
+          {!checkedIn && !networkRejected && (
+            <p className="mt-1 text-xs">{currentIpLabel}</p>
           )}
         </div>
 
