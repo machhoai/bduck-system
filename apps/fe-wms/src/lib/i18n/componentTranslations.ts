@@ -103,6 +103,8 @@ export const MFA_LOCK_TEXT = {
     unlock: "Mở khóa",
     useEmailOtp: "Sử dụng mã OTP qua Email",
     resendOtp: "Gửi lại mã OTP",
+    logout: "Đăng xuất",
+    changeLanguage: "Ngôn ngữ",
   },
   zh: {
     sendEmailFailed: "发送邮件失败",
@@ -119,6 +121,8 @@ export const MFA_LOCK_TEXT = {
     unlock: "解锁",
     useEmailOtp: "使用邮箱 OTP",
     resendOtp: "重新发送 OTP",
+    logout: "退出登录",
+    changeLanguage: "语言",
   },
 } as const;
 

@@ -270,7 +270,7 @@ export function AttendancePage() {
     }
 
     return (
-        <div className="flex w-full flex-col gap-4 overflow-y-auto">
+        <div className="flex w-full flex-col gap-4">
             <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="font-[var(--font-display)] text-xl font-semibold text-[var(--color-text-primary)]">
@@ -282,7 +282,7 @@ export function AttendancePage() {
                 </div>
             </header>
 
-            <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <div className="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)]">
                 <AttendanceCheckInPanel
                     context={context}
                     labels={labels}

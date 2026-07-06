@@ -35,7 +35,7 @@ export default function DashboardLayout({
                     }`}
             >
                 <TopBar />
-                <div className="relative flex w-full flex-1 flex-col overflow-y-auto px-4 pt-12">
+                <div className="relative flex w-full flex-1 flex-col overflow-y-auto pl-4 pr-2 pt-12">
                     <NextStepViewport id="wms-content-viewport">
                         {children}
                     </NextStepViewport>

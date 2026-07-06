@@ -273,3 +273,7 @@
         margin-left: 0 !important;
     }
 }
+
+#wms-content-viewport {
+    overflow: visible !important;
+}
