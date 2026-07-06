@@ -1,7 +1,7 @@
 "use client";
 
 import type { User, UserWarehouseRole, Warehouse } from "@bduck/shared-types";
-import { AlertTriangle, CalendarCheck } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CheckCircle2, ShieldAlert, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AttendanceAuditLog } from "./AttendanceAuditLog";
 import { AttendanceCalendar } from "./AttendanceCalendar";
@@ -29,6 +29,7 @@ import { useUserStore } from "@/stores/useUserStore";
 import {
     buildAttendanceDays,
     getCurrentMonthKey,
+    getTodayKey,
     getWeekStartKey,
     type AttendanceRangeMode,
     type AttendanceEmployeeRow,
@@ -223,6 +224,18 @@ export function AttendancePage() {
         );
     }, [days, employeeRows, logs, selectedWarehouseId, visibleWarehouseIds]);
 
+    const mobileStats = useMemo(() => {
+        const todayKey = getTodayKey();
+        const todayLogs = filteredLogs.filter(
+            (log) => log.attendance_date === todayKey && log.status === "SUCCESS",
+        );
+        const rejectedLogs = filteredLogs.filter((log) => log.status === "REJECTED");
+        return {
+            checkedToday: todayLogs.length,
+            rejected: rejectedLogs.length,
+        };
+    }, [filteredLogs]);
+
     const exportConfig = useMemo(() => {
         if (!canExportAttendance) return null;
         return buildAttendanceExportConfig({
@@ -269,9 +282,14 @@ export function AttendancePage() {
         );
     }
 
+    const periodLabel =
+        mode === "month"
+            ? month
+            : `${days[0]?.label || ""}/${days[0]?.date.getMonth() + 1 || ""} - ${days[days.length - 1]?.label || ""}/${days[days.length - 1]?.date.getMonth() + 1 || ""}`;
+
     return (
-        <div className="flex w-full flex-col gap-4">
-            <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="-mx-4 -mt-12 flex min-h-full w-[calc(100%+1rem)] flex-col gap-3 bg-[#f2f4f7] px-3 pb-4 pt-[calc(12px+env(safe-area-inset-top,0px))] lg:mx-0 lg:mt-0 lg:w-full lg:gap-4 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+            <header className="hidden flex-col gap-3 md:flex-row md:items-center md:justify-between lg:flex">
                 <div>
                     <h1 className="font-[var(--font-display)] text-xl font-semibold text-[var(--color-text-primary)]">
                         {labels.title}
@@ -282,7 +300,28 @@ export function AttendancePage() {
                 </div>
             </header>
 
-            <div className="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)]">
+            <header className="sticky top-0 z-20 -mx-3 border-b border-white/70 bg-[#f2f4f7]/95 px-3 pb-3 pt-1 backdrop-blur-xl lg:hidden">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase text-[var(--color-brand-primary)]">
+                            {periodLabel}
+                        </p>
+                        <h1 className="truncate font-[var(--font-display)] text-2xl font-semibold text-[var(--color-text-primary)]">
+                            {labels.title}
+                        </h1>
+                    </div>
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--color-brand-primary)] shadow-sm">
+                        <CalendarCheck size={20} />
+                    </div>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                    <MobileStat icon={<UsersRound size={15} />} label={labels.employees} value={employeeRows.length} />
+                    <MobileStat icon={<CheckCircle2 size={15} />} label={labels.today || "Today"} value={mobileStats.checkedToday} tone="success" />
+                    <MobileStat icon={<ShieldAlert size={15} />} label={labels.rejectedAudit || "Rejected"} value={mobileStats.rejected} tone="danger" />
+                </div>
+            </header>
+
+            <div className="grid gap-3 xl:grid-cols-[200px_minmax(0,1fr)] lg:gap-4">
                 <AttendanceCheckInPanel
                     context={context}
                     labels={labels}
@@ -342,6 +381,37 @@ export function AttendancePage() {
                 onSavePolicy={updatePolicy}
                 onSaveExemptions={updateExemptions}
             />
+        </div>
+    );
+}
+
+function MobileStat({
+    icon,
+    label,
+    value,
+    tone = "default",
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: number;
+    tone?: "default" | "success" | "danger";
+}) {
+    const toneClass =
+        tone === "success"
+            ? "text-[#257a3e]"
+            : tone === "danger"
+                ? "text-[#b42318]"
+                : "text-[var(--color-brand-primary)]";
+
+    return (
+        <div className="min-w-0 rounded-2xl bg-white px-3 py-2 shadow-sm">
+            <div className={`mb-1 flex items-center gap-1.5 ${toneClass}`}>
+                {icon}
+                <span className="truncate text-[10px] font-semibold">{label}</span>
+            </div>
+            <p className="text-lg font-semibold tabular-nums text-[var(--color-text-primary)]">
+                {value}
+            </p>
         </div>
     );
 }

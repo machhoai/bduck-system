@@ -151,9 +151,9 @@ export function AttendanceSettingsPanel({
         <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]"
+            className="overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none"
         >
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0066cc10] text-[#0066cc]">
                         <Settings2 size={17} />
@@ -170,7 +170,7 @@ export function AttendanceSettingsPanel({
                 <select
                     value={activeWarehouseId}
                     onChange={(event) => onWarehouseChange(event.target.value)}
-                    className="h-8 min-w-52 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs outline-none focus:border-[var(--color-brand-primary)]"
+                    className="h-11 w-full rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)] sm:h-8 sm:min-w-52 sm:w-auto sm:rounded-full sm:text-xs"
                 >
                     {warehouses.map((warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
@@ -180,8 +180,8 @@ export function AttendanceSettingsPanel({
                 </select>
             </div>
 
-            <div className="grid gap-4 p-4 xl:grid-cols-[360px_minmax(0,1fr)] bg-slate-50/20">
-                <div className="rounded-xl border border-[var(--color-border-soft)] p-4 shadow-sm flex flex-col justify-between">
+            <div className="grid gap-3 bg-[#f8fafc] p-3 lg:gap-4 lg:bg-slate-50/20 lg:p-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+                <div className="flex flex-col justify-between rounded-[24px] border border-white bg-white p-4 shadow-sm lg:rounded-xl lg:border-[var(--color-border-soft)]">
                     <div>
                         <label className="mb-4 flex items-center justify-between gap-3 cursor-pointer">
                             <span className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -212,7 +212,7 @@ export function AttendanceSettingsPanel({
                                                 )
                                             }
                                             placeholder="113.161.0.1"
-                                            className="h-8 min-w-0 flex-1 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs outline-none focus:border-[var(--color-brand-primary)]"
+                                            className="h-10 min-w-0 flex-1 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)] lg:h-8 lg:rounded-full lg:text-xs"
                                         />
                                         <button
                                             type="button"
@@ -224,7 +224,7 @@ export function AttendanceSettingsPanel({
                                                         : current.filter((_, itemIndex) => itemIndex !== index),
                                                 )
                                             }
-                                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#b42318] hover:bg-[#b4231808]"
+                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[#b42318] hover:bg-[#b4231808] lg:h-8 lg:w-8 lg:rounded-full"
                                         >
                                             <Trash2 size={15} />
                                         </button>
@@ -234,7 +234,7 @@ export function AttendanceSettingsPanel({
                             <button
                                 type="button"
                                 onClick={() => setIpAddresses((current) => [...current, ""])}
-                                className="inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-[var(--color-border-subtle)] bg-slate-50 hover:bg-slate-100/50 px-3 text-xs font-semibold text-[var(--color-text-primary)] transition-all active:scale-[0.98]"
+                                className="inline-flex h-10 w-fit items-center gap-1.5 rounded-2xl border border-[var(--color-border-subtle)] bg-slate-50 px-3 text-sm font-semibold text-[var(--color-text-primary)] transition-all hover:bg-slate-100/50 active:scale-[0.98] lg:h-8 lg:rounded-full lg:text-xs"
                             >
                                 <Plus size={14} />
                                 {labels.addIp}
@@ -245,15 +245,15 @@ export function AttendanceSettingsPanel({
                     <button
                         type="button"
                         onClick={() => void handlePolicySave()}
-                        className="mt-6 inline-flex h-8 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-xs font-semibold text-white transition-all active:scale-[0.98]"
+                        className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-primary)] text-sm font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] active:scale-[0.98] lg:h-8 lg:rounded-full lg:text-xs"
                     >
                         <Save size={15} />
                         {labels.saveSettings}
                     </button>
                 </div>
 
-                <div className="rounded-xl border border-[var(--color-border-soft)] p-4 bg-white shadow-sm flex flex-col justify-between">
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex flex-col justify-between rounded-[24px] border border-white bg-white p-4 shadow-sm lg:rounded-xl lg:border-[var(--color-border-soft)]">
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                                 {labels.exemptions}
@@ -265,21 +265,21 @@ export function AttendanceSettingsPanel({
                         <button
                             type="button"
                             onClick={() => void handleExemptionsSave()}
-                            className="inline-flex h-8 items-center gap-2 rounded-full bg-[#257a3e] hover:bg-[#1e6031] px-4 text-xs font-semibold text-white transition-all active:scale-[0.98]"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-[#257a3e] px-4 text-sm font-semibold text-white transition-all hover:bg-[#1e6031] active:scale-[0.98] sm:h-8 sm:rounded-full sm:text-xs"
                         >
                             <Save size={14} />
                             {labels.save}
                         </button>
                     </div>
 
-                    <div className="grid max-h-72 gap-2 overflow-auto sm:grid-cols-2 scrollbar-thin pr-1 p-0.5">
+                    <div className="grid max-h-72 gap-2 overflow-auto pr-1 p-0.5 scrollbar-thin sm:grid-cols-2">
                         {warehouseProfiles.map((profile) => {
                             const userId = profile.user_id || "";
                             const checked = excludedUserIds.includes(userId);
                             return (
                                 <label
                                     key={profile.id}
-                                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 transition-all ${checked
+                                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3 transition-all lg:rounded-xl lg:p-2.5 ${checked
                                         ? "border-[#f59e0b55] bg-[#f59e0b05]"
                                         : "border-[var(--color-border-soft)] bg-white hover:bg-slate-50/50"
                                         }`}

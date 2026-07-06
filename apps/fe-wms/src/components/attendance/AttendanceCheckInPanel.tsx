@@ -72,13 +72,37 @@ export function AttendanceCheckInPanel({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             title={btnTooltip}
-            className="overflow-hidden rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]"
+            className="overflow-hidden rounded-[28px] border border-white/80 bg-white p-3 shadow-sm lg:rounded-full lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:p-0 lg:shadow-none"
         >
+            <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
+                <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-[var(--color-text-muted)]">
+                        {labels.companyNetworkRequired}
+                    </p>
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        {networkVerified
+                            ? labels.checkInNow || "Check-in ngay"
+                            : checkedIn
+                                ? labels.checkInSuccess || "Check-in thanh cong"
+                                : labels.networkChecking || "Dang kiem tra"}
+                    </p>
+                </div>
+                <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${networkRejected
+                        ? "bg-[#b4231810] text-[#b42318]"
+                        : checkedIn
+                            ? "bg-[#257a3e10] text-[#257a3e]"
+                            : "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                        }`}
+                >
+                    {btnIcon}
+                </div>
+            </div>
             <button
                 type="button"
                 onClick={() => void handleCheckIn()}
                 disabled={btnDisabled}
-                className="inline-flex p-2 relative h-full w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--color-text-muted)] disabled:opacity-70"
+                className="relative inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--color-text-muted)] disabled:opacity-70 lg:h-full lg:rounded-full lg:p-2"
             >
                 {btnIcon}
                 <span>{btnText}</span>

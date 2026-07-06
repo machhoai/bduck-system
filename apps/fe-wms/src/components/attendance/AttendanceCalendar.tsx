@@ -42,6 +42,13 @@ const getAvatarBg = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+const formatMobileDay = (day: AttendanceDay) =>
+    day.date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "Asia/Ho_Chi_Minh",
+    });
+
 export function AttendanceCalendar({
     labels,
     days,
@@ -57,13 +64,15 @@ export function AttendanceCalendar({
     const txtWaiting = isVi ? "Chờ check-in" : "等待打卡";
     const txtNoLog = isVi ? "Vắng / Không log" : "无记录";
 
+    const checkedCount = logs.filter((log) => log.status === "SUCCESS").length;
+
     return (
         <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]"
+            className="overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none"
         >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-white p-4 lg:bg-[var(--color-surface-card)]">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#257a3e10] text-[#257a3e]">
                         <CalendarCheck size={17} />
@@ -112,7 +121,107 @@ export function AttendanceCalendar({
                     </p>
                 </div>
             ) : (
-                <div className="max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin">
+                <>
+                <div className="space-y-3 bg-[#f8fafc] p-3 md:hidden">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-2xl bg-white p-3 shadow-sm">
+                            <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                                {txtCheckedIn}
+                            </p>
+                            <p className="mt-1 text-2xl font-semibold tabular-nums text-[#257a3e]">
+                                {checkedCount}
+                            </p>
+                        </div>
+                        <div className="rounded-2xl bg-white p-3 shadow-sm">
+                            <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
+                                {labels.employees}
+                            </p>
+                            <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">
+                                {rows.length}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 scrollbar-thin">
+                        {days.map((day) => {
+                            const isToday = day.key === todayKey;
+                            return (
+                                <div
+                                    key={day.key}
+                                    className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 ${isToday
+                                        ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white"
+                                        : day.isSunday
+                                            ? "border-[#b4231815] bg-[#b4231808] text-[#b42318]"
+                                            : "border-white bg-white text-[var(--color-text-secondary)]"
+                                        }`}
+                                >
+                                    <span className="text-[10px] font-semibold uppercase opacity-80">
+                                        {day.weekday}
+                                    </span>
+                                    <span className="text-base font-semibold tabular-nums">
+                                        {day.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="space-y-3">
+                        {rows.map((row) => {
+                            const todayLog = successMap.get(`${row.user.id}:${todayKey}`);
+                            return (
+                                <article
+                                    key={row.profile.id}
+                                    className="overflow-hidden rounded-[24px] bg-white shadow-sm"
+                                >
+                                    <div className="flex items-center justify-between gap-3 p-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold ${getAvatarBg(row.profile.full_name)}`}>
+                                                {getInitials(row.profile.full_name)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                                    {row.profile.full_name}
+                                                </p>
+                                                <p className="truncate text-xs text-[var(--color-text-muted)]">
+                                                    {row.profile.employee_code} ·{" "}
+                                                    {row.warehouse?.name || labels.unknownWarehouse}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {todayLog ? (
+                                            <span className="shrink-0 rounded-full bg-[#257a3e10] px-2.5 py-1 text-xs font-semibold tabular-nums text-[#257a3e]">
+                                                {formatCheckInTime(todayLog.check_in_at)}
+                                            </span>
+                                        ) : (
+                                            <span className="shrink-0 rounded-full bg-[var(--color-brand-primary-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--color-brand-primary)]">
+                                                {txtWaiting}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2 overflow-x-auto border-t border-[var(--color-border-soft)] bg-[#fafafa] px-3 py-3 scrollbar-thin">
+                                        {days.map((day) => {
+                                            const log = successMap.get(`${row.user.id}:${day.key}`);
+                                            return (
+                                                <MobileAttendanceDayCell
+                                                    key={`${row.profile.id}-${day.key}`}
+                                                    day={day}
+                                                    isToday={day.key === todayKey}
+                                                    logTime={log ? formatCheckInTime(log.check_in_at) : ""}
+                                                    waitingLabel={txtWaiting}
+                                                    emptyLabel={txtNoLog}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="hidden max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin md:block">
                     <table className="min-w-full border-separate border-spacing-0 text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr>
@@ -207,7 +316,59 @@ export function AttendanceCalendar({
                         </tbody>
                     </table>
                 </div>
+                </>
             )}
         </motion.section>
+    );
+}
+
+function MobileAttendanceDayCell({
+    day,
+    isToday,
+    logTime,
+    waitingLabel,
+    emptyLabel,
+}: {
+    day: AttendanceDay;
+    isToday: boolean;
+    logTime: string;
+    waitingLabel: string;
+    emptyLabel: string;
+}) {
+    if (logTime) {
+        return (
+            <div className="flex min-w-[76px] flex-col rounded-2xl border border-[#257a3e20] bg-[#257a3e08] p-2">
+                <span className="text-[10px] font-semibold text-[#257a3e]">
+                    {formatMobileDay(day)}
+                </span>
+                <span className="mt-1 text-sm font-semibold tabular-nums text-[#257a3e]">
+                    {logTime}
+                </span>
+            </div>
+        );
+    }
+
+    if (isToday) {
+        return (
+            <div className="flex min-w-[76px] flex-col rounded-2xl border border-dashed border-[var(--color-brand-primary)] bg-white p-2">
+                <span className="text-[10px] font-semibold text-[var(--color-brand-primary)]">
+                    {formatMobileDay(day)}
+                </span>
+                <span className="mt-1 truncate text-xs font-semibold text-[var(--color-brand-primary)]">
+                    {waitingLabel}
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`flex min-w-[76px] flex-col rounded-2xl border bg-white p-2 ${day.isFuture ? "border-transparent opacity-45" : "border-[var(--color-border-soft)]"}`}>
+            <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                {formatMobileDay(day)}
+            </span>
+            <span className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+                {day.isFuture ? "" : emptyLabel}
+            </span>
+        </div>
     );
 }

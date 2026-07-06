@@ -49,7 +49,7 @@ export function AttendanceAuditLog({
     const txtInvalidNetwork = isVi ? "Ngoài mạng công ty" : "非公司网络";
 
     return (
-        <section className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]">
+        <section className="rounded-[28px] border border-white/80 bg-white shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none">
             <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-soft)]  p-4">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#b4231810] text-[#b42318]">
@@ -69,7 +69,7 @@ export function AttendanceAuditLog({
                 </span>
             </div>
 
-            <div className="max-h-72 overflow-auto p-2 scrollbar-thin">
+            <div className="max-h-72 overflow-auto bg-[#f8fafc] p-2 scrollbar-thin lg:bg-transparent">
                 {rejectedLogs.length === 0 ? (
                     <div className="flex items-center justify-center gap-2 py-10 text-xs text-[var(--color-text-muted)]">
                         <AlertTriangle size={14} />
@@ -80,7 +80,7 @@ export function AttendanceAuditLog({
                         {rejectedLogs.map((log) => (
                             <div
                                 key={log.id}
-                                className="flex items-center justify-between gap-3 border-b border-[var(--color-border-soft)] last:border-b-0 p-2.5 hover:bg-slate-50/50 transition-colors"
+                                className="flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm transition-colors last:border-b-0 hover:bg-slate-50/50 sm:flex-row sm:items-center sm:justify-between sm:rounded-none sm:border-b sm:border-[var(--color-border-soft)] sm:bg-transparent sm:p-2.5 sm:shadow-none"
                             >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                     <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(log.employee_name)}`}>
@@ -100,7 +100,7 @@ export function AttendanceAuditLog({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 shrink-0">
+                                <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
                                     <span className="text-xs font-medium tabular-nums text-[var(--color-text-secondary)]">
                                         {formatCheckInTime(log.check_in_at)}
                                     </span>

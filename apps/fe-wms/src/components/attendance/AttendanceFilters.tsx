@@ -39,8 +39,8 @@ export function AttendanceFilters({
     onWeekStartChange,
 }: AttendanceFiltersProps) {
     return (
-        <div className="flex flex-col gap-3 rounded-full border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-2 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-1">
+        <div className="flex flex-col gap-3 rounded-[28px] border border-white/80 bg-white p-3 shadow-sm lg:rounded-full lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:p-2 lg:shadow-none xl:flex-row xl:items-center xl:justify-between">
+            <div className="grid grid-cols-2 items-center gap-1 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-1 lg:flex lg:rounded-full">
                 <ModeButton
                     active={mode === "week"}
                     icon={<CalendarRange size={15} />}
@@ -55,20 +55,20 @@ export function AttendanceFilters({
                 />
             </div>
 
-            <div className="grid h-10 gap-2 sm:grid-cols-2 lg:flex lg:items-center">
+            <div className="grid gap-2 sm:grid-cols-2 xl:flex xl:items-center">
                 {mode === "month" ? (
                     <input
                         type="month"
                         value={month}
                         onChange={(event) => onMonthChange(event.target.value)}
-                        className="h-full rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                        className="h-11 min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] lg:h-10 lg:rounded-full"
                     />
                 ) : (
                     <input
                         type="date"
                         value={weekStart}
                         onChange={(event) => onWeekStartChange(event.target.value)}
-                        className="h-full rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                        className="h-11 min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] lg:h-10 lg:rounded-full"
                     />
                 )}
 
@@ -77,7 +77,7 @@ export function AttendanceFilters({
                         <select
                             value={selectedWarehouseId}
                             onChange={(event) => onWarehouseChange(event.target.value)}
-                            className="h-full min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-11 min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] lg:h-10 lg:min-w-44 lg:rounded-full"
                         >
                             <option value="ALL">{labels.allWarehouses}</option>
                             {warehouses.map((warehouse) => (
@@ -87,7 +87,7 @@ export function AttendanceFilters({
                             ))}
                         </select>
 
-                        <div className="relative h-full">
+                        <div className="relative">
                             <Search
                                 size={14}
                                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
@@ -95,7 +95,7 @@ export function AttendanceFilters({
                             <select
                                 value={selectedUserId}
                                 onChange={(event) => onUserChange(event.target.value)}
-                                className="h-full min-w-52 rounded-full border border-[var(--color-border-subtle)] bg-white pl-8 pr-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                                className="h-11 w-full min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white pl-8 pr-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] lg:h-10 lg:min-w-52 lg:rounded-full"
                             >
                                 <option value="ALL">{labels.allEmployees}</option>
                                 {employeeRows.map((row) => (
@@ -127,7 +127,7 @@ function ModeButton({
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex h-8 min-w-24 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-all active:scale-95 ${active
+            className={`inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-95 lg:h-8 lg:min-w-24 lg:rounded-full ${active
                 ? "bg-[var(--color-brand-primary)] text-white"
                 : "text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-text-primary)]"
                 }`}
