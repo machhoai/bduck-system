@@ -270,7 +270,7 @@ export function AttendancePage() {
     }
 
     return (
-        <div className="flex w-full flex-col gap-4 overflow-auto">
+        <div className="flex w-full flex-col gap-4 overflow-y-auto">
             <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="font-[var(--font-display)] text-xl font-semibold text-[var(--color-text-primary)]">

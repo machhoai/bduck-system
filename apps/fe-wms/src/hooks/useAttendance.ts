@@ -52,14 +52,20 @@ export function useAttendanceContext() {
           signal,
         },
       );
+      if (signal?.aborted) return;
       setContext(data);
       setError(null);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       console.error("[useAttendanceContext] error:", err);
       setContext(null);
       setError(err instanceof Error ? err.message : "Khong the tai cham cong.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
