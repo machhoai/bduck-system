@@ -1,6 +1,5 @@
 "use client";
 
-import { NextStepViewport } from "nextstepjs";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
@@ -29,16 +28,16 @@ export default function DashboardLayout({
 
             <main
                 id="wms-main-content"
-                className={`flex relative h-screen flex-col flex-1 gap-2 pb-[calc(var(--bottomnav-height)+env(safe-area-inset-bottom,0px))] transition-[margin-left] duration-300 ease-in-out lg:pb-0 ${isCollapsed
+                className={`flex relative h-screen min-h-0 flex-col flex-1 gap-2 pb-[calc(var(--bottomnav-height)+env(safe-area-inset-bottom,0px))] transition-[margin-left] duration-300 ease-in-out lg:pb-0 ${isCollapsed
                     ? "lg:ml-[var(--sidebar-width-collapsed)] w-[calc(100vw-var(--sidebar-width-collapsed))]"
                     : "lg:ml-[var(--sidebar-width-expanded)] w-[calc(100vw-var(--sidebar-width-expanded))]"
                     }`}
             >
                 <TopBar />
-                <div className="relative flex w-full flex-1 flex-col overflow-y-auto pl-4 pr-2 pt-12">
-                    <NextStepViewport id="wms-content-viewport">
+                <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain pl-4 pr-2 pt-12">
+                    <div id="wms-content-viewport" className="relative flex min-h-full w-full flex-col">
                         {children}
-                    </NextStepViewport>
+                    </div>
                 </div>
             </main>
 

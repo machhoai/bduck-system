@@ -11,7 +11,6 @@ export default function GuideCard({
   nextStep,
   prevStep,
   skipTour,
-  arrow,
 }: CardComponentProps) {
   const { t } = useTranslation();
   const copy = t.guide.card;
@@ -19,9 +18,8 @@ export default function GuideCard({
   const isLastStep = currentStep + 1 >= totalSteps;
 
   return (
-    <div className="relative w-80 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-[var(--color-text-primary)] shadow-xl sm:w-96">
-      {arrow}
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="fixed bottom-4 left-4 right-4 flex max-h-screen flex-col overflow-hidden rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] shadow-xl sm:left-auto sm:w-80">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-border-soft)] p-4 pb-3">
         <div className="min-w-0">
           <p className="mb-1 text-xxs font-semibold uppercase tracking-normal text-[var(--color-brand-primary)]">
             {copy.step} {currentStep + 1}/{totalSteps}
@@ -44,11 +42,11 @@ export default function GuideCard({
         )}
       </div>
 
-      <div className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+      <div className="min-h-0 overflow-y-auto p-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">
         {step.content}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--color-border-soft)] p-4 pt-3">
         <button
           type="button"
           onClick={prevStep}
