@@ -24,7 +24,7 @@ export default function RootLayout({
         <html lang="vi" className="light">
             <head>
                 <meta name="color-scheme" content="light" />
-                <meta name="theme-color" content="#2563eb" />
+                <meta name="theme-color" content="#0066cc" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-title" content="JWC ERP" />
             </head>
