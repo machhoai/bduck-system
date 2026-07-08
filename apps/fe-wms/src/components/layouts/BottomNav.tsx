@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
 import { useSidebarStore } from "../../stores/useSidebarStore";
@@ -21,7 +21,9 @@ export default function BottomNav() {
     const { t } = useTranslation();
     const pathname = usePathname();
     const hasPermission = useUserStore((s) => s.hasPermission);
+    const isOpen = useSidebarStore((s) => s.isMobileDrawerOpen);
     const openDrawer = useSidebarStore((s) => s.openDrawer);
+    const closeDrawer = useSidebarStore((s) => s.closeDrawer);
     const badges = useMenuBadges();
 
     const visibleItems = getVisibleMenuItems(menuItems, hasPermission)
@@ -75,18 +77,24 @@ export default function BottomNav() {
                     );
                 })}
 
-                {/* More button — mở drawer */}
+                {/* More button — toggle drawer */}
                 <button
-                    onClick={openDrawer}
-                    className="
+                    onClick={() => (isOpen ? closeDrawer() : openDrawer())}
+                    className={`
             flex flex-col items-center justify-center gap-0.5
-            flex-1 h-full
-            text-[var(--color-text-muted)]
-            transition-all duration-150 cursor-pointer active:scale-95
-          "
+            flex-1 h-full cursor-pointer
+            transition-all duration-150 active:scale-95
+            ${isOpen ? "text-[var(--color-brand-primary)]" : "text-[var(--color-text-muted)]"}
+          `}
                 >
-                    <MoreHorizontal size={22} strokeWidth={1.5} />
-                    <span className="text-xxs font-medium">{t.nav.more}</span>
+                    {isOpen ? (
+                        <X size={22} strokeWidth={2} />
+                    ) : (
+                        <MoreHorizontal size={22} strokeWidth={1.5} />
+                    )}
+                    <span className="text-xxs font-medium">
+                        {isOpen ? (t.common?.cancel || "Đóng") : t.nav.more}
+                    </span>
                 </button>
             </div>
         </nav>

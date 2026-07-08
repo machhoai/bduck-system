@@ -2,12 +2,17 @@
 
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
     BarChart3,
     Boxes,
+    ChevronLeft,
+    Info,
     MapPin,
     MapPinned,
     PackageSearch,
+    Pencil,
+    Warehouse as WarehouseIcon,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { LocationType, type WarehouseLocation } from "@bduck/shared-types";
@@ -17,6 +22,8 @@ import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
 import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
 import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
 import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { WarehouseInfoSheet } from "@/components/warehouses/WarehouseInfoSheet";
 
 import StatCardGrid from "@/components/inventory/StatCardGrid";
 import StockDistributionChart from "@/components/inventory/StockDistributionChart";
@@ -91,6 +98,9 @@ export default function WarehouseDetailPage() {
         useState<WarehouseLocation | null>(null);
     const [activeTab, setActiveTab] = useState<PageTab>("overview");
     const [inventoryTab, setInventoryTab] = useState<InventoryTab>("products");
+    const [mobileTab, setMobileTab] = useState<"overview" | "inventory">("overview");
+    const [isLocationsSheetOpen, setIsLocationsSheetOpen] = useState(false);
+    const [isWarehouseInfoOpen, setIsWarehouseInfoOpen] = useState(false);
 
     const warehouse = useMemo(
         () => warehouses.find((item) => item.id === warehouseId),
@@ -323,102 +333,228 @@ export default function WarehouseDetailPage() {
     }
 
     return (
-        <div className="flex h-full w-full flex-col gap-5 pb-8 sm:gap-4">
-            <div>
-                <WarehouseDetailHero
-                    warehouse={warehouse}
-                    warehouseId={warehouseId}
-                    managerName={managerName}
-                    onEdit={() => setIsWarehouseModalOpen(true)}
-                />
+        <div className="relative w-full h-full">
+            {/* Desktop View */}
+            <div className="hidden lg:flex h-full w-full flex-col gap-5 pb-8 sm:gap-4">
+                <div>
+                    <WarehouseDetailHero
+                        warehouse={warehouse}
+                        warehouseId={warehouseId}
+                        managerName={managerName}
+                        onEdit={() => setIsWarehouseModalOpen(true)}
+                    />
+                </div>
+                <div className="flex flex-col gap-3">
+                    <div className="rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
+                        <div className="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab("overview")}
+                                className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "overview"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                    }`}
+                            >
+                                <BarChart3 size={18} />
+                                {t.warehouses.overview}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab("products")}
+                                className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "products"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                    }`}
+                            >
+                                <PackageSearch size={18} />
+                                {t.warehouses.inventory}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab("locations")}
+                                className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "locations"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                    }`}
+                            >
+                                <MapPin size={18} />
+                                {t.warehouses.locations}
+                            </button>
+                        </div>
+                    </div>
+
+                    {activeTab === "overview" && (
+                        <div className="flex flex-col gap-4">
+                            <StatCardGrid
+                                kpis={kpis}
+                                loading={false}
+                                isAllWarehouses={false}
+                                locationCount={locations.length}
+                                onCardClick={() => { }}
+                            />
+
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                <StockDistributionChart
+                                    data={typeDistribution}
+                                    loading={false}
+                                />
+                                <ImportExportChart warehouseId={warehouseId} />
+                            </div>
+
+                            <InventoryValueChart
+                                data={inventoryValue}
+                                loading={invLoading || prodLoading}
+                            />
+                            <WarehouseAuditCard warehouseId={warehouseId} />
+                        </div>
+                    )}
+
+                    {activeTab === "products" && (
+                        <div className="flex min-h-[400px] flex-col gap-4">
+                            <WarehouseInventoryView
+                                inventory={inventory}
+                                products={products}
+                                categories={categories}
+                                warehouses={warehouses}
+                                locations={locations}
+                                slots={slots}
+                                slotMappings={slotMappings}
+                                importVouchers={importVouchers}
+                                exportVouchers={exportVouchers}
+                                warehouseId={warehouseId}
+                                loading={invLoading || prodLoading}
+                            />
+                        </div>
+                    )}
+                    {activeTab === "locations" && (
+                        <div className="flex min-h-[400px] flex-col gap-4">
+                            <LocationCardGrid
+                                warehouseId={warehouseId}
+                                locations={locations}
+                                inventory={inventory}
+                                products={products}
+                                loading={locationsLoading}
+                                canWrite={canWriteLocations}
+                                onAdd={handleAdd}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className="flex flex-col gap-3">
-                <div className="rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
-                    <div className="grid grid-cols-3 gap-2">
+
+            {/* Mobile Native App View */}
+            <div className="flex pt-10 lg:hidden relative w-full h-full flex-col overflow-hidden bg-slate-50">
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    @media (max-width: 1023px) {
+                        #wms-main-content > div.overflow-y-auto {
+                            padding: 0 !important;
+                            overflow: hidden !important;
+                        }
+                        #wms-content-viewport {
+                            min-height: 100% !important;
+                            height: 100% !important;
+                        }
+                    }
+                `}} />
+
+                {/* Mobile Sub-tab Selector for Base Canvas Content */}
+                <div className="px-2 flex w-full pt-3 gap-3 shrink-0">
+                    <div className="grid grid-cols-2 flex-1 gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">
                         <button
                             type="button"
-                            onClick={() => setActiveTab("overview")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
-                                activeTab === "overview"
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                            }`}
+                            onClick={() => setMobileTab("overview")}
+                            className={`flex h-8 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all ${mobileTab === "overview"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                }`}
                         >
-                            <BarChart3 size={18} />
-                            {t.warehouses.overview}
+                            <BarChart3 size={14} />
+                            Thống kê
                         </button>
                         <button
                             type="button"
-                            onClick={() => setActiveTab("products")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
-                                activeTab === "products"
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                            }`}
+                            onClick={() => setMobileTab("inventory")}
+                            className={`flex h-8 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all ${mobileTab === "inventory"
+                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                }`}
                         >
-                            <PackageSearch size={18} />
-                            {t.warehouses.inventory}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab("locations")}
-                            className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
-                                activeTab === "locations"
-                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
-                            }`}
-                        >
-                            <MapPin size={18} />
-                            {t.warehouses.locations}
+                            <PackageSearch size={14} />
+                            Sản phẩm
                         </button>
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsWarehouseInfoOpen(true)}
+                        className="rounded-full aspect-square flex justify-center items-center bg-slate-50 border border-[var(--color-border-subtle)] p-1.5 text-slate-600 active:scale-95 transition-all"
+                        title="Thông tin kho"
+                    >
+                        <Info size={18} />
+                    </button>
                 </div>
 
-                {activeTab === "overview" && (
-                    <div className="flex flex-col gap-4">
-                        <StatCardGrid
-                            kpis={kpis}
-                            loading={false}
-                            isAllWarehouses={false}
-                            locationCount={locations.length}
-                            onCardClick={() => {}}
-                        />
-
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {/* Base canvas content (Overview charts / Inventory search view) */}
+                <div className="flex-1 overflow-y-auto px-2 pb-10">
+                    {mobileTab === "overview" ? (
+                        <div className="flex flex-col gap-4 py-4">
+                            <StatCardGrid
+                                kpis={kpis}
+                                loading={false}
+                                isAllWarehouses={false}
+                                locationCount={locations.length}
+                                onCardClick={() => { }}
+                            />
                             <StockDistributionChart
                                 data={typeDistribution}
                                 loading={false}
                             />
                             <ImportExportChart warehouseId={warehouseId} />
+                            <InventoryValueChart
+                                data={inventoryValue}
+                                loading={invLoading || prodLoading}
+                            />
+                            <WarehouseAuditCard warehouseId={warehouseId} />
                         </div>
+                    ) : (
+                        <div className="flex flex-col gap-4 py-4">
+                            <WarehouseInventoryView
+                                inventory={inventory}
+                                products={products}
+                                categories={categories}
+                                warehouses={warehouses}
+                                locations={locations}
+                                slots={slots}
+                                slotMappings={slotMappings}
+                                importVouchers={importVouchers}
+                                exportVouchers={exportVouchers}
+                                warehouseId={warehouseId}
+                                loading={invLoading || prodLoading}
+                            />
+                        </div>
+                    )}
+                </div>
 
-                        <InventoryValueChart
-                            data={inventoryValue}
-                            loading={invLoading || prodLoading}
-                        />
-                        <WarehouseAuditCard warehouseId={warehouseId} />
-                    </div>
-                )}
+                {/* FAB to trigger Locations BottomSheet */}
+                <button
+                    type="button"
+                    onClick={() => setIsLocationsSheetOpen(true)}
+                    className="fixed bottom-[var(--bottomnav-height)] mb-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-brand-primary)] text-white shadow-lg active:scale-95 transition-all"
+                    title="Xem sơ đồ quầy kệ"
+                >
+                    <MapPinned size={18} />
+                </button>
 
-                {activeTab === "products" && (
-                    <div className="flex min-h-[400px] flex-col gap-4">
-                        <WarehouseInventoryView
-                            inventory={inventory}
-                            products={products}
-                            categories={categories}
-                            warehouses={warehouses}
-                            locations={locations}
-                            slots={slots}
-                            slotMappings={slotMappings}
-                            importVouchers={importVouchers}
-                            exportVouchers={exportVouchers}
-                            warehouseId={warehouseId}
-                            loading={invLoading || prodLoading}
-                        />
-                    </div>
-                )}
-                {activeTab === "locations" && (
-                    <div className="flex min-h-[400px] flex-col gap-4">
+                {/* Floating Mobile BottomSheet for Locations Grid */}
+                <BottomSheet
+                    title="Sơ đồ quầy kệ"
+                    isOpen={isLocationsSheetOpen}
+                    onClose={() => setIsLocationsSheetOpen(false)}
+                    defaultSnap="full"
+                >
+                    <div className="flex flex-col gap-3 py-1 pb-16">
                         <LocationCardGrid
                             warehouseId={warehouseId}
                             locations={locations}
@@ -431,9 +567,20 @@ export default function WarehouseDetailPage() {
                             onDelete={handleDelete}
                         />
                     </div>
-                )}
+                </BottomSheet>
+
+                {/* Warehouse Info BottomSheet */}
+                <WarehouseInfoSheet
+                    isOpen={isWarehouseInfoOpen}
+                    warehouse={warehouse}
+                    managerName={managerName}
+                    onClose={() => setIsWarehouseInfoOpen(false)}
+                    onSave={handleSaveWarehouse}
+                    canEdit={canWriteLocations}
+                />
             </div>
 
+            {/* Modals are rendered here at the root level */}
             <LocationFormModal
                 isOpen={isModalOpen}
                 warehouseId={warehouseId}

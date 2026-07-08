@@ -1,117 +1,253 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { X } from "lucide-react";
 
 type SnapPoint = "collapsed" | "half" | "full";
 
 const SNAP_HEIGHTS: Record<SnapPoint, string> = {
-  collapsed: "72px",
-  half: "50vh",
-  full: "90vh",
+    collapsed: "48px",
+    half: "45vh",
+    full: "88vh",
 };
 
+const COLLAPSED_HEIGHT = 48;
+const DRAG_MOVE_THRESHOLD = 5;
+const SNAP_MOVE_THRESHOLD = 40;
+const MAX_HEIGHT_RATIO = 0.9;
+
 interface BottomSheetProps {
-  children: ReactNode;
-  title?: string;
-  defaultSnap?: SnapPoint;
+    children: ReactNode;
+    title?: string;
+    defaultSnap?: SnapPoint;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
 export function BottomSheet({
-  children,
-  title,
-  defaultSnap = "collapsed",
+    children,
+    title,
+    defaultSnap = "collapsed",
+    isOpen,
+    onClose,
 }: BottomSheetProps) {
-  const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const dragStartY = useRef(0);
-  const dragStartHeight = useRef(0);
-  const isDragging = useRef(false);
+    const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
+    const [dragHeight, setDragHeight] = useState<number | null>(null);
+    const [isDragActive, setIsDragActive] = useState(false);
+    const sheetRef = useRef<HTMLDivElement>(null);
+    const dragStartY = useRef(0);
+    const dragStartHeight = useRef(0);
+    const dragStartSnap = useRef<SnapPoint>("collapsed");
+    const latestDragHeight = useRef<number | null>(null);
+    const isDragging = useRef(false);
+    const hasMoved = useRef(false);
 
-  const getHeightPx = useCallback(() => {
-    if (!sheetRef.current) return 0;
-    return sheetRef.current.getBoundingClientRect().height;
-  }, []);
+    useEffect(() => {
+        if (isOpen) {
+            setSnap(defaultSnap);
+        }
+    }, [isOpen, defaultSnap]);
 
-  const handleDragStart = useCallback(
-    (clientY: number) => {
-      isDragging.current = true;
-      dragStartY.current = clientY;
-      dragStartHeight.current = getHeightPx();
-      if (sheetRef.current) {
-        sheetRef.current.style.transition = "none";
-      }
-    },
-    [getHeightPx],
-  );
+    const getHeightPx = useCallback(() => {
+        if (!sheetRef.current) return 0;
+        return sheetRef.current.getBoundingClientRect().height;
+    }, []);
 
-  const handleDragMove = useCallback((clientY: number) => {
-    if (!isDragging.current || !sheetRef.current) return;
-    const delta = dragStartY.current - clientY;
-    const newHeight = Math.max(72, dragStartHeight.current + delta);
-    const maxHeight = window.innerHeight * 0.9;
-    sheetRef.current.style.height = `${Math.min(newHeight, maxHeight)}px`;
-  }, []);
+    const closeSheet = useCallback(() => {
+        isDragging.current = false;
+        hasMoved.current = false;
+        latestDragHeight.current = null;
+        setDragHeight(null);
+        setIsDragActive(false);
+        if (onClose) {
+            onClose();
+        } else {
+            setSnap("collapsed");
+        }
+    }, [onClose]);
 
-  const handleDragEnd = useCallback(() => {
-    if (!isDragging.current || !sheetRef.current) return;
-    isDragging.current = false;
-    sheetRef.current.style.transition = "";
+    const handleDragStart = useCallback(
+        (e: ReactPointerEvent<HTMLDivElement>) => {
+            if (e.button !== 0) return;
 
-    const currentH = getHeightPx();
-    const vh = window.innerHeight;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            const startHeight = getHeightPx();
 
-    if (currentH < vh * 0.25) {
-      setSnap("collapsed");
-    } else if (currentH < vh * 0.7) {
-      setSnap("half");
-    } else {
-      setSnap("full");
-    }
-  }, [getHeightPx]);
+            isDragging.current = true;
+            hasMoved.current = false;
+            dragStartY.current = e.clientY;
+            dragStartHeight.current = startHeight;
+            dragStartSnap.current = snap;
+            latestDragHeight.current = startHeight;
+            setDragHeight(startHeight);
+            setIsDragActive(true);
+        },
+        [getHeightPx, snap],
+    );
 
-  useEffect(() => {
-    const handleMove = (e: TouchEvent) => handleDragMove(e.touches[0].clientY);
-    const handleEnd = () => handleDragEnd();
-    const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientY);
+    const handleDragMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+        if (!isDragging.current) return;
 
-    window.addEventListener("touchmove", handleMove, { passive: true });
-    window.addEventListener("touchend", handleEnd);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleEnd);
+        const delta = dragStartY.current - e.clientY;
+        if (Math.abs(delta) > DRAG_MOVE_THRESHOLD) {
+            hasMoved.current = true;
+        }
+        if (!hasMoved.current) return;
 
-    return () => {
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleEnd);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleEnd);
-    };
-  }, [handleDragMove, handleDragEnd]);
+        const newHeight = Math.max(
+            onClose ? 20 : COLLAPSED_HEIGHT,
+            dragStartHeight.current + delta,
+        );
+        const maxHeight = window.innerHeight * MAX_HEIGHT_RATIO;
+        const nextHeight = Math.min(newHeight, maxHeight);
+        latestDragHeight.current = nextHeight;
+        setDragHeight(nextHeight);
+    }, [onClose]);
 
-  return (
-    <div
-      ref={sheetRef}
-      style={{ height: SNAP_HEIGHTS[snap] }}
-      className="fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)] transition-[height] duration-300 ease-out md:hidden"
-    >
-      {/* Drag handle */}
-      <div
-        className="flex flex-shrink-0 cursor-grab touch-none flex-col items-center px-4 pb-2 pt-3 active:cursor-grabbing"
-        onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
-        onMouseDown={(e) => handleDragStart(e.clientY)}
-      >
-        <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
-        {title && (
-          <p className="mt-2 w-full text-sm font-semibold text-[var(--color-text-primary)]">
-            {title}
-          </p>
-        )}
-      </div>
+    const handleDragEnd = useCallback(
+        (e: ReactPointerEvent<HTMLDivElement>) => {
+            if (!isDragging.current) return;
 
-      {/* Content — scrollable */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
-        {children}
-      </div>
-    </div>
-  );
+            isDragging.current = false;
+
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            }
+
+            setIsDragActive(false);
+
+            const currentH = latestDragHeight.current ?? getHeightPx();
+            const vh = window.innerHeight;
+            latestDragHeight.current = null;
+            setDragHeight(null);
+
+            // If it was a click/tap, keep the current snap state.
+            if (!hasMoved.current) {
+                return;
+            }
+
+            const startH = dragStartHeight.current;
+            const deltaY = currentH - startH; // Positive means dragged up, negative means dragged down
+
+            let newSnap = dragStartSnap.current;
+
+            if (deltaY > SNAP_MOVE_THRESHOLD) {
+                if (dragStartSnap.current === "collapsed") {
+                    newSnap = currentH > vh * 0.65 ? "full" : "half";
+                } else if (dragStartSnap.current === "half") {
+                    newSnap = "full";
+                }
+            } else if (deltaY < -SNAP_MOVE_THRESHOLD) {
+                if (dragStartSnap.current === "full") {
+                    newSnap = currentH < vh * 0.35 ? (onClose ? "collapsed" : "collapsed") : "half";
+                    if (newSnap === "collapsed" && onClose && currentH < vh * 0.2) {
+                        onClose();
+                        return;
+                    }
+                } else if (dragStartSnap.current === "half") {
+                    if (onClose) {
+                        onClose();
+                        return;
+                    }
+                    newSnap = "collapsed";
+                } else if (dragStartSnap.current === "collapsed" && onClose) {
+                    onClose();
+                    return;
+                }
+            } else {
+                newSnap = dragStartSnap.current;
+            }
+
+            setSnap(newSnap);
+        },
+        [getHeightPx, onClose],
+    );
+
+    const isContentVisible =
+        snap !== "collapsed" || (dragHeight !== null && dragHeight > COLLAPSED_HEIGHT);
+
+    useEffect(() => {
+        if (isOpen === false) return undefined;
+        if (snap === "collapsed" && dragHeight === null && !onClose) return undefined;
+
+        const handleOutsidePointerDown = (e: PointerEvent) => {
+            const sheet = sheetRef.current;
+            if (!sheet || sheet.contains(e.target as Node)) return;
+
+            closeSheet();
+        };
+
+        window.addEventListener("pointerdown", handleOutsidePointerDown);
+
+        return () => {
+            window.removeEventListener("pointerdown", handleOutsidePointerDown);
+        };
+    }, [closeSheet, dragHeight, snap, isOpen, onClose]);
+
+    // Determine visibility states for class lists
+    const isSheetOpen = isOpen !== false;
+
+    return (
+        <>
+            {/* Backdrop overlay for controllable sheets */}
+            {onClose && (
+                <div
+                    className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-300 md:hidden ${isSheetOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                        }`}
+                    onClick={onClose}
+                />
+            )}
+
+            <div
+                ref={sheetRef}
+                style={{
+                    height: dragHeight === null ? SNAP_HEIGHTS[snap] : `${dragHeight}px`,
+                }}
+                className={`fixed inset-x-0 bottom-[var(--bottomnav-height)] max-h-[80%] z-40 flex flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)] md:hidden transition-[height,transform] duration-300 ease-out ${isDragActive ? "" : "transition-[height,transform]"
+                    } ${isSheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"}`}
+            >
+                {/* Drag handle & Header */}
+                <div
+                    className="flex flex-shrink-0 cursor-grab touch-none items-center justify-between px-4 pb-1.5 pt-2 active:cursor-grabbing border-b border-[var(--color-border-subtle)]"
+                    onPointerDown={handleDragStart}
+                    onPointerMove={handleDragMove}
+                    onPointerUp={handleDragEnd}
+                    onPointerCancel={handleDragEnd}
+                    onLostPointerCapture={handleDragEnd}
+                >
+                    <div className="w-8" />
+                    <div className="flex flex-col items-center flex-1">
+                        <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)] mb-1" />
+                        {title && (
+                            <p className="text-xs font-semibold text-[var(--color-text-primary)] text-center">
+                                {title}
+                            </p>
+                        )}
+                    </div>
+                    {onClose ? (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-850 transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    ) : (
+                        <div className="w-8" />
+                    )}
+                </div>
+
+                {/* Content — scrollable */}
+                <div
+                    className={`flex-1 overflow-y-auto overscroll-contain px-4 pb-6 transition-opacity duration-200 ${isContentVisible || onClose
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none invisible"
+                        }`}
+                >
+                    {children}
+                </div>
+            </div>
+        </>
+    );
 }

@@ -170,7 +170,7 @@ export function getDefaultRevenueFilter(): RevenueDashboardFilter {
   const now = new Date();
   const date = toDateInput(now);
   return {
-    mode: "today",
+    mode: "date",
     date,
     month: date.slice(0, 7),
     year: date.slice(0, 4),

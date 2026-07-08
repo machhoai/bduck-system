@@ -11,6 +11,12 @@ export enum AttendanceRejectedReason {
   NO_WORKPLACE = "NO_WORKPLACE",
 }
 
+export enum AttendanceLateReportStatus {
+  SUBMITTED = "SUBMITTED",
+  ACKNOWLEDGED = "ACKNOWLEDGED",
+  REJECTED = "REJECTED",
+}
+
 export interface WarehouseAttendancePolicy {
   id: string;
   warehouse_id: string;
@@ -49,6 +55,30 @@ export interface AttendanceLog {
   ip_address: string | null;
   status: AttendanceLogStatus;
   rejected_reason: AttendanceRejectedReason | null;
+}
+
+export interface AttendanceLateReport {
+  id: string;
+  user_id: string;
+  employee_profile_id: string | null;
+  employee_id: string;
+  employee_name: string;
+  warehouse_id: string;
+  attendance_date: string;
+  timezone: "Asia/Ho_Chi_Minh";
+  expected_arrival_time: string | null;
+  estimated_arrival_time: string | null;
+  reason: string;
+  attendance_log_id: string | null;
+  status: AttendanceLateReportStatus;
+  action_time: Date;
+  sync_time: Date;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
+  review_notes: string | null;
 }
 
 export interface AttendanceCheckInContext {

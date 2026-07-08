@@ -67,23 +67,33 @@ function StatCard({
             type="button"
             onClick={clickable ? onClick : undefined}
             disabled={!clickable}
-            className={`group w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-5 text-left transition-all ${clickable
+            className={`group relative overflow-hidden w-full rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-left transition-all ${clickable
                 ? "cursor-pointer hover:border-[var(--color-brand-primary)] hover:shadow-md active:scale-[0.98]"
                 : "cursor-default"
                 }`}
         >
-            <div className="mb-3 flex items-center gap-3">
+            {/* ── Decorative Circles ── */}
+            <div 
+                className="absolute -right-6 -top-6 w-28 h-28 rounded-full opacity-25 pointer-events-none transition-transform duration-300 group-hover:scale-110" 
+                style={{ backgroundColor: bgColor }}
+            />
+            <div 
+                className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full opacity-15 pointer-events-none transition-transform duration-300 group-hover:scale-105" 
+                style={{ backgroundColor: bgColor }}
+            />
+
+            <div className="relative z-10 mb-2 flex items-center justify-between gap-3 w-full">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    {label}
+                </span>
                 <div
-                    className="flex h-8 w-10 items-center justify-center rounded-[var(--radius-sm)]"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
                     style={{ backgroundColor: bgColor, color }}
                 >
                     {icon}
                 </div>
-                <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {label}
-                </span>
             </div>
-            <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
+            <p className="relative z-10 text-lg font-bold tracking-tight text-[var(--color-text-primary)]">
                 {value.toLocaleString()}
             </p>
         </button>

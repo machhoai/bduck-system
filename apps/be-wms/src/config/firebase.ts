@@ -23,6 +23,7 @@ import {
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
+import { getMessaging } from "firebase-admin/messaging";
 
 // ---------------------------------------------------------------------------
 // 1. Parse Service Account từ Base64 Environment Variable
@@ -91,5 +92,6 @@ if (!getApps().length) {
 const db = getFirestore();
 const auth = getAuth();
 const storage = getStorage();
+const messaging = getMessaging();
 
-export { db, auth, storage };
+export { db, auth, storage, messaging };

@@ -10,6 +10,7 @@ import { notificationRepository } from "../repositories/notificationRepository.j
 import { sanitizeEmailHtml, stripHtmlToText } from "../utils/notificationSanitizer.js";
 import { sendBrevoEmail } from "./brevoEmailService.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import { sendPushForInAppNotifications } from "./pushNotificationService.js";
 
 export interface CreateNotificationInput {
   target_user_id: string | null;
@@ -35,6 +36,12 @@ function getManualTemplateParams(title: string, body: string) {
 function getErrorMessage(error: unknown): string {
   const apiError = error as { messages?: { vi?: string }; message?: string };
   return apiError.messages?.vi || apiError.message || String(error);
+}
+
+function dispatchPushNotifications(notifications: InAppNotification[]) {
+  void sendPushForInAppNotifications(notifications).catch((error) => {
+    console.error("[notificationService] push delivery failed:", error);
+  });
 }
 
 async function writeAuditForDispatch(
@@ -80,6 +87,8 @@ export async function createNotification(
     source_entity_type: input.source_entity_type,
     created_by: null,
   });
+
+  dispatchPushNotifications([notification]);
 
   return notification.id;
 }
@@ -142,7 +151,9 @@ export async function sendManualInAppNotification(
     created_by: userId,
   }));
 
-  await notificationRepository.createInAppNotifications(notifications);
+  const createdNotifications =
+    await notificationRepository.createInAppNotifications(notifications);
+  dispatchPushNotifications(createdNotifications);
 
   const dispatch = await notificationRepository.createDispatch({
     id: dispatchId,

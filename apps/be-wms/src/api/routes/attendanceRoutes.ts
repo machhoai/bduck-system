@@ -1,6 +1,7 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
   checkInAttendanceHandler,
+  createLateArrivalReportHandler,
   getAttendanceContextHandler,
   getAttendanceExemptionsHandler,
   getAttendancePoliciesHandler,
@@ -32,6 +33,7 @@ router.get(
   getAttendanceContextHandler,
 );
 router.post("/check-in", checkInAttendanceHandler);
+router.post("/late-reports", createLateArrivalReportHandler);
 router.get(
   "/policies",
   requireAnyScopedPermission("attendance.config"),

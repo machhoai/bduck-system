@@ -15,7 +15,10 @@ import { ShieldOff } from "lucide-react";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
 import { useInventory } from "../../../hooks/useInventory";
-import { useWarehouses, useWarehouseLocations } from "../../../hooks/useWarehouses";
+import {
+    useWarehouses,
+    useWarehouseLocations,
+} from "../../../hooks/useWarehouses";
 import { useProducts } from "../../../hooks/useProducts";
 import {
     computeKPIs,
@@ -36,12 +39,13 @@ import LowStockTable from "../../../components/inventory/LowStockTable";
 import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
 import InventoryDashboardSkeleton from "../../../components/inventory/InventoryDashboardSkeleton";
 import ExpenseDashboardWidgets from "../../../components/features/expenses/ExpenseDashboardWidgets";
+import DashboardRevenueOverview from "../../../components/features/revenue/DashboardRevenueOverview";
 
 export default function DashboardPage() {
     const { t } = useTranslation();
     const d = t.inventoryDashboard;
-    const user = useUserStore((s) => s.user);
-    const hasPermission = useUserStore((s) => s.hasPermission);
+    const user = useUserStore((s: { user: any; }) => s.user);
+    const hasPermission = useUserStore((s: { hasPermission: any; }) => s.hasPermission);
     const displayName = user?.full_name?.split(" ").pop() || "";
 
     // ── Data hooks (real-time) ──
@@ -79,17 +83,36 @@ export default function DashboardPage() {
     );
 
     const topMost = useMemo(
-        () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "most"),
+        () =>
+            computeTopProducts(
+                inventory,
+                products,
+                selectedWarehouseId,
+                10,
+                "most",
+            ),
         [inventory, products, selectedWarehouseId],
     );
 
     const topLeast = useMemo(
-        () => computeTopProducts(inventory, products, selectedWarehouseId, 10, "least"),
+        () =>
+            computeTopProducts(
+                inventory,
+                products,
+                selectedWarehouseId,
+                10,
+                "least",
+            ),
         [inventory, products, selectedWarehouseId],
     );
 
     const typeDistribution = useMemo(
-        () => computeProductTypeDistribution(inventory, products, selectedWarehouseId),
+        () =>
+            computeProductTypeDistribution(
+                inventory,
+                products,
+                selectedWarehouseId,
+            ),
         [inventory, products, selectedWarehouseId],
     );
 
@@ -99,7 +122,10 @@ export default function DashboardPage() {
     );
 
     // ── Permissions ──
-    const hasExpenseAccess = hasPermission("expenses.read", selectedWarehouseId) || hasPermission("expenses.consolidated.view");
+    const hasRevenueAccess = hasPermission("revenue.read");
+    const hasExpenseAccess =
+        hasPermission("expenses.read", selectedWarehouseId) ||
+        hasPermission("expenses.consolidated.view");
 
     // ── Full skeleton while loading ──
     if (isLoading) {
@@ -128,26 +154,26 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="relative flex flex-col gap-4">
+            <div className="absolute -top-12 -left-2 -right-2 lg:-left-4 lg:-right-2 h-60 rounded-b-3xl bg-[var(--color-brand-primary)] pointer-events-none z-0">
+            </div>
             {/* ── Header ── */}
             <header
                 id="wms-dashboard-header"
-                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                className="relative z-10 flex justify-between gap-3 sm:flex-row sm:items-end sm:justify-between"
             >
-                <div>
-                    <p className="text-sm font-normal text-[var(--color-text-muted)]">
-                        {t.dashboard.welcome}
-                        {displayName ? `, ${displayName}` : ""}
-                    </p>
-                    <h1 className="font-[var(--font-display)] text-lg font-semibold leading-tight tracking-normal text-[var(--color-text-primary)] lg:text-lg">
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="font-[var(--font-display)] text-lg font-bold leading-tight tracking-tight text-white">
+                            {t.dashboard.welcome}, {displayName}
+                        </h1>
+                    </div>
+                    <p className="text-xs text-white/90">
                         {d.title}
-                    </h1>
-                    <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
-                        {d.subtitle}
                     </p>
                 </div>
 
-                <div id="wms-dashboard-warehouse-filter">
+                <div id="wms-dashboard-warehouse-filter" className="shrink-0">
                     <WarehouseSelector
                         warehouses={warehouses}
                         selectedId={selectedWarehouseId}
@@ -156,21 +182,29 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            {/* ── Expense Dashboard Widgets ── */}
-            {hasExpenseAccess && (
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-[var(--font-display)] leading-0 text-xxs font-semibold leading-tight tracking-normal text-[var(--color-text-muted)]">
-                            {t.expenses?.title || "Quản lý Chi phí"}
-                        </h2>
-                    </div>
-                    <ExpenseDashboardWidgets warehouseId={selectedWarehouseId || "ALL"} />
+            {hasRevenueAccess && (
+                <div className="flex flex-col gap-3">
+                    <DashboardRevenueOverview />
                 </div>
             )}
 
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                    <h2 className="font-[var(--font-display)] leading-0 text-xxs font-semibold leading-tight tracking-normal text-[var(--color-text-muted)]">
+            {/* ── Expense Dashboard Widgets ── */}
+            {hasExpenseAccess && (
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between pb-1.5">
+                        <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
+                            {t.expenses?.title || "Quản lý Chi phí"}
+                        </h2>
+                    </div>
+                    <ExpenseDashboardWidgets
+                        warehouseId={selectedWarehouseId || "ALL"}
+                    />
+                </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between pb-1.5">
+                    <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
                         {t.warehouses?.tabWarehouses || "Quản lý Chi phí"}
                     </h2>
                 </div>
@@ -187,10 +221,19 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Charts Row ── */}
-                <div id="wms-dashboard-charts" className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                    <StockDistributionChart data={typeDistribution} loading={false} />
+                <div
+                    id="wms-dashboard-charts"
+                    className="grid grid-cols-1 gap-2 lg:grid-cols-2"
+                >
+                    <StockDistributionChart
+                        data={typeDistribution}
+                        loading={false}
+                    />
                     {isAllWarehouses ? (
-                        <StockComparisonChart data={stockComparison} loading={false} />
+                        <StockComparisonChart
+                            data={stockComparison}
+                            loading={false}
+                        />
                     ) : (
                         <StockTrendChart loading={false} />
                     )}
@@ -199,7 +242,10 @@ export default function DashboardPage() {
                 {/* ── Tables Row ── */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div id="wms-dashboard-low-stock">
-                        <LowStockTable products={lowStockProducts} loading={false} />
+                        <LowStockTable
+                            products={lowStockProducts}
+                            loading={false}
+                        />
                     </div>
                     <div id="wms-dashboard-top-products">
                         <TopProductsRanking

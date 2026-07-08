@@ -22,6 +22,7 @@ type Preset = {
     label: string;
     action: string;
     version: string;
+    requestMode?: "standard" | "legacySimpleReport";
     body: Record<string, unknown>;
     icon: typeof Search;
 };
@@ -146,6 +147,93 @@ const presets: Preset[] = [
         body: { OrderNumber: "" },
         icon: Search,
     },
+    {
+        id: "report-revenue-summary",
+        label: "Bao cao doanh thu",
+        action: "report_revenue_summary",
+        version: "10.11.8",
+        body: { startDate: "2025-01-03", endDate: "2025-01-03" },
+        icon: ReceiptText,
+    },
+    {
+        id: "report-sell-statistics",
+        label: "Thong ke ban hang",
+        action: "report_sell_statistics_bygoodstype",
+        version: "10.11.8",
+        body: {
+            StartDate: "2025-04-01",
+            EndDate: "2025-04-07",
+            GoodsName: "",
+            GoodsSellSource: "",
+            GoodsTypeNameContent: "",
+        },
+        icon: PackageSearch,
+    },
+    {
+        id: "report-business-briefing",
+        label: "Business briefing",
+        action: "SimpleReportList",
+        version: "1.0.0",
+        requestMode: "legacySimpleReport",
+        body: {
+            chainId: 2075,
+            shopId: 3157,
+            startDate: "2024-06-01",
+            endDate: "2024-06-28",
+            auth: "",
+        },
+        icon: FileSearch,
+    },
+    {
+        id: "report-exchange-summary",
+        label: "Bao cao doi hang",
+        action: "report_exchange_summary",
+        version: "10.11.8",
+        body: {
+            startTime: "2025-05-01 00:00:00",
+            endTime: "2025-05-31 23:59:59",
+        },
+        icon: Boxes,
+    },
+    {
+        id: "report-machine-summary",
+        label: "Tieu thu may",
+        action: "report_machine_summary",
+        version: "10.11.8",
+        body: {
+            ChainId: "2075",
+            ShopId: "3157",
+            startTime: "2024-12-23 00:00:00",
+            endTime: "2024-12-23 23:59:59",
+            page: "1",
+            limit: "10",
+        },
+        icon: ServerCog,
+    },
+    {
+        id: "report-member-summary",
+        label: "Bao cao hoi vien",
+        action: "report_member_summary",
+        version: "10.11.8",
+        body: { StartDate: "2025-01-03", EndDate: "2025-01-04" },
+        icon: UserRoundSearch,
+    },
+    {
+        id: "report-lottery-summary",
+        label: "Bao cao ve dien tu",
+        action: "report_lottery_summary",
+        version: "10.11.8",
+        body: { StartDate: "2025-01-03", EndDate: "2025-01-04" },
+        icon: Ticket,
+    },
+    {
+        id: "report-stock-analysis",
+        label: "Phan tich ton kho",
+        action: "report_stock_analysis",
+        version: "10.11.8",
+        body: { forMonth: "2025-04", isBuyWarn: false, IsSaleWarn: false },
+        icon: Boxes,
+    },
 ];
 
 function prettyJson(value: unknown) {
@@ -219,6 +307,7 @@ export default function OpenApiTesterPage() {
                     baseUrl,
                     appId,
                     secretKey,
+                    requestMode: activePreset.requestMode ?? "standard",
                     signMode,
                     version,
                     action,

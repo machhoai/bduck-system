@@ -20,7 +20,7 @@ import type { InAppNotification } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { NOTIFICATION_BELL_TEXT } from "@/lib/i18n/componentTranslations";
 
-export default function NotificationBell() {
+export default function NotificationBell({ glass = false }: { glass?: boolean }) {
   const { lang } = useTranslation();
   const copy = NOTIFICATION_BELL_TEXT[lang === "zh" ? "zh" : "vi"];
   const router = useRouter();
@@ -77,15 +77,20 @@ export default function NotificationBell() {
   return (
     <div
       id="wms-notification-bell"
-      className="relative h-8 bg-white rounded-full aspect-square cursor-pointer shadow-sm"
+      className={`relative h-8 rounded-full aspect-square cursor-pointer transition-all duration-300 ${
+        glass
+          ? "bg-white/12 border border-white/20 text-white backdrop-blur-md shadow-none"
+          : "bg-white border border-transparent text-gray-500 shadow-sm"
+      }`}
       ref={dropdownRef}
     >
       {/* Bell button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex h-full aspect-square items-center justify-center rounded-full
-          text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+        className={`relative flex h-full aspect-square items-center justify-center rounded-full transition-colors ${
+          glass ? "text-white hover:bg-white/10" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        }`}
         aria-label={copy.title}
       >
         {unreadCount > 0 ? (
@@ -110,7 +115,7 @@ export default function NotificationBell() {
       {isOpen && (
         <div
           className="absolute right-0 top-full z-10000 mt-2 w-80 overflow-hidden rounded-xl
-            border border-gray-200 bg-white shadow-xl shadow-gray-200/50
+            border border-gray-200/80 bg-white/95 backdrop-blur-lg shadow-xl shadow-gray-200/50
             animate-in fade-in slide-in-from-top-2 duration-200 sm:w-96"
         >
           {/* Header */}

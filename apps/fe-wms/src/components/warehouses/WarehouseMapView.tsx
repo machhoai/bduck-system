@@ -252,7 +252,7 @@ export function WarehouseMapView({
                             }
                         }}
                     >
-                        <NavigationControl position="bottom-right" />
+                        {/* <NavigationControl position="bottom-right" /> */}
 
                         {warehousesWithCoords.map((warehouse) => (
                             <Marker
@@ -308,8 +308,8 @@ export function WarehouseMapView({
                 )}
             </div>
 
-            <aside className="hidden absolute left-5 bottom-5 rounded-2xl z-10 w-80 flex-shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] md:flex">
-                <div className="flex-1 h-full overflow-y-auto p-3">{sidebarContent}</div>
+            <aside className="hidden absolute left-4 bottom-4 max-h-[calc(100vh-140px)] rounded-2xl z-10 w-80 flex-col border border-[var(--color-border-soft)] bg-white/95 backdrop-blur-md shadow-lg md:flex">
+                <div className="flex-1 overflow-y-auto p-3 scrollbar-none">{sidebarContent}</div>
             </aside>
 
             {/* Mobile bottom sheet */}

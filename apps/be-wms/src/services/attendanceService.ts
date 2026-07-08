@@ -1,8 +1,10 @@
 import {
   AttendanceLogStatus,
+  AttendanceLateReportStatus,
   AttendanceRejectedReason,
   AuditAction,
   type AttendanceCheckInContext,
+  type AttendanceLateReport,
   type AttendanceLog,
   type EmployeeProfile,
   type User,
@@ -11,6 +13,7 @@ import {
 } from "@bduck/shared-types";
 import {
   createAttendanceLog,
+  createAttendanceLateReport,
   createSuccessAttendanceLogOnce,
   getActiveAttendancePolicy,
   getTodaySuccessAttendanceLog,
@@ -382,6 +385,88 @@ export const checkInAttendance = async (
 
   await auditAttendanceLog(log, user.id, auditMetadata);
   return log;
+};
+
+export const createLateArrivalReport = async (
+  user: RequestUser,
+  input: {
+    attendance_date?: string;
+    expected_arrival_time?: string | null;
+    estimated_arrival_time?: string | null;
+    reason: string;
+    action_time?: string;
+  },
+  auditMetadata?: AuditMetadata,
+): Promise<AttendanceLateReport> => {
+  const profile = await getEmployeeProfileByUserId(user.id);
+  const warehouseId = profile?.workplace_warehouse_id ?? null;
+  const actionTime = input.action_time
+    ? new Date(input.action_time)
+    : new Date();
+  const attendanceDate = input.attendance_date || getVietnamDateKey(actionTime);
+
+  if (!profile || !warehouseId) {
+    throw createApiError(
+      400,
+      "Tài khoản chưa có một nơi làm việc duy nhất để báo đến trễ.",
+      "账号尚未配置唯一的考勤工作地点，无法报告迟到。",
+    );
+  }
+
+  if (!permissionAllowed(user, "attendance.check_in", warehouseId)) {
+    throw createApiError(
+      403,
+      "Bạn không có quyền sử dụng chức năng báo đến trễ.",
+      "您无权使用迟到报告功能。",
+    );
+  }
+
+  const attendanceRequired = await isAttendanceRequired(user.id, warehouseId);
+  if (!attendanceRequired) {
+    throw createApiError(
+      403,
+      "Tài khoản của bạn không thuộc diện cần chấm công.",
+      "您的账号不需要考勤。",
+    );
+  }
+
+  const todayLog = await getTodaySuccessAttendanceLog(user.id, attendanceDate);
+  const now = new Date();
+  const report = await createAttendanceLateReport({
+    user_id: user.id,
+    employee_profile_id: profile.id,
+    employee_id: profile.employee_code,
+    employee_name: profile.full_name,
+    warehouse_id: warehouseId,
+    attendance_date: attendanceDate,
+    timezone: TIMEZONE,
+    expected_arrival_time: input.expected_arrival_time || null,
+    estimated_arrival_time: input.estimated_arrival_time || null,
+    reason: input.reason.trim(),
+    attendance_log_id: todayLog?.id || null,
+    status: AttendanceLateReportStatus.SUBMITTED,
+    action_time: actionTime,
+    sync_time: now,
+    created_at: now,
+    updated_at: now,
+    created_by: user.id,
+    reviewed_by: null,
+    reviewed_at: null,
+    review_notes: null,
+  });
+
+  await logAudit({
+    entity_type: "attendance_late_reports",
+    entity_id: report.id,
+    warehouse_id: warehouseId,
+    action: AuditAction.CREATE,
+    user_id: user.id,
+    old_value: null,
+    new_value: report as unknown as Record<string, unknown>,
+    ...auditMetadata,
+  });
+
+  return report;
 };
 
 export const fetchAttendancePolicies = async (user: RequestUser) =>

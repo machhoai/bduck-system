@@ -2,21 +2,23 @@
 
 import type { AttendanceCheckInContext } from "@bduck/shared-types";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock3, LogIn, Wifi, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, LogIn, WifiOff } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import { formatCheckInTime } from "@/utils/attendance";
 
-interface AttendanceCheckInPanelProps {
+interface TimeCheckInPanelProps {
     context: AttendanceCheckInContext | null;
     labels: Record<string, string>;
     onCheckIn: () => Promise<unknown>;
+    onReportLate?: () => void;
 }
 
-export function AttendanceCheckInPanel({
+export function TimeCheckInPanel({
     context,
     labels,
     onCheckIn,
-}: AttendanceCheckInPanelProps) {
+    onReportLate,
+}: TimeCheckInPanelProps) {
     if (!context?.can_check_in) return null;
 
     const checkedIn = Boolean(context.today_success_log);
@@ -72,7 +74,7 @@ export function AttendanceCheckInPanel({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             title={btnTooltip}
-            className="overflow-hidden rounded-[28px] border border-white/80 bg-white p-3 shadow-sm lg:rounded-full lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:p-0 lg:shadow-none"
+            className="overflow-hidden rounded-[28px] border border-white/80 bg-white p-3 shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:p-2 lg:shadow-none"
         >
             <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <div className="min-w-0">
@@ -102,11 +104,21 @@ export function AttendanceCheckInPanel({
                 type="button"
                 onClick={() => void handleCheckIn()}
                 disabled={btnDisabled}
-                className="relative inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--color-text-muted)] disabled:opacity-70 lg:h-full lg:rounded-full lg:p-2"
+                className="relative inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--color-text-muted)] disabled:opacity-70 lg:h-11"
             >
                 {btnIcon}
                 <span>{btnText}</span>
             </button>
+            {onReportLate ? (
+                <button
+                    type="button"
+                    onClick={onReportLate}
+                    className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#f59e0b30] bg-[#f59e0b10] px-4 text-sm font-semibold text-[#936000] transition-all hover:bg-[#f59e0b18] active:scale-[0.98]"
+                >
+                    <AlertTriangle size={16} />
+                    <span>{labels.reportLate || "Bao den tre"}</span>
+                </button>
+            ) : null}
         </motion.section>
     );
 }

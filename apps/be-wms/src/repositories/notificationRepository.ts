@@ -3,11 +3,12 @@ import type {
   NotificationDispatch,
   Role,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { db } from "../config/firebase.js";
 
 const IN_APP_COLLECTION = "in_app_notifications";
 const DISPATCH_COLLECTION = "notification_dispatches";
+const PUSH_TOKEN_COLLECTION = "notification_push_tokens";
 const USER_ROLES_COLLECTION = "user_warehouse_roles";
 
 type CreateInAppNotificationInput = Omit<
@@ -20,6 +21,28 @@ type CreateDispatchInput = Omit<
   "id" | "is_deleted" | "created_at" | "updated_at" | "sync_time"
 > & {
   id?: string;
+};
+
+type UpsertPushTokenInput = {
+  userId: string;
+  token: string;
+  platform?: string | null;
+  userAgent?: string | null;
+};
+
+type NotificationPushTokenRecord = {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: string | null;
+  user_agent: string | null;
+  permission: "granted";
+  is_active: boolean;
+  last_seen_at: Date;
+  disabled_at: Date | null;
+  is_deleted: boolean;
+  created_at: Date;
+  updated_at: Date;
 };
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -140,6 +163,89 @@ class NotificationRepository {
       .filter((dispatch) => !dispatch.is_deleted);
   }
 
+  async upsertPushToken(
+    input: UpsertPushTokenInput,
+  ): Promise<NotificationPushTokenRecord> {
+    const now = new Date();
+    const id = getPushTokenId(input.token);
+    const existing = await db.collection(PUSH_TOKEN_COLLECTION).doc(id).get();
+    const existingData = existing.data() as
+      | NotificationPushTokenRecord
+      | undefined;
+    const pushToken: NotificationPushTokenRecord = {
+      id,
+      user_id: input.userId,
+      token: input.token,
+      platform: input.platform?.trim() || null,
+      user_agent: input.userAgent?.trim() || null,
+      permission: "granted",
+      is_active: true,
+      last_seen_at: now,
+      disabled_at: null,
+      is_deleted: false,
+      created_at: existingData?.created_at || now,
+      updated_at: now,
+    };
+
+    await db.collection(PUSH_TOKEN_COLLECTION).doc(id).set(pushToken, {
+      merge: true,
+    });
+    return pushToken;
+  }
+
+  async deactivatePushToken(userId: string, token: string): Promise<void> {
+    const id = getPushTokenId(token);
+    const docRef = db.collection(PUSH_TOKEN_COLLECTION).doc(id);
+    const snapshot = await docRef.get();
+    if (!snapshot.exists) return;
+    const data = snapshot.data() as NotificationPushTokenRecord;
+    if (data.user_id !== userId) return;
+
+    await docRef.update({
+      is_active: false,
+      disabled_at: new Date(),
+      updated_at: new Date(),
+    });
+  }
+
+  async deactivatePushTokensByToken(tokens: string[]): Promise<void> {
+    const uniqueTokens = Array.from(new Set(tokens.filter(Boolean)));
+    for (const chunk of chunkArray(uniqueTokens, 450)) {
+      const batch = db.batch();
+      const now = new Date();
+      chunk.forEach((token) => {
+        batch.update(db.collection(PUSH_TOKEN_COLLECTION).doc(getPushTokenId(token)), {
+          is_active: false,
+          disabled_at: now,
+          updated_at: now,
+        });
+      });
+      await batch.commit();
+    }
+  }
+
+  async findActivePushTokensByUserIds(
+    userIds: string[],
+  ): Promise<NotificationPushTokenRecord[]> {
+    const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+    if (uniqueUserIds.length === 0) return [];
+
+    const tokens: NotificationPushTokenRecord[] = [];
+    for (const chunk of chunkArray(uniqueUserIds, 30)) {
+      const snapshot = await db
+        .collection(PUSH_TOKEN_COLLECTION)
+        .where("user_id", "in", chunk)
+        .where("is_active", "==", true)
+        .where("is_deleted", "==", false)
+        .get();
+
+      snapshot.docs.forEach((docSnap) => {
+        tokens.push(docSnap.data() as NotificationPushTokenRecord);
+      });
+    }
+    return tokens;
+  }
+
   async findActiveUserIdsByRoleIds(
     roleIds: string[],
     warehouseId?: string | null,
@@ -235,6 +341,10 @@ class NotificationRepository {
 
     return Array.from(userIds);
   }
+}
+
+function getPushTokenId(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export const notificationRepository = new NotificationRepository();

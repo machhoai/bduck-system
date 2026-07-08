@@ -352,6 +352,14 @@ export const notificationDispatchQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 
+export const notificationPushTokenSchema = z.object({
+  token: z.string().trim().min(20).max(4096).refine(noNoSqlOperators, {
+    message: "Push token contains forbidden operators",
+  }),
+  platform: z.string().trim().max(80).nullable().optional(),
+  user_agent: z.string().trim().max(500).nullable().optional(),
+});
+
 // ============================================================
 // INVENTORY SCHEMAS (Phase 2)
 // ============================================================

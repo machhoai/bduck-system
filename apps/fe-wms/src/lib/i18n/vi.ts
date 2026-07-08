@@ -21,13 +21,14 @@ const vi = {
         roles: "Phân quyền",
         auditLogs: "Audit log",
         settings: "Cài đặt",
-        tasks: "Việc cần xử lý",
+        tasks: "Nhiệm vụ",
         workflows: "Quy trình",
         processConfigs: "Quy trình",
         notification: "Thông báo",
         expenses: "Báo cáo chi phí",
         revenueManagement: "Quản lý doanh thu",
         attendance: "Chấm công",
+        employeeAdmin: "Hành chính",
         expenseDashboard: "Báo cáo",
         expenseEntry: "Nhập liệu chi phí",
         externalQueue: "Quét mã ngoài",
@@ -93,7 +94,8 @@ const vi = {
     dashboard: {
         title: "Trang chủ",
         welcome: "Xin chào",
-        emptyState: "Dashboard đang được xây dựng. Nội dung sẽ được cập nhật sớm.",
+        emptyState:
+            "Dashboard đang được xây dựng. Nội dung sẽ được cập nhật sớm.",
     },
 
     revenue: {
@@ -113,7 +115,8 @@ const vi = {
             },
             orders: {
                 label: "Đơn hàng",
-                description: "Đơn thanh toán, hàng đã bán và giá trị trung bình",
+                description:
+                    "Đơn thanh toán, hàng đã bán và giá trị trung bình",
             },
         },
         filters: {
@@ -125,11 +128,11 @@ const vi = {
             endDate: "Đến ngày",
             compareLabel: "So sánh",
             modes: {
-                today: "Hôm nay",
-                date: "Theo ngày",
-                month: "Theo tháng",
-                year: "Theo năm",
-                custom: "Tùy chỉnh",
+                today: "Nay",
+                date: "Ngày",
+                month: "Tháng",
+                year: "Năm",
+                custom: "Khác",
             },
             compareModes: {
                 none: "Không",
@@ -193,7 +196,8 @@ const vi = {
         },
         online: {
             title: "Doanh thu online",
-            subtitle: "Dữ liệu đơn hàng đã thanh toán từ hệ thống B.Duck Ticketing.",
+            subtitle:
+                "Dữ liệu từ hệ thống B.Duck Ticketing.",
             generatedAt: "Cập nhật lúc",
             metrics: {
                 netRevenue: "Doanh thu thuần",
@@ -217,7 +221,8 @@ const vi = {
             },
             products: {
                 title: "Top sản phẩm online",
-                subtitle: "Sản phẩm bán chạy và đóng góp doanh thu online cao nhất.",
+                subtitle:
+                    "Sản phẩm bán chạy và đóng góp doanh thu online cao nhất.",
                 units: "lượt",
                 orders: "đơn",
             },
@@ -225,12 +230,36 @@ const vi = {
         },
         topProducts: {
             title: "Top sản phẩm theo nhóm",
-            subtitle: "Nhóm sản phẩm và các mặt hàng đóng góp doanh thu cao nhất.",
+            subtitle:
+                "Nhóm sản phẩm và các mặt hàng đóng góp doanh thu cao nhất.",
             units: "đơn vị",
+        },
+        dashboardOverview: {
+            websiteRevenue: "Doanh thu website",
+            detail: "Chi tiết",
+            product: "Sản phẩm",
+            group: "Nhóm",
+            quantity: "Số lượng",
+            revenue: "Doanh thu",
+            revenueStructure: "Cơ cấu doanh thu",
+            orderStructure: "Cơ cấu đơn hàng",
+            averageValue: "Giá trị trung bình",
+            joyWorld: "JoyWorld",
+            website: "Website",
+            websiteProducts: "Sản phẩm website",
+            websiteAov: "Website AOV",
+            topProducts: "Top sản phẩm",
+            productGroup: "Nhóm sản phẩm",
+            groupRevenue: "Doanh thu nhóm",
+            groupQuantity: "Số lượng nhóm",
+            ordersUnit: "đơn",
+            share: "Tỷ trọng",
+            rank: "Xếp hạng",
         },
         deviceConsumption: {
             title: "Danh sách tiêu thụ thiết bị",
-            subtitle: "Theo dõi coin tiêu thụ từ API doanh thu bán thẻ theo ngày.",
+            subtitle:
+                "Theo dõi coin tiêu thụ từ API doanh thu bán thẻ theo ngày.",
             columns: {
                 date: "Ngày",
                 electronic: "Coin điện tử",
@@ -380,7 +409,8 @@ const vi = {
         reject: "Từ chối",
         close: "Đóng",
         missingInfo: "Thiếu thông tin",
-        missingInfoDesc: "Vui lòng chọn ít nhất một người nhận và nhập text hoặc chọn file.",
+        missingInfoDesc:
+            "Vui lòng chọn ít nhất một người nhận và nhập text hoặc chọn file.",
         sendingRequest: "Đang gửi yêu cầu...",
         requestSent: "Đã gửi yêu cầu",
         requestError: "Không thể gửi yêu cầu",
@@ -390,7 +420,8 @@ const vi = {
         acceptSuccess: "Đã chấp nhận yêu cầu",
         acceptError: "Không thể nhận file",
         acceptSuccessDesc: "Kết nối nội bộ sẽ bắt đầu gửi file.",
-        acceptErrorDesc: "Vui lòng chọn vị trí lưu hợp lệ cho từng file hoặc thử lại.",
+        acceptErrorDesc:
+            "Vui lòng chọn vị trí lưu hợp lệ cho từng file hoặc thử lại.",
         rejecting: "Đang từ chối yêu cầu...",
         rejectSuccess: "Đã từ chối yêu cầu",
         rejectError: "Không thể từ chối yêu cầu",
@@ -412,7 +443,8 @@ const vi = {
             uploadedFiles: "Tệp đã tải lên",
             templates: "Biểu mẫu",
         },
-        searchPlaceholder: "Tìm theo tên tệp, người upload, mã lệnh, mục đích...",
+        searchPlaceholder:
+            "Tìm theo tên tệp, người upload, mã lệnh, mục đích...",
         clearFilters: "Xóa lọc",
         sourceFilter: "Nguồn",
         formatFilter: "Định dạng",
@@ -476,13 +508,16 @@ const vi = {
             uploading: "Đang upload biểu mẫu...",
             uploadSuccess: "Đã upload biểu mẫu",
             uploadError: "Không thể upload biểu mẫu",
-            uploadSuccessDesc: "Biểu mẫu đã sẵn sàng để người có quyền xem tải xuống.",
+            uploadSuccessDesc:
+                "Biểu mẫu đã sẵn sàng để người có quyền xem tải xuống.",
             uploadErrorDesc: "Vui lòng kiểm tra quyền hoặc thử lại sau.",
             retry: "Thử lại",
             emptyTitle: "Chưa có biểu mẫu",
-            emptyHint: "Các biểu mẫu PDF, DOCX, XLSX hoặc CSV sẽ xuất hiện tại đây sau khi upload.",
+            emptyHint:
+                "Các biểu mẫu PDF, DOCX, XLSX hoặc CSV sẽ xuất hiện tại đây sau khi upload.",
             noViewTitle: "Chưa có quyền xem biểu mẫu",
-            noViewHint: "Bạn vẫn có thể upload nếu được cấp quyền upload, nhưng cần quyền xem để tải danh sách biểu mẫu.",
+            noViewHint:
+                "Bạn vẫn có thể upload nếu được cấp quyền upload, nhưng cần quyền xem để tải danh sách biểu mẫu.",
             size: "Dung lượng",
             moreActions: "Thao tác biểu mẫu",
             editAction: "Chỉnh sửa",
@@ -597,7 +632,8 @@ const vi = {
         deleteSuccess: "Đã xóa sản phẩm.",
         deleteError: "Lỗi khi xóa sản phẩm.",
         deleteSuccessDescription: "Sản phẩm đã được đánh dấu xóa mềm.",
-        deleteErrorDescription: "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+        deleteErrorDescription:
+            "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
         redirectingCategories: "Đang chuyển sang tab danh mục",
         sortBy: "Sắp xếp theo",
         sortDirection: "Thứ tự",
@@ -693,7 +729,8 @@ const vi = {
         addNew: "Thêm kho",
         editWarehouse: "Chỉnh sửa kho",
         warehouseList: "Danh sách kho",
-        warehouseListHint: "Theo dõi mã kho, loại kho, trạng thái và số vị trí.",
+        warehouseListHint:
+            "Theo dõi mã kho, loại kho, trạng thái và số vị trí.",
         tabWarehouses: "Kho hàng",
         tabOrganizations: "Tổ chức",
         locations: "Vị trí",
@@ -737,7 +774,8 @@ const vi = {
         imageUrl: "URL hình ảnh",
         uploadImage: "Tải ảnh",
         imageTooLarge: "Ảnh vượt quá 20MB",
-        imageTooLargeDescription: "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
+        imageTooLargeDescription:
+            "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
         invalidImage: "Định dạng ảnh không hợp lệ",
         invalidImageDescription: "Chỉ hỗ trợ JPG, PNG hoặc WEBP.",
         longitude: "Kinh độ",
@@ -870,7 +908,8 @@ const vi = {
         image: "Hình ảnh tổ chức",
         uploadImage: "Tải ảnh",
         imageTooLarge: "Ảnh vượt quá 20MB",
-        imageTooLargeDescription: "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
+        imageTooLargeDescription:
+            "Vui lòng chọn ảnh có dung lượng không quá 20MB.",
         invalidImage: "Định dạng ảnh không hợp lệ",
         invalidImageDescription: "Chỉ hỗ trợ JPG, PNG hoặc WEBP.",
         warehouses: "kho",
@@ -1131,7 +1170,8 @@ const vi = {
         critical: "Nguy hiểm",
         normal: "Bình thường",
         noAccess: "Bạn không có quyền truy cập kho nào.",
-        noAccessDescription: "Liên hệ quản trị viên để được cấp quyền xem tồn kho.",
+        noAccessDescription:
+            "Liên hệ quản trị viên để được cấp quyền xem tồn kho.",
         productTypes: {
             EQUIPMENT: "Thiết bị",
             SOUVENIR_SALE: "Quà bán",
@@ -1204,7 +1244,8 @@ const vi = {
             saveSuccessDesc:
                 "Phiên bản nháp đã được lưu. Bạn có thể tiếp tục chỉnh sửa.",
             saveError: "Lỗi lưu quy trình",
-            saveErrorDesc: "Vui lòng kiểm tra lại cấu hình DAG hoặc thử lại sau.",
+            saveErrorDesc:
+                "Vui lòng kiểm tra lại cấu hình DAG hoặc thử lại sau.",
             publishing: "Đang xuất bản quy trình...",
             publishSuccess: "Xuất bản quy trình thành công",
             publishSuccessDesc:
@@ -1386,12 +1427,13 @@ const vi = {
             createError: "Lỗi khi tạo phiếu xuất kho",
             createErrorDesc: "Vui lòng thử lại hoặc liên hệ quản trị viên.",
             atpError: "Không đủ tồn kho khả dụng",
-            atpErrorDesc: "Hệ thống không thể duyệt phiếu vì kho không đủ hàng.",
+            atpErrorDesc:
+                "Hệ thống không thể duyệt phiếu vì kho không đủ hàng.",
         },
     },
 
     tasks: {
-        title: "Việc cần xử lý",
+        title: "Nhiệm vụ",
         workspaceLabel: "Hàng chờ phê duyệt",
         loading: "Đang tải...",
         pendingCount: "công việc đang chờ",
@@ -1429,15 +1471,18 @@ const vi = {
             completingExport: "Đang hoàn thành phiếu xuất...",
             completeExportSuccess: "Đã hoàn thành phiếu xuất",
             completeExportError: "Không thể hoàn thành phiếu xuất",
-            completeExportSuccessDesc: "Lệnh xuất đã được chuyển sang hoàn thành.",
+            completeExportSuccessDesc:
+                "Lệnh xuất đã được chuyển sang hoàn thành.",
         },
         nonconformity: {
             emptyTitle: "Không có hàng hỏng hoặc chênh lệch cần xử lý",
-            emptyHint: "Các ngoại lệ phát sinh sau kiểm đếm sẽ tự xuất hiện tại đây.",
+            emptyHint:
+                "Các ngoại lệ phát sinh sau kiểm đếm sẽ tự xuất hiện tại đây.",
             openDetail: "Xử lý",
             detailTitle: "Xử lý hàng hỏng/chênh lệch",
             lockedStock: "Đang cách ly/tạm giữ",
-            selfBlocked: "Người ghi nhận ngoại lệ không được tự xử lý báo cáo này.",
+            selfBlocked:
+                "Người ghi nhận ngoại lệ không được tự xử lý báo cáo này.",
             noResolvePermission: "Bạn chưa có quyền xử lý ngoại lệ tồn kho.",
             resolutionTitle: "Cách xử lý",
             notesLabel: "Ghi chú xử lý",
@@ -1845,7 +1890,8 @@ const vi = {
             },
             errors: {
                 noSheet: "Tệp Excel không có sheet dữ liệu.",
-                noRecognizedColumns: "Không nhận diện được các cột trong file Excel.",
+                noRecognizedColumns:
+                    "Không nhận diện được các cột trong file Excel.",
                 invalidCostCenter: "Nhóm chi phí không hợp lệ",
                 invalidItemCode: "Mã dòng cố định không hợp lệ",
                 costCenterMismatch: "Nhóm chi phí không khớp dòng cố định",
@@ -1900,13 +1946,13 @@ const vi = {
                     invalidTitle: "Giá trị không hợp lệ",
                     invalidList: "Vui lòng chọn một giá trị trong danh sách.",
                     invalidAmount: "Số tiền phải là số không âm.",
-                    costCenter: "Chọn nhóm chi phí. Hệ thống dùng mã trước dấu '-'.",
+                    costCenter:
+                        "Chọn nhóm chi phí. Hệ thống dùng mã trước dấu '-'.",
                     itemCode:
                         "Chọn mã dòng cố định nếu muốn cập nhật dòng hệ thống; để trống để tạo dòng mới.",
                     itemName:
                         "Nhập tên chi phí. Dòng tự tạo sẽ dùng tên này để tạo hoặc cập nhật.",
-                    amount:
-                        "Nhập số tiền không âm. Có thể để trống nếu không cập nhật ô này.",
+                    amount: "Nhập số tiền không âm. Có thể để trống nếu không cập nhật ô này.",
                 },
                 refs: {
                     group: "Nhóm",
@@ -1922,23 +1968,19 @@ const vi = {
                 guides: [
                     {
                         section: "Cách nhập",
-                        guide:
-                            "Điền dữ liệu từ dòng 2 trở xuống. Dòng không có ngân sách, thực chi và ghi chú sẽ được bỏ qua khi import.",
+                        guide: "Điền dữ liệu từ dòng 2 trở xuống. Dòng không có ngân sách, thực chi và ghi chú sẽ được bỏ qua khi import.",
                     },
                     {
                         section: "Dòng cố định",
-                        guide:
-                            "Giữ nguyên Mã dòng cố định để cập nhật các dòng hệ thống như tiền thuê, điện, nước, lương hoặc COGS.",
+                        guide: "Giữ nguyên Mã dòng cố định để cập nhật các dòng hệ thống như tiền thuê, điện, nước, lương hoặc COGS.",
                     },
                     {
                         section: "Dòng tự tạo",
-                        guide:
-                            "Để trống Mã dòng cố định, chọn Nhóm chi phí và nhập Tên chi phí. Nếu tên đã tồn tại trong cùng nhóm, hệ thống cập nhật dòng đó; nếu chưa có, hệ thống tạo dòng mới.",
+                        guide: "Để trống Mã dòng cố định, chọn Nhóm chi phí và nhập Tên chi phí. Nếu tên đã tồn tại trong cùng nhóm, hệ thống cập nhật dòng đó; nếu chưa có, hệ thống tạo dòng mới.",
                     },
                     {
                         section: "Số tiền",
-                        guide:
-                            "Ngân sách và Thực chi nhận số không âm. Ô để trống sẽ không ghi đè giá trị hiện có.",
+                        guide: "Ngân sách và Thực chi nhận số không âm. Ô để trống sẽ không ghi đè giá trị hiện có.",
                     },
                 ],
                 sampleCustomName: "Chi phí tự tạo",
@@ -1963,7 +2005,8 @@ const vi = {
         loadFailed: "Không thể tải phiếu nhập",
         sessionTitle: "Phiên Kiểm Đếm Thực Nhận",
         scanMode: "Chế độ quét mã vạch (Tự động)",
-        scanInstruction: "Sử dụng máy quét để tự động cộng dồn số lượng thực tế.",
+        scanInstruction:
+            "Sử dụng máy quét để tự động cộng dồn số lượng thực tế.",
         scannerReady: "Scanner sẵn sàng",
         summary: "Tổng quan",
         expected: "Dự kiến",
@@ -1994,7 +2037,8 @@ const vi = {
         submitError: "Đã xảy ra lỗi",
         submitSuccessDescription:
             "Số liệu thực nhận đã được lưu và quy trình đã tiếp tục.",
-        submitErrorDescription: "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+        submitErrorDescription:
+            "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
     },
     pickingSession: {
         title: "Soạn hàng",
@@ -2212,6 +2256,66 @@ Object.assign(vi.transfer, {
 });
 
 Object.assign(vi, {
+    employeeAdmin: {
+        title: "Hành chính",
+        subtitle:
+            "Hồ sơ, ngày phép, đơn từ và chấm công trong một không gian làm việc.",
+        adminTab: "Hành chính",
+        timeTab: "Chấm công",
+        employeeProfile: "Hồ sơ nhân viên",
+        notUpdated: "Chưa cập nhật",
+        personalInfo: "Thông tin nhân viên",
+        employeeCode: "Mã nhân viên",
+        fullName: "Họ tên",
+        department: "Phòng ban",
+        jobTitle: "Chức vụ",
+        workplace: "Nơi làm việc",
+        socialInsuranceCode: "Mã bảo hiểm",
+        probationStartDate: "Bắt đầu thử việc",
+        probationEndDate: "Kết thúc thử việc",
+        officialStartDate: "Ngày chính thức",
+        resignationDate: "Ngày nghỉ việc",
+        viewFullProfile: "Xem hồ sơ",
+        viewAppointments: "Lịch sử chức vụ",
+        desktopDetails: "Hiển thị đầy đủ",
+        fullProfile: "Hồ sơ đầy đủ",
+        fullProfileHint:
+            "Các thông tin hành chính được mở theo nhu cầu để màn hình chính luôn gọn.",
+        appointmentHistory: "Lịch sử bổ nhiệm",
+        appointmentHistoryHint:
+            "Theo dõi các lần thay đổi chức vụ/phòng ban của nhân viên.",
+        noAppointments: "Chưa có lịch sử bổ nhiệm",
+        noAppointmentsHint:
+            "Khi nhân viên được cập nhật chức vụ, lịch sử sẽ hiển thị tại đây.",
+        leaveBalance: "Ngày phép",
+        leaveBalanceTitle: "Số ngày phép của tôi",
+        availableLeave: "Còn lại",
+        pendingLeave: "Chờ duyệt",
+        usedLeave: "Đã dùng",
+        leaveBalanceHint:
+            "Số liệu ngày phép sẽ được đồng bộ khi luồng yêu cầu hành chính được kết nối.",
+        adminRequests: "Yêu cầu hành chính",
+        quickActions: "Tạo yêu cầu nhanh",
+        createRequest: "Tạo yêu cầu",
+        createRequestHint:
+            "Chọn loại yêu cầu, điền thời gian, đính kèm biểu mẫu và gửi đến cấp duyệt.",
+        paidLeave: "Xin nghỉ phép",
+        unpaidLeave: "Nghỉ không phép",
+        maternityLeave: "Nghỉ thai sản",
+        sickLeave: "Nghỉ bệnh",
+        requestActionHint: "Mở biểu mẫu",
+        noRequests: "Chưa có yêu cầu nào",
+        noRequestsHint:
+            "Các yêu cầu đã gửi và trạng thái duyệt sẽ xuất hiện tại đây.",
+        requestType: "Loại yêu cầu",
+        startDate: "Từ ngày",
+        endDate: "Đến ngày",
+        reason: "Lý do",
+        reasonPlaceholder: "Nhập lý do hoặc ghi chú cho cấp duyệt...",
+        attachTemplate: "Đính kèm biểu mẫu",
+        attachTemplateHint:
+            "Có thể chọn biểu mẫu liên quan khi kết nối thư viện tệp.",
+    },
     attendance: {
         title: "Chấm công",
         subtitle:
@@ -2235,6 +2339,21 @@ Object.assign(vi, {
         checkInSuccess: "Check-in thành công",
         checkInError: "Không thể check-in",
         checkInSuccessDesc: "Lịch chấm công hôm nay đã được ghi nhận.",
+        reportLate: "Báo đến trễ",
+        lateReportTitle: "Báo đến trễ",
+        lateReportHint:
+            "Ghi lại lý do để người quản lý thấy ngay cạnh lịch sử chấm công trong ngày.",
+        expectedArrivalTime: "Giờ dự kiến",
+        estimatedArrivalTime: "Giờ sẽ đến",
+        lateReason: "Lý do đến trễ",
+        lateReasonPlaceholder: "Ví dụ: kẹt xe, lịch cá nhân đột xuất...",
+        submitLateReport: "Gửi báo trễ",
+        lateReportSaved: "Đã gửi báo trễ",
+        lateReportSaving: "Đang gửi báo trễ...",
+        lateReportError: "Không thể gửi báo trễ",
+        lateReportSavedDesc:
+            "Lý do đến trễ đã được ghi nhận vào lịch chấm công hôm nay.",
+        lateReportErrorDesc: "Vui lòng kiểm tra nội dung và thử lại.",
         retry: "Thử lại",
         week: "Tuần",
         month: "Tháng",
@@ -2252,7 +2371,8 @@ Object.assign(vi, {
         noAttendanceDataHint:
             "Dữ liệu sẽ xuất hiện khi kho bật chấm công và nhân viên có check-in thành công.",
         rejectedAudit: "Lịch sử check-in lỗi",
-        rejectedAuditHint: "Dùng để audit các lần thử check-in sai mạng công ty.",
+        rejectedAuditHint:
+            "Dùng để audit các lần thử check-in sai mạng công ty.",
         noRejectedLogs: "Không có lần check-in lỗi trong phạm vi này.",
         settings: "Cấu hình chấm công",
         settingsHint: "Áp dụng ngay và giữ lịch sử policy theo thời gian.",
@@ -2405,7 +2525,8 @@ Object.assign(vi, {
                 invalidQty: "Số lượng không hợp lệ",
                 invalidQtyDesc: "Vui lòng nhập số nguyên lớn hơn hoặc bằng 0.",
                 missingRejectReason: "Thiếu lý do từ chối",
-                missingRejectReasonDesc: "Vui lòng nhập lý do trước khi từ chối.",
+                missingRejectReasonDesc:
+                    "Vui lòng nhập lý do trước khi từ chối.",
                 adjustReason:
                     "Điều chỉnh từ {{from}} sang {{to}} trên hàng chờ {{batchId}}",
                 savingQty: "Đang lưu số lượng...",
@@ -2428,7 +2549,8 @@ Object.assign(vi, {
                 cancelScanError: "Không thể hủy dòng",
                 cancelScanSuccessDesc:
                     "Tồn ATP đã được hoàn lại và hành động đã ghi audit log.",
-                cancelScanErrorDesc: "Vui lòng kiểm tra quyền hoặc thử lại sau.",
+                cancelScanErrorDesc:
+                    "Vui lòng kiểm tra quyền hoặc thử lại sau.",
                 retry: "Thử lại",
                 close: "Đóng",
                 saveQtyTitle: "Lưu số lượng",
@@ -2472,8 +2594,10 @@ Object.assign(vi.profile, {
     activeRoles: "Vai trò đang hiệu lực",
     scopedWarehouses: "Kho trong phạm vi",
     security: "Bảo mật",
-    mfaEnabledDescription: "Tài khoản đã bật xác thực 2 lớp cho các thao tác nhạy cảm.",
-    mfaDisabledDescription: "Bật xác thực 2 lớp để bảo vệ các thao tác quan trọng trong hệ thống.",
+    mfaEnabledDescription:
+        "Tài khoản đã bật xác thực 2 lớp cho các thao tác nhạy cảm.",
+    mfaDisabledDescription:
+        "Bật xác thực 2 lớp để bảo vệ các thao tác quan trọng trong hệ thống.",
     employeeProfile: "Hồ sơ nhân sự",
     employeeProfileDescription:
         "Thông tin nhân sự và nơi làm việc chính được lấy từ profile nhân viên.",
@@ -2482,9 +2606,11 @@ Object.assign(vi.profile, {
     globalScope: "Toàn hệ thống",
     warehouseScope: "Kho cụ thể",
     noRoles: "Chưa có vai trò nào được gán",
-    noRolesHint: "Khi admin gán role, phạm vi quyền thao tác sẽ xuất hiện tại đây.",
+    noRolesHint:
+        "Khi admin gán role, phạm vi quyền thao tác sẽ xuất hiện tại đây.",
     noEmployeeProfile: "Chưa có hồ sơ nhân viên",
-    noEmployeeProfileHint: "Admin cần tạo profile và liên kết với tài khoản này.",
+    noEmployeeProfileHint:
+        "Admin cần tạo profile và liên kết với tài khoản này.",
     unknownRole: "Role không xác định",
     validFrom: "Hiệu lực từ",
     validUntil: "Hiệu lực đến",

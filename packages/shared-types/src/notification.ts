@@ -63,3 +63,25 @@ export interface SendEmailNotificationPayload {
   html_content: string;
   text_content?: string;
 }
+
+export interface NotificationPushToken extends SoftDeletable {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: string | null;
+  user_agent: string | null;
+  permission: "granted";
+  is_active: boolean;
+  last_seen_at: Date;
+  disabled_at: Date | null;
+}
+
+export interface RegisterNotificationPushTokenPayload {
+  token: string;
+  platform?: string | null;
+  user_agent?: string | null;
+}
+
+export interface UnregisterNotificationPushTokenPayload {
+  token: string;
+}

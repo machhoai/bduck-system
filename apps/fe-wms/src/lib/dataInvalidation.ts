@@ -3,6 +3,7 @@
 export type DataInvalidationKey =
   | "all"
   | "audit_logs"
+  | "attendance_late_reports"
   | "attendance_logs"
   | "employee_profiles"
   | "file_templates"

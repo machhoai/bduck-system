@@ -9,6 +9,7 @@ type TesterRequest = {
     secretKey?: string;
     version?: string;
     action?: string;
+    requestMode?: "standard" | "legacySimpleReport";
     signMode?: "withSecret" | "withoutSecret";
     body?: unknown;
 };
@@ -36,6 +37,32 @@ function normalizeBusinessBody(body: unknown): string {
     }
 
     return JSON.stringify(body);
+}
+
+function normalizeBodyObject(body: unknown): Record<string, unknown> {
+    if (body === undefined || body === null || body === "") {
+        return {};
+    }
+
+    if (typeof body === "string") {
+        const trimmed = body.trim();
+        if (!trimmed) {
+            return {};
+        }
+
+        const parsed = JSON.parse(trimmed) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return parsed as Record<string, unknown>;
+        }
+
+        throw new Error("Legacy report body must be a JSON object.");
+    }
+
+    if (body && typeof body === "object" && !Array.isArray(body)) {
+        return body as Record<string, unknown>;
+    }
+
+    throw new Error("Legacy report body must be a JSON object.");
 }
 
 function normalizeEndpoint(baseUrl: string): string {
@@ -67,6 +94,7 @@ export async function POST(request: NextRequest) {
     const secretKey = input.secretKey?.trim();
     const version = input.version?.trim() || "11.7.1";
     const action = input.action?.trim();
+    const requestMode = input.requestMode === "legacySimpleReport" ? "legacySimpleReport" : "standard";
     const signMode = input.signMode === "withoutSecret" ? "withoutSecret" : "withSecret";
 
     if (!baseUrl) return jsonError("Missing baseUrl.");
@@ -90,7 +118,7 @@ export async function POST(request: NextRequest) {
             : `${appId}${action}${version}${timestamp}${businessBody}`;
     const sign = createHash("md5").update(signSource, "utf8").digest("hex").toUpperCase();
 
-    const signedPayload = {
+    let signedPayload: Record<string, unknown> = {
         appId,
         action,
         version,
@@ -98,6 +126,28 @@ export async function POST(request: NextRequest) {
         sign,
         body: businessBody,
     };
+
+    if (requestMode === "legacySimpleReport") {
+        let bodyObject: Record<string, unknown>;
+
+        try {
+            bodyObject = normalizeBodyObject(input.body);
+        } catch (error) {
+            return jsonError(error instanceof Error ? error.message : "Invalid legacy report body.");
+        }
+
+        const { auth, ...reportParams } = bodyObject;
+        const authSource = `${appId}${action}${version}${Object.values(reportParams).join("")}${secretKey}`;
+        const fallbackAuth = createHash("md5").update(authSource, "utf8").digest("hex").toUpperCase();
+
+        signedPayload = {
+            action,
+            appid: appId,
+            version,
+            ...reportParams,
+            auth: typeof auth === "string" && auth.trim() ? auth.trim() : fallbackAuth,
+        };
+    }
 
     const startedAt = Date.now();
 
@@ -127,6 +177,7 @@ export async function POST(request: NextRequest) {
             statusText: upstream.statusText,
             durationMs: Date.now() - startedAt,
             endpoint,
+            requestMode,
             signMode,
             signedPayload,
             response: responseBody,
@@ -137,6 +188,7 @@ export async function POST(request: NextRequest) {
                 success: false,
                 message: error instanceof Error ? error.message : "Request failed.",
                 endpoint,
+                requestMode,
                 signMode,
                 signedPayload,
             },

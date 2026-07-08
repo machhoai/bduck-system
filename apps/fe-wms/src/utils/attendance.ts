@@ -1,4 +1,5 @@
 import type {
+  AttendanceLateReport,
   AttendanceLog,
   EmployeeProfile,
   User,
@@ -107,6 +108,24 @@ export const formatCheckInTime = (value: unknown) => {
   });
 };
 
+const toTimestampMs = (value: unknown) => {
+  if (!value) return 0;
+  const raw = value as {
+    toDate?: () => Date;
+    seconds?: number;
+    _seconds?: number;
+  };
+  const date =
+    typeof raw.toDate === "function"
+      ? raw.toDate()
+      : typeof raw.seconds === "number"
+        ? new Date(raw.seconds * 1000)
+        : typeof raw._seconds === "number"
+          ? new Date(raw._seconds * 1000)
+          : new Date(value as string);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+};
+
 export const getActiveWarehouseIds = (
   assignments: UserWarehouseRole[] = [],
 ) => {
@@ -135,5 +154,19 @@ export const buildSuccessLogMap = (logs: AttendanceLog[]) => {
     .forEach((log) => {
       map.set(`${log.user_id}:${log.attendance_date}`, log);
     });
+  return map;
+};
+
+export const buildLatestLateReportMap = (reports: AttendanceLateReport[]) => {
+  const map = new Map<string, AttendanceLateReport>();
+  reports.forEach((report) => {
+    const key = `${report.user_id}:${report.attendance_date}`;
+    const current = map.get(key);
+    const currentTime = toTimestampMs(current?.sync_time);
+    const nextTime = toTimestampMs(report.sync_time);
+    if (!current || nextTime >= currentTime) {
+      map.set(key, report);
+    }
+  });
   return map;
 };

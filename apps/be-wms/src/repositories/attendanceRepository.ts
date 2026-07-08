@@ -1,4 +1,5 @@
 import type {
+  AttendanceLateReport,
   AttendanceLog,
   WarehouseAttendanceExemption,
   WarehouseAttendancePolicy,
@@ -10,6 +11,7 @@ import { db } from "../config/firebase.js";
 const POLICIES_COLLECTION = "warehouse_attendance_policies";
 const EXEMPTIONS_COLLECTION = "warehouse_attendance_exemptions";
 const LOGS_COLLECTION = "attendance_logs";
+const LATE_REPORTS_COLLECTION = "attendance_late_reports";
 
 export const getActiveAttendancePolicy = async (
   warehouseId: string,
@@ -152,6 +154,17 @@ export const createAttendanceLog = async (
   const attendanceLog = { ...log, id: randomUUID() };
   await db.collection(LOGS_COLLECTION).doc(attendanceLog.id).set(attendanceLog);
   return attendanceLog;
+};
+
+export const createAttendanceLateReport = async (
+  report: Omit<AttendanceLateReport, "id">,
+): Promise<AttendanceLateReport> => {
+  const lateReport = { ...report, id: randomUUID() };
+  await db
+    .collection(LATE_REPORTS_COLLECTION)
+    .doc(lateReport.id)
+    .set(lateReport);
+  return lateReport;
 };
 
 export const createSuccessAttendanceLogOnce = async (

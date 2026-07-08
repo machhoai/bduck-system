@@ -2,6 +2,7 @@
 
 import type {
   AttendanceCheckInContext,
+  AttendanceLateReport,
   AttendanceLog,
   WarehouseAttendanceExemption,
   WarehouseAttendancePolicy,
@@ -74,6 +75,7 @@ export function useAttendanceContext() {
     void reload(controller.signal);
     const unsubscribe = subscribeDataMutation(
       [
+        "attendance_late_reports",
         "attendance_logs",
         "warehouse_attendance_policies",
         "warehouse_attendance_exemptions",
@@ -99,7 +101,30 @@ export function useAttendanceContext() {
     return log;
   }, [reload]);
 
-  return { context, loading, error, reload, checkIn };
+  const reportLate = useCallback(
+    async (payload: {
+      attendance_date?: string;
+      expected_arrival_time?: string | null;
+      estimated_arrival_time?: string | null;
+      reason: string;
+    }) => {
+      const report = await callAttendanceApi<AttendanceLateReport>(
+        "/api/attendance/late-reports",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...payload,
+            action_time: new Date().toISOString(),
+          }),
+        },
+      );
+      emitDataMutation(["attendance_late_reports", "audit_logs"]);
+      return report;
+    },
+    [],
+  );
+
+  return { context, loading, error, reload, checkIn, reportLate };
 }
 
 export function useAttendancePolicies() {
@@ -308,4 +333,38 @@ export function useAttendanceLogs(dateFrom: string, dateTo: string) {
   }, [dateFrom, dateTo]);
 
   return { logs, loading };
+}
+
+export function useAttendanceLateReports(dateFrom: string, dateTo: string) {
+  const [reports, setReports] = useState<AttendanceLateReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      collection(db, "attendance_late_reports"),
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as AttendanceLateReport[];
+        setReports(
+          data.filter(
+            (report) =>
+              report.attendance_date >= dateFrom &&
+              report.attendance_date <= dateTo,
+          ),
+        );
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useAttendanceLateReports] snapshot error:", err);
+        setReports([]);
+        setLoading(false);
+      },
+    );
+    return unsubscribe;
+  }, [dateFrom, dateTo]);
+
+  return { reports, loading };
 }

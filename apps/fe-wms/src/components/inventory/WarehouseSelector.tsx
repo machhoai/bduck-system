@@ -48,19 +48,18 @@ export default function WarehouseSelector({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition-all hover:border-[var(--color-brand-primary)] hover:shadow-sm active:scale-[0.98]"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/12 px-2.5 text-xs text-white/80 backdrop-blur-md transition-all hover:bg-white/18 hover:border-white/30 active:scale-[0.98] shadow-sm"
             >
-                <WarehouseIcon size={18} strokeWidth={1.7} className="text-[var(--color-brand-primary)]" />
-                <span className="truncate">{label}</span>
+                <span className="truncate max-w-[120px]">{label}</span>
                 <ChevronDown
-                    size={16}
-                    strokeWidth={2}
-                    className={`text-[var(--color-text-muted)] transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    size={14}
+                    strokeWidth={2.5}
+                    className={`text-white/70 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                 />
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[220px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-1 shadow-lg">
+                <div className="absolute right-0 top-full  mt-1 min-w-[200px] overflow-hidden rounded-[var(--radius-sm)] border border-slate-200/80 bg-white/95 backdrop-blur-lg py-0.5 shadow-lg">
                     {/* All warehouses option */}
                     <button
                         type="button"
@@ -68,17 +67,16 @@ export default function WarehouseSelector({
                             onSelect(undefined);
                             setIsOpen(false);
                         }}
-                        className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-card)] ${!selectedId
-                            ? "font-medium text-[var(--color-brand-primary)]"
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-surface-card)] ${!selectedId
+                            ? "font-semibold text-[var(--color-brand-primary)]"
                             : "text-[var(--color-text-primary)]"
                             }`}
                     >
-                        <WarehouseIcon size={16} strokeWidth={1.7} />
                         {t.inventoryDashboard.allWarehouses}
                     </button>
 
                     {warehouses.length > 0 && (
-                        <div className="mx-3 my-1 h-px bg-[var(--color-border-soft)]" />
+                        <div className="mx-2 my-0.5 h-px bg-slate-200/60" />
                     )}
 
                     {warehouses.map((warehouse) => (
@@ -89,13 +87,13 @@ export default function WarehouseSelector({
                                 onSelect(warehouse.id);
                                 setIsOpen(false);
                             }}
-                            className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-card)] ${selectedId === warehouse.id
-                                ? "font-medium text-[var(--color-brand-primary)]"
+                            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-surface-card)] ${selectedId === warehouse.id
+                                ? "font-semibold text-[var(--color-brand-primary)]"
                                 : "text-[var(--color-text-primary)]"
                                 }`}
                         >
                             <div
-                                className="h-2 w-2 rounded-full"
+                                className="h-1.5 w-1.5 rounded-full"
                                 style={{
                                     backgroundColor:
                                         warehouse.status === "ACTIVE"
@@ -103,8 +101,8 @@ export default function WarehouseSelector({
                                             : "var(--color-text-muted)",
                                 }}
                             />
-                            <span className="truncate">{warehouse.name}</span>
-                            <span className="ml-auto text-xs text-[var(--color-text-muted)]">
+                            <span className="truncate max-w-[120px]">{warehouse.name}</span>
+                            <span className="ml-auto text-xxs text-[var(--color-text-muted)] font-mono">
                                 {warehouse.code}
                             </span>
                         </button>

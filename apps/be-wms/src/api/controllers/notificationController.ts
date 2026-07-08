@@ -5,10 +5,15 @@ import {
   sendEmailNotification,
   sendManualInAppNotification,
 } from "../../services/notificationService.js";
+import {
+  registerPushToken,
+  unregisterPushToken,
+} from "../../services/pushNotificationService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   notificationDispatchQuerySchema,
+  notificationPushTokenSchema,
   sendEmailNotificationSchema,
   sendInAppNotificationSchema,
 } from "../../utils/zodSchemas.js";
@@ -113,6 +118,52 @@ export const sendEmailNotificationHandler = async (
       },
       201,
     );
+  } catch (error) {
+    return handleNotificationError(res, error);
+  }
+};
+
+export const registerPushTokenHandler = async (req: Request, res: Response) => {
+  try {
+    const payload = notificationPushTokenSchema.parse(req.body);
+    const pushToken = await registerPushToken({
+      userId: getRequestUserId(req),
+      token: payload.token,
+      platform: payload.platform,
+      userAgent: payload.user_agent,
+    });
+
+    return sendSuccess(
+      res,
+      { id: pushToken.id, enabled: true },
+      {
+        vi: "Da bat thong bao tren thiet bi.",
+        zh: "已启用设备通知。",
+      },
+      201,
+    );
+  } catch (error) {
+    return handleNotificationError(res, error);
+  }
+};
+
+export const unregisterPushTokenHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const payload = notificationPushTokenSchema
+      .pick({ token: true })
+      .parse(req.body);
+    await unregisterPushToken({
+      userId: getRequestUserId(req),
+      token: payload.token,
+    });
+
+    return sendSuccess(res, { enabled: false }, {
+      vi: "Da tat thong bao tren thiet bi.",
+      zh: "已关闭设备通知。",
+    });
   } catch (error) {
     return handleNotificationError(res, error);
   }

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import {
   checkInAttendance,
+  createLateArrivalReport,
   fetchAttendanceContext,
   fetchAttendanceExemptions,
   fetchAttendancePolicies,
@@ -13,6 +14,30 @@ import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 
 const warehouseParamSchema = z.object({ warehouseId: z.string().uuid() });
 const checkInSchema = z.object({
+  action_time: z.string().datetime().optional(),
+});
+const unsafeQueryOperatorPattern = /\$(where|ne|gt|gte|lt|lte|regex|in|nin)/i;
+const lateArrivalReportSchema = z.object({
+  attendance_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  expected_arrival_time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable()
+    .optional(),
+  estimated_arrival_time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable()
+    .optional(),
+  reason: z
+    .string()
+    .trim()
+    .min(4)
+    .max(500)
+    .refine((value) => !unsafeQueryOperatorPattern.test(value)),
   action_time: z.string().datetime().optional(),
 });
 const updatePolicySchema = z.object({
@@ -114,6 +139,28 @@ export const checkInAttendanceHandler = async (req: Request, res: Response) => {
       res,
       log,
       { vi: "Check-in thành công.", zh: "打卡成功。" },
+      201,
+    );
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const createLateArrivalReportHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = lateArrivalReportSchema.parse(req.body || {});
+    const report = await createLateArrivalReport(
+      getRequestUser(req),
+      input,
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(
+      res,
+      report,
+      { vi: "Đã ghi nhận báo đến trễ.", zh: "迟到报告已记录。" },
       201,
     );
   } catch (error) {

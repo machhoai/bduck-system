@@ -62,7 +62,7 @@
 
     --sidebar-width-expanded: 220px;
     --sidebar-width-collapsed: 64px;
-    --bottomnav-height: 64px;
+    --bottomnav-height: 62px;
     --product-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0;
 
     /* Custom Typography - Data Density Rules */
@@ -211,7 +211,7 @@
     }
 
     body {
-        min-height: 100vh;
+        min-height: 100dvh;
         font-family: var(--font-body);
         background-color: var(--color-surface-base);
         color: var(--color-text-primary);
@@ -267,10 +267,3 @@
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
-
-@media (max-width: 1023px) {
-    #wms-main-content {
-        margin-left: 0 !important;
-    }
-}
-

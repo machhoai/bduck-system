@@ -8,7 +8,6 @@
 import {
   ArrowRightLeft,
   Bell,
-  CalendarCheck,
   CircleDollarSign,
   ChartNoAxesCombined,
   ClipboardCheck,
@@ -91,10 +90,10 @@ export const menuItems: MenuItem[] = [
     permission: "revenue.read",
   },
   {
-    id: "attendance",
-    labelKey: "attendance",
-    icon: CalendarCheck,
-    href: "/attendance",
+    id: "employeeAdmin",
+    labelKey: "employeeAdmin",
+    icon: IdCard,
+    href: "/employee-admin",
     permissionsAny: [
       "attendance.check_in",
       "attendance.view",

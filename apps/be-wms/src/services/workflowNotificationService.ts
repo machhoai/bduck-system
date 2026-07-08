@@ -10,6 +10,7 @@ import { notificationRepository } from "../repositories/notificationRepository.j
 import * as userRepository from "../repositories/userRepository.js";
 import * as approvalRepository from "../repositories/approvalRepository.js";
 import { sendEmailNotification } from "./notificationService.js";
+import { sendPushForInAppNotifications } from "./pushNotificationService.js";
 import { getConfigForEntity } from "./processConfigService.js";
 import {
     getApprovalWarehouseId,
@@ -25,6 +26,12 @@ const ENTITY_LABELS: Record<ProcessEntityType, string> = {
     ADJUSTMENT_VOUCHER: "phiếu điều chỉnh",
     GIFT_SESSION: "phiên quà tặng",
 };
+
+function dispatchPushNotifications(notifications: InAppNotification[]) {
+    void sendPushForInAppNotifications(notifications).catch((error) => {
+        console.error("[workflowNotificationService] push delivery failed:", error);
+    });
+}
 
 const ENTITY_ACTION_PATHS: Record<ProcessEntityType, string> = {
     IMPORT_VOUCHER: "/import-vouchers",
@@ -200,7 +207,9 @@ async function createInAppDispatch(input: {
         created_by: input.createdBy,
     }));
 
-    await notificationRepository.createInAppNotifications(notifications);
+    const createdNotifications =
+        await notificationRepository.createInAppNotifications(notifications);
+    dispatchPushNotifications(createdNotifications);
 
     return notificationRepository.createDispatch({
         id: dispatchId,

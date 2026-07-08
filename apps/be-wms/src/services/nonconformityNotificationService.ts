@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import type { InAppNotification, NotificationDispatch } from "@bduck/shared-types";
 import { notificationRepository } from "../repositories/notificationRepository.js";
 import { getUsersByIds } from "../repositories/userRepository.js";
+import { sendPushForInAppNotifications } from "./pushNotificationService.js";
 
 interface NonconformityNotificationReport {
   id: string;
@@ -12,6 +13,12 @@ interface NonconformityNotificationReport {
 
 function uniqueValues(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function dispatchPushNotifications(notifications: InAppNotification[]) {
+  void sendPushForInAppNotifications(notifications).catch((error) => {
+    console.error("[nonconformityNotificationService] push delivery failed:", error);
+  });
 }
 
 function buildActionUrl(reportId: string) {
@@ -75,7 +82,10 @@ async function createInAppDispatch(input: {
     created_by: input.createdBy,
   }));
 
-  await notificationRepository.createInAppNotifications(notifications);
+  const createdNotifications =
+    await notificationRepository.createInAppNotifications(notifications);
+  dispatchPushNotifications(createdNotifications);
+
   return notificationRepository.createDispatch({
     id: dispatchId,
     channel: "IN_APP",

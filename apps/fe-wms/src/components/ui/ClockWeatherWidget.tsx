@@ -75,9 +75,10 @@ function pad(n: number) {
 /* ── Component ── */
 interface Props {
     locale?: Locale;
+    glass?: boolean;
 }
 
-export default function ClockWeatherWidget({ locale = "vi" }: Props) {
+export default function ClockWeatherWidget({ locale = "vi", glass = false }: Props) {
     const [now, setNow] = useState(() => new Date());
     const [weather, setWeather] = useState<WeatherData | null>(null);
     const [hovered, setHovered] = useState(false);
@@ -157,27 +158,31 @@ export default function ClockWeatherWidget({ locale = "vi" }: Props) {
 
     return (
         <div
-            className="relative flex w-fit h-full cursor-default items-center overflow-hidden rounded-full bg-white transition-[width] duration-300 ease-in-out shadow-sm"
+            className={`relative flex w-fit h-8 cursor-default items-center overflow-hidden rounded-full transition-all duration-300 ease-in-out ${
+                glass
+                    ? "bg-white/12 border border-white/20 text-white backdrop-blur-md shadow-none"
+                    : "bg-white border border-transparent text-gray-800 shadow-sm"
+            }`}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             <div className="flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap px-3">
                 <div className={`flex gap-1 overflow-hidden ease-in-out duration-300 ${!hovered && locale === "vi" ? "w-[35px]" : `${locale === "zh" && !hovered ? "w-[30px]" : "w-[140px]"}`}`}>
-                    <span className="text-xs font-semibold text-gray-500">
+                    <span className={`text-xs font-semibold ease-in-out duration-300 ${glass ? "text-white/70" : "text-gray-500"}`}>
                         {dayLabel},
                     </span>
-                    <span className={`text-xs font-semibold text-gray-500 ease-in-out duration-300 ${hovered ? "block" : `hidden`}`}>
+                    <span className={`text-xs font-semibold ease-in-out duration-300 ${hovered ? "block" : "hidden"} ${glass ? "text-white/70" : "text-gray-500"}`}>
                         {fullDate}
                     </span>
                 </div>
-                <span className="text-xs font-bold tabular-nums text-gray-800">
+                <span className={`text-xs font-bold tabular-nums ease-in-out duration-300 ${glass ? "text-white" : "text-gray-800"}`}>
                     {timeStr}
                 </span>
                 {weather && wIcon && (
                     <>
-                        <span className="mx-0.5 h-3 w-px bg-gray-200" />
-                        <IonIcon icon={wIcon} size={16} className={wColor} />
-                        <span className="text-xs font-semibold text-gray-600">
+                        <span className={`mx-0.5 h-3 w-px ${glass ? "bg-white/20" : "bg-gray-200"}`} />
+                        <IonIcon icon={wIcon} size={16} className={glass ? "text-white" : wColor} />
+                        <span className={`text-xs font-semibold ${glass ? "text-white/90" : "text-gray-600"}`}>
                             {weather.temp}&deg;C
                         </span>
                     </>

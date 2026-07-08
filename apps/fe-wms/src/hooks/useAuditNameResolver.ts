@@ -19,6 +19,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
     organizations: "organizations",
     roles: "roles",
     users: "users",
+    attendance_late_reports: "attendance_late_reports",
     workflow_definitions: "workflow_definitions",
     workflow_versions: "workflow_definitions",
     workflow_instances: "workflow_instances",
@@ -28,7 +29,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
 };
 
 /** Fields to try (in order) when resolving an entity's display name */
-const NAME_FIELDS = ["name", "code", "voucher_number", "title", "sku", "full_name", "username", "email"];
+const NAME_FIELDS = ["name", "code", "voucher_number", "title", "sku", "employee_name", "full_name", "username", "email"];
 
 function extractName(data: Record<string, unknown>): string | null {
     for (const field of NAME_FIELDS) {

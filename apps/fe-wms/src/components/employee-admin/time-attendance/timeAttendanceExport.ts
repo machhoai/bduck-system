@@ -7,7 +7,7 @@ import {
   type AttendanceEmployeeRow,
 } from "@/utils/attendance";
 
-export function buildAttendanceExportConfig({
+export function buildTimeAttendanceExportConfig({
   labels,
   rows,
   days,

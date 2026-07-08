@@ -118,7 +118,7 @@ function useFirestoreSyncStatus(isInternetOnline: boolean) {
     return status;
 }
 
-export default function DeviceStatusIndicator() {
+export default function DeviceStatusIndicator({ glass = false }: { glass?: boolean }) {
     const isInternetOnline = useInternetStatus();
     const firestoreStatus = useFirestoreSyncStatus(isInternetOnline);
     const environmentLabel = useMemo(() => getEnvironmentLabel(), []);
@@ -133,10 +133,14 @@ export default function DeviceStatusIndicator() {
                 ? "Database syncing"
                 : "Database disconnected";
 
+    const circleClass = glass
+        ? "relative flex h-full aspect-square items-center justify-center rounded-full bg-white/12 border border-white/20 text-white backdrop-blur-md shadow-none transition-all duration-300"
+        : "relative flex h-full aspect-square items-center justify-center rounded-full bg-white border border-transparent text-[var(--color-text-muted)] shadow-sm transition-all duration-300";
+
     return (
-        <div className="flex h-full items-center gap-1.5">
+        <div className="flex h-8 items-center gap-1.5">
             <div
-                className="relative flex h-full aspect-square items-center justify-center rounded-full bg-white px-2 shadow-sm"
+                className={circleClass}
                 title={internetTitle}
                 aria-label={internetTitle}
             >
@@ -151,14 +155,14 @@ export default function DeviceStatusIndicator() {
                 )
                 }
                 {!isInternetOnline && (
-                    <span className="absolute right-0 top-0 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[var(--color-accent-error)] text-[8px] font-bold leading-none text-white">
+                    <span className="absolute right-0 top-0 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[var(--color-accent-error)] text-[8px] font-bold leading-none text-white/70">
                         !
                     </span>
                 )}
             </div>
 
             <div
-                className="relative flex h-full aspect-square items-center justify-center rounded-full bg-white px-2 shadow-sm"
+                className={circleClass}
                 title={firestoreTitle}
                 aria-label={firestoreTitle}
             >
@@ -181,7 +185,10 @@ export default function DeviceStatusIndicator() {
             </div>
 
             {environmentLabel && (
-                <div className="relative flex h-full aspect-square items-center justify-center rounded-full bg-white shadow-sm text-xxs font-semibold">
+                <div className={glass
+                    ? "relative flex h-8 aspect-square items-center justify-center rounded-full bg-white/12 border border-white/20 text-white backdrop-blur-md shadow-none text-xxs font-semibold transition-all duration-300"
+                    : "relative flex h-8 aspect-square items-center justify-center rounded-full bg-white border border-transparent text-[var(--color-text-muted)] shadow-sm text-xxs font-semibold transition-all duration-300"
+                }>
                     {environmentLabel}
                 </div>
             )}

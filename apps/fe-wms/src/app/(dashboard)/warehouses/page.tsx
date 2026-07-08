@@ -151,19 +151,45 @@ export default function WarehousesPage() {
         return createOrganization(payload);
     };
 
-    return (
-        <div className={`flex w-full flex-col gap-4 ${viewMode === "map" && activeTab === "warehouses" ? "h-full" : ""}`}>
-            <header className="z-10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 pb-3 px-4">
-                    <h1 className="font-[var(--font-display)] text-lg font-semibold leading-[1.1] tracking-normal text-[var(--color-text-primary)] lg:text-lg">
-                        {t.warehouses.title}
-                    </h1>
-                    <p className="text-sm leading-1 text-[var(--color-text-secondary)]">
-                        {t.warehouses.description}
-                    </p>
-                </div>
+    const isMapView = viewMode === "map" && activeTab === "warehouses";
 
-                <div className="flex items-center gap-2">
+    return (
+        <div className={isMapView ? "relative w-full h-full flex flex-col overflow-hidden" : "flex w-full flex-col gap-4"}>
+            {isMapView && (
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    #wms-main-content > div.overflow-y-auto {
+                        padding: 0 !important;
+                        overflow: hidden !important;
+                    }
+                    #wms-content-viewport {
+                        min-height: 100% !important;
+                        height: 100% !important;
+                    }
+                `}} />
+            )}
+            <header className={isMapView ? "absolute top-12 left-2 right-2 md:left-4 md:right-4 z-20 flex flex-col gap-2 md:flex-row md:items-start md:justify-between pointer-events-none" : "z-10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"}>
+                {isMapView ? (
+                    <div className="hidden md:flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white/90 backdrop-blur-md p-2.5 px-3.5 shadow-md pointer-events-auto">
+                        <h1 className="text-xs font-semibold leading-[1.1] text-[var(--color-text-primary)]">
+                            {t.warehouses.title}
+                        </h1>
+                        <p className="text-[10px] text-[var(--color-text-secondary)]">
+                            {t.warehouses.description}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 pb-3 px-4">
+                        <h1 className="font-[var(--font-display)] text-lg font-semibold leading-[1.1] tracking-normal text-[var(--color-text-primary)] lg:text-lg">
+                            {t.warehouses.title}
+                        </h1>
+                        <p className="text-sm leading-1 text-[var(--color-text-secondary)]">
+                            {t.warehouses.description}
+                        </p>
+                    </div>
+                )}
+
+                <div className={isMapView ? "flex items-center justify-between gap-2 w-full md:w-fit rounded-full border border-slate-100 bg-white/90 backdrop-blur-md p-1 shadow-md pointer-events-auto w-fit ml-auto md:ml-0" : "flex items-center gap-2"}>
                     {/* View mode switcher — only visible on warehouses tab */}
                     {activeTab === "warehouses" && (
                         <div className="flex rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">

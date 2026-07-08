@@ -4,7 +4,7 @@ import { AttendanceLogStatus, type AttendanceLog } from "@bduck/shared-types";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { formatCheckInTime } from "@/utils/attendance";
 
-interface AttendanceAuditLogProps {
+interface TimeAttendanceAuditLogProps {
     labels: Record<string, string>;
     logs: AttendanceLog[];
     canView: boolean;
@@ -33,11 +33,11 @@ const getAvatarBg = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-export function AttendanceAuditLog({
+export function TimeAttendanceAuditLog({
     labels,
     logs,
     canView,
-}: AttendanceAuditLogProps) {
+}: TimeAttendanceAuditLogProps) {
     if (!canView) return null;
 
     const rejectedLogs = logs
