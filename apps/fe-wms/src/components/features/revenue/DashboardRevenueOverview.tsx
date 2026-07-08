@@ -309,7 +309,7 @@ function StatButton({
                 </span>
             </div>
             <p
-                className={`relative z-10 text-3xl font-bold tracking-tight tabular-nums ${stat.hero ? "text-white" : "text-[var(--color-text-primary)]"}`}
+                className={`relative z-10 text-xl font-bold tracking-tight tabular-nums ${stat.hero ? "text-white" : "text-[var(--color-text-primary)]"}`}
             >
                 {stat.value}
             </p>
@@ -360,7 +360,7 @@ function HeroStatButton({
             )}
 
             <p
-                className={`relative z-10 text-5xl font-bold tracking-tight tabular-nums ${stat.hero ? "text-white" : "text-[var(--color-text-primary)]"}`}
+                className={`relative z-10 text-4xl font-bold tracking-tight tabular-nums ${stat.hero ? "text-white" : "text-[var(--color-text-primary)]"}`}
             >
                 {stat.value}
             </p>
