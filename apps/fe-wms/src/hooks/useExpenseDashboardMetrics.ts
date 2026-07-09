@@ -96,15 +96,23 @@ interface UseExpenseDashboardReturn {
   metrics: DashboardMetrics;
   loading: boolean;
   error: string | null;
+  hasLoaded: boolean;
+}
+
+interface UseExpenseDashboardOptions {
+  keepPreviousData?: boolean;
 }
 
 export function useExpenseDashboardMetrics(
   warehouseId: string,
   period: string,
+  options: UseExpenseDashboardOptions = {},
 ): UseExpenseDashboardReturn {
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const keepPreviousData = options.keepPreviousData ?? false;
 
   const loadMetrics = useCallback(async () => {
     if (!warehouseId || !period) return;
@@ -116,18 +124,19 @@ export function useExpenseDashboardMetrics(
         period,
       )) as Partial<DashboardMetrics>;
       setMetrics({ ...EMPTY_METRICS, ...data });
+      setHasLoaded(true);
     } catch (err) {
       console.error("[useExpenseDashboardMetrics] fetch error:", err);
       setError(getDetailedErrorMessage(err, "Lỗi tải dữ liệu dashboard"));
-      setMetrics(EMPTY_METRICS);
+      if (!keepPreviousData) setMetrics(EMPTY_METRICS);
     } finally {
       setLoading(false);
     }
-  }, [warehouseId, period]);
+  }, [keepPreviousData, warehouseId, period]);
 
   useEffect(() => {
     loadMetrics();
   }, [loadMetrics]);
 
-  return { metrics, loading, error };
+  return { metrics, loading, error, hasLoaded };
 }

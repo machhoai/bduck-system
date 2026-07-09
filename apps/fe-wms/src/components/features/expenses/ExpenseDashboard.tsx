@@ -13,7 +13,7 @@
  * Currency: always full number, e.g. 20.000.000đ (never abbreviated)
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
 import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
@@ -48,6 +48,10 @@ import {
     Percent,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+    CurrencyNumberFlow,
+    PercentNumberFlow,
+} from "@/components/ui/NumberFlowValue";
 import { useRevenueSync } from "@/hooks/useRevenueSync";
 import { RefreshCw, Clock } from "lucide-react";
 
@@ -107,44 +111,11 @@ function formatCurrencyTooltip(ctx: TooltipItem<MixedExpenseChartType>): string 
 // Animated Number Component
 // ─────────────────────────────────────────────
 
-function AnimatedNumber({ value, formatFn }: { value: number; formatFn?: (v: number) => string }) {
-    const [displayValue, setDisplayValue] = useState(0);
-
-    useEffect(() => {
-        let start = displayValue;
-        const end = value;
-        if (start === end) return;
-        
-        const duration = 1000; // 1s animation
-        const startTime = performance.now();
-        
-        const animate = (currentTime: number) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // easeOutQuart
-            const easeProgress = 1 - Math.pow(1 - progress, 4);
-            
-            setDisplayValue(start + (end - start) * easeProgress);
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                setDisplayValue(end);
-            }
-        };
-        
-        requestAnimationFrame(animate);
-    }, [value]);
-
-    return <>{formatFn ? formatFn(displayValue) : displayValue.toFixed(0)}</>;
-}
-
 // ─────────────────────────────────────────────
 // KPI Card (matches StatCard from main dashboard)
 // ─────────────────────────────────────────────
 
-export function KPICard({ title, kpi, suffix, index }: {
+export function KPICard({ title, kpi, index }: {
     title: string;
     kpi: DashboardKPI;
     suffix?: string;
@@ -172,10 +143,11 @@ export function KPICard({ title, kpi, suffix, index }: {
             </div>
             <div className="flex items-end justify-between gap-2">
                 <p className="text-lg font-semibold leading-none tracking-tight text-[var(--color-text-primary)]">
-                    <AnimatedNumber 
-                        value={kpi.value} 
-                        formatFn={(val) => index === 3 ? `${val.toFixed(1)}${suffix}` : `${formatCurrency(val)}`} 
-                    />
+                    {index === 3 ? (
+                        <PercentNumberFlow value={kpi.value} />
+                    ) : (
+                        <CurrencyNumberFlow value={kpi.value} />
+                    )}
                 </p>
                 {kpi.trend !== 0 && (
                     <span
@@ -183,7 +155,7 @@ export function KPICard({ title, kpi, suffix, index }: {
                         style={{ color: trendColor, backgroundColor: `${trendColor}14` }}
                     >
                         <TrendIcon size={10} strokeWidth={2.5} />
-                        <AnimatedNumber value={Math.abs(kpi.trend)} formatFn={(val) => `${val.toFixed(1)}%`} />
+                        <PercentNumberFlow value={Math.abs(kpi.trend)} />
                     </span>
                 )}
             </div>

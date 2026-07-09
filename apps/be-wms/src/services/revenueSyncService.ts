@@ -42,6 +42,12 @@ import {
   getRevenueData,
   getShopSummary,
 } from "./joyworldService.js";
+import { hasEnabledOpenApiConfig } from "./openApiConfigService.js";
+import {
+  getOpenApiRevenueData,
+  getOpenApiShopSummary,
+} from "./openApiRevenueService.js";
+import { LANDMARK_81_WAREHOUSE_ID } from "./revenueDashboardService.js";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -56,6 +62,7 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface RevenueSyncDoc {
   period: string;
+  warehouse_id: string;
   total_revenue: number;
   shop_real_money: number;
   refund_money: number;
@@ -111,12 +118,14 @@ function parseRevenueResponse(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   summaryRes: any,
   period: string,
-): Omit<RevenueSyncDoc, "sync_time" | "synced_by"> {
+): Omit<RevenueSyncDoc, "sync_time" | "synced_by" | "warehouse_id"> {
   // ── Parse daily breakdown from dataXs ──
   const dailyBreakdown: Record<string, number> = {};
   let totalRevenue = 0;
 
-  const dataXs = revenueRes?.data?.dataXs;
+  const dataXs = Array.isArray(revenueRes?.data)
+    ? revenueRes.data
+    : revenueRes?.data?.dataXs;
   if (Array.isArray(dataXs)) {
     for (const item of dataXs) {
       const forDate = item.forDate;
@@ -159,8 +168,9 @@ function parseRevenueResponse(
 export async function syncRevenueForPeriod(
   period: string,
   userId: string,
+  warehouseId = LANDMARK_81_WAREHOUSE_ID,
 ): Promise<SyncResult> {
-  const docRef = db.collection(COLLECTION).doc(period);
+  const docRef = db.collection(COLLECTION).doc(`${warehouseId}_${period}`);
   const existingSnap = await docRef.get();
 
   // Check staleness
@@ -172,7 +182,8 @@ export async function syncRevenueForPeriod(
   }
 
   // Fetch from JoyWorld
-  const token = await getJoyworldToken();
+  const useOpenApi = await hasEnabledOpenApiConfig(warehouseId);
+  const token = useOpenApi ? null : await getJoyworldToken();
   const { startDate, endDate } = getMonthDateRange(period);
 
   console.log(`[revenueSync] Fetching JoyWorld revenue for ${startDate} → ${endDate}`);
@@ -181,8 +192,12 @@ export async function syncRevenueForPeriod(
   // - getRevenueData: daily breakdown for the entire month (realMoney per day)
   // - getShopSummary: summary for last day (totalMoney = thực thu)
   const [revenueRes, summaryRes] = await Promise.all([
-    getRevenueData(token, startDate, endDate),
-    getShopSummary(token, endDate),
+    useOpenApi
+      ? getOpenApiRevenueData(warehouseId, startDate, endDate)
+      : getRevenueData(token as string, startDate, endDate),
+    useOpenApi
+      ? getOpenApiShopSummary(warehouseId, endDate)
+      : getShopSummary(token as string, endDate),
   ]);
 
   // Debug: log raw responses
@@ -203,6 +218,7 @@ export async function syncRevenueForPeriod(
   // Upsert to Firestore
   const docData: Record<string, unknown> = {
     ...parsed,
+    warehouse_id: warehouseId,
     sync_time: FieldValue.serverTimestamp(),
     synced_by: userId,
   };
@@ -221,8 +237,9 @@ export async function syncRevenueForPeriod(
  */
 export async function getCachedRevenue(
   period: string,
+  warehouseId = LANDMARK_81_WAREHOUSE_ID,
 ): Promise<RevenueSyncDoc | null> {
-  const docRef = db.collection(COLLECTION).doc(period);
+  const docRef = db.collection(COLLECTION).doc(`${warehouseId}_${period}`);
   const snap = await docRef.get();
   return snap.exists ? (snap.data() as RevenueSyncDoc) : null;
 }

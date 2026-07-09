@@ -139,6 +139,9 @@ export const LOGIN_FORM_TEXT = {
     hidePassword: "Ẩn mật khẩu",
     submit: "Đăng nhập hệ thống",
     authenticating: "Đang xác thực...",
+    wrongPasswordTitle: "Sai mật khẩu",
+    wrongPasswordDescription:
+      "Vui lòng kiểm tra lại mật khẩu. Nếu bạn không nhớ mật khẩu, hãy chọn Quên mật khẩu để đặt lại.",
   },
   zh: {
     emailRequired: "请输入邮箱",
@@ -152,6 +155,60 @@ export const LOGIN_FORM_TEXT = {
     hidePassword: "隐藏密码",
     submit: "登录系统",
     authenticating: "正在验证...",
+    wrongPasswordTitle: "密码错误",
+    wrongPasswordDescription:
+      "请检查密码。如果您忘记了密码，请选择忘记密码进行重置。",
+  },
+} as const;
+
+export const AUTH_TOAST_TEXT = {
+  vi: {
+    loginLoading: "Đang xác thực thông tin...",
+    loginSuccess: "Đăng nhập thành công",
+    loginSuccessDescription: "Hệ thống đang tải dữ liệu của bạn.",
+    loginError: "Đã xảy ra lỗi khi đăng nhập",
+    loginErrorDescription: "Vui lòng kiểm tra lại thông tin và thử lại.",
+    loginSystemFallback: "Đăng nhập hệ thống thất bại",
+    logoutLoading: "Đang đăng xuất...",
+    logoutSuccess: "Đã đăng xuất",
+    logoutLocalSuccess: "Đã đăng xuất khỏi thiết bị này",
+    logoutError: "Lỗi đăng xuất",
+    logoutSuccessDescription:
+      "Phiên cục bộ đã được xóa. Nếu API đang tắt, cookie máy chủ sẽ được xóa khi kết nối lại.",
+    logoutErrorDescription: "Vui lòng thử lại hoặc kiểm tra kết nối API.",
+    resetLoading: "Đang gửi email khôi phục...",
+    resetSuccess: "Đã gửi email khôi phục",
+    resetPending: "Yêu cầu đang chờ xử lý",
+    resetError: "Lỗi gửi email",
+    resetSuccessDescription:
+      "Vui lòng kiểm tra hộp thư đến của bạn để đặt lại mật khẩu.",
+    resetErrorDescription:
+      "Không thể gửi email. Vui lòng kiểm tra lại hệ thống.",
+    resetSendFallback: "Gửi email khôi phục thất bại",
+    retry: "Thử lại",
+  },
+  zh: {
+    loginLoading: "正在验证信息...",
+    loginSuccess: "登录成功",
+    loginSuccessDescription: "系统正在加载您的数据。",
+    loginError: "登录时发生错误",
+    loginErrorDescription: "请检查信息后重试。",
+    loginSystemFallback: "系统登录失败",
+    logoutLoading: "正在退出登录...",
+    logoutSuccess: "已退出登录",
+    logoutLocalSuccess: "已从此设备退出登录",
+    logoutError: "退出登录失败",
+    logoutSuccessDescription:
+      "本地会话已清除。如果 API 暂时不可用，服务器 Cookie 会在重新连接后清除。",
+    logoutErrorDescription: "请重试或检查 API 连接。",
+    resetLoading: "正在发送恢复邮件...",
+    resetSuccess: "恢复邮件已发送",
+    resetPending: "请求正在处理中",
+    resetError: "邮件发送失败",
+    resetSuccessDescription: "请检查收件箱以重置密码。",
+    resetErrorDescription: "无法发送邮件。请检查系统后重试。",
+    resetSendFallback: "发送恢复邮件失败",
+    retry: "重试",
   },
 } as const;
 

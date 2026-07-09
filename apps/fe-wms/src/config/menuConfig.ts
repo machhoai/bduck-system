@@ -20,6 +20,7 @@ import {
   PackagePlus,
   PackageMinus,
   PenLine,
+  Settings,
   Users,
   Warehouse,
   LucideIcon,
@@ -184,6 +185,13 @@ export const menuItems: MenuItem[] = [
     icon: FileClock,
     href: "/audit-logs",
     permission: "audit.read",
+  },
+  {
+    id: "systemSettings",
+    labelKey: "systemSettings",
+    icon: Settings,
+    href: "/system-settings",
+    permission: "system.config",
   },
   {
     id: "externalQueue",

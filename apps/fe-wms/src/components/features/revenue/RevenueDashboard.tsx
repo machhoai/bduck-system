@@ -25,6 +25,7 @@ import {
     type RevenueOrderItem,
     type SoldOrderGoodsItem,
 } from "@/hooks/useRevenueDashboard";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import RevenueCharts from "./RevenueCharts";
 import RevenueDateFilter from "./RevenueDateFilter";
@@ -43,16 +44,22 @@ export default function RevenueDashboard() {
     const d = t.revenue;
     const [activeTab, setActiveTab] = useState<RevenueDashboardTab>("revenue");
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() => getDefaultRevenueFilter());
+    const { warehouses, loading: warehousesLoading } = useWarehouses();
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+    const activeWarehouseId = selectedWarehouseId || warehouses[0]?.id || "";
     const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
         getDefaultRevenueComparison(getDefaultRevenueFilter()),
     );
-    const { data, loading, syncing, error } = useRevenueDashboard(filter);
+    const { data, loading, syncing, error } = useRevenueDashboard(filter, {
+        warehouseId: activeWarehouseId,
+        enabled: Boolean(activeWarehouseId),
+    });
     const comparisonFilters = useMemo(() => buildRevenueComparisonFilters(filter, comparison), [comparison, filter]);
     const {
         data: comparisonData,
         syncing: comparisonSyncing,
         error: comparisonError,
-    } = useRevenueDashboardComparisons(comparisonFilters);
+    } = useRevenueDashboardComparisons(comparisonFilters, activeWarehouseId);
     const comparisonLabels = useMemo(() => getRevenueComparisonLabels(comparisonFilters), [comparisonFilters]);
     const comparisonLabel = comparisonLabels.join(", ");
 
@@ -68,6 +75,30 @@ export default function RevenueDashboard() {
 
     return (
         <div className="flex w-full flex-col gap-4">
+            <section className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{d.filters.warehouse}</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--color-text-primary)]">
+                            {data?.warehouseName || warehouses.find((item) => item.id === activeWarehouseId)?.name || d.filters.selectWarehouse}
+                        </p>
+                    </div>
+                    <select
+                        value={activeWarehouseId}
+                        onChange={(event) => setSelectedWarehouseId(event.target.value)}
+                        disabled={warehousesLoading || warehouses.length === 0}
+                        className="h-10 min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand-primary)] sm:w-80"
+                    >
+                        {warehouses.length === 0 && <option value="">{d.filters.noWarehouse}</option>}
+                        {warehouses.map((warehouse) => (
+                            <option key={warehouse.id} value={warehouse.id}>
+                                {warehouse.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </section>
+
             <RevenueDateFilter
                 filter={filter}
                 comparison={comparison}

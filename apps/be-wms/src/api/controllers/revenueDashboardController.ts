@@ -9,6 +9,7 @@ import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 
 const dashboardQuerySchema = z.object({
   mode: z.enum(["today", "date", "month", "year", "custom"]).default("today"),
+  warehouseId: z.string().trim().min(1).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   year: z.string().regex(/^\d{4}$/).optional(),
@@ -16,14 +17,14 @@ const dashboardQuerySchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
-function hasPermission(req: Request, action: string): boolean {
+function hasPermission(req: Request, action: string, warehouseId: string): boolean {
   const user = (req as Request & {
     user?: { permissions?: Record<string, Record<string, unknown>> };
   }).user;
   if (!user?.permissions) return false;
 
   const globalPerms = user.permissions.global || {};
-  const warehousePerms = user.permissions[LANDMARK_81_WAREHOUSE_ID] || {};
+  const warehousePerms = user.permissions[warehouseId] || {};
   return (
     globalPerms["*"] === true ||
     globalPerms[action] === true ||
@@ -34,7 +35,10 @@ function hasPermission(req: Request, action: string): boolean {
 
 export const getRevenueDashboardHandler = async (req: Request, res: Response) => {
   try {
-    if (!hasPermission(req, "revenue.read")) {
+    const query = dashboardQuerySchema.parse(req.query);
+    const warehouseId = query.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+
+    if (!hasPermission(req, "revenue.read", warehouseId)) {
       return sendError(
         res,
         {
@@ -45,10 +49,10 @@ export const getRevenueDashboardHandler = async (req: Request, res: Response) =>
       );
     }
 
-    const query = dashboardQuerySchema.parse(req.query);
     const user = (req as Request & { user?: { id?: string; uid?: string } }).user;
     const data = await getRevenueDashboardData({
       mode: query.mode as RevenueDateMode,
+      warehouseId,
       date: query.date,
       month: query.month,
       year: query.year,

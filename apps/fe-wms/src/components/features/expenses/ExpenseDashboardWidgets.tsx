@@ -12,7 +12,11 @@ export default function ExpenseDashboardWidgets({
     const { t } = useTranslation();
     const now = new Date();
     const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const { metrics, loading, error } = useExpenseDashboardMetrics(warehouseId, period);
+    const { metrics, loading, error, hasLoaded } = useExpenseDashboardMetrics(
+        warehouseId,
+        period,
+        { keepPreviousData: true },
+    );
     const { revenue: revenueSync } = useRevenueSync(period);
 
     // Override KPIs with JoyWorld real-time revenue when available
@@ -42,7 +46,7 @@ export default function ExpenseDashboardWidgets({
         : (metrics.profitMargin ?? EMPTY_KPI);
 
     if (error) return null; // Silently hide on error in main dashboard
-    if (loading) return (
+    if (loading && !hasLoaded) return (
         <div className="flex w-full flex-col gap-4 animate-pulse">
             <div className="grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
                 {[1, 2, 3, 4].map(i => (

@@ -164,7 +164,11 @@ interface FirestoreDashboardDoc {
 
 interface UseRevenueDashboardOptions {
   enabled?: boolean;
+  warehouseId?: string;
+  keepPreviousData?: boolean;
 }
+
+const DEFAULT_WAREHOUSE_ID = "2fa83576-277f-483e-8c52-2ec85b9a8cff";
 
 export function getDefaultRevenueFilter(): RevenueDashboardFilter {
   const now = new Date();
@@ -272,6 +276,8 @@ export function getRevenueComparisonLabels(filters: RevenueDashboardFilter[]): s
 
 export function useRevenueDashboard(filter: RevenueDashboardFilter, options: UseRevenueDashboardOptions = {}) {
   const enabled = options.enabled ?? true;
+  const keepPreviousData = options.keepPreviousData ?? false;
+  const warehouseId = options.warehouseId || DEFAULT_WAREHOUSE_ID;
   const [dashboard, setDashboard] = useState<RevenueDashboardData | null>(null);
   const [orders, setOrders] = useState<RevenueOrderItem[]>([]);
   const [soldItems, setSoldItems] = useState<SoldOrderGoodsItem[]>([]);
@@ -280,7 +286,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
   const [error, setError] = useState<string | null>(null);
   const latestDataRef = useRef<RevenueDashboardData | null>(null);
   const syncingRef = useRef(false);
-  const cacheKey = useMemo(() => getRevenueDashboardCacheKey(filter), [filter]);
+  const cacheKey = useMemo(() => getRevenueDashboardCacheKey(filter, warehouseId), [filter, warehouseId]);
   const data = useMemo<RevenueDashboardData | null>(() => {
     if (!dashboard) return null;
     return { ...dashboard, orders, soldItems };
@@ -293,7 +299,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
     setSyncing(true);
     setError(null);
     try {
-      const qs = buildDashboardQuery(filter);
+      const qs = buildDashboardQuery(filter, warehouseId);
       await fetchRevenueDashboard(qs, signal);
     } catch (err) {
       if (signal?.aborted || (err as Error).name === "AbortError") return;
@@ -303,7 +309,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
       setSyncing(false);
       if (!latestDataRef.current && !signal?.aborted) setLoading(false);
     }
-  }, [enabled, filter]);
+  }, [enabled, filter, warehouseId]);
 
   useEffect(() => {
     if (!enabled) {
@@ -317,11 +323,17 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
       return;
     }
 
-    latestDataRef.current = null;
-    setDashboard(null);
-    setOrders([]);
-    setSoldItems([]);
-    setLoading(true);
+    const hasPreviousData = Boolean(latestDataRef.current);
+    if (!keepPreviousData || !hasPreviousData) {
+      latestDataRef.current = null;
+      setDashboard(null);
+      setOrders([]);
+      setSoldItems([]);
+      setLoading(true);
+    } else {
+      setLoading(false);
+      setSyncing(true);
+    }
     setError(null);
 
     let unsubscribeSnapshot: (() => void) | undefined;
@@ -350,6 +362,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
         setOrders([]);
         setSoldItems([]);
         setLoading(false);
+        setSyncing(false);
         return;
       }
 
@@ -371,6 +384,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
           latestDataRef.current = dashboard;
           setDashboard(dashboard);
           setLoading(false);
+          setSyncing(false);
 
           if (!unsubscribeOrders) {
             unsubscribeOrders = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "orders"), (ordersSnapshot) => {
@@ -400,6 +414,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
           console.warn("[useRevenueDashboard] onSnapshot error:", snapshotError);
           setError(snapshotError.message);
           setLoading(false);
+          setSyncing(false);
         },
       );
     });
@@ -412,17 +427,17 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
       if (unsubscribeOrders) unsubscribeOrders();
       if (unsubscribeSoldItems) unsubscribeSoldItems();
     };
-  }, [cacheKey, enabled, loadData]);
+  }, [cacheKey, enabled, keepPreviousData, loadData]);
 
   return { data, loading, syncing, error, cacheKey };
 }
 
-export function useRevenueDashboardComparisons(filters: RevenueDashboardFilter[]) {
+export function useRevenueDashboardComparisons(filters: RevenueDashboardFilter[], warehouseId = DEFAULT_WAREHOUSE_ID) {
   const [data, setData] = useState<RevenueDashboardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const filtersKey = useMemo(() => JSON.stringify(filters.map(buildDashboardQuery)), [filters]);
+  const filtersKey = useMemo(() => JSON.stringify(filters.map((filter) => buildDashboardQuery(filter, warehouseId))), [filters, warehouseId]);
 
   useEffect(() => {
     if (filters.length === 0) {
@@ -439,7 +454,7 @@ export function useRevenueDashboardComparisons(filters: RevenueDashboardFilter[]
     setSyncing(true);
     setError(null);
 
-    Promise.all(filters.map((filter) => fetchRevenueDashboard(buildDashboardQuery(filter), controller.signal)))
+    Promise.all(filters.map((filter) => fetchRevenueDashboard(buildDashboardQuery(filter, warehouseId), controller.signal)))
       .then((dashboards) => {
         if (isDisposed) return;
         setData(dashboards);
@@ -563,8 +578,8 @@ function getCompatibleComparisonMode(currentMode: RevenueDateMode, comparisonMod
   return "previous";
 }
 
-function buildDashboardQuery(filter: RevenueDashboardFilter): string {
-  const qs = new URLSearchParams({ mode: filter.mode });
+function buildDashboardQuery(filter: RevenueDashboardFilter, warehouseId = DEFAULT_WAREHOUSE_ID): string {
+  const qs = new URLSearchParams({ mode: filter.mode, warehouseId });
   if (filter.mode === "date") qs.set("date", filter.date);
   if (filter.mode === "month") qs.set("month", filter.month);
   if (filter.mode === "year") qs.set("year", filter.year);
@@ -575,9 +590,9 @@ function buildDashboardQuery(filter: RevenueDashboardFilter): string {
   return qs.toString();
 }
 
-function getRevenueDashboardCacheKey(filter: RevenueDashboardFilter): string {
+function getRevenueDashboardCacheKey(filter: RevenueDashboardFilter, warehouseId = DEFAULT_WAREHOUSE_ID): string {
   const range = normalizeRange(filter);
-  return `${filter.mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `${warehouseId}_${filter.mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 function normalizeRange(filter: RevenueDashboardFilter): { startDate: string; endDate: string } {

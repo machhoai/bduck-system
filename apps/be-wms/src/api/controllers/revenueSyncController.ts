@@ -27,6 +27,7 @@ export async function syncRevenueHandler(
 ): Promise<void> {
   try {
     const period = String(req.params.period || "");
+    const warehouseId = String(req.query.warehouseId || "");
 
     // Validate period format
     if (!period || !/^\d{4}-\d{2}$/.test(period)) {
@@ -45,7 +46,7 @@ export async function syncRevenueHandler(
     const user = (req as any).user as { id: string } | undefined;
     const userId = user?.id || "system";
 
-    const result = await syncRevenueForPeriod(period, userId);
+    const result = await syncRevenueForPeriod(period, userId, warehouseId || undefined);
 
     // Convert Firestore Timestamp to ISO string for JSON response
     const syncTimeValue = result.data.sync_time;
@@ -94,6 +95,7 @@ export async function getCachedRevenueHandler(
 ): Promise<void> {
   try {
     const period = String(req.params.period || "");
+    const warehouseId = String(req.query.warehouseId || "");
 
     if (!period || !/^\d{4}-\d{2}$/.test(period)) {
       res.status(400).json({
@@ -107,7 +109,7 @@ export async function getCachedRevenueHandler(
       return;
     }
 
-    const data = await getCachedRevenue(period);
+    const data = await getCachedRevenue(period, warehouseId || undefined);
 
     // Convert Firestore Timestamp to ISO string for JSON response
     let responseData = null;

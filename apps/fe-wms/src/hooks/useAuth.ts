@@ -8,16 +8,39 @@ import { auth } from "../lib/firebase";
 import { useUserStore } from "../stores/useUserStore";
 import { useMfaStore } from "../stores/useMfaStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { useTranslation } from "@/lib/i18n";
+import { AUTH_TOAST_TEXT } from "@/lib/i18n/componentTranslations";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+
+type LoginResult =
+  | { ok: true }
+  | { ok: false; reason: "wrong-password" | "unknown" };
+
+function getAuthErrorCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return "";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
+}
+
+function isWrongPasswordError(error: unknown) {
+  return [
+    "auth/wrong-password",
+    "auth/invalid-password",
+    "auth/invalid-credential",
+    "auth/invalid-login-credentials",
+  ].includes(getAuthErrorCode(error));
+}
 
 export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const setAuthData = useUserStore((state) => state.setAuthData);
   const clearAuth = useUserStore((state) => state.clearAuth);
+  const { lang } = useTranslation();
+  const copy = AUTH_TOAST_TEXT[lang === "zh" ? "zh" : "vi"];
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     setIsLoading(true);
 
     const loginAction = async () => {
@@ -41,7 +64,7 @@ export const useAuth = () => {
         throw createDetailedApiError(
           response,
           errorData,
-          "Dang nhap he thong that bai",
+          copy.loginSystemFallback,
         );
       }
 
@@ -59,22 +82,34 @@ export const useAuth = () => {
       return messages;
     };
 
-    try {
-      await gooeyToast.promise(loginAction(), {
-        loading: "Đang xác thực thông tin...",
-        success: (msgs) => msgs?.vi || "Đăng nhập thành công",
-        error: "Đã xảy ra lỗi khi đăng nhập",
-        description: {
-          success: "Hệ thống đang tải dữ liệu của bạn.",
-          error: "Vui lòng kiểm tra lại thông tin và thử lại.",
-        },
-        action: {
-          error: {
-            label: "Thử lại",
-            onClick: () => login(email, password),
+    const actionPromise = loginAction();
+    gooeyToast.promise(actionPromise, {
+      loading: copy.loginLoading,
+      success: (msgs) => msgs?.[lang] || copy.loginSuccess,
+      error: copy.loginError,
+      description: {
+        success: copy.loginSuccessDescription,
+        error: copy.loginErrorDescription,
+      },
+      action: {
+        error: {
+          label: copy.retry,
+          onClick: () => {
+            void login(email, password);
           },
         },
-      });
+      },
+    });
+
+    try {
+      await actionPromise;
+      return { ok: true };
+    } catch (error) {
+      console.error("[useAuth] login failed:", error);
+      return {
+        ok: false,
+        reason: isWrongPasswordError(error) ? "wrong-password" : "unknown",
+      };
     } finally {
       setIsLoading(false);
     }
@@ -104,20 +139,22 @@ export const useAuth = () => {
       return { backendSessionCleared };
     };
 
+    const actionPromise = logoutAction();
+    gooeyToast.promise(actionPromise, {
+      loading: copy.logoutLoading,
+      success: ({ backendSessionCleared }) =>
+        backendSessionCleared ? copy.logoutSuccess : copy.logoutLocalSuccess,
+      error: copy.logoutError,
+      description: {
+        success: copy.logoutSuccessDescription,
+        error: copy.logoutErrorDescription,
+      },
+    });
+
     try {
-      await gooeyToast.promise(logoutAction(), {
-        loading: "Đang đăng xuất...",
-        success: ({ backendSessionCleared }) =>
-          backendSessionCleared
-            ? "Đã đăng xuất"
-            : "Đã đăng xuất khỏi thiết bị này",
-        error: "Lỗi đăng xuất",
-        description: {
-          success:
-            "Phiên cục bộ đã được xóa. Nếu API đang tắt, cookie máy chủ sẽ được xóa khi kết nối lại.",
-          error: "Vui lòng thử lại hoặc kiểm tra kết nối API.",
-        },
-      });
+      await actionPromise;
+    } catch (error) {
+      console.error("[useAuth] logout failed:", error);
     } finally {
       setIsLoading(false);
     }
@@ -134,22 +171,27 @@ export const useAuth = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw createDetailedApiError(response, errorData, "Gửi email khôi phục thất bại");
+        throw createDetailedApiError(response, errorData, copy.resetSendFallback);
       }
       const data = await response.json();
       return data.messages;
     };
 
+    const actionPromise = resetAction();
+    gooeyToast.promise(actionPromise, {
+      loading: copy.resetLoading,
+      success: (msgs) => msgs?.[lang] || copy.resetSuccess,
+      error: (err: any) => err?.statusCode === 429 ? copy.resetPending : copy.resetError,
+      description: {
+        success: copy.resetSuccessDescription,
+        error: (err: any) => err?.messages?.[lang] || copy.resetErrorDescription,
+      },
+    });
+
     try {
-      await gooeyToast.promise(resetAction(), {
-        loading: "Đang gửi email khôi phục...",
-        success: (msgs) => msgs?.vi || "Đã gửi email khôi phục",
-        error: (err: any) => err?.statusCode === 429 ? "Yêu cầu đang chờ xử lý" : "Lỗi gửi email",
-        description: {
-          success: "Vui lòng kiểm tra hộp thư đến của bạn để đặt lại mật khẩu.",
-          error: (err: any) => err?.messages?.vi || "Không thể gửi email. Vui lòng kiểm tra lại hệ thống.",
-        },
-      });
+      await actionPromise;
+    } catch (error) {
+      console.error("[useAuth] reset password failed:", error);
     } finally {
       setIsLoading(false);
     }

@@ -10,6 +10,12 @@ import {
   getRevenueData,
   getStoreBalance,
 } from "./joyworldService.js";
+import { hasEnabledOpenApiConfig } from "./openApiConfigService.js";
+import {
+  getOpenApiGoodsStatistics,
+  getOpenApiRevenueData,
+} from "./openApiRevenueService.js";
+import { warehouseRepository } from "../repositories/warehouseRepository.js";
 
 export const LANDMARK_81_WAREHOUSE_ID = "2fa83576-277f-483e-8c52-2ec85b9a8cff";
 
@@ -18,6 +24,7 @@ export type RevenueChartGranularity = "day" | "month";
 
 export interface RevenueDashboardParams {
   mode: RevenueDateMode;
+  warehouseId?: string;
   date?: string;
   month?: string;
   year?: string;
@@ -180,7 +187,7 @@ const REVENUE_KEYS = ["realMoney", "shopRealMoney", "totalMoney", "salesMoney", 
 
 export function getRevenueDashboardCacheKey(params: RevenueDashboardParams): string {
   const normalized = normalizeRange(params);
-  return buildCacheKey(params.mode, normalized);
+  return buildCacheKey(params.warehouseId || LANDMARK_81_WAREHOUSE_ID, params.mode, normalized);
 }
 
 export async function getRevenueDashboardData(
@@ -188,7 +195,8 @@ export async function getRevenueDashboardData(
   userId = "system",
 ): Promise<RevenueDashboardData> {
   const normalized = normalizeRange(params);
-  const cacheKey = buildCacheKey(params.mode, normalized);
+  const warehouseId = params.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+  const cacheKey = buildCacheKey(warehouseId, params.mode, normalized);
   const docRef = db.collection(DASHBOARD_COLLECTION).doc(cacheKey);
   const cachedSnap = await docRef.get();
 
@@ -230,7 +238,9 @@ async function fetchRevenueDashboardData(
   cacheKey: string,
 ): Promise<RevenueDashboardData> {
   const chartWindow = getChartWindow(params, normalized);
-  const token = await getJoyworldToken();
+  const warehouseId = params.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+  const warehouse = await warehouseRepository.findById(warehouseId);
+  const token = await getLegacyJoyworldTokenOrNull();
   const selectedDays = daysBetween(normalized.startDate, normalized.endDate);
   const comparisonDays = daysBetween(normalized.comparison.startDate, normalized.comparison.endDate);
   const chartDays = daysBetween(chartWindow.startDate, chartWindow.endDate);
@@ -250,18 +260,18 @@ async function fetchRevenueDashboardData(
     goodsResponses,
     cashierResponses,
   ] = await Promise.all([
-    getRevenueData(token, normalized.startDate, normalized.endDate),
-    getRevenueData(token, normalized.comparison.startDate, normalized.comparison.endDate),
+    getRevenueDataForWarehouse(warehouseId, token, normalized.startDate, normalized.endDate),
+    getRevenueDataForWarehouse(warehouseId, token, normalized.comparison.startDate, normalized.comparison.endDate),
     fetchOrderSummary(token, normalized),
     fetchOrderSummary(token, normalized.comparison),
     fetchOrderGoodsRows(token, normalized),
-    getStoreBalance(token, normalized.startDate, normalized.endDate),
-    getStoreBalance(token, normalized.comparison.startDate, normalized.comparison.endDate),
-    getRevenueData(token, chartWindow.startDate, chartWindow.endDate),
+    token ? getStoreBalance(token, normalized.startDate, normalized.endDate) : emptyResponse(),
+    token ? getStoreBalance(token, normalized.comparison.startDate, normalized.comparison.endDate) : emptyResponse(),
+    getRevenueDataForWarehouse(warehouseId, token, chartWindow.startDate, chartWindow.endDate),
     fetchChartOrderSummaries(token, chartWindow),
     fetchCoinStatsByDate(token, coinDays),
-    fetchDailyResponses(selectedDays, (day) => getGoodsStatistics(token, day)),
-    fetchDailyResponses(selectedDays, (day) => getCashierSummary(token, day)),
+    fetchDailyResponses(selectedDays, (day) => getGoodsStatisticsForWarehouse(warehouseId, token, day)),
+    token ? fetchDailyResponses(selectedDays, (day) => getCashierSummary(token, day)) : [],
   ]);
 
   const selectedRevenueTotal = sumRevenue(selectedRevenue, normalized);
@@ -290,8 +300,8 @@ async function fetchRevenueDashboardData(
   const paymentMethods = parsePaymentMethodsFromOrders(orderData.orders, cashierResponses);
 
   return {
-    warehouseId: LANDMARK_81_WAREHOUSE_ID,
-    warehouseName: "B.Duck Cityfuns Landmark 81",
+    warehouseId,
+    warehouseName: warehouse?.name || "B.Duck Cityfuns Landmark 81",
     mode: params.mode,
     cacheKey,
     range: {
@@ -405,7 +415,46 @@ function getChartWindow(params: RevenueDashboardParams, range: NormalizedRange):
   return { startDate: startOfMonth(range.startDate), endDate: endOfMonth(range.startDate) };
 }
 
-async function fetchOrderSummary(token: string, range: DateRange): Promise<{ orderCount: number }> {
+async function getLegacyJoyworldTokenOrNull(): Promise<string | null> {
+  try {
+    return await getJoyworldToken();
+  } catch (error) {
+    console.warn("[revenueDashboard] Legacy JoyWorld token unavailable:", error);
+    return null;
+  }
+}
+
+async function getRevenueDataForWarehouse(
+  warehouseId: string,
+  token: string | null,
+  startDate: string,
+  endDate: string,
+): Promise<JsonRecord> {
+  if (await hasEnabledOpenApiConfig(warehouseId)) {
+    return getOpenApiRevenueData(warehouseId, startDate, endDate);
+  }
+  if (!token) return emptyResponse();
+  return getRevenueData(token, startDate, endDate);
+}
+
+async function getGoodsStatisticsForWarehouse(
+  warehouseId: string,
+  token: string | null,
+  forDate: string,
+): Promise<JsonRecord> {
+  if (await hasEnabledOpenApiConfig(warehouseId)) {
+    return getOpenApiGoodsStatistics(warehouseId, forDate);
+  }
+  if (!token) return emptyResponse();
+  return getGoodsStatistics(token, forDate);
+}
+
+function emptyResponse(): JsonRecord {
+  return { success: true, data: [] };
+}
+
+async function fetchOrderSummary(token: string | null, range: DateRange): Promise<{ orderCount: number }> {
+  if (!token) return { orderCount: 0 };
   const response = await getOrderList(token, {
     startTime: `${range.startDate} 00:00:00`,
     endTime: `${range.endDate} 23:59:59`,
@@ -415,7 +464,8 @@ async function fetchOrderSummary(token: string, range: DateRange): Promise<{ ord
   return { orderCount: extractTotalCount(response) };
 }
 
-async function fetchOrderGoodsRows(token: string, range: DateRange): Promise<JsonRecord[]> {
+async function fetchOrderGoodsRows(token: string | null, range: DateRange): Promise<JsonRecord[]> {
+  if (!token) return [];
   const limit = 200;
   const rows: JsonRecord[] = [];
   let page = 1;
@@ -438,7 +488,8 @@ async function fetchOrderGoodsRows(token: string, range: DateRange): Promise<Jso
   return rows;
 }
 
-async function fetchChartOrderSummaries(token: string, range: DateRange): Promise<Record<string, number>> {
+async function fetchChartOrderSummaries(token: string | null, range: DateRange): Promise<Record<string, number>> {
+  if (!token) return {};
   if (diffDays(range.startDate, range.endDate) > 62) {
     const months = monthsBetween(range.startDate, range.endDate);
     const summaries = await mapLimit(months, 4, (month) =>
@@ -451,7 +502,8 @@ async function fetchChartOrderSummaries(token: string, range: DateRange): Promis
   return Object.fromEntries(days.map((day, index) => [day, summaries[index]?.orderCount ?? 0]));
 }
 
-async function fetchCoinStatsByDate(token: string, days: string[]): Promise<Record<string, CoinStat>> {
+async function fetchCoinStatsByDate(token: string | null, days: string[]): Promise<Record<string, CoinStat>> {
+  if (!token) return {};
   const responses = await mapLimit(days, 6, (day) => getCoinStatistics(token, day));
   return Object.fromEntries(days.map((day, index) => [day, parseCoinStat(responses[index])]));
 }
@@ -831,8 +883,8 @@ function emptyCoinStat(): CoinStat {
   };
 }
 
-function buildCacheKey(mode: RevenueDateMode, range: DateRange): string {
-  return `${mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+function buildCacheKey(warehouseId: string, mode: RevenueDateMode, range: DateRange): string {
+  return `${warehouseId}_${mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 async function hydrateDashboardRows(

@@ -182,6 +182,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 
   // ── Products ──
   {
+    key: "system.config",
+    group: "system",
+    label: { vi: "Cau hinh he thong", zh: "系统配置" },
+    description: {
+      vi: "Cho phep xem va cap nhat cau hinh tich hop he thong theo cua hang.",
+      zh: "允许查看并更新按门店划分的系统集成配置。",
+    },
+  },
+  {
     key: "products.read",
     group: "products",
     label: { vi: "Xem sản phẩm", zh: "查看产品" },

@@ -21,6 +21,11 @@ import {
 } from "@/components/charts/chartjs";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import {
+    CurrencyNumberFlow,
+    NumberFlowValue,
+    PercentNumberFlow,
+} from "@/components/ui/NumberFlowValue";
+import {
     getDefaultRevenueComparison,
     getDefaultRevenueFilter,
     getRevenueComparisonLabel,
@@ -41,7 +46,6 @@ import {
     donutColors,
     formatAxisValue,
     formatCurrency,
-    formatNumber,
     getPaymentTotal,
     prepareComparableRevenuePoints,
     type ComparableRevenueChartPoint,
@@ -86,12 +90,14 @@ export default function DashboardRevenueOverview() {
         () => getDefaultRevenueComparison(filter),
         [filter],
     );
-    const { data, loading, syncing, error } = useRevenueDashboard(filter);
+    const { data, loading, syncing, error } = useRevenueDashboard(filter, {
+        keepPreviousData: true,
+    });
     const {
         data: onlineData,
         loading: onlineLoading,
         error: onlineError,
-    } = useOnlineSalesReport(filter);
+    } = useOnlineSalesReport(filter, { keepPreviousData: true });
     const [detail, setDetail] = useState<RevenueDetail | null>(null);
     const topProducts = useMemo(
         () => getDashboardTopProducts(data?.topProductGroups ?? []),
@@ -107,15 +113,19 @@ export default function DashboardRevenueOverview() {
                 </div>
             )}
 
-            {loading && <DashboardRevenueSkeleton />}
+            {loading && !data && <DashboardRevenueSkeleton />}
 
-            {!loading && data && (
+            {data && (
                 <>
                     <HeroStatButton
                         key="totalRevenue"
                         stat={{
                             label: d.stats.totalRevenue,
-                            value: formatCurrency(data.stats.totalRevenue.value),
+                            value: (
+                                <CurrencyNumberFlow
+                                    value={data.stats.totalRevenue.value}
+                                />
+                            ),
                             hint: d.stats.revenueHint,
                             icon: Banknote,
                             hero: true,
@@ -212,7 +222,7 @@ function DashboardRevenueStats({
     const stats: Array<{
         key: StatKey;
         label: string;
-        value: string;
+        value: ReactNode;
         hint: string;
         icon: LucideIcon;
         hero?: boolean;
@@ -221,28 +231,34 @@ function DashboardRevenueStats({
             {
                 key: "totalOrders",
                 label: d.stats.totalOrders,
-                value: formatNumber(data.stats.totalOrders.value),
+                value: (
+                    <NumberFlowValue value={data.stats.totalOrders.value} />
+                ),
                 hint: d.stats.ordersHint,
                 icon: ShoppingCart,
             },
             {
                 key: "averageOrderValue",
                 label: d.stats.averageOrderValue,
-                value: formatCurrency(data.stats.averageOrderValue.value),
+                value: (
+                    <CurrencyNumberFlow
+                        value={data.stats.averageOrderValue.value}
+                    />
+                ),
                 hint: d.stats.aovHint,
                 icon: ReceiptText,
             },
             {
                 key: "onlineRevenue",
                 label: overview.websiteRevenue,
-                value: onlineLoading
-                    ? "..."
-                    : onlineData
-                        ? formatCurrency(onlineData.summary.netRevenue)
-                        : "---",
+                value: onlineData ? (
+                    <CurrencyNumberFlow value={onlineData.summary.netRevenue} />
+                ) : (
+                    "---"
+                ),
                 hint: onlineError ?? d.online.subtitle,
                 icon: Globe2,
-                disabled: onlineLoading,
+                disabled: onlineLoading && !onlineData,
             },
         ];
 
@@ -265,7 +281,7 @@ function StatButton({
 }: {
     stat: {
         label: string;
-        value: string;
+        value: ReactNode;
         hint: string;
         icon: LucideIcon;
         hero?: boolean;
@@ -328,7 +344,7 @@ function HeroStatButton({
 }: {
     stat: {
         label: string;
-        value: string;
+        value: ReactNode;
         hint: string;
         icon: LucideIcon;
         hero?: boolean;
@@ -598,7 +614,7 @@ function PaymentMethodsPanel({
                                 </span>
                             </span>
                             <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                {method.percentage.toFixed(1)}%
+                                <PercentNumberFlow value={method.percentage} />
                             </span>
                         </button>
                     ))}
@@ -679,10 +695,10 @@ function TopProductsTable({
                                     </p>
                                 </td>
                                 <td className="px-2 py-2 text-right font-medium tabular-nums text-[var(--color-text-primary)]">
-                                    {formatNumber(product.quantity)}
+                                    <NumberFlowValue value={product.quantity} />
                                 </td>
                                 <td className="px-2 py-2 text-right font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                    {formatCurrency(product.revenue)}
+                                    <CurrencyNumberFlow value={product.revenue} />
                                 </td>
                             </tr>
                         ))}
@@ -859,16 +875,21 @@ function StatDetailContent({
             <div className="grid grid-cols-3 gap-2">
                 <DetailBox
                     label={d.detail.current}
-                    value={formatStatValue(statKey, metric.value)}
+                    value={renderStatValue(statKey, metric.value)}
                     highlight
                 />
                 <DetailBox
                     label={d.detail.previous}
-                    value={formatStatValue(statKey, metric.previousValue)}
+                    value={renderStatValue(statKey, metric.previousValue)}
                 />
                 <DetailBox
                     label={d.detail.change}
-                    value={`${metric.changePercent > 0 ? "+" : ""}${metric.changePercent.toFixed(1)}%`}
+                    value={
+                        <PercentNumberFlow
+                            value={metric.changePercent}
+                            prefix={metric.changePercent > 0 ? "+" : undefined}
+                        />
+                    }
                 />
             </div>
 
@@ -878,17 +899,21 @@ function StatDetailContent({
                     <div className="grid grid-cols-2 gap-2">
                         <DetailBox
                             label={overview.joyWorld}
-                            value={formatCurrency(
-                                data.stats.totalRevenue.value,
-                            )}
+                            value={
+                                <CurrencyNumberFlow
+                                    value={data.stats.totalRevenue.value}
+                                />
+                            }
                             highlight
                         />
                         <DetailBox
                             label={overview.website}
                             value={
                                 onlineData
-                                    ? formatCurrency(
-                                        onlineData.summary.netRevenue,
+                                    ? (
+                                        <CurrencyNumberFlow
+                                            value={onlineData.summary.netRevenue}
+                                        />
                                     )
                                     : "---"
                             }
@@ -904,15 +929,21 @@ function StatDetailContent({
                     <div className="grid grid-cols-3 gap-2">
                         <DetailBox
                             label={overview.joyWorld}
-                            value={formatNumber(data.stats.totalOrders.value)}
+                            value={
+                                <NumberFlowValue
+                                    value={data.stats.totalOrders.value}
+                                />
+                            }
                             highlight
                         />
                         <DetailBox
                             label={overview.website}
                             value={
                                 onlineData
-                                    ? formatNumber(
-                                        onlineData.summary.orderCount,
+                                    ? (
+                                        <NumberFlowValue
+                                            value={onlineData.summary.orderCount}
+                                        />
                                     )
                                     : "---"
                             }
@@ -921,8 +952,10 @@ function StatDetailContent({
                             label={overview.websiteProducts}
                             value={
                                 onlineData
-                                    ? formatNumber(
-                                        onlineData.summary.itemQuantity,
+                                    ? (
+                                        <NumberFlowValue
+                                            value={onlineData.summary.itemQuantity}
+                                        />
                                     )
                                     : "---"
                             }
@@ -938,20 +971,31 @@ function StatDetailContent({
                     <div className="grid grid-cols-3 gap-2">
                         <DetailBox
                             label={d.stats.totalRevenue}
-                            value={formatCurrency(
-                                data.stats.totalRevenue.value,
-                            )}
+                            value={
+                                <CurrencyNumberFlow
+                                    value={data.stats.totalRevenue.value}
+                                />
+                            }
                         />
                         <DetailBox
                             label={d.stats.totalOrders}
-                            value={formatNumber(data.stats.totalOrders.value)}
+                            value={
+                                <NumberFlowValue
+                                    value={data.stats.totalOrders.value}
+                                />
+                            }
                         />
                         <DetailBox
                             label={overview.websiteAov}
                             value={
                                 onlineData
-                                    ? formatCurrency(
-                                        onlineData.summary.averageOrderValue,
+                                    ? (
+                                        <CurrencyNumberFlow
+                                            value={
+                                                onlineData.summary
+                                                    .averageOrderValue
+                                            }
+                                        />
                                     )
                                     : "---"
                             }
@@ -976,7 +1020,7 @@ function OnlineRevenueDetail({
     const { t } = useTranslation();
     const d = t.revenue.online;
 
-    if (onlineLoading) {
+    if (onlineLoading && !onlineData) {
         return (
             <div className="h-32 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]" />
         );
@@ -995,28 +1039,50 @@ function OnlineRevenueDetail({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 <DetailBox
                     label={d.metrics.netRevenue}
-                    value={formatCurrency(onlineData.summary.netRevenue)}
+                    value={
+                        <CurrencyNumberFlow
+                            value={onlineData.summary.netRevenue}
+                        />
+                    }
                     highlight
                 />
                 <DetailBox
                     label={d.metrics.orders}
-                    value={formatNumber(onlineData.summary.orderCount)}
+                    value={
+                        <NumberFlowValue value={onlineData.summary.orderCount} />
+                    }
                 />
                 <DetailBox
                     label={d.metrics.averageOrderValue}
-                    value={formatCurrency(onlineData.summary.averageOrderValue)}
+                    value={
+                        <CurrencyNumberFlow
+                            value={onlineData.summary.averageOrderValue}
+                        />
+                    }
                 />
                 <DetailBox
                     label={d.metrics.grossRevenue}
-                    value={formatCurrency(onlineData.summary.grossRevenue)}
+                    value={
+                        <CurrencyNumberFlow
+                            value={onlineData.summary.grossRevenue}
+                        />
+                    }
                 />
                 <DetailBox
                     label={d.metrics.discountAmount}
-                    value={formatCurrency(onlineData.summary.discountAmount)}
+                    value={
+                        <CurrencyNumberFlow
+                            value={onlineData.summary.discountAmount}
+                        />
+                    }
                 />
                 <DetailBox
                     label={d.metrics.passesIssued}
-                    value={formatNumber(onlineData.summary.passesIssued)}
+                    value={
+                        <NumberFlowValue
+                            value={onlineData.summary.passesIssued}
+                        />
+                    }
                 />
             </div>
             <OnlineProviderBreakdown providers={onlineData.paymentProviders} />
@@ -1040,16 +1106,16 @@ function TimelinePointDetail({
             <div className="grid grid-cols-3 gap-2">
                 <DetailBox
                     label={d.stats.totalRevenue}
-                    value={formatCurrency(point.revenue)}
+                    value={<CurrencyNumberFlow value={point.revenue} />}
                     highlight
                 />
                 <DetailBox
                     label={d.stats.totalOrders}
-                    value={formatNumber(point.orderCount)}
+                    value={<NumberFlowValue value={point.orderCount} />}
                 />
                 <DetailBox
                     label={d.stats.memberCardSales}
-                    value={formatCurrency(point.memberCardAmount)}
+                    value={<CurrencyNumberFlow value={point.memberCardAmount} />}
                 />
             </div>
         </div>
@@ -1074,16 +1140,16 @@ function PaymentDetail({
             <div className="grid grid-cols-3 gap-2">
                 <DetailBox
                     label={overview.revenue}
-                    value={formatCurrency(method.amount)}
+                    value={<CurrencyNumberFlow value={method.amount} />}
                     highlight
                 />
                 <DetailBox
                     label={t.revenue.stats.totalOrders}
-                    value={formatNumber(method.orderCount)}
+                    value={<NumberFlowValue value={method.orderCount} />}
                 />
                 <DetailBox
                     label={overview.share}
-                    value={`${percentage.toFixed(1)}%`}
+                    value={<PercentNumberFlow value={percentage} />}
                 />
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3">
@@ -1092,7 +1158,7 @@ function PaymentDetail({
                         {label}
                     </span>
                     <span className="font-semibold tabular-nums text-[var(--color-text-primary)]">
-                        {formatCurrency(method.amount)}
+                        <CurrencyNumberFlow value={method.amount} />
                     </span>
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-neutral-100)]">
@@ -1114,14 +1180,17 @@ function ProductDetail({ product }: { product: DashboardTopProduct }) {
             <div className="grid grid-cols-3 gap-2">
                 <DetailBox
                     label={overview.revenue}
-                    value={formatCurrency(product.revenue)}
+                    value={<CurrencyNumberFlow value={product.revenue} />}
                     highlight
                 />
                 <DetailBox
                     label={overview.quantity}
-                    value={formatNumber(product.quantity)}
+                    value={<NumberFlowValue value={product.quantity} />}
                 />
-                <DetailBox label={overview.rank} value={`#${product.rank}`} />
+                <DetailBox
+                    label={overview.rank}
+                    value={<NumberFlowValue value={product.rank} prefix="#" />}
+                />
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3">
                 <p className="text-[10px] font-semibold tracking-wider text-[var(--color-text-muted)]">
@@ -1133,11 +1202,15 @@ function ProductDetail({ product }: { product: DashboardTopProduct }) {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                     <DetailBox
                         label={overview.groupRevenue}
-                        value={formatCurrency(product.groupRevenue)}
+                        value={
+                            <CurrencyNumberFlow value={product.groupRevenue} />
+                        }
                     />
                     <DetailBox
                         label={overview.groupQuantity}
-                        value={formatNumber(product.groupQuantity)}
+                        value={
+                            <NumberFlowValue value={product.groupQuantity} />
+                        }
                     />
                 </div>
             </div>
@@ -1163,7 +1236,7 @@ function TopProductsDetail({ products }: { products: DashboardTopProduct[] }) {
                             </p>
                         </div>
                         <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                            {formatCurrency(product.revenue)}
+                            <CurrencyNumberFlow value={product.revenue} />
                         </span>
                     </div>
                 </div>
@@ -1206,7 +1279,7 @@ function PaymentBreakdown({ methods }: { methods: PaymentMethodMetric[] }) {
                                 </span>
                             </span>
                             <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                {formatCurrency(method.amount)}
+                                <CurrencyNumberFlow value={method.amount} />
                             </span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -1221,11 +1294,11 @@ function PaymentBreakdown({ methods }: { methods: PaymentMethodMetric[] }) {
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
                             <span>
-                                {formatNumber(method.orderCount)}{" "}
+                                <NumberFlowValue value={method.orderCount} />{" "}
                                 {overview.ordersUnit}
                             </span>
                             <span className="font-semibold text-[var(--color-text-primary)]">
-                                {percentage.toFixed(1)}%
+                                <PercentNumberFlow value={percentage} />
                             </span>
                         </div>
                     </div>
@@ -1265,7 +1338,9 @@ function OnlineProviderBreakdown({
                                     {provider.provider}
                                 </span>
                                 <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                    {formatCurrency(provider.netRevenue)}
+                                    <CurrencyNumberFlow
+                                        value={provider.netRevenue}
+                                    />
                                 </span>
                             </div>
                             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -1280,11 +1355,13 @@ function OnlineProviderBreakdown({
                             </div>
                             <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
                                 <span>
-                                    {formatNumber(provider.orderCount)}{" "}
+                                    <NumberFlowValue
+                                        value={provider.orderCount}
+                                    />{" "}
                                     {d.payments.orders}
                                 </span>
                                 <span className="font-semibold text-[var(--color-text-primary)]">
-                                    {percentage.toFixed(1)}%
+                                    <PercentNumberFlow value={percentage} />
                                 </span>
                             </div>
                         </div>
@@ -1319,14 +1396,18 @@ function OnlineProductList({
                                     #{index + 1} {product.productName}
                                 </span>
                                 <span className="text-[10px] text-[var(--color-text-muted)] font-medium">
-                                    {formatNumber(product.quantitySold)}{" "}
+                                    <NumberFlowValue
+                                        value={product.quantitySold}
+                                    />{" "}
                                     {d.products.units} /{" "}
-                                    {formatNumber(product.orderCount)}{" "}
+                                    <NumberFlowValue
+                                        value={product.orderCount}
+                                    />{" "}
                                     {d.products.orders}
                                 </span>
                             </span>
                             <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                {formatCurrency(product.netRevenue)}
+                                <CurrencyNumberFlow value={product.netRevenue} />
                             </span>
                         </div>
                     </div>
@@ -1366,7 +1447,7 @@ function DetailBox({
     highlight,
 }: {
     label: string;
-    value: string;
+    value: ReactNode;
     highlight?: boolean;
 }) {
     return (
@@ -1477,7 +1558,7 @@ function getDetailTitle(
     return topProductsLabel;
 }
 
-function formatStatValue(key: StatKey, value: number): string {
-    if (key === "totalOrders") return formatNumber(value);
-    return formatCurrency(value);
+function renderStatValue(key: StatKey, value: number): ReactNode {
+    if (key === "totalOrders") return <NumberFlowValue value={value} />;
+    return <CurrencyNumberFlow value={value} />;
 }

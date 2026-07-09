@@ -61,8 +61,16 @@ interface ApiResponse<T> {
   messages?: { vi?: string; zh?: string };
 }
 
-export function useOnlineSalesReport(filter: RevenueDashboardFilter) {
+interface UseOnlineSalesReportOptions {
+  keepPreviousData?: boolean;
+}
+
+export function useOnlineSalesReport(
+  filter: RevenueDashboardFilter,
+  options: UseOnlineSalesReportOptions = {},
+) {
   const range = useMemo(() => normalizeRange(filter), [filter]);
+  const keepPreviousData = options.keepPreviousData ?? false;
   const [data, setData] = useState<OnlineSalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +101,7 @@ export function useOnlineSalesReport(filter: RevenueDashboardFilter) {
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         console.error("[useOnlineSalesReport] load error:", err);
-        setData(null);
+        if (!keepPreviousData) setData(null);
         setError(getDetailedErrorMessage(err, "Khong the tai doanh thu online."));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -102,7 +110,7 @@ export function useOnlineSalesReport(filter: RevenueDashboardFilter) {
 
     void load();
     return () => controller.abort();
-  }, [range.startDate, range.endDate]);
+  }, [keepPreviousData, range.startDate, range.endDate]);
 
   return { data, loading, error, range };
 }

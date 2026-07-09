@@ -83,3 +83,18 @@ export interface Attachment {
   sync_time: Date; // ISO
   created_at: Date;
 }
+
+export interface OpenApiWarehouseConfig {
+  id: string;
+  warehouse_id: string;
+  app_id: string;
+  base_url: string;
+  api_version: string;
+  action_versions?: Record<string, string>;
+  enabled: boolean;
+  has_secret: boolean;
+  secret_key_mask?: string | null;
+  created_at?: Date | null;
+  updated_at?: Date | null;
+  updated_by?: string | null;
+}

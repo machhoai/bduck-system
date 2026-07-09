@@ -18,6 +18,7 @@ import {
     Boxes,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { NumberFlowValue } from "@/components/ui/NumberFlowValue";
 import { useTranslation } from "@/lib/i18n";
 import type { DashboardKPIs } from "@/utils/inventoryAggregation";
 
@@ -94,7 +95,7 @@ function StatCard({
                 </div>
             </div>
             <p className="relative z-10 text-lg font-bold tracking-tight text-[var(--color-text-primary)]">
-                {value.toLocaleString()}
+                <NumberFlowValue value={value} />
             </p>
         </button>
     );

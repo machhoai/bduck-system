@@ -17,6 +17,7 @@ export default function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [hasWrongPasswordError, setHasWrongPasswordError] = useState(false);
     const [mounted, setMounted] = useState(false);
     const { login, resetPassword, isLoading } = useAuth();
     const { lang } = useTranslation();
@@ -44,10 +45,13 @@ export default function LoginForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email || !password) return;
-        await login(email, password);
+        setHasWrongPasswordError(false);
+        const result = await login(email, password);
+        setHasWrongPasswordError(!result.ok && result.reason === "wrong-password");
     };
 
     const handleForgotPassword = async () => {
+        setHasWrongPasswordError(false);
         if (!email) {
             import("goey-toast").then(({ gooeyToast }) => {
                 gooeyToast.error(copy.emailRequired, {
@@ -163,7 +167,10 @@ export default function LoginForm() {
                                 required
                                 disabled={isLoading}
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    setHasWrongPasswordError(false);
+                                }}
                                 placeholder="admin@bduck.com"
                                 className="
                   w-full h-12 px-4 rounded-[var(--radius-md)] text-sm outline-none
@@ -203,8 +210,13 @@ export default function LoginForm() {
                                     autoComplete="current-password"
                                     required
                                     disabled={isLoading}
+                                    aria-invalid={hasWrongPasswordError}
+                                    aria-describedby={hasWrongPasswordError ? "login-password-error" : undefined}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        setHasWrongPasswordError(false);
+                                    }}
                                     className="
                     w-full h-12 px-4 pr-12 rounded-[var(--radius-md)] text-sm outline-none
                     bg-[var(--color-surface-input)] border border-[var(--color-border-subtle)]
@@ -239,6 +251,18 @@ export default function LoginForm() {
                                     )}
                                 </button>
                             </div>
+                            {hasWrongPasswordError && (
+                                <div
+                                    id="login-password-error"
+                                    role="alert"
+                                    className="mt-2 rounded-[var(--radius-md)] border border-[var(--color-accent-error)]/30 bg-[var(--color-accent-error)]/10 px-3 py-2 text-sm leading-5 text-[var(--color-accent-error)]"
+                                >
+                                    <p className="font-semibold">{copy.wrongPasswordTitle}</p>
+                                    <p className="mt-1 text-[var(--color-text-secondary)]">
+                                        {copy.wrongPasswordDescription}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Submit button */}
