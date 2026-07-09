@@ -94,7 +94,7 @@ export default function RevenueDateFilter({
     };
 
     return (
-        <div className="rounded-[var(--radius-lg)] relative md:top-2 z-50 border border-[var(--color-border-subtle)] max-w-70 md:max-w-full mx-auto bg-[var(--color-surface-elevated)] p-1 shadow-sm">
+        <div className="rounded-[var(--radius-lg)] relative md:top-2 z-1 border border-[var(--color-border-subtle)] max-w-70 md:max-w-full mx-auto bg-[var(--color-surface-elevated)] p-1 shadow-sm">
             <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                     <div className="flex w-full overflow-x-auto rounded-[var(--radius-md)] bg-[var(--color-surface-card)]">
