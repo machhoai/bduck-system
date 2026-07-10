@@ -60,6 +60,7 @@ interface VoucherDetailDrawerProps {
     onClose: () => void;
     onClone?: (data: Record<string, unknown>) => void;
     onEdit?: (data: Record<string, unknown>) => void;
+    mobileBottomSheet?: boolean;
 }
 
 // ── Enriched item ──
@@ -173,6 +174,7 @@ export default function VoucherDetailDrawer({
     onClose,
     onClone,
     onEdit,
+    mobileBottomSheet = false,
 }: VoucherDetailDrawerProps) {
     const { t, lang } = useTranslation();
     const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
@@ -452,7 +454,18 @@ export default function VoucherDetailDrawer({
                 onClick={onClose}
             />
 
-            <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl">
+            <div
+                className={
+                    mobileBottomSheet
+                        ? "fixed inset-x-0 bottom-[var(--bottomnav-height)] z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-white shadow-2xl md:inset-y-0 md:left-auto md:right-0 md:bottom-auto md:max-h-none md:w-[90%] md:rounded-none lg:w-2/3"
+                        : "fixed inset-y-0 right-0 z-50 flex w-[90%] lg:w-2/3 flex-col bg-white shadow-2xl"
+                }
+            >
+                {mobileBottomSheet && (
+                    <div className="flex justify-center border-b border-[var(--color-border-soft)] px-4 pb-1.5 pt-2 md:hidden">
+                        <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
+                    </div>
+                )}
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
                     <div>

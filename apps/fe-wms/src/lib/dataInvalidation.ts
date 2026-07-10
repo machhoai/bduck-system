@@ -20,6 +20,8 @@ export type DataInvalidationKey =
   | "product_categories"
   | "products"
   | "roles"
+  | "stock_count_items"
+  | "stock_count_sessions"
   | "user_warehouse_roles"
   | "users"
   | "warehouse_locations"

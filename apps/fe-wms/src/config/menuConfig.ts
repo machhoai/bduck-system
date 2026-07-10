@@ -11,6 +11,7 @@ import {
   CircleDollarSign,
   ChartNoAxesCombined,
   ClipboardCheck,
+  ClipboardList,
   FileClock,
   FileSpreadsheet,
   Files,
@@ -137,6 +138,19 @@ export const menuItems: MenuItem[] = [
       "transfers.write",
     ],
     badgeKey: "vouchers",
+  },
+  {
+    id: "stockCounts",
+    labelKey: "stockCount",
+    icon: ClipboardList,
+    href: "/stock-counts",
+    permissionsAny: [
+      "stock_counts.view",
+      "stock_counts.create",
+      "stock_counts.count",
+      "external_count.view",
+      "external_count.count",
+    ],
   },
   {
     id: "fileLibrary",

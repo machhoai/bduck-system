@@ -79,6 +79,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 6,
   },
   {
+    id: "stock_counts",
+    label: { vi: "Kiểm đếm kho", zh: "库存盘点" },
+    icon: "ClipboardList",
+    order: 7,
+  },
+  {
     id: "reports",
     label: { vi: "Báo cáo", zh: "报表" },
     icon: "FileSpreadsheet",
@@ -342,6 +348,44 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Cập nhật và xóa bản ghi tồn kho.",
       zh: "更新和删除库存记录。",
+    },
+  },
+
+  // ── Stock Counts ──
+  {
+    key: "stock_counts.view",
+    group: "stock_counts",
+    label: { vi: "Xem phiên kiểm đếm kho", zh: "查看库存盘点会话" },
+    description: {
+      vi: "Xem danh sách và chi tiết phiên kiểm đếm nội bộ trong phạm vi kho được phân quyền.",
+      zh: "查看授权仓库范围内的内部库存盘点会话列表和详情。",
+    },
+  },
+  {
+    key: "stock_counts.create",
+    group: "stock_counts",
+    label: { vi: "Tạo phiên kiểm đếm kho", zh: "创建库存盘点会话" },
+    description: {
+      vi: "Tạo phiên kiểm đếm nội bộ cho các kho nằm trong phạm vi được phân quyền.",
+      zh: "在已授权的仓库范围内创建内部库存盘点会话。",
+    },
+  },
+  {
+    key: "stock_counts.count",
+    group: "stock_counts",
+    label: { vi: "Nhập kết quả kiểm đếm kho", zh: "录入库存盘点结果" },
+    description: {
+      vi: "Cập nhật số lượng, ghi nhận chênh lệch và nộp phiên kiểm đếm nội bộ.",
+      zh: "更新数量、记录差异并提交内部库存盘点会话。",
+    },
+  },
+  {
+    key: "stock_counts.cancel",
+    group: "stock_counts",
+    label: { vi: "Hủy phiên kiểm đếm kho", zh: "取消库存盘点会话" },
+    description: {
+      vi: "Hủy phiên kiểm đếm nội bộ trong phạm vi kho được phân quyền và ghi audit log.",
+      zh: "在授权仓库范围内取消内部库存盘点会话并记录审计日志。",
     },
   },
 

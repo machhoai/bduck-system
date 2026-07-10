@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+    AlertTriangle,
     BarChart3,
     Boxes,
     ChevronLeft,
@@ -31,6 +32,10 @@ import ImportExportChart from "@/components/inventory/ImportExportChart";
 import { InventoryValueChart } from "@/components/inventory/InventoryValueChart";
 import { WarehouseAuditCard } from "@/components/warehouses/WarehouseAuditCard";
 import { WarehouseInventoryView } from "@/components/warehouses/WarehouseInventoryView";
+import {
+    WarehouseDiscrepancyHistory,
+    WarehouseDiscrepancyHistoryButton,
+} from "@/components/warehouses/WarehouseDiscrepancyHistory";
 
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useInventory } from "@/hooks/useInventory";
@@ -59,7 +64,7 @@ import type {
     ExportSelectOption,
 } from "@/utils/exportExcel";
 
-type PageTab = "overview" | "products" | "locations";
+type PageTab = "overview" | "products" | "locations" | "discrepancies";
 type InventoryTab = "products" | "locations";
 
 export default function WarehouseDetailPage() {
@@ -101,6 +106,7 @@ export default function WarehouseDetailPage() {
     const [mobileTab, setMobileTab] = useState<"overview" | "inventory">("overview");
     const [isLocationsSheetOpen, setIsLocationsSheetOpen] = useState(false);
     const [isWarehouseInfoOpen, setIsWarehouseInfoOpen] = useState(false);
+    const [isDiscrepancyHistoryOpen, setIsDiscrepancyHistoryOpen] = useState(false);
 
     const warehouse = useMemo(
         () => warehouses.find((item) => item.id === warehouseId),
@@ -346,7 +352,7 @@ export default function WarehouseDetailPage() {
                 </div>
                 <div className="flex flex-col gap-3">
                     <div className="rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2">
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("overview")}
@@ -379,6 +385,17 @@ export default function WarehouseDetailPage() {
                             >
                                 <MapPin size={18} />
                                 {t.warehouses.locations}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab("discrepancies")}
+                                className={`flex min-h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${activeTab === "discrepancies"
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]"
+                                    }`}
+                            >
+                                <AlertTriangle size={18} />
+                                Lich su chenh lech
                             </button>
                         </div>
                     </div>
@@ -441,6 +458,11 @@ export default function WarehouseDetailPage() {
                             />
                         </div>
                     )}
+                    {activeTab === "discrepancies" && (
+                        <div className="flex min-h-[400px] flex-col gap-4">
+                            <WarehouseDiscrepancyHistory warehouseId={warehouseId} />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -494,6 +516,9 @@ export default function WarehouseDetailPage() {
                     >
                         <Info size={18} />
                     </button>
+                    <WarehouseDiscrepancyHistoryButton
+                        onClick={() => setIsDiscrepancyHistoryOpen(true)}
+                    />
                 </div>
 
                 {/* Base canvas content (Overview charts / Inventory search view) */}
@@ -577,6 +602,13 @@ export default function WarehouseDetailPage() {
                     onClose={() => setIsWarehouseInfoOpen(false)}
                     onSave={handleSaveWarehouse}
                     canEdit={canWriteLocations}
+                />
+
+                <WarehouseDiscrepancyHistory
+                    warehouseId={warehouseId}
+                    mode="sheet"
+                    isOpen={isDiscrepancyHistoryOpen}
+                    onClose={() => setIsDiscrepancyHistoryOpen(false)}
                 />
             </div>
 

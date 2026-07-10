@@ -47,6 +47,7 @@ const SEGMENT_NAV_KEY: Record<string, string> = {
     "process-configs": "processConfigs",
     "workflows": "workflows",
     "inventory": "inventory",
+    "stock-counts": "stockCount",
 };
 
 /** Detect Firebase UID / UUID-like IDs — dài ≥15 ký tự alphanumeric+dash+underscore */

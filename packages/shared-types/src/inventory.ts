@@ -110,11 +110,19 @@ export interface StockCountSession {
   session_number: string; // UNIQUE
   warehouse_id: string; // FK → warehouses
   warehouse_location_id?: string | null;
+  count_scope?: "WAREHOUSE" | "LOCATION" | "CATEGORY" | "PRODUCT";
+  criteria?: {
+    warehouse_location_ids?: string[];
+    product_ids?: string[];
+    category_id?: string | null;
+  } | null;
   count_type: StockCountType;
   count_purpose?: StockCountPurpose;
   checkpoint_type?: ExternalCountCheckpointType;
   source?: StockCountSource;
   status: StockCountSessionStatus;
+  created_by?: string | null;
+  assigned_counter_ids?: string[];
   counter_id: string | null; // FK → users
   supervisor_id: string | null; // FK → users — CHECK(counter_id <> supervisor_id)
   external_operator_name?: string | null;
@@ -154,6 +162,10 @@ export interface StockCountItem {
   discrepancy: number; // = counted_quantity - system_quantity
   condition: StockCountItemCondition;
   has_discrepancy: boolean; // IDX
+  recount_count?: number;
+  last_recount_at?: Date | null;
+  discrepancy_reason?: string | null;
+  discrepancy_note?: string | null;
   movement_delta_before_count?: number;
   movement_delta_after_count?: number;
   evidence_urls?: string[];

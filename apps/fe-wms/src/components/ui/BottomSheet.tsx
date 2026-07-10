@@ -23,6 +23,7 @@ interface BottomSheetProps {
     defaultSnap?: SnapPoint;
     isOpen?: boolean;
     onClose?: () => void;
+    zIndex?: number;
 }
 
 export function BottomSheet({
@@ -31,6 +32,7 @@ export function BottomSheet({
     defaultSnap = "collapsed",
     isOpen,
     onClose,
+    zIndex = 40,
 }: BottomSheetProps) {
     const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
     const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -169,6 +171,9 @@ export function BottomSheet({
 
     useEffect(() => {
         if (isOpen === false) return undefined;
+        // Controlled sheets already close through their backdrop; a global
+        // outside-click listener would also close parent sheets in nested flows.
+        if (onClose) return undefined;
         if (snap === "collapsed" && dragHeight === null && !onClose) return undefined;
 
         const handleOutsidePointerDown = (e: PointerEvent) => {
@@ -193,7 +198,8 @@ export function BottomSheet({
             {/* Backdrop overlay for controllable sheets */}
             {onClose && (
                 <div
-                    className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-300 md:hidden ${isSheetOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                    style={{ zIndex: zIndex - 10 }}
+                    className={`fixed inset-0 bg-black/40 transition-opacity duration-300 md:hidden ${isSheetOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                         }`}
                     onClick={onClose}
                 />
@@ -203,8 +209,9 @@ export function BottomSheet({
                 ref={sheetRef}
                 style={{
                     height: dragHeight === null ? SNAP_HEIGHTS[snap] : `${dragHeight}px`,
+                    zIndex: zIndex,
                 }}
-                className={`fixed inset-x-0 bottom-[var(--bottomnav-height)] max-h-[80%] z-40 flex flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)] md:hidden transition-[height,transform] duration-300 ease-out ${isDragActive ? "" : "transition-[height,transform]"
+                className={`fixed inset-x-0 bottom-[var(--bottomnav-height)] max-h-[80%] flex flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)] md:hidden transition-[height,transform] duration-300 ease-out ${isDragActive ? "" : "transition-[height,transform]"
                     } ${isSheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"}`}
             >
                 {/* Drag handle & Header */}

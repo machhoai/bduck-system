@@ -24,11 +24,13 @@ const API_BASE_URL =
 interface ReceivingSessionDrawerProps {
     task: WorkflowTask;
     onClose: () => void;
+    mobileBottomSheet?: boolean;
 }
 
 export default function ReceivingSessionDrawer({
     task,
     onClose,
+    mobileBottomSheet = false,
 }: ReceivingSessionDrawerProps) {
     const {
         voucherId,
@@ -209,7 +211,26 @@ export default function ReceivingSessionDrawer({
     ).length;
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-base)]">
+        <>
+        {mobileBottomSheet && (
+            <div
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden"
+                onClick={onClose}
+            />
+        )}
+
+        <div
+            className={
+                mobileBottomSheet
+                    ? "fixed inset-x-0 bottom-[var(--bottomnav-height)] z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-[var(--color-bg-base)] shadow-2xl md:inset-0 md:max-h-none md:rounded-none md:shadow-none"
+                    : "fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-base)]"
+            }
+        >
+            {mobileBottomSheet && (
+                <div className="flex justify-center border-b border-[var(--color-border-soft)] px-4 pb-1.5 pt-2 md:hidden">
+                    <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
+                </div>
+            )}
             <ReceivingSessionHeader
                 voucherNumber={voucherNumber || sourceVoucherNumber}
                 supplierName={supplierName || sourceSupplierName}
@@ -282,5 +303,6 @@ export default function ReceivingSessionDrawer({
                 />
             ) : null}
         </div>
+        </>
     );
 }

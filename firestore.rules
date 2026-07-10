@@ -258,6 +258,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /quarantine_records/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /stock_count_sessions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /stock_count_items/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── Pending Approvals: Authenticated read (for TaskInbox realtime) ──
     match /pending_approvals/{docId} {
       allow read: if isAuthenticated();

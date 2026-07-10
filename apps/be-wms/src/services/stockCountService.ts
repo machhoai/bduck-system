@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { FieldValue } from "firebase-admin/firestore";
 import {
   AuditAction,
   ExternalCountCheckpointType,
@@ -27,6 +28,7 @@ import { productRepository } from "../repositories/productRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import {
   findItemsBySessionId,
+  findItemById,
   findSessionById,
   findSessions,
   itemsCollection,
@@ -37,6 +39,28 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 import { getExternalCountRequirement } from "./externalCountConfigService.js";
 
 type ServiceError = Error & { statusCode: number; messages: Record<string, string> };
+type InternalCountScope = "WAREHOUSE" | "LOCATION" | "CATEGORY" | "PRODUCT";
+
+export interface InternalStockCountCreateInput {
+  warehouse_id: string;
+  count_scope: InternalCountScope;
+  warehouse_location_ids?: string[];
+  product_ids?: string[];
+  category_id?: string | null;
+  notes?: string | null;
+  blind_count_enabled?: boolean;
+  action_time?: string;
+}
+
+export interface InternalStockCountItemUpdateInput {
+  counted_quantity: number;
+  condition?: StockCountItemCondition;
+  evidence_urls?: string[];
+  discrepancy_reason?: string | null;
+  discrepancy_note?: string | null;
+  notes?: string | null;
+  action_time?: string;
+}
 
 export interface ExternalCountCheckpointItemInput {
   barcode?: string | null;
@@ -68,6 +92,10 @@ function serviceError(statusCode: number, vi: string, zh: string): ServiceError 
 
 function sessionNumber(now: Date) {
   return `ESC-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+function internalSessionNumber(now: Date) {
+  return `SC-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 function reportNumber(now: Date, index: number) {
@@ -123,6 +151,384 @@ async function enrichSessions(sessions: StockCountSession[]) {
       counter_name: session.external_operator_name ?? null,
     };
   });
+}
+
+function toInternalDetailSession(session: StockCountSession) {
+  return {
+    ...session,
+    is_internal: session.source === StockCountSource.INTERNAL_UI,
+  };
+}
+
+async function enrichCountItems(items: StockCountItem[]) {
+  const products = await productRepository.findByIds(items.map((item) => item.product_id));
+  const locations = await Promise.all(
+    [...new Set(items.map((item) => item.warehouse_location_id))]
+      .filter(Boolean)
+      .map(async (id) => [id, await locationRepository.findById(id)] as const),
+  );
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const locationById = new Map(locations);
+
+  return items.map((item) => {
+    const product = productById.get(item.product_id);
+    const location = locationById.get(item.warehouse_location_id);
+    return {
+      ...item,
+      product_name: product?.name ?? null,
+      product_code: product?.code ?? null,
+      product_barcode: product?.barcode ?? null,
+      product_unit: product?.unit ?? null,
+      product_image_url: product?.product_image_url?.[0] ?? null,
+      location_name: location?.name ?? null,
+      location_code: location?.code ?? null,
+      location_type: location?.type ?? null,
+    };
+  });
+}
+
+async function buildInternalInventoryRows(input: InternalStockCountCreateInput) {
+  const warehouse = await warehouseRepository.findById(input.warehouse_id);
+  if (!warehouse || warehouse.is_deleted) {
+    throw serviceError(404, "Khong tim thay kho.", "未找到仓库。");
+  }
+
+  let inventory = await findInventory({ warehouse_id: input.warehouse_id });
+
+  if (input.count_scope === "LOCATION") {
+    const locationIds = [...new Set(input.warehouse_location_ids ?? [])].filter(Boolean);
+    if (locationIds.length === 0) {
+      throw serviceError(400, "Can chon it nhat mot quay/vi tri.", "请至少选择一个库位。");
+    }
+    inventory = inventory.filter((item) => locationIds.includes(item.warehouse_location_id));
+  }
+
+  if (input.count_scope === "PRODUCT") {
+    const productIds = [...new Set(input.product_ids ?? [])].filter(Boolean);
+    if (productIds.length === 0) {
+      throw serviceError(400, "Can chon it nhat mot ma hang.", "请至少选择一个商品。");
+    }
+    inventory = inventory.filter((item) => productIds.includes(item.product_id));
+  }
+
+  if (input.count_scope === "CATEGORY") {
+    if (!input.category_id) {
+      throw serviceError(400, "Can chon danh muc/giai hang.", "请选择商品分类。");
+    }
+    const { data: products } = await productRepository.findProducts({
+      page: 1,
+      limit: 1000,
+      categoryId: input.category_id,
+    });
+    const productIds = new Set(products.map((product) => product.id));
+    inventory = inventory.filter((item) => productIds.has(item.product_id));
+  }
+
+  return inventory.filter((item) => item.total_quantity > 0 || item.atp_quantity > 0);
+}
+
+export async function listInternalStockCountSessions(filters: StockCountSessionFilters) {
+  const sessions = await findSessions({ ...filters, source: StockCountSource.INTERNAL_UI });
+  return enrichSessions(sessions);
+}
+
+export async function getInternalStockCountDetail(id: string) {
+  const session = await findSessionById(id);
+  if (!session || session.source !== StockCountSource.INTERNAL_UI) {
+    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+  }
+
+  const [enrichedSession] = await enrichSessions([session]);
+  const items = await findItemsBySessionId(id);
+  return {
+    session: toInternalDetailSession(enrichedSession as StockCountSession),
+    items: await enrichCountItems(items),
+  };
+}
+
+export async function createInternalStockCountSession(
+  input: InternalStockCountCreateInput,
+  userId: string,
+  clientIp: string,
+  auditMetadata?: AuditMetadata,
+) {
+  const now = new Date();
+  const sessionId = randomUUID();
+  const inventoryRows = await buildInternalInventoryRows(input);
+
+  if (inventoryRows.length === 0) {
+    throw serviceError(400, "Khong co ton kho phu hop voi tieu chi kiem dem.", "没有符合盘点条件的库存。");
+  }
+
+  const session: StockCountSession = {
+    id: sessionId,
+    session_number: internalSessionNumber(now),
+    warehouse_id: input.warehouse_id,
+    warehouse_location_id:
+      input.count_scope === "LOCATION" && input.warehouse_location_ids?.length === 1
+        ? input.warehouse_location_ids[0]
+        : null,
+    count_scope: input.count_scope,
+    criteria: {
+      warehouse_location_ids: input.warehouse_location_ids ?? [],
+      product_ids: input.product_ids ?? [],
+      category_id: input.category_id ?? null,
+    },
+    count_type:
+      input.count_scope === "WAREHOUSE" ? StockCountType.FULL : StockCountType.ADHOC,
+    count_purpose: StockCountPurpose.ADHOC,
+    source: StockCountSource.INTERNAL_UI,
+    status: StockCountSessionStatus.IN_PROGRESS,
+    created_by: userId,
+    assigned_counter_ids: [userId],
+    counter_id: userId,
+    supervisor_id: null,
+    blind_count_enabled: input.blind_count_enabled ?? false,
+    started_at: now,
+    completed_at: null,
+    submitted_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancel_reason: null,
+    discrepancy_count: 0,
+    action_time: input.action_time ? new Date(input.action_time) : now,
+    sync_time: now,
+    notes: input.notes ?? null,
+    is_deleted: false,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const items: StockCountItem[] = inventoryRows.map((record) => ({
+    id: randomUUID(),
+    session_id: sessionId,
+    inventory_id: record.id,
+    product_id: record.product_id,
+    warehouse_location_id: record.warehouse_location_id,
+    system_quantity: record.atp_quantity,
+    atp_snapshot: record.atp_quantity,
+    expected_at_count_time: record.atp_quantity,
+    current_atp: record.atp_quantity,
+    counted_quantity: null,
+    counted_at: null,
+    discrepancy: 0,
+    condition: StockCountItemCondition.GOOD,
+    has_discrepancy: false,
+    recount_count: 0,
+    last_recount_at: null,
+    discrepancy_reason: null,
+    discrepancy_note: null,
+    movement_delta_before_count: 0,
+    movement_delta_after_count: 0,
+    evidence_urls: [],
+    base_atp: record.atp_quantity,
+    movement_detected: false,
+    notes: null,
+    is_deleted: false,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  await db.runTransaction(async (txn) => {
+    txn.set(sessionsCollection().doc(sessionId), session);
+    items.forEach((item) => txn.set(itemsCollection().doc(item.id), item));
+  });
+
+  await logAudit({
+    entity_type: "STOCK_COUNT_SESSION",
+    entity_id: sessionId,
+    warehouse_id: input.warehouse_id,
+    action: AuditAction.CREATE,
+    user_id: userId,
+    old_value: null,
+    new_value: { ...session, item_count: items.length },
+    ip_address: clientIp,
+    action_time: auditMetadata?.action_time ?? session.action_time,
+  });
+
+  return getInternalStockCountDetail(sessionId);
+}
+
+export async function updateInternalStockCountItem(
+  sessionId: string,
+  itemId: string,
+  input: InternalStockCountItemUpdateInput,
+  userId: string,
+  auditMetadata?: AuditMetadata,
+) {
+  const [session, item] = await Promise.all([
+    findSessionById(sessionId),
+    findItemById(itemId),
+  ]);
+  if (!session || session.source !== StockCountSource.INTERNAL_UI) {
+    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+  }
+  if (!item || item.session_id !== sessionId) {
+    throw serviceError(404, "Khong tim thay dong kiem dem.", "未找到盘点明细。");
+  }
+  if (
+    session.status !== StockCountSessionStatus.IN_PROGRESS &&
+    session.status !== StockCountSessionStatus.DRAFT
+  ) {
+    throw serviceError(409, "Phien kiem dem khong con cho phep cap nhat.", "盘点会话不允许更新。");
+  }
+
+  const now = new Date();
+  const condition = input.condition ?? StockCountItemCondition.GOOD;
+  const discrepancy = input.counted_quantity - item.system_quantity;
+  const hasIssue = discrepancy !== 0 || condition !== StockCountItemCondition.GOOD;
+  const previousCounted = item.counted_quantity;
+  const updatePayload: Partial<StockCountItem> = {
+    counted_quantity: input.counted_quantity,
+    counted_at: now,
+    discrepancy,
+    condition,
+    has_discrepancy: hasIssue,
+    evidence_urls: input.evidence_urls ?? item.evidence_urls ?? [],
+    discrepancy_reason: input.discrepancy_reason ?? null,
+    discrepancy_note: input.discrepancy_note ?? null,
+    notes: input.notes ?? item.notes ?? null,
+    recount_count:
+      previousCounted === null || previousCounted === undefined
+        ? item.recount_count ?? 0
+        : (item.recount_count ?? 0) + 1,
+    last_recount_at:
+      previousCounted === null || previousCounted === undefined ? item.last_recount_at ?? null : now,
+    updated_at: now,
+  };
+
+  await itemsCollection().doc(itemId).update(updatePayload);
+  await sessionsCollection().doc(sessionId).update({
+    updated_at: now,
+    discrepancy_count: hasIssue
+      ? FieldValue.increment(item.has_discrepancy ? 0 : 1)
+      : FieldValue.increment(item.has_discrepancy ? -1 : 0),
+  });
+
+  await logAudit({
+    entity_type: "STOCK_COUNT_ITEM",
+    entity_id: itemId,
+    warehouse_id: session.warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: userId,
+    old_value: item as unknown as Record<string, unknown>,
+    new_value: updatePayload as unknown as Record<string, unknown>,
+    ...auditMetadata,
+    action_time: input.action_time ? new Date(input.action_time) : auditMetadata?.action_time,
+  });
+
+  return getInternalStockCountDetail(sessionId);
+}
+
+export async function submitInternalStockCountSession(
+  sessionId: string,
+  userId: string,
+  auditMetadata?: AuditMetadata,
+) {
+  const session = await findSessionById(sessionId);
+  if (!session || session.source !== StockCountSource.INTERNAL_UI) {
+    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+  }
+  if (session.status !== StockCountSessionStatus.IN_PROGRESS) {
+    throw serviceError(409, "Chi co the nop phien dang kiem dem.", "只能提交进行中的盘点。");
+  }
+
+  const items = await findItemsBySessionId(sessionId);
+  const uncounted = items.filter((item) => item.counted_quantity === null || item.counted_quantity === undefined);
+  if (uncounted.length > 0) {
+    throw serviceError(400, "Can hoan tat tat ca dong truoc khi nop.", "提交前请完成所有明细。");
+  }
+
+  const exceptions = items.filter((item) => item.has_discrepancy);
+  const missingEvidence = exceptions.find((item) => (item.evidence_urls ?? []).length === 0);
+  if (missingEvidence) {
+    throw serviceError(400, "Dong chenh lech/hang loi can dinh kem hinh anh.", "差异或异常品必须附带图片凭证。");
+  }
+
+  const now = new Date();
+  const status = exceptions.length > 0
+    ? StockCountSessionStatus.DISCREPANCY_FOUND
+    : StockCountSessionStatus.VERIFIED;
+
+  await db.runTransaction(async (txn) => {
+    const inventoryById = new Map<string, Inventory>();
+    for (const item of items) {
+      if (!item.inventory_id) continue;
+      const snap = await txn.get(db.collection("inventory").doc(item.inventory_id));
+      if (snap.exists) inventoryById.set(item.inventory_id, snap.data() as Inventory);
+    }
+
+    txn.update(sessionsCollection().doc(sessionId), {
+      status,
+      submitted_at: now,
+      completed_at: status === StockCountSessionStatus.VERIFIED ? now : null,
+      discrepancy_count: exceptions.length,
+      updated_at: now,
+    });
+    items.forEach((item) => {
+      if (item.inventory_id) {
+        txn.update(db.collection("inventory").doc(item.inventory_id), {
+          last_count_at: now,
+          last_updated_at: now,
+        });
+      }
+    });
+    await writeNonconformities(txn, session, exceptions, inventoryById, userId, now);
+  });
+
+  await logAudit({
+    entity_type: "STOCK_COUNT_SESSION",
+    entity_id: sessionId,
+    warehouse_id: session.warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: userId,
+    old_value: session as unknown as Record<string, unknown>,
+    new_value: { status, discrepancy_count: exceptions.length },
+    ...auditMetadata,
+  });
+
+  return getInternalStockCountDetail(sessionId);
+}
+
+export async function cancelInternalStockCountSession(
+  sessionId: string,
+  reason: string,
+  userId: string,
+  auditMetadata?: AuditMetadata,
+) {
+  const session = await findSessionById(sessionId);
+  if (!session || session.source !== StockCountSource.INTERNAL_UI) {
+    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+  }
+  if (
+    session.status === StockCountSessionStatus.SUBMITTED ||
+    session.status === StockCountSessionStatus.VERIFIED ||
+    session.status === StockCountSessionStatus.RESOLVED
+  ) {
+    throw serviceError(409, "Khong the huy phien da nop/da xu ly.", "无法取消已提交或已处理的盘点。");
+  }
+
+  const now = new Date();
+  await sessionsCollection().doc(sessionId).update({
+    status: StockCountSessionStatus.CANCELLED,
+    cancelled_at: now,
+    cancelled_by: userId,
+    cancel_reason: reason,
+    updated_at: now,
+  });
+
+  await logAudit({
+    entity_type: "STOCK_COUNT_SESSION",
+    entity_id: sessionId,
+    warehouse_id: session.warehouse_id,
+    action: AuditAction.CANCEL,
+    user_id: userId,
+    old_value: session as unknown as Record<string, unknown>,
+    new_value: { status: StockCountSessionStatus.CANCELLED, cancel_reason: reason },
+    ...auditMetadata,
+  });
+
+  return getInternalStockCountDetail(sessionId);
 }
 
 export async function listExternalCountSessions(filters: StockCountSessionFilters) {
@@ -283,6 +689,8 @@ async function writeNonconformities(
       expected_quantity: item.expected_at_count_time,
       actual_quantity: item.counted_quantity,
       evidence_urls: item.evidence_urls ?? [],
+      discrepancy_reason: item.discrepancy_reason ?? null,
+      discrepancy_note: item.discrepancy_note ?? item.notes ?? null,
       issue_type: issueType,
       status: quarantineId ? NonconformityStatus.QUARANTINED : NonconformityStatus.OPEN,
       reporter_id: reporterId,

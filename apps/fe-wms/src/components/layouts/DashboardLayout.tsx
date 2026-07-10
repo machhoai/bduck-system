@@ -34,7 +34,7 @@ export default function DashboardLayout({
                     }`}
             >
                 <TopBar />
-                <div className="relative flex w-full flex-1 flex-col overflow-y-auto px-2 pt-12 pb-0 lg:pl-4 lg:pr-2 lg:pt-12 lg:pb-0">
+                <div className="relative flex w-full flex-1 flex-col overflow-y-auto px-2 pt-12 pb-0 lg:pl-4 lg:pr-2 lg:pt-12 lg:pb-0  overflow-x-hidden">
                     <div id="wms-content-viewport" className="relative flex min-h-full w-full flex-col">
                         {children}
                     </div>

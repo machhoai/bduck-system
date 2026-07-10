@@ -20,11 +20,13 @@ import TaskSessionReviewOverlay from "./TaskSessionReviewOverlay";
 interface PickingSessionDrawerProps {
     voucherId: string;
     onClose: () => void;
+    mobileBottomSheet?: boolean;
 }
 
 export default function PickingSessionDrawer({
     voucherId,
     onClose,
+    mobileBottomSheet = false,
 }: PickingSessionDrawerProps) {
     const { voucherNumber, items: sourceItems, isLoading, exists } =
         usePickingSessionData(voucherId);
@@ -191,7 +193,26 @@ export default function PickingSessionDrawer({
         totalRequested > 0 ? Math.round((totalPicked / totalRequested) * 100) : 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        <>
+        {mobileBottomSheet && (
+            <div
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden"
+                onClick={onClose}
+            />
+        )}
+
+        <div
+            className={
+                mobileBottomSheet
+                    ? "fixed inset-x-0 bottom-[var(--bottomnav-height)] z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-white shadow-2xl md:inset-0 md:max-h-none md:rounded-none md:shadow-none"
+                    : "fixed inset-0 z-50 flex flex-col bg-white"
+            }
+        >
+            {mobileBottomSheet && (
+                <div className="flex justify-center border-b border-[var(--color-border-soft)] px-4 pb-1.5 pt-2 md:hidden">
+                    <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
+                </div>
+            )}
             <div className="border-b border-[var(--color-border-soft)] bg-white px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -394,5 +415,6 @@ export default function PickingSessionDrawer({
                 />
             ) : null}
         </div>
+        </>
     );
 }

@@ -248,6 +248,7 @@ export default function TaskVoucherActionTab({
         <VoucherDetailDrawer
           voucher={selectedVoucher.raw as any}
           onClose={() => setSelectedVoucher(null)}
+          mobileBottomSheet
         />
       )}
 
@@ -256,6 +257,7 @@ export default function TaskVoucherActionTab({
           orderId={selectedTransferId}
           onClose={() => setSelectedTransferId(null)}
           readOnly
+          mobileBottomSheet
         />
       )}
 
@@ -263,6 +265,7 @@ export default function TaskVoucherActionTab({
         <TransferDetailDrawer
           orderId={receivingTransferId}
           onClose={() => setReceivingTransferId(null)}
+          mobileBottomSheet
         />
       )}
 
@@ -282,6 +285,7 @@ export default function TaskVoucherActionTab({
                 } as any
               }
               onClose={() => setReceivingVoucherId(null)}
+              mobileBottomSheet
             />
           );
         })()}
@@ -290,6 +294,7 @@ export default function TaskVoucherActionTab({
         <PickingSessionDrawer
           voucherId={pickingVoucherId}
           onClose={() => setPickingVoucherId(null)}
+          mobileBottomSheet
         />
       )}
     </>

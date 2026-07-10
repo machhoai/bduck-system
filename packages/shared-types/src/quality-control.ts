@@ -26,6 +26,9 @@ export interface NonconformityReport {
     source_item_id?: string | null;
     expected_quantity?: number | null;
     actual_quantity?: number | null;
+    evidence_urls?: string[];
+    discrepancy_reason?: string | null;
+    discrepancy_note?: string | null;
     issue_type: IssueType;
     status: NonconformityStatus;
     reporter_id: string; // FK → users
