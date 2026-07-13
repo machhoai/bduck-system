@@ -7,6 +7,7 @@ import {
   PackageCheck,
   PackagePlus,
   RotateCcw,
+  ScanBarcode,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -37,6 +38,7 @@ export type EntityStepMeta = {
 export const ENTITY_ORDER: ProcessEntityType[] = [
   "IMPORT_VOUCHER",
   "EXPORT_VOUCHER",
+  "EXTERNAL_QUEUE_EXPORT",
   "TRANSFER_ORDER",
   "TRANSFER_INTRA",
 ];
@@ -49,6 +51,10 @@ export const ENTITY_META: Record<ProcessEntityType, EntityMeta> = {
   EXPORT_VOUCHER: {
     icon: PackageCheck,
     ...PROCESS_CONFIG_ENTITY_TEXT.EXPORT_VOUCHER,
+  },
+  EXTERNAL_QUEUE_EXPORT: {
+    icon: ScanBarcode,
+    ...PROCESS_CONFIG_ENTITY_TEXT.EXTERNAL_QUEUE_EXPORT,
   },
   TRANSFER_ORDER: {
     icon: RotateCcw,

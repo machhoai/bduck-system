@@ -2205,9 +2205,9 @@ const zh: Dictionary = {
         EXPIRED: "过期",
         WRONG_LOCATION: "位置错误",
         OTHER: "其他",
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 Object.assign(zh.importVoucher, {
@@ -2571,6 +2571,20 @@ Object.assign(zh, {
       pending: "待批准",
       history: "历史记录",
     },
+    approvalConfigTab: {
+      title: "审批级别配置",
+      subtitle: "按仓库/门店配置外部扫描队列最多 3 级审批。",
+      loadError: "无法加载审批级别配置。",
+      saving: "正在保存审批级别配置...",
+      saveSuccess: "审批级别配置已保存",
+      saveError: "无法保存审批级别配置",
+      saveSuccessDesc: "外部队列审批配置已更新。",
+      saveErrorDesc: "请检查权限和配置数据。",
+      missingBaseRole: "未找到一级审批默认角色。",
+      missingLevel: "请至少启用二级审批，或选择只需要一级审批。",
+      missingRole: "请为已启用的审批级别选择角色。",
+      invalidOrder: "必须先启用二级审批，才能启用三级审批。",
+    },
     pendingTab: {
       searchPlaceholder: "按专柜、仓库、批次代码或员工搜索...",
       metrics: {
@@ -2708,6 +2722,10 @@ Object.assign(zh, {
         unsavedChanges: "还有未保存的数量更改。在审批之前请保存每一行。",
         queuedApproveNote:
           "正在扫描的队列无法在此屏幕手动提交。系统将按柜台自动提交，然后管理员可以审批出库。",
+        revisionRequired:
+          "该批次已被后续审批级别退回。一级审批人可以调整数量后重新提交；此批次不会再接收新的扫描数据。",
+        waitingExportApproval:
+          "出库单已创建，正在等待后续审批级别。只有全部审批通过后，库存才会记录出库。",
         approveNotesPlaceholder: "批准备注（如果有）",
         rejectReasonPlaceholder: "拒绝原因（如果拒绝则必填）",
         queueProduct: "扫描产品队列",
@@ -2715,6 +2733,8 @@ Object.assign(zh, {
       statuses: {
         QUEUED: "排队中",
         SUBMITTED: "已提交",
+        PENDING_EXPORT_APPROVAL: "等待出库单审批",
+        REVISION_REQUIRED: "退回修改",
         APPROVED: "已批准",
         REJECTED: "已拒绝",
         EXPORTED: "已出库",

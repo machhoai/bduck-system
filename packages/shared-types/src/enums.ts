@@ -116,6 +116,7 @@ export enum ExportReferenceType {
   POS_TRANSACTION = "POS_TRANSACTION",
   TRANSFER_ORDER = "TRANSFER_ORDER",
   GIFT_SESSION = "GIFT_SESSION",
+  EXTERNAL_QUEUE_BATCH = "EXTERNAL_QUEUE_BATCH",
 }
 
 /** Transfer order status flow */

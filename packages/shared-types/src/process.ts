@@ -28,23 +28,25 @@
  * TRANSFER_INTRA  = Intra-warehouse transfers (simplified, auto-approve by default)
  */
 export type ProcessEntityType =
-  | 'IMPORT_VOUCHER'
-  | 'EXPORT_VOUCHER'
-  | 'TRANSFER_ORDER'
-  | 'TRANSFER_INTRA'
-  | 'PURCHASE_ORDER'
-  | 'ADJUSTMENT_VOUCHER'
-  | 'GIFT_SESSION';
+  | "IMPORT_VOUCHER"
+  | "EXPORT_VOUCHER"
+  | "EXTERNAL_QUEUE_EXPORT"
+  | "TRANSFER_ORDER"
+  | "TRANSFER_INTRA"
+  | "PURCHASE_ORDER"
+  | "ADJUSTMENT_VOUCHER"
+  | "GIFT_SESSION";
 
 /** Map entity type → Firestore collection name */
 export const ENTITY_COLLECTIONS: Record<ProcessEntityType, string> = {
-  IMPORT_VOUCHER: 'import_vouchers',
-  EXPORT_VOUCHER: 'export_vouchers',
-  TRANSFER_ORDER: 'transfer_orders',
-  TRANSFER_INTRA: 'transfer_orders', // Same collection, different config
-  PURCHASE_ORDER: 'purchase_orders',
-  ADJUSTMENT_VOUCHER: 'adjustment_vouchers',
-  GIFT_SESSION: 'gift_sessions',
+  IMPORT_VOUCHER: "import_vouchers",
+  EXPORT_VOUCHER: "export_vouchers",
+  EXTERNAL_QUEUE_EXPORT: "export_vouchers",
+  TRANSFER_ORDER: "transfer_orders",
+  TRANSFER_INTRA: "transfer_orders", // Same collection, different config
+  PURCHASE_ORDER: "purchase_orders",
+  ADJUSTMENT_VOUCHER: "adjustment_vouchers",
+  GIFT_SESSION: "gift_sessions",
 };
 
 // ─────────────────────────────────────────────
@@ -103,10 +105,10 @@ export interface ApprovalLevel {
 }
 
 export type ApprovalScopeMode =
-  | 'ENTITY_WAREHOUSE'
-  | 'SOURCE_WAREHOUSE'
-  | 'DESTINATION_WAREHOUSE'
-  | 'GLOBAL';
+  | "ENTITY_WAREHOUSE"
+  | "SOURCE_WAREHOUSE"
+  | "DESTINATION_WAREHOUSE"
+  | "GLOBAL";
 
 // ─────────────────────────────────────────────
 // STEP OPTION (config per pipeline step)
@@ -117,7 +119,7 @@ export type ApprovalScopeMode =
  * - CREATOR: Only the user who created the voucher
  * - ROLE: Only users belonging to the specified role (assigned_role_id)
  */
-export type StepAssignmentMode = 'CREATOR' | 'ROLE';
+export type StepAssignmentMode = "CREATOR" | "ROLE";
 
 /**
  * Configurable options for a specific step in the pipeline.
@@ -197,7 +199,11 @@ export interface ProcessConfig {
 // APPROVAL RECORD STATUS
 // ─────────────────────────────────────────────
 
-export type ApprovalRecordStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type ApprovalRecordStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED";
 
 // ─────────────────────────────────────────────
 // APPROVAL RECORD (Firestore: pending_approvals)
@@ -217,6 +223,8 @@ export interface ApprovalRecord {
   id: string;
   /** Which entity type (IMPORT_VOUCHER, EXPORT_VOUCHER, etc.) */
   entity_type: ProcessEntityType;
+  /** Optional process config source when an entity reuses another approval callback. */
+  config_entity_type?: ProcessEntityType;
   /** FK → voucher/order ID */
   entity_id: string;
   /** FK → warehouses (denormalized for scoped queries) */
@@ -233,6 +241,8 @@ export interface ApprovalRecord {
   allow_global_fallback?: boolean;
   /** Sequential level (0-based, matches ApprovalLevel.level) */
   level: number;
+  /** Resubmission attempt for the same entity. Older rejected attempts remain for audit. */
+  approval_attempt?: number;
   /** Role required to approve (FK → roles.id) */
   role_id: string;
   /** Current status */

@@ -46,6 +46,18 @@ const STATUS_BADGE_MAP: Record<
             "border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
         icon: ClipboardCheck,
     },
+    REVISION_REQUIRED: {
+        label: "externalQueue.statuses.REVISION_REQUIRED",
+        className:
+            "border-[var(--color-error-border)] bg-[var(--color-error-bg)] text-[var(--color-error-text)]",
+        icon: RefreshCw,
+    },
+    PENDING_EXPORT_APPROVAL: {
+        label: "externalQueue.statuses.PENDING_EXPORT_APPROVAL",
+        className:
+            "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
+        icon: Clock3,
+    },
 };
 
 const safeParseDate = (val: unknown): Date | null => {
@@ -199,8 +211,8 @@ export default function ExternalQueuePendingTab() {
         });
     }, [pendingBatches, searchTerm]);
 
-    const submittedCount = pendingBatches.filter(
-        (batch: any) => batch.status === "SUBMITTED",
+    const submittedCount = pendingBatches.filter((batch: any) =>
+        ["SUBMITTED", "REVISION_REQUIRED"].includes(batch.status),
     ).length;
     const draftCount = pendingBatches.filter(
         (batch: any) => batch.status === "QUEUED" || batch.is_draft,
@@ -216,19 +228,23 @@ export default function ExternalQueuePendingTab() {
         const groups = new Map<string, any[]>();
         for (const batch of filteredBatches) {
             const key =
-                batch.queue_date || formatQueueDate(batch.shift_date, "yyyy-MM-dd");
+                batch.queue_date ||
+                formatQueueDate(batch.shift_date, "yyyy-MM-dd");
             const list = groups.get(key) || [];
             list.push(batch);
             groups.set(key, list);
         }
-        return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
+        return Array.from(groups.entries()).sort(([a], [b]) =>
+            b.localeCompare(a),
+        );
     }, [filteredBatches]);
 
     const statusLabel = (status: string) => {
         const badge = STATUS_BADGE_MAP[status];
         if (!badge) return null;
         const Icon = badge.icon;
-        const label = (externalQueueText.statuses as any)?.[status] ?? badge.label;
+        const label =
+            (externalQueueText.statuses as any)?.[status] ?? badge.label;
         return (
             <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${badge.className}`}
@@ -263,7 +279,10 @@ export default function ExternalQueuePendingTab() {
     if (pendingBatches.length === 0) {
         return (
             <div className="flex h-72 flex-col items-center justify-center rounded-lg border border-[var(--color-border-subtle)] bg-white px-4 text-center">
-                <Inbox size={48} className="mb-4 text-[var(--color-neutral-300)]" />
+                <Inbox
+                    size={48}
+                    className="mb-4 text-[var(--color-neutral-300)]"
+                />
                 <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
                     {pendingText.emptyTitle}
                 </h3>
@@ -305,7 +324,9 @@ export default function ExternalQueuePendingTab() {
                             type="text"
                             placeholder={pendingText.searchPlaceholder}
                             value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
+                            onChange={(event) =>
+                                setSearchTerm(event.target.value)
+                            }
                             className="h-9 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] pl-9 pr-3 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
                         />
                     </div>
@@ -316,7 +337,8 @@ export default function ExternalQueuePendingTab() {
                                     type="button"
                                     onClick={() => setIsScheduleOpen(true)}
                                     title={
-                                        schedule?.enabled && schedule.times.length > 0
+                                        schedule?.enabled &&
+                                        schedule.times.length > 0
                                             ? `GMT+7 ${schedule.times.join(", ")}`
                                             : pendingText.scheduleButton
                                     }
@@ -324,7 +346,8 @@ export default function ExternalQueuePendingTab() {
                                 >
                                     <Settings className="h-4 w-4" />
                                     <span className="truncate">
-                                        {schedule?.enabled && schedule.times.length > 0
+                                        {schedule?.enabled &&
+                                        schedule.times.length > 0
                                             ? `GMT+7 ${schedule.times.join(", ")}`
                                             : pendingText.scheduleButton}
                                     </span>
@@ -336,7 +359,9 @@ export default function ExternalQueuePendingTab() {
                                     className="inline-flex w-fit max-w-fit h-9 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
                                 >
                                     <Sparkles className="h-4 w-4" />
-                                    <span className="truncate">{pendingText.autoSubmit}</span>
+                                    <span className="truncate">
+                                        {pendingText.autoSubmit}
+                                    </span>
                                 </button>
                             </>
                         )}
@@ -349,7 +374,9 @@ export default function ExternalQueuePendingTab() {
                             <RefreshCw
                                 className={`h-4 w-4  ${isRefreshing ? "animate-spin" : ""}`}
                             />
-                            <span className="truncate">{pendingText.refresh}</span>
+                            <span className="truncate">
+                                {pendingText.refresh}
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -375,23 +402,44 @@ export default function ExternalQueuePendingTab() {
                                     <div className="space-y-2">
                                         {batches.map((batch: any) => {
                                             const isDraft =
-                                                batch.is_draft || batch.status === "QUEUED";
-                                            const operators = Array.isArray(batch.operator_names)
-                                                ? batch.operator_names.filter(Boolean)
-                                                : [batch.operator_name].filter(Boolean);
-                                            const canOpen = isDraft ? canManageQueue : canApprove;
+                                                batch.is_draft ||
+                                                batch.status === "QUEUED";
+                                            const isRevision =
+                                                batch.status ===
+                                                "REVISION_REQUIRED";
+                                            const isWaitingExportApproval =
+                                                batch.status ===
+                                                "PENDING_EXPORT_APPROVAL";
+                                            const operators = Array.isArray(
+                                                batch.operator_names,
+                                            )
+                                                ? batch.operator_names.filter(
+                                                      Boolean,
+                                                  )
+                                                : [batch.operator_name].filter(
+                                                      Boolean,
+                                                  );
+                                            const canOpen = isDraft
+                                                ? canManageQueue
+                                                : isWaitingExportApproval
+                                                  ? canApprove || canManageQueue
+                                                  : canApprove ||
+                                                    (isRevision &&
+                                                        canManageQueue);
                                             const timeLabel = isDraft
                                                 ? formatQueueDate(
-                                                    batch.last_scan_time || batch.shift_date,
-                                                    "HH:mm",
-                                                    dateLocale,
-                                                )
+                                                      batch.last_scan_time ||
+                                                          batch.shift_date,
+                                                      "HH:mm",
+                                                      dateLocale,
+                                                  )
                                                 : formatQueueDate(
-                                                    batch.submitted_at,
-                                                    "HH:mm dd/MM/yyyy",
-                                                    dateLocale,
-                                                );
-                                            const canViewPrice = canViewBatchPrice(batch);
+                                                      batch.submitted_at,
+                                                      "HH:mm dd/MM/yyyy",
+                                                      dateLocale,
+                                                  );
+                                            const canViewPrice =
+                                                canViewBatchPrice(batch);
 
                                             return (
                                                 <div
@@ -401,7 +449,9 @@ export default function ExternalQueuePendingTab() {
                                                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                {statusLabel(batch.status)}
+                                                                {statusLabel(
+                                                                    batch.status,
+                                                                )}
                                                                 <span className="truncate text-sm font-bold text-[var(--color-text-primary)]">
                                                                     {batch.location_name ||
                                                                         batch.location_code ||
@@ -409,7 +459,9 @@ export default function ExternalQueuePendingTab() {
                                                                 </span>
                                                                 {batch.location_code && (
                                                                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                                                                        {batch.location_code}
+                                                                        {
+                                                                            batch.location_code
+                                                                        }
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -426,8 +478,11 @@ export default function ExternalQueuePendingTab() {
                                                                 <div className="flex min-w-0 items-center gap-2">
                                                                     <Users className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                                                                     <span className="truncate">
-                                                                        {operators.length > 0
-                                                                            ? operators.join(", ")
+                                                                        {operators.length >
+                                                                        0
+                                                                            ? operators.join(
+                                                                                  ", ",
+                                                                              )
                                                                             : "-"}
                                                                     </span>
                                                                 </div>
@@ -443,36 +498,52 @@ export default function ExternalQueuePendingTab() {
                                                         </div>
 
                                                         <div
-                                                            className={`grid gap-2 ${canViewPrice
-                                                                ? "grid-cols-3 lg:w-[360px]"
-                                                                : "grid-cols-2 lg:w-60"
-                                                                }`}
+                                                            className={`grid gap-2 ${
+                                                                canViewPrice
+                                                                    ? "grid-cols-3 lg:w-[360px]"
+                                                                    : "grid-cols-2 lg:w-60"
+                                                            }`}
                                                         >
                                                             <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
                                                                 <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                                    {pendingText.sku}
+                                                                    {
+                                                                        pendingText.sku
+                                                                    }
                                                                 </p>
                                                                 <p className="text-sm font-bold text-[var(--color-text-primary)]">
-                                                                    {(batch.total_products || 0).toLocaleString()}
+                                                                    {(
+                                                                        batch.total_products ||
+                                                                        0
+                                                                    ).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                             <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
                                                                 <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                                    {pendingText.quantityShort}
+                                                                    {
+                                                                        pendingText.quantityShort
+                                                                    }
                                                                 </p>
                                                                 <p className="text-sm font-bold text-[var(--color-text-primary)]">
-                                                                    {(batch.total_quantity || 0).toLocaleString()}
+                                                                    {(
+                                                                        batch.total_quantity ||
+                                                                        0
+                                                                    ).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                             {canViewPrice && (
                                                                 <div className="rounded-md bg-[var(--color-neutral-50)] px-3 py-2 text-right">
                                                                     <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
-                                                                        {pendingText.money}
+                                                                        {
+                                                                            pendingText.money
+                                                                        }
                                                                     </p>
                                                                     <p className="text-sm font-bold text-[var(--color-brand-primary)]">
                                                                         {Number(
-                                                                            batch.total_value || 0,
-                                                                        ).toLocaleString("vi-VN")}
+                                                                            batch.total_value ||
+                                                                                0,
+                                                                        ).toLocaleString(
+                                                                            "vi-VN",
+                                                                        )}
                                                                         đ
                                                                     </p>
                                                                 </div>
@@ -484,12 +555,16 @@ export default function ExternalQueuePendingTab() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() =>
-                                                                        setSelectedBatchId(batch.batch_id)
+                                                                        setSelectedBatchId(
+                                                                            batch.batch_id,
+                                                                        )
                                                                     }
                                                                     className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)]"
                                                                 >
                                                                     <Eye className="h-4 w-4" />
-                                                                    {pendingText.open}
+                                                                    {
+                                                                        pendingText.open
+                                                                    }
                                                                 </button>
                                                             ) : (
                                                                 <span className="inline-flex h-9 items-center text-xs text-[var(--color-text-muted)]">
@@ -517,6 +592,11 @@ export default function ExternalQueuePendingTab() {
                     batchData={pendingBatches.find(
                         (batch: any) => batch.batch_id === selectedBatchId,
                     )}
+                    readonly={
+                        pendingBatches.find(
+                            (batch: any) => batch.batch_id === selectedBatchId,
+                        )?.status === "PENDING_EXPORT_APPROVAL"
+                    }
                     onClose={() => setSelectedBatchId(null)}
                     onSuccess={() => {
                         setSelectedBatchId(null);

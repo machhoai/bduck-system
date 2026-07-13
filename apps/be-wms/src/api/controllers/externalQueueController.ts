@@ -1,17 +1,23 @@
 import { Request, Response } from "express";
 import { db } from "../../config/firebase.js";
 import {
+  AuditAction,
+  type ApprovalLevel,
   ExternalScanQueue,
   ExternalScanQueueStatus,
 } from "@bduck/shared-types";
 import * as externalScanService from "../../services/externalScanService.js";
 import * as autoSubmitConfigService from "../../services/externalQueueAutoSubmitConfigService.js";
 import * as scannableProductService from "../../services/externalQueueScannableProductService.js";
+import * as processConfigService from "../../services/processConfigService.js";
+import { logAudit } from "../../services/auditService.js";
 import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
 import { getUsersByIds } from "../../repositories/userRepository.js";
 import { warehouseRepository } from "../../repositories/warehouseRepository.js";
 import { z } from "zod";
+
+const EXTERNAL_QUEUE_CONFIG_ENTITY = "EXTERNAL_QUEUE_EXPORT" as const;
 
 const hasScopedPermission = (
   user: any,
@@ -75,19 +81,23 @@ const getOperatorDisplayName = (record: ExternalScanQueue) => {
 
 export const getPendingBatches = async (req: Request, res: Response) => {
   try {
-    // Query both QUEUED (đang quét, chưa submit batch) and SUBMITTED (đã gửi batch chờ duyệt)
-    const [queuedSnapshot, submittedSnapshot] = await Promise.all([
-      db
-        .collection("external_scan_queue")
-        .where("status", "==", ExternalScanQueueStatus.QUEUED)
-        .get(),
-      db
-        .collection("external_scan_queue")
-        .where("status", "==", ExternalScanQueueStatus.SUBMITTED)
-        .get(),
-    ]);
+    const pendingStatuses = [
+      ExternalScanQueueStatus.QUEUED,
+      ExternalScanQueueStatus.SUBMITTED,
+      ExternalScanQueueStatus.REVISION_REQUIRED,
+      ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL,
+    ];
+    const snapshots = await Promise.all(
+      pendingStatuses.map((status) =>
+        db
+          .collection("external_scan_queue")
+          .where("status", "==", status)
+          .get(),
+      ),
+    );
 
-    const allRecords = [...queuedSnapshot.docs, ...submittedSnapshot.docs]
+    const allRecords = snapshots
+      .flatMap((snapshot) => snapshot.docs)
       .map((doc) => doc.data() as ExternalScanQueue)
       .filter((record) => !record.is_deleted);
     const products = await productRepository.findByIds(
@@ -154,6 +164,15 @@ export const getPendingBatches = async (req: Request, res: Response) => {
           submitted_at: record.batch_id ? record.sync_time : null,
           status: record.status, // QUEUED or SUBMITTED
           is_draft: !record.batch_id, // true nếu chưa batch-submit
+          approved_by: record.approved_by,
+          approved_at: record.approved_at,
+          final_approved_by: record.final_approved_by ?? null,
+          final_approved_at: record.final_approved_at ?? null,
+          export_voucher_id: record.export_voucher_id,
+          rejection_reason: record.rejection_reason,
+          revision_requested_by: record.revision_requested_by ?? null,
+          revision_requested_at: record.revision_requested_at ?? null,
+          notes: record.notes,
           total_products: 0,
           total_quantity: 0,
           total_value: 0,
@@ -200,6 +219,8 @@ export const getPendingBatches = async (req: Request, res: Response) => {
         scan_time: record.scan_time,
         operator_name: operatorDisplayName,
         operator_id_external: record.operator_id_external,
+        rejection_reason: record.rejection_reason,
+        notes: record.notes,
       });
     }
 
@@ -209,19 +230,20 @@ export const getPendingBatches = async (req: Request, res: Response) => {
       }
     }
 
-    // Sort: SUBMITTED first (chờ duyệt ưu tiên), then QUEUED (đang quét)
+    const statusPriority: Record<string, number> = {
+      [ExternalScanQueueStatus.REVISION_REQUIRED]: 0,
+      [ExternalScanQueueStatus.SUBMITTED]: 1,
+      [ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL]: 2,
+      [ExternalScanQueueStatus.QUEUED]: 3,
+    };
     const sorted = Array.from(batchMap.values()).sort((a, b) => {
-      if (
-        a.status === ExternalScanQueueStatus.SUBMITTED &&
-        b.status !== ExternalScanQueueStatus.SUBMITTED
-      )
-        return -1;
-      if (
-        a.status !== ExternalScanQueueStatus.SUBMITTED &&
-        b.status === ExternalScanQueueStatus.SUBMITTED
-      )
-        return 1;
-      return 0;
+      const priorityDelta =
+        (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99);
+      if (priorityDelta !== 0) return priorityDelta;
+      return (
+        toSortableTime(b.submitted_at || b.last_scan_time) -
+        toSortableTime(a.submitted_at || a.last_scan_time)
+      );
     });
 
     return res.status(200).json({
@@ -281,7 +303,10 @@ export const getHistory = async (req: Request, res: Response) => {
     const uniqueApproverIds = [
       ...new Set(
         allRecords
-          .map((record) => record.approved_by)
+          .flatMap((record) => [
+            record.approved_by,
+            record.final_approved_by ?? null,
+          ])
           .filter((id): id is string => Boolean(id)),
       ),
     ];
@@ -321,6 +346,12 @@ export const getHistory = async (req: Request, res: Response) => {
         ? approverById.get(record.approved_by)
         : null;
       const approverName = approver?.full_name || record.approved_by || null;
+      const processedById = record.final_approved_by || record.approved_by;
+      const processedBy = processedById
+        ? approverById.get(processedById)
+        : null;
+      const processedByName = processedBy?.full_name || processedById || null;
+      const processedAt = record.final_approved_at || record.approved_at;
 
       if (!batchMap.has(record.batch_id)) {
         batchMap.set(record.batch_id, {
@@ -338,14 +369,16 @@ export const getHistory = async (req: Request, res: Response) => {
           shift_date: record.scan_time,
           last_scan_time: record.scan_time,
           submitted_at: record.sync_time,
-          processed_at: record.approved_at,
+          processed_at: processedAt,
           total_products: 0,
           total_quantity: 0,
           total_value: 0,
           can_view_price: canViewPrice,
           approved_by: record.approved_by,
           approved_by_name: approverName,
-          processed_by_name: approverName,
+          final_approved_by: record.final_approved_by ?? null,
+          final_approved_at: record.final_approved_at ?? null,
+          processed_by_name: processedByName,
           approved_at: record.approved_at,
           export_voucher_id: record.export_voucher_id,
           rejection_reason: record.rejection_reason,
@@ -364,14 +397,14 @@ export const getHistory = async (req: Request, res: Response) => {
       ) {
         batch.last_scan_time = record.scan_time;
       }
-      if (
-        toSortableTime(record.approved_at) > toSortableTime(batch.processed_at)
-      ) {
-        batch.processed_at = record.approved_at;
+      if (toSortableTime(processedAt) > toSortableTime(batch.processed_at)) {
+        batch.processed_at = processedAt;
         batch.approved_at = record.approved_at;
         batch.approved_by = record.approved_by;
         batch.approved_by_name = approverName;
-        batch.processed_by_name = approverName;
+        batch.final_approved_by = record.final_approved_by ?? null;
+        batch.final_approved_at = record.final_approved_at ?? null;
+        batch.processed_by_name = processedByName;
       }
       batch.rejection_reason =
         batch.rejection_reason || record.rejection_reason;
@@ -570,6 +603,64 @@ const scannableProductsUpdateSchema = z.object({
   product_ids: z.array(z.string()).default([]),
 });
 
+const approvalLevelConfigSchema = z.object({
+  level: z.number().int().min(0).max(2),
+  role_id: z.string().default(""),
+  label: z.object({
+    vi: z.string().min(1),
+    zh: z.string().min(1),
+  }),
+  required: z.boolean(),
+  enabled: z.boolean(),
+  min_approvers: z.number().int().min(1).default(1),
+  approval_scope: z
+    .enum([
+      "ENTITY_WAREHOUSE",
+      "SOURCE_WAREHOUSE",
+      "DESTINATION_WAREHOUSE",
+      "GLOBAL",
+    ])
+    .default("ENTITY_WAREHOUSE")
+    .optional(),
+  allow_global_fallback: z.boolean().default(false).optional(),
+});
+
+const approvalConfigUpdateSchema = z
+  .object({
+    warehouse_id: z.string().min(1),
+    auto_approve: z.boolean(),
+    approval_chain: z.array(approvalLevelConfigSchema).max(3),
+  })
+  .superRefine((data, ctx) => {
+    const activeLevels = new Set(
+      data.approval_chain
+        .filter((level) => level.required || level.enabled)
+        .map((level) => level.level),
+    );
+
+    if (activeLevels.has(2) && !activeLevels.has(1)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["approval_chain"],
+        message: "Level 3 requires level 2 to be enabled first.",
+      });
+    }
+
+    for (const level of data.approval_chain) {
+      if ((level.required || level.enabled) && !level.role_id.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["approval_chain"],
+          message: `Role is required for active level ${level.level + 1}.`,
+        });
+      }
+    }
+  });
+
+const approvalConfigQuerySchema = z.object({
+  warehouse_id: z.string().min(1),
+});
+
 export const getScannableProductsConfig = async (
   req: Request,
   res: Response,
@@ -669,6 +760,153 @@ export const updateScannableProductsConfig = async (
       messages: {
         vi: "Loi khi luu cau hinh san pham quet: " + error.message,
         zh: "Failed to save scan product configuration.",
+      },
+    });
+  }
+};
+
+export const getApprovalConfig = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parsed = approvalConfigQuerySchema.parse(req.query);
+
+    if (
+      !hasScopedPermission(
+        user,
+        "external_scan.manage_queue",
+        parsed.warehouse_id,
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Khong co quyen cau hinh cap duyet cho kho nay.",
+          zh: "No permission to configure this warehouse.",
+        },
+      });
+    }
+
+    const config = await processConfigService.getConfigForEntity(
+      EXTERNAL_QUEUE_CONFIG_ENTITY,
+      parsed.warehouse_id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: config,
+      messages: {
+        vi: "Da tai cau hinh cap duyet external queue.",
+        zh: "External queue approval configuration loaded.",
+      },
+    });
+  } catch (error: any) {
+    console.error("[getApprovalConfig]", error);
+    return res.status(400).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Loi khi tai cau hinh cap duyet: " + error.message,
+        zh: "Failed to load approval configuration.",
+      },
+    });
+  }
+};
+
+export const updateApprovalConfig = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parsed = approvalConfigUpdateSchema.parse(req.body);
+
+    if (
+      !hasScopedPermission(
+        user,
+        "external_scan.manage_queue",
+        parsed.warehouse_id,
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Khong co quyen cau hinh cap duyet cho kho nay.",
+          zh: "No permission to configure this warehouse.",
+        },
+      });
+    }
+
+    const existing = await processConfigService.getConfigForEntity(
+      EXTERNAL_QUEUE_CONFIG_ENTITY,
+      parsed.warehouse_id,
+    );
+    const target = existing.id.startsWith("default_")
+      ? await processConfigService.seedConfigIfMissing(
+          EXTERNAL_QUEUE_CONFIG_ENTITY,
+          parsed.warehouse_id,
+        )
+      : existing;
+
+    const approvalChain = parsed.approval_chain
+      .filter(
+        (level) => level.level === 0 || level.required || level.enabled,
+      )
+      .map(
+        (level): ApprovalLevel => ({
+          ...level,
+          role_id: level.role_id.trim(),
+          label: {
+            vi: level.label.vi.trim(),
+            zh: level.label.zh.trim(),
+          },
+          approval_scope: level.approval_scope ?? "ENTITY_WAREHOUSE",
+          allow_global_fallback: level.allow_global_fallback === true,
+        }),
+      )
+      .sort((a, b) => a.level - b.level);
+
+    const updated = await processConfigService.updateConfig(target.id, {
+      approval_chain: approvalChain,
+      auto_approve: parsed.auto_approve,
+      require_evidence: target.require_evidence ?? false,
+      require_otp: target.require_otp ?? false,
+      step_options: target.step_options ?? {},
+    });
+
+    await logAudit({
+      entity_type: "PROCESS_CONFIG",
+      entity_id: updated.id,
+      warehouse_id: parsed.warehouse_id,
+      action: AuditAction.UPDATE,
+      user_id: user.id,
+      old_value: {
+        entity_type: existing.entity_type,
+        auto_approve: existing.auto_approve,
+        approval_chain: existing.approval_chain,
+      },
+      new_value: {
+        entity_type: updated.entity_type,
+        auto_approve: updated.auto_approve,
+        approval_chain: updated.approval_chain,
+      },
+      notes: "External queue approval configuration updated",
+    }).catch(console.error);
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+      messages: {
+        vi: "Da luu cau hinh cap duyet external queue.",
+        zh: "External queue approval configuration saved.",
+      },
+    });
+  } catch (error: any) {
+    console.error("[updateApprovalConfig]", error);
+    return res.status(400).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Loi khi luu cau hinh cap duyet: " + error.message,
+        zh: "Failed to save approval configuration.",
       },
     });
   }
@@ -916,6 +1154,8 @@ export default {
   updateAutoSubmitSchedule,
   getScannableProductsConfig,
   updateScannableProductsConfig,
+  getApprovalConfig,
+  updateApprovalConfig,
   autoSubmitQueuedLocations,
   runScheduledAutoSubmit,
   rejectBatch,

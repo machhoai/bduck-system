@@ -1327,6 +1327,13 @@ export const PROCESS_CONFIG_ENTITY_TEXT: Record<
       zh: "拣货和出库前的单据审批。",
     },
   },
+  EXTERNAL_QUEUE_EXPORT: {
+    label: { vi: "Xuất kho từ hàng chờ ngoài", zh: "外部队列出库" },
+    description: {
+      vi: "Cấu hình cấp duyệt riêng cho phiếu xuất được tạo từ /external/queue.",
+      zh: "配置从外部扫描队列创建的出库单审批级别。",
+    },
+  },
   TRANSFER_ORDER: {
     label: { vi: "Lệnh chuyển kho", zh: "调拨单" },
     description: {

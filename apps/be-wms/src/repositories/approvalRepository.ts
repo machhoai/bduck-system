@@ -12,20 +12,18 @@
  */
 
 import { db } from "../config/firebase.js";
-import type {
-  ApprovalRecord,
-  ProcessEntityType,
-} from "@bduck/shared-types";
+import type { ApprovalRecord, ProcessEntityType } from "@bduck/shared-types";
 
 const COLLECTION = "pending_approvals";
+
+const getApprovalAttempt = (record: Pick<ApprovalRecord, "approval_attempt">) =>
+  record.approval_attempt ?? 1;
 
 /**
  * Create multiple approval records in a batch (one per level).
  * Called when a voucher is submitted for approval.
  */
-export async function createBatch(
-  records: ApprovalRecord[],
-): Promise<void> {
+export async function createBatch(records: ApprovalRecord[]): Promise<void> {
   const batch = db.batch();
 
   for (const record of records) {
@@ -84,15 +82,17 @@ export async function findByEntity(
     (doc) => ({ id: doc.id, ...doc.data() }) as ApprovalRecord,
   );
 
-  return records.sort((a, b) => a.level - b.level);
+  return records.sort((a, b) => {
+    const attemptDelta = getApprovalAttempt(a) - getApprovalAttempt(b);
+    if (attemptDelta !== 0) return attemptDelta;
+    return a.level - b.level;
+  });
 }
 
 /**
  * Find a single approval record by ID.
  */
-export async function findById(
-  id: string,
-): Promise<ApprovalRecord | null> {
+export async function findById(id: string): Promise<ApprovalRecord | null> {
   const doc = await db.collection(COLLECTION).doc(id).get();
   if (!doc.exists) return null;
   return { id: doc.id, ...doc.data() } as ApprovalRecord;
@@ -124,16 +124,14 @@ export async function countApprovedAtLevel(
   entityType: ProcessEntityType,
   entityId: string,
   level: number,
+  approvalAttempt?: number,
 ): Promise<number> {
-  const snap = await db
-    .collection(COLLECTION)
-    .where("entity_type", "==", entityType)
-    .where("entity_id", "==", entityId)
-    .where("level", "==", level)
-    .where("status", "==", "APPROVED")
-    .get();
-
-  return snap.size;
+  return (await findByEntity(entityType, entityId)).filter((record) => {
+    if (approvalAttempt && getApprovalAttempt(record) !== approvalAttempt) {
+      return false;
+    }
+    return record.level === level && record.status === "APPROVED";
+  }).length;
 }
 
 /**
@@ -142,8 +140,12 @@ export async function countApprovedAtLevel(
 export async function isFullyApproved(
   entityType: ProcessEntityType,
   entityId: string,
+  approvalAttempt?: number,
 ): Promise<boolean> {
-  const allRecords = await findByEntity(entityType, entityId);
+  const allRecords = (await findByEntity(entityType, entityId)).filter(
+    (record) =>
+      !approvalAttempt || getApprovalAttempt(record) === approvalAttempt,
+  );
   if (allRecords.length === 0) return false;
 
   return allRecords.every((r) => r.status === "APPROVED");
@@ -158,9 +160,12 @@ export async function rejectAllPending(
   entityId: string,
   rejectedBy: string,
   reason: string,
+  approvalAttempt?: number,
 ): Promise<void> {
   const pendingRecords = (await findByEntity(entityType, entityId)).filter(
-    (r) => r.status === "PENDING",
+    (r) =>
+      r.status === "PENDING" &&
+      (!approvalAttempt || getApprovalAttempt(r) === approvalAttempt),
   );
 
   if (pendingRecords.length === 0) return;

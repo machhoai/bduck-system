@@ -1,6 +1,8 @@
 export enum ExternalScanQueueStatus {
   QUEUED = "QUEUED",
   SUBMITTED = "SUBMITTED",
+  PENDING_EXPORT_APPROVAL = "PENDING_EXPORT_APPROVAL",
+  REVISION_REQUIRED = "REVISION_REQUIRED",
   APPROVED = "APPROVED",
   EXPORTED = "EXPORTED",
   REJECTED = "REJECTED",
@@ -39,6 +41,10 @@ export interface ExternalScanQueue {
   status: ExternalScanQueueStatus;
   approved_by: string | null;
   approved_at: Date | null;
+  final_approved_by?: string | null;
+  final_approved_at?: Date | null;
+  revision_requested_by?: string | null;
+  revision_requested_at?: Date | null;
   export_voucher_id: string | null;
   rejection_reason: string | null;
   atp_held: boolean;

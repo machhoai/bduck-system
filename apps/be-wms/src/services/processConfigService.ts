@@ -30,39 +30,54 @@ const approvalLevelSchema = z.object({
   enabled: z.boolean(),
   min_approvers: z.number().int().min(1).default(1),
   approval_scope: z
-    .enum(["ENTITY_WAREHOUSE", "SOURCE_WAREHOUSE", "DESTINATION_WAREHOUSE", "GLOBAL"])
+    .enum([
+      "ENTITY_WAREHOUSE",
+      "SOURCE_WAREHOUSE",
+      "DESTINATION_WAREHOUSE",
+      "GLOBAL",
+    ])
     .default("ENTITY_WAREHOUSE")
     .optional(),
   allow_global_fallback: z.boolean().default(false).optional(),
 });
 
-const stepOptionSchema = z.object({
-  assignment_mode: z.enum(["CREATOR", "ROLE"]),
-  assigned_role_id: z.string().nullable(),
-  label: z
-    .object({
-      vi: z.string().min(1),
-      zh: z.string().min(1),
-    })
-    .nullable(),
-  assignment_scope: z
-    .enum(["ENTITY_WAREHOUSE", "SOURCE_WAREHOUSE", "DESTINATION_WAREHOUSE", "GLOBAL"])
-    .default("ENTITY_WAREHOUSE")
-    .optional(),
-  allow_global_fallback: z.boolean().default(false).optional(),
-}).superRefine((data, ctx) => {
-  // When assignment_mode is ROLE, assigned_role_id is required
-  if (data.assignment_mode === "ROLE" && (!data.assigned_role_id || data.assigned_role_id.trim() === "")) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["assigned_role_id"],
-      message: "assigned_role_id is required when assignment_mode is ROLE",
-    });
-  }
-});
+const stepOptionSchema = z
+  .object({
+    assignment_mode: z.enum(["CREATOR", "ROLE"]),
+    assigned_role_id: z.string().nullable(),
+    label: z
+      .object({
+        vi: z.string().min(1),
+        zh: z.string().min(1),
+      })
+      .nullable(),
+    assignment_scope: z
+      .enum([
+        "ENTITY_WAREHOUSE",
+        "SOURCE_WAREHOUSE",
+        "DESTINATION_WAREHOUSE",
+        "GLOBAL",
+      ])
+      .default("ENTITY_WAREHOUSE")
+      .optional(),
+    allow_global_fallback: z.boolean().default(false).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // When assignment_mode is ROLE, assigned_role_id is required
+    if (
+      data.assignment_mode === "ROLE" &&
+      (!data.assigned_role_id || data.assigned_role_id.trim() === "")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assigned_role_id"],
+        message: "assigned_role_id is required when assignment_mode is ROLE",
+      });
+    }
+  });
 
 export const updateConfigSchema = z.object({
-  approval_chain: z.array(approvalLevelSchema).optional(),
+  approval_chain: z.array(approvalLevelSchema).max(3).optional(),
   auto_approve: z.boolean().optional(),
   require_evidence: z.boolean().optional(),
   require_otp: z.boolean().optional(),
@@ -101,6 +116,7 @@ const DEFAULT_STEP_OPTIONS_BY_ENTITY: Partial<
       allow_global_fallback: false,
     },
   },
+  EXTERNAL_QUEUE_EXPORT: {},
   TRANSFER_ORDER: {
     create_export: {
       assignment_mode: "CREATOR",
@@ -155,9 +171,7 @@ const DEFAULT_STEP_OPTIONS: Record<string, StepOption> = {
  * Used when no ProcessConfig exists in Firestore.
  * Admin can override via the Config UI.
  */
-const DEFAULT_CHAINS: Partial<
-  Record<ProcessEntityType, ApprovalLevel[]>
-> = {
+const DEFAULT_CHAINS: Partial<Record<ProcessEntityType, ApprovalLevel[]>> = {
   IMPORT_VOUCHER: [
     {
       level: 0,
@@ -202,6 +216,28 @@ const DEFAULT_CHAINS: Partial<
       allow_global_fallback: false,
     },
   ],
+  EXTERNAL_QUEUE_EXPORT: [
+    {
+      level: 0,
+      role_id: "WAREHOUSE_MANAGER",
+      label: { vi: "Duyệt hàng chờ cấp 1", zh: "队列一级审批" },
+      required: true,
+      enabled: true,
+      min_approvers: 1,
+      approval_scope: "ENTITY_WAREHOUSE",
+      allow_global_fallback: false,
+    },
+    {
+      level: 1,
+      role_id: "DIRECTOR",
+      label: { vi: "Duyệt phiếu xuất cấp 2", zh: "出库单二级审批" },
+      required: false,
+      enabled: false,
+      min_approvers: 1,
+      approval_scope: "GLOBAL",
+      allow_global_fallback: false,
+    },
+  ],
   TRANSFER_ORDER: [
     {
       level: 0,
@@ -229,7 +265,9 @@ const DEFAULT_CHAINS: Partial<
 };
 
 /** Resolve step_options for an entity type */
-function getDefaultStepOptions(entityType: ProcessEntityType): Record<string, StepOption> {
+function getDefaultStepOptions(
+  entityType: ProcessEntityType,
+): Record<string, StepOption> {
   return DEFAULT_STEP_OPTIONS_BY_ENTITY[entityType] ?? DEFAULT_STEP_OPTIONS;
 }
 
@@ -274,7 +312,10 @@ async function buildDefaultConfig(
       : `default_${entityType}`,
     entity_type: entityType,
     warehouse_id: exactWarehouseId,
-    approval_chain: await resolveDefaultChain(entityType, "defaultProcessConfig"),
+    approval_chain: await resolveDefaultChain(
+      entityType,
+      "defaultProcessConfig",
+    ),
     auto_approve: isWarehouseDefault,
     require_evidence: isWarehouseDefault,
     require_otp: isWarehouseDefault,
@@ -350,7 +391,15 @@ export async function updateConfig(
   }
 
   const updateData: Partial<
-    Pick<ProcessConfig, "approval_chain" | "auto_approve" | "require_evidence" | "require_otp" | "step_options" | "updated_at">
+    Pick<
+      ProcessConfig,
+      | "approval_chain"
+      | "auto_approve"
+      | "require_evidence"
+      | "require_otp"
+      | "step_options"
+      | "updated_at"
+    >
   > = { updated_at: now };
 
   if (input.approval_chain) {
@@ -404,7 +453,6 @@ export async function seedConfigIfMissing(
     created_at: defaultConfig.created_at,
     updated_at: defaultConfig.updated_at,
   });
-
 }
 
 /**

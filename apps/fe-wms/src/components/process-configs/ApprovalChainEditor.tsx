@@ -1,7 +1,11 @@
 "use client";
 
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
-import type { ApprovalLevel, ApprovalScopeMode, Role } from "@bduck/shared-types";
+import type {
+  ApprovalLevel,
+  ApprovalScopeMode,
+  Role,
+} from "@bduck/shared-types";
 import type { Locale, TEXT } from "./processConfigMeta";
 import { formatApprovalLevelLabel } from "@/lib/i18n/componentTranslations";
 
@@ -21,6 +25,7 @@ const SCOPE_OPTIONS: ApprovalScopeMode[] = [
   "DESTINATION_WAREHOUSE",
   "GLOBAL",
 ];
+const MAX_APPROVAL_LEVELS = 3;
 
 function getScopeLabel(copy: Copy, scope: ApprovalScopeMode) {
   const labels: Record<ApprovalScopeMode, string> = {
@@ -49,7 +54,9 @@ function ToggleButton({
       disabled={disabled}
       onClick={onClick}
       className={`relative h-7 w-12 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
-        active ? "bg-[var(--color-success-icon)]" : "bg-[var(--color-neutral-300)]"
+        active
+          ? "bg-[var(--color-success-icon)]"
+          : "bg-[var(--color-neutral-300)]"
       }`}
       aria-label={label}
     >
@@ -84,6 +91,7 @@ export function ApprovalChainEditor({
   };
 
   const addLevel = () => {
+    if (chain.length >= MAX_APPROVAL_LEVELS) return;
     const nextLevel = chain.length + 1;
     onChange([
       ...chain,
@@ -126,7 +134,7 @@ export function ApprovalChainEditor({
         <button
           type="button"
           onClick={addLevel}
-          disabled={disabled}
+          disabled={disabled || chain.length >= MAX_APPROVAL_LEVELS}
           className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-status-approved-border)] bg-[var(--color-status-approved-bg)] px-3 text-sm font-semibold text-[var(--color-status-approved-text)] transition hover:bg-[var(--color-status-approved-bg-muted)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:text-xs"
         >
           <Plus className="h-4 w-4" />
@@ -264,7 +272,10 @@ export function ApprovalChainEditor({
                   <input
                     type="checkbox"
                     checked={level.allow_global_fallback === true}
-                    disabled={disabled || (level.approval_scope ?? "ENTITY_WAREHOUSE") === "GLOBAL"}
+                    disabled={
+                      disabled ||
+                      (level.approval_scope ?? "ENTITY_WAREHOUSE") === "GLOBAL"
+                    }
                     onChange={(event) =>
                       updateLevel(index, {
                         ...level,
@@ -273,7 +284,9 @@ export function ApprovalChainEditor({
                     }
                     className="h-4 w-4"
                   />
-                  <span className="line-clamp-2">{copy.allowGlobalFallback}</span>
+                  <span className="line-clamp-2">
+                    {copy.allowGlobalFallback}
+                  </span>
                 </label>
 
                 <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 lg:block lg:bg-transparent lg:px-0 lg:py-0">

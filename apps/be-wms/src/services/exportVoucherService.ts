@@ -72,25 +72,44 @@ export const createExportVoucher = async (
 ): Promise<ExportVoucher> => {
   const config = await getConfigForEntity("EXPORT_VOUCHER", input.warehouse_id);
 
-  if (config.require_evidence && (!input.attachment_urls || input.attachment_urls.length === 0)) {
-    const err = new Error("Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.") as Error & { statusCode: number; messages: Record<string, string> };
+  if (
+    config.require_evidence &&
+    (!input.attachment_urls || input.attachment_urls.length === 0)
+  ) {
+    const err = new Error(
+      "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.",
+    ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
-    err.messages = { vi: "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.", zh: "创建出库单时必须上传凭证 (evidence)。" };
+    err.messages = {
+      vi: "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu xuất kho.",
+      zh: "创建出库单时必须上传凭证 (evidence)。",
+    };
     throw err;
   }
 
   if (config.require_otp) {
     if (!input.otp) {
-      const err = new Error("Mã xác thực (OTP) là bắt buộc.") as Error & { statusCode: number; messages: Record<string, string> };
+      const err = new Error("Mã xác thực (OTP) là bắt buộc.") as Error & {
+        statusCode: number;
+        messages: Record<string, string>;
+      };
       err.statusCode = 400;
-      err.messages = { vi: "Mã xác thực (OTP) là bắt buộc.", zh: "验证码 (OTP) 是必需的。" };
+      err.messages = {
+        vi: "Mã xác thực (OTP) là bắt buộc.",
+        zh: "验证码 (OTP) 是必需的。",
+      };
       throw err;
     }
     const isOtpValid = await verifyMfa(userId, input.otp);
     if (!isOtpValid) {
-      const err = new Error("Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.") as Error & { statusCode: number; messages: Record<string, string> };
+      const err = new Error(
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+      ) as Error & { statusCode: number; messages: Record<string, string> };
       err.statusCode = 400;
-      err.messages = { vi: "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.", zh: "验证码 (OTP) 无效或已过期。" };
+      err.messages = {
+        vi: "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        zh: "验证码 (OTP) 无效或已过期。",
+      };
       throw err;
     }
   }
@@ -140,7 +159,11 @@ export const createExportVoucher = async (
   batch.set(db.collection("export_vouchers").doc(voucherId), voucher);
   for (const item of items) {
     batch.set(
-      db.collection("export_vouchers").doc(voucherId).collection("items").doc(item.id),
+      db
+        .collection("export_vouchers")
+        .doc(voucherId)
+        .collection("items")
+        .doc(item.id),
       item,
     );
   }
@@ -198,25 +221,44 @@ export const updateExportVoucher = async (
 ): Promise<ExportVoucher> => {
   const config = await getConfigForEntity("EXPORT_VOUCHER", input.warehouse_id);
 
-  if (config.require_evidence && (!input.attachment_urls || input.attachment_urls.length === 0)) {
-    const err = new Error("Bat buoc tai len chung tu khi sua phieu xuat kho.") as Error & { statusCode: number; messages: Record<string, string> };
+  if (
+    config.require_evidence &&
+    (!input.attachment_urls || input.attachment_urls.length === 0)
+  ) {
+    const err = new Error(
+      "Bat buoc tai len chung tu khi sua phieu xuat kho.",
+    ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
-    err.messages = { vi: "Bat buoc tai len chung tu khi sua phieu xuat kho.", zh: "修改出库单时必须上传凭证。" };
+    err.messages = {
+      vi: "Bat buoc tai len chung tu khi sua phieu xuat kho.",
+      zh: "修改出库单时必须上传凭证。",
+    };
     throw err;
   }
 
   if (config.require_otp) {
     if (!input.otp) {
-      const err = new Error("Ma xac thuc OTP la bat buoc.") as Error & { statusCode: number; messages: Record<string, string> };
+      const err = new Error("Ma xac thuc OTP la bat buoc.") as Error & {
+        statusCode: number;
+        messages: Record<string, string>;
+      };
       err.statusCode = 400;
-      err.messages = { vi: "Ma xac thuc OTP la bat buoc.", zh: "验证码是必需的。" };
+      err.messages = {
+        vi: "Ma xac thuc OTP la bat buoc.",
+        zh: "验证码是必需的。",
+      };
       throw err;
     }
     const isOtpValid = await verifyMfa(userId, input.otp);
     if (!isOtpValid) {
-      const err = new Error("Ma xac thuc OTP khong hop le hoac da het han.") as Error & { statusCode: number; messages: Record<string, string> };
+      const err = new Error(
+        "Ma xac thuc OTP khong hop le hoac da het han.",
+      ) as Error & { statusCode: number; messages: Record<string, string> };
       err.statusCode = 400;
-      err.messages = { vi: "Ma xac thuc OTP khong hop le hoac da het han.", zh: "验证码无效或已过期。" };
+      err.messages = {
+        vi: "Ma xac thuc OTP khong hop le hoac da het han.",
+        zh: "验证码无效或已过期。",
+      };
       throw err;
     }
   }
@@ -224,25 +266,45 @@ export const updateExportVoucher = async (
   const voucherRef = db.collection("export_vouchers").doc(voucherId);
   const voucherDoc = await voucherRef.get();
   if (!voucherDoc.exists) {
-    const err = new Error("Khong tim thay phieu xuat kho.") as Error & { statusCode: number; messages: Record<string, string> };
+    const err = new Error("Khong tim thay phieu xuat kho.") as Error & {
+      statusCode: number;
+      messages: Record<string, string>;
+    };
     err.statusCode = 404;
-    err.messages = { vi: "Khong tim thay phieu xuat kho.", zh: "找不到出库单。" };
+    err.messages = {
+      vi: "Khong tim thay phieu xuat kho.",
+      zh: "找不到出库单。",
+    };
     throw err;
   }
 
   const oldVoucher = voucherDoc.data() as ExportVoucher;
   if (oldVoucher.creator_id !== userId) {
-    const err = new Error("Ban khong co quyen sua phieu xuat kho nay.") as Error & { statusCode: number; messages: Record<string, string> };
+    const err = new Error(
+      "Ban khong co quyen sua phieu xuat kho nay.",
+    ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 403;
-    err.messages = { vi: "Ban khong co quyen sua phieu xuat kho nay.", zh: "您没有权限修改此出库单。" };
+    err.messages = {
+      vi: "Ban khong co quyen sua phieu xuat kho nay.",
+      zh: "您没有权限修改此出库单。",
+    };
     throw err;
   }
 
-  const allowedStatuses = [ExportVoucherStatus.DRAFT, ExportVoucherStatus.PENDING_APPROVAL, ExportVoucherStatus.REJECTED];
+  const allowedStatuses = [
+    ExportVoucherStatus.DRAFT,
+    ExportVoucherStatus.PENDING_APPROVAL,
+    ExportVoucherStatus.REJECTED,
+  ];
   if (!allowedStatuses.includes(oldVoucher.status)) {
-    const err = new Error("Chi co the sua phieu dang cho duyet hoac bi tu choi.") as Error & { statusCode: number; messages: Record<string, string> };
+    const err = new Error(
+      "Chi co the sua phieu dang cho duyet hoac bi tu choi.",
+    ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
-    err.messages = { vi: "Chi co the sua phieu dang cho duyet hoac bi tu choi.", zh: "只能修改待审批或已拒绝的单据。" };
+    err.messages = {
+      vi: "Chi co the sua phieu dang cho duyet hoac bi tu choi.",
+      zh: "只能修改待审批或已拒绝的单据。",
+    };
     throw err;
   }
 
@@ -281,16 +343,29 @@ export const updateExportVoucher = async (
   batch.update(voucherRef, newVoucher);
 
   const oldItemsSnap = await voucherRef.collection("items").get();
-  for (const doc of oldItemsSnap.docs) batch.delete(doc.ref);
+  for (const doc of oldItemsSnap.docs) {
+    batch.update(doc.ref, { is_deleted: true });
+  }
   for (const item of items) {
     batch.set(voucherRef.collection("items").doc(item.id), item);
   }
 
-  const oldApprovalsSnap = await db.collection("pending_approvals")
+  const oldApprovalsSnap = await db
+    .collection("pending_approvals")
     .where("entity_type", "==", "EXPORT_VOUCHER")
     .where("entity_id", "==", voucherId)
     .get();
-  for (const doc of oldApprovalsSnap.docs) batch.delete(doc.ref);
+  for (const doc of oldApprovalsSnap.docs) {
+    if (doc.data().status !== "PENDING") continue;
+    batch.update(doc.ref, {
+      status: "CANCELLED",
+      approver_id: userId,
+      approved_at: now,
+      rejected_reason: "Superseded by voucher edit",
+      action_time: actionTime,
+      sync_time: now,
+    });
+  }
 
   await batch.commit();
 
@@ -346,11 +421,26 @@ export async function onApprovalCompleted(
   voucherId: string,
   approverId: string,
 ): Promise<void> {
+  const voucherRef = db.collection("export_vouchers").doc(voucherId);
+  const voucherSnap = await voucherRef.get();
+  if (!voucherSnap.exists) return;
+
+  const voucher = voucherSnap.data() as ExportVoucher;
+  if (
+    voucher.reference_type === ExportReferenceType.EXTERNAL_QUEUE_BATCH &&
+    voucher.reference_id
+  ) {
+    const { finalizeApprovedBatchFromVoucher } =
+      await import("./externalScanService.js");
+    await finalizeApprovedBatchFromVoucher(voucherId, approverId);
+    return;
+  }
+
   // ATP Pre-check: read all items and verify inventory
   await validateAtpSufficiency(voucherId);
 
   const now = new Date();
-  await db.collection("export_vouchers").doc(voucherId).update({
+  await voucherRef.update({
     status: ExportVoucherStatus.APPROVED,
     approver_id: approverId,
     approved_at: now,
@@ -361,7 +451,7 @@ export async function onApprovalCompleted(
   await logAudit({
     entity_type: "EXPORT_VOUCHER",
     entity_id: voucherId,
-    warehouse_id: null,
+    warehouse_id: voucher.warehouse_id,
     action: AuditAction.APPROVE,
     user_id: approverId,
     old_value: { status: ExportVoucherStatus.PENDING_APPROVAL },
@@ -374,17 +464,31 @@ export async function onApprovalRejected(
   rejectorId: string,
   reason: string,
 ): Promise<void> {
+  const voucherRef = db.collection("export_vouchers").doc(voucherId);
+  const voucherSnap = await voucherRef.get();
+  if (!voucherSnap.exists) return;
+  const voucher = voucherSnap.data() as ExportVoucher;
   const now = new Date();
-  await db.collection("export_vouchers").doc(voucherId).update({
+
+  await voucherRef.update({
     status: ExportVoucherStatus.REJECTED,
     updated_at: now,
     sync_time: now,
   });
 
+  if (
+    voucher.reference_type === ExportReferenceType.EXTERNAL_QUEUE_BATCH &&
+    voucher.reference_id
+  ) {
+    const { returnBatchForRevisionFromVoucher } =
+      await import("./externalScanService.js");
+    await returnBatchForRevisionFromVoucher(voucherId, rejectorId, reason);
+  }
+
   await logAudit({
     entity_type: "EXPORT_VOUCHER",
     entity_id: voucherId,
-    warehouse_id: null,
+    warehouse_id: voucher.warehouse_id,
     action: AuditAction.REJECT,
     user_id: rejectorId,
     old_value: { status: ExportVoucherStatus.PENDING_APPROVAL },
@@ -401,21 +505,41 @@ export async function onApprovalCancelled(
   userId: string,
   reason?: string | null,
 ): Promise<void> {
+  const voucherRef = db.collection("export_vouchers").doc(voucherId);
+  const voucherSnap = await voucherRef.get();
+  const voucher = voucherSnap.exists
+    ? (voucherSnap.data() as ExportVoucher)
+    : null;
   const now = new Date();
-  await db.collection("export_vouchers").doc(voucherId).update({
+  await voucherRef.update({
     status: ExportVoucherStatus.CANCELLED,
     updated_at: now,
     sync_time: now,
   });
 
+  if (
+    voucher?.reference_type === ExportReferenceType.EXTERNAL_QUEUE_BATCH &&
+    voucher.reference_id
+  ) {
+    const { cancelBatchFromVoucher } = await import("./externalScanService.js");
+    await cancelBatchFromVoucher(
+      voucherId,
+      userId,
+      reason || "External queue export voucher cancelled",
+    );
+  }
+
   await logAudit({
     entity_type: "EXPORT_VOUCHER",
     entity_id: voucherId,
-    warehouse_id: null,
+    warehouse_id: voucher?.warehouse_id ?? null,
     action: AuditAction.CANCEL,
     user_id: userId,
     old_value: { status: ExportVoucherStatus.PENDING_APPROVAL },
-    new_value: { status: ExportVoucherStatus.CANCELLED, reason: reason || null },
+    new_value: {
+      status: ExportVoucherStatus.CANCELLED,
+      reason: reason || null,
+    },
   });
 }
 
@@ -432,7 +556,9 @@ export async function startPicking(voucherId: string): Promise<void> {
   try {
     const { syncExportStatus } = await import("./transferOrderService.js");
     await syncExportStatus(voucherId, ExportVoucherStatus.PICKING);
-  } catch { /* no linked transfer */ }
+  } catch {
+    /* no linked transfer */
+  }
 }
 
 /**
@@ -443,7 +569,8 @@ export async function completePicking(
   voucherId: string,
   userId: string,
 ): Promise<void> {
-  const { deductInventoryATP } = await import("./actions/deductInventoryATP.js");
+  const { deductInventoryATP } =
+    await import("./actions/deductInventoryATP.js");
   await deductInventoryATP(voucherId, userId);
 
   const now = new Date();
@@ -467,7 +594,9 @@ export async function completePicking(
   try {
     const { syncExportStatus } = await import("./transferOrderService.js");
     await syncExportStatus(voucherId, ExportVoucherStatus.SHIPPED);
-  } catch { /* no linked transfer */ }
+  } catch {
+    /* no linked transfer */
+  }
 }
 
 /** SHIPPED → COMPLETED (kế toán xác nhận) */
@@ -531,11 +660,14 @@ async function validateAtpSufficiency(voucherId: string): Promise<void> {
       .where("product_id", "==", productId)
       .limit(5)
       .get();
-    const activeInvDocs = invSnapRaw.docs.filter((d) => d.data().is_deleted !== true);
+    const activeInvDocs = invSnapRaw.docs.filter(
+      (d) => d.data().is_deleted !== true,
+    );
 
-    const currentAtp = activeInvDocs.length === 0
-      ? 0
-      : (activeInvDocs[0].data().atp_quantity as number) || 0;
+    const currentAtp =
+      activeInvDocs.length === 0
+        ? 0
+        : (activeInvDocs[0].data().atp_quantity as number) || 0;
 
     if (currentAtp < requestedQty) {
       // Resolve product name + location name for human-readable error

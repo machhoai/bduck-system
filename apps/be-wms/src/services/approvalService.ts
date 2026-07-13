@@ -87,13 +87,19 @@ export async function createApprovalsForEntity(
     sourceWarehouseId?: string | null;
     destinationWarehouseId?: string | null;
   },
+  options?: {
+    minLevel?: number;
+    maxLevel?: number;
+    configEntityType?: ProcessEntityType;
+  },
 ): Promise<ApprovalRecord[]> {
+  const configEntityType = options?.configEntityType ?? entityType;
   // ── Check auto_approve flag in ProcessConfig ──
-  const config = await getConfigForEntity(entityType, warehouseId);
+  const config = await getConfigForEntity(configEntityType, warehouseId);
 
   if (config?.auto_approve === true) {
     console.log(
-      `[approvalService] auto_approve=true for ${entityType}. Skipping approval chain.`,
+      `[approvalService] auto_approve=true for ${configEntityType}. Skipping approval chain.`,
     );
 
     // Audit trail: explicitly record system auto-approve (ISO 9001)
@@ -107,6 +113,7 @@ export async function createApprovalsForEntity(
       new_value: {
         status: "AUTO_APPROVED",
         reason: "auto_approve enabled in ProcessConfig",
+        config_entity_type: configEntityType,
         config_id: config.id,
       },
     });
@@ -114,13 +121,26 @@ export async function createApprovalsForEntity(
     return []; // Triggers auto-advance in importVoucherService
   }
 
-  const chain = await getActiveApprovalChainForEntity(
-    entityType,
-    warehouseId,
-  );
+  const chain = (
+    await getActiveApprovalChainForEntity(configEntityType, warehouseId)
+  ).filter((level) => {
+    if (
+      typeof options?.minLevel === "number" &&
+      level.level < options.minLevel
+    ) {
+      return false;
+    }
+    if (
+      typeof options?.maxLevel === "number" &&
+      level.level > options.maxLevel
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   console.log(
-    `[approvalService] createApprovalsForEntity: entityType=${entityType}, entityId=${entityId}, warehouseId=${warehouseId}, chainLength=${chain.length}`,
+    `[approvalService] createApprovalsForEntity: entityType=${entityType}, configEntityType=${configEntityType}, entityId=${entityId}, warehouseId=${warehouseId}, chainLength=${chain.length}`,
   );
 
   if (chain.length === 0) {
@@ -136,6 +156,12 @@ export async function createApprovalsForEntity(
     chain.map((l) => ({ level: l.level, role_id: l.role_id, label: l.label })),
   );
 
+  const existingRecords = await approvalRepo.findByEntity(entityType, entityId);
+  const approvalAttempt =
+    existingRecords.reduce(
+      (max, record) => Math.max(max, record.approval_attempt ?? 1),
+      0,
+    ) + 1;
   const now = new Date();
   const records: ApprovalRecord[] = [];
 
@@ -153,12 +179,14 @@ export async function createApprovalsForEntity(
       records.push({
         id: randomUUID(),
         entity_type: entityType,
+        config_entity_type: configEntityType,
         entity_id: entityId,
         warehouse_id: warehouseId,
         approval_warehouse_id: approvalWarehouseId,
         approval_scope: approvalScope,
         allow_global_fallback: level.allow_global_fallback === true,
         level: level.level,
+        approval_attempt: approvalAttempt,
         role_id: level.role_id,
         status: "PENDING",
         approver_id: null,
@@ -255,8 +283,9 @@ export async function approveLevel(
   }
 
   // ── OTP VERIFICATION (If required by config) ──
+  const configEntityType = record.config_entity_type ?? record.entity_type;
   const config = await getConfigForEntity(
-    record.entity_type,
+    configEntityType,
     record.warehouse_id,
   );
   if (config?.require_otp) {
@@ -283,8 +312,14 @@ export async function approveLevel(
     record.entity_type,
     record.entity_id,
   );
+  const approvalAttempt = record.approval_attempt ?? 1;
+  const currentAttemptRecords = allRecords.filter(
+    (candidate) => (candidate.approval_attempt ?? 1) === approvalAttempt,
+  );
 
-  const previousLevels = allRecords.filter((r) => r.level < record.level);
+  const previousLevels = currentAttemptRecords.filter(
+    (r) => r.level < record.level,
+  );
   const previousAllApproved = previousLevels.every(
     (r) => r.status === "APPROVED",
   );
@@ -300,6 +335,7 @@ export async function approveLevel(
   // ── Mark as APPROVED ──
   const alreadyApprovedThisLevel = allRecords.some(
     (r) =>
+      (r.approval_attempt ?? 1) === approvalAttempt &&
       r.level === record.level &&
       r.status === "APPROVED" &&
       r.approver_id === approverId,
@@ -343,11 +379,12 @@ export async function approveLevel(
     record.entity_type,
     record.entity_id,
     record.level,
+    approvalAttempt,
   );
 
   // Get min_approvers from config
   const chain = await getActiveApprovalChainForEntity(
-    record.entity_type,
+    configEntityType,
     record.warehouse_id,
   );
   const levelConfig = chain.find((l) => l.level === record.level);
@@ -358,6 +395,7 @@ export async function approveLevel(
   const allApproved = await approvalRepo.isFullyApproved(
     record.entity_type,
     record.entity_id,
+    approvalAttempt,
   );
 
   // Update record in memory for return and notifications
@@ -445,8 +483,9 @@ export async function rejectApproval(
   }
 
   // ── OTP VERIFICATION (If required by config) ──
+  const configEntityType = record.config_entity_type ?? record.entity_type;
   const config = await getConfigForEntity(
-    record.entity_type,
+    configEntityType,
     record.warehouse_id,
   );
   if (config?.require_otp) {
@@ -501,6 +540,7 @@ export async function rejectApproval(
     record.entity_id,
     rejectorId,
     `Cascade rejection from level ${record.level}: ${reason}`,
+    record.approval_attempt ?? 1,
   );
 
   // ── Entity status callback: advance voucher to REJECTED ──
@@ -570,8 +610,16 @@ export async function getPendingTasksForUser(
         sample.entity_type,
         sample.entity_id,
       );
+      const latestAttempt = allEntityRecords.reduce(
+        (max, record) => Math.max(max, record.approval_attempt ?? 1),
+        1,
+      );
       const pendingLevels = allEntityRecords
-        .filter((record) => record.status === "PENDING")
+        .filter(
+          (record) =>
+            record.status === "PENDING" &&
+            (record.approval_attempt ?? 1) === latestAttempt,
+        )
         .map((record) => record.level);
 
       if (pendingLevels.length > 0) {
@@ -731,7 +779,14 @@ export async function cancelByCreator(
   }
 
   // ── Verify caller is the creator ──
-  const firstRecord = allRecords[0];
+  const currentAttempt = allRecords.reduce(
+    (max, record) => Math.max(max, record.approval_attempt ?? 1),
+    1,
+  );
+  const currentRecords = allRecords.filter(
+    (record) => (record.approval_attempt ?? 1) === currentAttempt,
+  );
+  const firstRecord = currentRecords[0] ?? allRecords[0];
   if (firstRecord.creator_id !== creatorId) {
     throw createError(
       403,
@@ -742,7 +797,7 @@ export async function cancelByCreator(
 
   // ── OTP VERIFICATION (If required by config) ──
   const cancelConfig = await getConfigForEntity(
-    entityType,
+    firstRecord.config_entity_type ?? entityType,
     firstRecord.warehouse_id,
   );
   if (cancelConfig?.require_otp) {
@@ -764,7 +819,7 @@ export async function cancelByCreator(
   }
 
   // ── Check no records have been APPROVED already ──
-  const hasApproved = allRecords.some((r) => r.status === "APPROVED");
+  const hasApproved = currentRecords.some((r) => r.status === "APPROVED");
   if (hasApproved) {
     throw createError(
       400,
@@ -774,7 +829,7 @@ export async function cancelByCreator(
   }
 
   // ── Batch cancel all PENDING records ──
-  const pendingRecords = allRecords.filter((r) => r.status === "PENDING");
+  const pendingRecords = currentRecords.filter((r) => r.status === "PENDING");
   if (pendingRecords.length === 0) {
     throw createError(
       400,

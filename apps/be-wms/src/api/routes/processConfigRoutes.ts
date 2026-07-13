@@ -32,6 +32,12 @@ router.use(requireAuth);
 const CONFIG_READ_PERMISSIONS: Record<string, string[]> = {
   IMPORT_VOUCHER: ["workflows.manage", "vouchers.read", "vouchers.write"],
   EXPORT_VOUCHER: ["workflows.manage", "vouchers.read", "vouchers.write"],
+  EXTERNAL_QUEUE_EXPORT: [
+    "workflows.manage",
+    "external_scan.view",
+    "external_scan.approve",
+    "external_scan.manage_queue",
+  ],
   TRANSFER_ORDER: [
     "workflows.manage",
     "transfers.read",

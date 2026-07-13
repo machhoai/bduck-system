@@ -1,4 +1,5 @@
 import { createDetailedApiError } from "@/utils/apiError";
+import type { ApprovalLevel, ProcessConfig } from "@bduck/shared-types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -32,6 +33,12 @@ export type ExternalQueueScannableProductConfig = {
   updated_by?: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type ExternalQueueApprovalConfigPayload = {
+  warehouse_id: string;
+  auto_approve: boolean;
+  approval_chain: ApprovalLevel[];
 };
 
 async function apiFetch<T = unknown>(
@@ -141,6 +148,19 @@ export const externalQueueApi = {
       success: boolean;
       data: ExternalQueueScannableProductConfig;
     }>("/scannable-products", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getApprovalConfig: (params: { warehouse_id: string }) => {
+    const urlParams = new URLSearchParams(params).toString();
+    return apiFetch<{ success: boolean; data: ProcessConfig }>(
+      `/approval-config?${urlParams}`,
+    );
+  },
+
+  updateApprovalConfig: (data: ExternalQueueApprovalConfigPayload) =>
+    apiFetch<{ success: boolean; data: ProcessConfig }>("/approval-config", {
       method: "PUT",
       body: JSON.stringify(data),
     }),

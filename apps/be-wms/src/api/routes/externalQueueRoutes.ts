@@ -95,6 +95,21 @@ router.put(
   externalQueueController.updateScannableProductsConfig,
 );
 
+// /api/external-queue/approval-config
+router.get(
+  "/approval-config",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.getApprovalConfig,
+);
+
+router.put(
+  "/approval-config",
+  requireAuth,
+  requireAnyScopedPermission("external_scan.manage_queue"),
+  externalQueueController.updateApprovalConfig,
+);
+
 // /api/external-queue/reject
 router.post(
   "/reject",

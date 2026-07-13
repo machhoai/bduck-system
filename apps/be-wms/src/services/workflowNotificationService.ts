@@ -17,7 +17,7 @@ import {
     resolveStepWarehouseId,
 } from "./scopedRoleAccess.js";
 
-const ENTITY_LABELS: Record<ProcessEntityType, string> = {
+const ENTITY_LABELS: Partial<Record<ProcessEntityType, string>> = {
     IMPORT_VOUCHER: "phiếu nhập kho",
     EXPORT_VOUCHER: "phiếu xuất kho",
     TRANSFER_ORDER: "lệnh chuyển kho",
@@ -33,7 +33,7 @@ function dispatchPushNotifications(notifications: InAppNotification[]) {
     });
 }
 
-const ENTITY_ACTION_PATHS: Record<ProcessEntityType, string> = {
+const ENTITY_ACTION_PATHS: Partial<Record<ProcessEntityType, string>> = {
     IMPORT_VOUCHER: "/import-vouchers",
     EXPORT_VOUCHER: "/export-vouchers",
     TRANSFER_ORDER: "/transfers",
@@ -43,7 +43,7 @@ const ENTITY_ACTION_PATHS: Record<ProcessEntityType, string> = {
     GIFT_SESSION: "/tasks",
 };
 
-const ENTITY_NEXT_STEPS: Record<ProcessEntityType, string> = {
+const ENTITY_NEXT_STEPS: Partial<Record<ProcessEntityType, string>> = {
     IMPORT_VOUCHER: "Mở phiếu nhập kho để bắt đầu hoặc theo dõi bước nhận hàng.",
     EXPORT_VOUCHER: "Mở phiếu xuất kho để bắt đầu hoặc theo dõi bước soạn hàng.",
     TRANSFER_ORDER: "Mở lệnh chuyển kho để theo dõi phiếu xuất/nhận liên quan.",

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   History,
   ScanBarcode,
+  ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
 import { useTranslation } from "../../../lib/i18n";
@@ -12,8 +13,9 @@ import { useUserStore } from "../../../stores/useUserStore";
 import ExternalQueuePendingTab from "./ExternalQueuePendingTab";
 import ExternalQueueHistoryTab from "./ExternalQueueHistoryTab";
 import ExternalQueueProductConfigTab from "./ExternalQueueProductConfigTab";
+import ExternalQueueApprovalConfigTab from "./ExternalQueueApprovalConfigTab";
 
-type TabId = "pending" | "history" | "products";
+type TabId = "pending" | "history" | "products" | "approvalConfig";
 
 interface TabDef {
   id: TabId;
@@ -25,6 +27,7 @@ const TAB_DEFINITIONS: TabDef[] = [
   { id: "pending", labelKey: "pending", icon: ClipboardList },
   { id: "history", labelKey: "history", icon: History },
   { id: "products", labelKey: "products", icon: SlidersHorizontal },
+  { id: "approvalConfig", labelKey: "approvalConfig", icon: ShieldCheck },
 ];
 
 export default function ExternalQueuePage() {
@@ -34,7 +37,8 @@ export default function ExternalQueuePage() {
   const canManageQueue = hasPermission("external_scan.manage_queue");
   const [activeTab, setActiveTab] = useState<TabId>("pending");
   const visibleTabs = TAB_DEFINITIONS.filter(
-    (tab) => tab.id !== "products" || canManageQueue,
+    (tab) =>
+      !["products", "approvalConfig"].includes(tab.id) || canManageQueue,
   );
 
   const handleTabSwitch = (tabId: TabId) => {
@@ -67,8 +71,12 @@ export default function ExternalQueuePage() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               const label =
-                externalQueueText?.tabs?.[tab.labelKey] ||
-                (tab.id === "products" ? "Cau hinh san pham" : tab.labelKey);
+            externalQueueText?.tabs?.[tab.labelKey] ||
+                (tab.id === "products"
+                  ? "Cấu hình sản phẩm"
+                  : tab.id === "approvalConfig"
+                    ? "Cấu hình duyệt"
+                    : tab.labelKey);
 
               return (
                 <button
@@ -105,6 +113,9 @@ export default function ExternalQueuePage() {
           {activeTab === "pending" && <ExternalQueuePendingTab />}
           {activeTab === "history" && <ExternalQueueHistoryTab />}
           {activeTab === "products" && <ExternalQueueProductConfigTab />}
+          {activeTab === "approvalConfig" && (
+            <ExternalQueueApprovalConfigTab />
+          )}
         </div>
       </div>
     </div>

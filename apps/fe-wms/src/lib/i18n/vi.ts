@@ -200,8 +200,7 @@ const vi = {
         },
         online: {
             title: "Doanh thu online",
-            subtitle:
-                "Dữ liệu từ hệ thống B.Duck Ticketing.",
+            subtitle: "Dữ liệu từ hệ thống B.Duck Ticketing.",
             generatedAt: "Cập nhật lúc",
             metrics: {
                 netRevenue: "Doanh thu thuần",
@@ -2160,18 +2159,22 @@ const vi = {
     systemSettings: {
         admin: "Quản trị",
         title: "Cài đặt hệ thống",
-        subtitle: "Cấu hình tích hợp OpenAPI theo từng cửa hàng và kiểm tra kết nối trước khi đồng bộ doanh thu.",
+        subtitle:
+            "Cấu hình tích hợp OpenAPI theo từng cửa hàng và kiểm tra kết nối trước khi đồng bộ doanh thu.",
         saving: "Đang lưu cấu hình OpenAPI...",
         saveSuccess: "Đã lưu cấu hình OpenAPI",
         saveError: "Không thể lưu cấu hình",
         saveSuccessDesc: "Cấu hình cửa hàng đã được cập nhật và ghi audit log.",
-        saveErrorDesc: "Vui lòng kiểm tra quyền, encryption key hoặc thông tin OpenAPI.",
+        saveErrorDesc:
+            "Vui lòng kiểm tra quyền, encryption key hoặc thông tin OpenAPI.",
         retry: "Thử lại",
         testing: "Đang kiểm tra kết nối OpenAPI...",
         testSuccess: "Kết nối OpenAPI thành công",
         testError: "Kết nối OpenAPI thất bại",
-        testSuccessDesc: "Hệ thống đã gọi thử action doanh thu trong ngày hiện tại.",
-        testErrorDesc: "Vui lòng kiểm tra AppId, SecretKey, baseUrl và quyền của store.",
+        testSuccessDesc:
+            "Hệ thống đã gọi thử action doanh thu trong ngày hiện tại.",
+        testErrorDesc:
+            "Vui lòng kiểm tra AppId, SecretKey, baseUrl và quyền của store.",
         openapi: "OpenAPI",
         store: "Cửa hàng",
         noStores: "Chưa có cửa hàng",
@@ -2190,7 +2193,8 @@ const vi = {
     },
     stockCount: {
         title: "Kiểm đếm hàng hóa",
-        subtitle: "Tạo phiên kiểm đếm theo quầy, mã hàng, dãy/danh mục hoặc toàn kho.",
+        subtitle:
+            "Tạo phiên kiểm đếm theo quầy, mã hàng, dãy/danh mục hoặc toàn kho.",
         create: "Tạo phiên",
         warehouse: "Kho",
         allWarehouses: "Tất cả kho",
@@ -2282,9 +2286,9 @@ const vi = {
                 EXPIRED: "Hết hạn",
                 WRONG_LOCATION: "Sai vị trí",
                 OTHER: "Khác",
-            }
-        }
-    }
+            },
+        },
+    },
 };
 
 Object.assign(vi.importVoucher, {
@@ -2552,6 +2556,21 @@ Object.assign(vi, {
             pending: "Chờ duyệt",
             history: "Lịch sử",
         },
+        approvalConfigTab: {
+            title: "Cấu hình cấp duyệt",
+            subtitle:
+                "Thiết lập tối đa 3 cấp duyệt cho hàng chờ quét ngoài theo từng kho/cửa hàng.",
+            loadError: "Không thể tải cấu hình cấp duyệt.",
+            saving: "Đang lưu cấu hình cấp duyệt...",
+            saveSuccess: "Đã lưu cấu hình cấp duyệt",
+            saveError: "Không thể lưu cấu hình cấp duyệt",
+            saveSuccessDesc: "Cấu hình duyệt external queue đã được cập nhật.",
+            saveErrorDesc: "Vui lòng kiểm tra quyền và dữ liệu cấu hình.",
+            missingBaseRole: "Không tìm thấy role mặc định cấp 1.",
+            missingLevel: "Hãy bật ít nhất cấp 2 hoặc chọn chỉ cần cấp 1.",
+            missingRole: "Hãy chọn role cho cấp duyệt đang bật.",
+            invalidOrder: "Cấp 3 chỉ được bật sau khi bật cấp 2.",
+        },
         pendingTab: {
             searchPlaceholder: "Tìm theo quầy, kho, mã đợt hoặc nhân viên...",
             metrics: {
@@ -2696,6 +2715,10 @@ Object.assign(vi, {
                     "Còn thay đổi số lượng chưa lưu. Hãy lưu từng dòng trước khi duyệt.",
                 queuedApproveNote:
                     "Hàng chờ đang quét không submit thủ công tại màn hình này. Hệ thống sẽ auto-submit theo quầy, sau đó admin có thể duyệt xuất kho.",
+                revisionRequired:
+                    "Batch đã bị cấp duyệt sau trả về. Cấp 1 có thể chỉnh số lượng rồi gửi duyệt lại; batch này không còn nhận thêm dữ liệu scan mới.",
+                waitingExportApproval:
+                    "Phiếu xuất đã được tạo và đang chờ cấp duyệt tiếp theo. Chỉ khi duyệt đủ cấp thì tồn kho mới được ghi nhận xuất.",
                 approveNotesPlaceholder: "Ghi chú phê duyệt (nếu có)",
                 rejectReasonPlaceholder: "Lý do từ chối (bắt buộc nếu từ chối)",
                 queueProduct: "Hàng chờ quét sản phẩm",
@@ -2704,6 +2727,8 @@ Object.assign(vi, {
         statuses: {
             QUEUED: "Đang quét",
             SUBMITTED: "Chờ duyệt",
+            PENDING_EXPORT_APPROVAL: "Chờ duyệt phiếu xuất",
+            REVISION_REQUIRED: "Trả về chỉnh sửa",
             APPROVED: "Đã duyệt",
             REJECTED: "Từ chối",
             EXPORTED: "Đã xuất kho",

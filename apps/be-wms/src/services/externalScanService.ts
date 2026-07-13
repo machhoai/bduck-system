@@ -17,11 +17,13 @@ import { logAudit } from "./auditService.js";
 import {
   AuditAction,
   ExternalCountCheckpointType,
+  ExportReferenceType,
   ExportType,
   ExportVoucherStatus,
 } from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
 import * as scannableProductService from "./externalQueueScannableProductService.js";
+import * as approvalService from "./approvalService.js";
 import {
   isExternalCountCheckpointSatisfied,
   isExternalCountGateOpen,
@@ -95,6 +97,21 @@ function toDate(value: unknown): Date {
     return new Date((value as { seconds: number }).seconds * 1000);
   }
   return new Date(value as string | number);
+}
+
+function isExternalQueueVoucher(voucher: Partial<ExportVoucher> | null) {
+  return voucher?.reference_type === ExportReferenceType.EXTERNAL_QUEUE_BATCH;
+}
+
+async function getUserDisplayName(userId: string): Promise<string | undefined> {
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) return undefined;
+    const user = userDoc.data();
+    return user?.full_name || user?.email || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export const scanProduct = async (
@@ -612,15 +629,31 @@ export const approveBatch = async (
   const scans = await externalScanRepo.findByBatchId(batchId);
   if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
 
-  // Check if any scan is not in SUBMITTED status
-  if (scans.some((s) => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+  const statuses = new Set(scans.map((scan) => scan.status));
+  const batchStatus = scans[0].status;
+  if (
+    statuses.size !== 1 ||
+    ![
+      ExternalScanQueueStatus.SUBMITTED,
+      ExternalScanQueueStatus.REVISION_REQUIRED,
+    ].includes(batchStatus)
+  ) {
     throw new Error("INVALID_BATCH_STATUS");
   }
 
   const warehouseId = scans[0].warehouse_id;
+  const scanIds = new Set(scans.map((scan) => scan.id));
+  if (approvedItems.some((item) => !scanIds.has(item.scan_id))) {
+    throw new Error("INVALID_APPROVED_ITEM");
+  }
+
   const approvedByScanId = new Map(
     approvedItems.map((item) => [item.scan_id, item.quantity]),
   );
+  if (scans.every((scan) => (approvedByScanId.get(scan.id) ?? 0) <= 0)) {
+    throw new Error("NO_APPROVED_ITEMS");
+  }
+
   const quantityChanges = scans
     .map((scan) => {
       const approvedQty = approvedByScanId.get(scan.id) ?? 0;
@@ -646,12 +679,14 @@ export const approveBatch = async (
     }
   }
 
-  // We need to create an Export Voucher and update inventory + queue
-  let voucherId = uuidv4();
+  const existingVoucherId =
+    scans.find((scan) => Boolean(scan.export_voucher_id))?.export_voucher_id ??
+    null;
+  const voucherId = existingVoucherId || uuidv4();
   let voucherNumber = await generateVoucherNumber("EXP");
+  const now = new Date();
 
   await db.runTransaction(async (tx) => {
-    // 1. Process inventory reads
     const inventoryDocs = await Promise.all(
       scans.map(async (scan) => {
         const invSnapshot = await tx.get(
@@ -664,8 +699,29 @@ export const approveBatch = async (
         return { scan, invSnapshot };
       }),
     );
+    const voucherRef = db.collection("export_vouchers").doc(voucherId);
+    const existingVoucherSnap = existingVoucherId
+      ? await tx.get(voucherRef)
+      : null;
+    const existingVoucher = existingVoucherSnap?.exists
+      ? (existingVoucherSnap.data() as ExportVoucher)
+      : null;
+    const oldVoucherItemsSnap = existingVoucher
+      ? await tx.get(
+          voucherRef.collection("items").where("is_deleted", "==", false),
+        )
+      : null;
 
-    // 2. Process writes and prepare voucher items
+    if (existingVoucher) {
+      if (
+        !isExternalQueueVoucher(existingVoucher) ||
+        existingVoucher.reference_id !== batchId
+      ) {
+        throw new Error("VOUCHER_BATCH_MISMATCH");
+      }
+      voucherNumber = existingVoucher.voucher_number || voucherNumber;
+    }
+
     const invMap = new Map<
       string,
       {
@@ -701,22 +757,25 @@ export const approveBatch = async (
           });
         }
         const state = invMap.get(path)!;
-
-        // Release on_hold (we subtract the original requested quantity because that's what was held)
-        state.hold_delta -= scan.quantity;
-        // If approved less than requested, refund ATP
-        const refundAtp = scan.quantity - approvedQty;
-        state.atp_delta += refundAtp;
+        const releasedHold = scan.quantity - approvedQty;
+        state.hold_delta -= releasedHold;
+        state.atp_delta += releasedHold;
       }
 
-      // Update queue record
       tx.update(db.collection("external_scan_queue").doc(scan.id), {
-        status: ExternalScanQueueStatus.APPROVED,
-        quantity: approvedQty, // Update to approved
+        status: ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL,
+        quantity: approvedQty,
         approved_by: managerId,
-        approved_at: new Date(),
+        approved_at: now,
+        final_approved_by: null,
+        final_approved_at: null,
+        revision_requested_by: null,
+        revision_requested_at: null,
         export_voucher_id: voucherId,
-        notes: notes,
+        rejection_reason: null,
+        atp_held: approvedQty > 0,
+        notes,
+        sync_time: now,
       });
 
       if (approvedQty > 0) {
@@ -736,7 +795,6 @@ export const approveBatch = async (
       }
     }
 
-    // Apply aggregated inventory updates
     for (const state of invMap.values()) {
       const newAtp = state.oldData.atp_quantity + state.atp_delta;
       const newOnHold = Math.max(
@@ -754,70 +812,113 @@ export const approveBatch = async (
         on_hold_quantity: newOnHold,
         atp_quantity: newAtp,
         total_quantity: newTotal,
-        last_updated_at: new Date(),
+        last_updated_at: now,
       });
     }
 
     const voucherItems = Array.from(groupedVoucherItems.values());
 
-    // 3. Create Export Voucher
-    if (voucherItems.length > 0) {
-      const now = new Date();
+    if (oldVoucherItemsSnap) {
+      for (const doc of oldVoucherItemsSnap.docs) {
+        tx.update(doc.ref, { is_deleted: true });
+      }
+    }
+
+    if (existingVoucher) {
+      tx.update(voucherRef, {
+        warehouse_id: warehouseId,
+        export_type: ExportType.SALE_POS,
+        status: ExportVoucherStatus.PENDING_APPROVAL,
+        creator_id: managerId,
+        approver_id: null,
+        approved_at: null,
+        reference_id: batchId,
+        reference_type: ExportReferenceType.EXTERNAL_QUEUE_BATCH,
+        recipient_name: "External Scan Queue",
+        recipient_department: "External Queue Approval",
+        attachment_urls: existingVoucher.attachment_urls ?? [],
+        action_time: now,
+        atp_deducted: false,
+        sync_time: now,
+        updated_at: now,
+        is_deleted: false,
+        notes: `Updated from external queue batch ${batchId}.${notes ? ` ${notes}` : ""}`,
+      });
+    } else {
       const voucher: ExportVoucher = {
         id: voucherId,
         voucher_number: voucherNumber,
         warehouse_id: warehouseId,
         export_type: ExportType.SALE_POS,
-        status: ExportVoucherStatus.COMPLETED,
+        status: ExportVoucherStatus.PENDING_APPROVAL,
         creator_id: managerId,
         created_at: now,
         updated_at: now,
-        approver_id: managerId,
-        approved_at: now,
+        approver_id: null,
+        approved_at: null,
         reference_id: batchId,
-        reference_type: null,
+        reference_type: ExportReferenceType.EXTERNAL_QUEUE_BATCH,
         recipient_name: "External Scan Queue",
         recipient_department: "External Queue Approval",
         attachment_urls: [],
         action_time: now,
-        atp_deducted: true,
+        atp_deducted: false,
         sync_time: now,
         is_deleted: false,
         notes: `Created from external queue batch ${batchId}.${notes ? ` ${notes}` : ""}`,
       };
 
-      const voucherRef = db.collection("export_vouchers").doc(voucherId);
       tx.set(voucherRef, voucher);
+    }
 
-      for (const item of voucherItems) {
-        const itemId = uuidv4();
-        const voucherItem: ExportVoucherItem = {
-          id: itemId,
-          export_voucher_id: voucherId,
-          product_id: item.product_id,
-          warehouse_location_id: item.warehouse_location_id,
-          quantity: item.quantity,
-          picked_quantity: item.picked_quantity,
-          unit_price: item.unit_price,
-          notes: "Auto-completed from external queue approval",
-          is_deleted: false,
-        };
+    for (const item of voucherItems) {
+      const itemId = uuidv4();
+      const voucherItem: ExportVoucherItem = {
+        id: itemId,
+        export_voucher_id: voucherId,
+        product_id: item.product_id,
+        warehouse_location_id: item.warehouse_location_id,
+        quantity: item.quantity,
+        picked_quantity: item.picked_quantity,
+        unit_price: item.unit_price,
+        notes: "Created from external queue level-1 approval",
+        is_deleted: false,
+      };
 
-        tx.set(voucherRef.collection("items").doc(itemId), voucherItem);
-      }
+      tx.set(voucherRef.collection("items").doc(itemId), voucherItem);
     }
   });
 
-  // Audit
+  const creatorName = await getUserDisplayName(managerId);
+  const approvals = await approvalService.createApprovalsForEntity(
+    "EXPORT_VOUCHER",
+    voucherId,
+    warehouseId,
+    managerId,
+    { voucher_number: voucherNumber, creator_name: creatorName },
+    undefined,
+    {
+      minLevel: 1,
+      maxLevel: 2,
+      configEntityType: "EXTERNAL_QUEUE_EXPORT",
+    },
+  );
+
+  let resultingStatus = ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL;
+  if (approvals.length === 0) {
+    await finalizeApprovedBatchFromVoucher(voucherId, "SYSTEM_AUTO_APPROVE");
+    resultingStatus = ExternalScanQueueStatus.EXPORTED;
+  }
+
   await logAudit({
     entity_type: "EXTERNAL_SCAN",
     entity_id: batchId,
     warehouse_id: warehouseId,
     action: AuditAction.APPROVE,
     user_id: managerId,
-    old_value: { status: "SUBMITTED" },
+    old_value: { status: batchStatus },
     new_value: {
-      status: "APPROVED",
+      status: resultingStatus,
       export_voucher_id: voucherId,
       export_voucher_number: voucherNumber,
       approved_items: approvedItems,
@@ -825,7 +926,244 @@ export const approveBatch = async (
     },
   }).catch(console.error);
 
+  return {
+    batch_id: batchId,
+    export_voucher_id: voucherId,
+    export_voucher_number: voucherNumber,
+    status: resultingStatus,
+  };
+};
+
+export const finalizeApprovedBatchFromVoucher = async (
+  voucherId: string,
+  approverId: string,
+) => {
+  const voucherRef = db.collection("export_vouchers").doc(voucherId);
+  const voucherSnap = await voucherRef.get();
+  if (!voucherSnap.exists) throw new Error("VOUCHER_NOT_FOUND");
+
+  const voucher = voucherSnap.data() as ExportVoucher;
+  if (!isExternalQueueVoucher(voucher) || !voucher.reference_id) {
+    throw new Error("NOT_EXTERNAL_QUEUE_VOUCHER");
+  }
+  if (
+    voucher.status === ExportVoucherStatus.COMPLETED &&
+    voucher.atp_deducted
+  ) {
+    return {
+      batch_id: voucher.reference_id,
+      export_voucher_id: voucherId,
+      unchanged: true,
+    };
+  }
+
+  const batchId = voucher.reference_id;
+  const scans = await externalScanRepo.findByBatchId(batchId);
+  if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
+  if (
+    scans.some(
+      (scan) =>
+        scan.status !== ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL &&
+        scan.status !== ExternalScanQueueStatus.EXPORTED,
+    )
+  ) {
+    throw new Error("INVALID_BATCH_STATUS");
+  }
+
+  const now = new Date();
+  await db.runTransaction(async (tx) => {
+    const inventoryDocs = await Promise.all(
+      scans.map(async (scan) => {
+        const invSnapshot = await tx.get(
+          db
+            .collection("inventory")
+            .where("warehouse_location_id", "==", scan.warehouse_location_id)
+            .where("product_id", "==", scan.product_id)
+            .limit(1),
+        );
+        return { scan, invSnapshot };
+      }),
+    );
+    const currentVoucherSnap = await tx.get(voucherRef);
+    if (!currentVoucherSnap.exists) throw new Error("VOUCHER_NOT_FOUND");
+    const currentVoucher = currentVoucherSnap.data() as ExportVoucher;
+    if (
+      currentVoucher.status === ExportVoucherStatus.COMPLETED &&
+      currentVoucher.atp_deducted
+    ) {
+      return;
+    }
+
+    const invMap = new Map<
+      string,
+      {
+        ref: FirebaseFirestore.DocumentReference;
+        oldData: FirebaseFirestore.DocumentData;
+        hold_delta: number;
+      }
+    >();
+
+    for (const { scan, invSnapshot } of inventoryDocs) {
+      if (!invSnapshot.empty && scan.atp_held && scan.quantity > 0) {
+        const invDoc = invSnapshot.docs[0];
+        const path = invDoc.ref.path;
+        if (!invMap.has(path)) {
+          invMap.set(path, {
+            ref: invDoc.ref,
+            oldData: invDoc.data(),
+            hold_delta: 0,
+          });
+        }
+        invMap.get(path)!.hold_delta -= scan.quantity;
+      }
+
+      tx.update(db.collection("external_scan_queue").doc(scan.id), {
+        status: ExternalScanQueueStatus.EXPORTED,
+        atp_held: false,
+        final_approved_by: approverId,
+        final_approved_at: now,
+        rejection_reason: null,
+        sync_time: now,
+      });
+    }
+
+    for (const state of invMap.values()) {
+      const newOnHold = Math.max(
+        0,
+        Number(state.oldData.on_hold_quantity ?? 0) + state.hold_delta,
+      );
+      const newTotal = calculateInventoryTotalQuantity({
+        atp_quantity: Number(state.oldData.atp_quantity ?? 0),
+        on_hold_quantity: newOnHold,
+        in_transit_quantity: Number(state.oldData.in_transit_quantity ?? 0),
+        quarantine_quantity: Number(state.oldData.quarantine_quantity ?? 0),
+      });
+
+      tx.update(state.ref, {
+        on_hold_quantity: newOnHold,
+        total_quantity: newTotal,
+        last_updated_at: now,
+      });
+    }
+
+    tx.update(voucherRef, {
+      status: ExportVoucherStatus.COMPLETED,
+      approver_id: approverId,
+      approved_at: now,
+      atp_deducted: true,
+      sync_time: now,
+      updated_at: now,
+    });
+  });
+
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: voucher.warehouse_id,
+    action: AuditAction.EXPORT,
+    user_id: approverId,
+    old_value: { status: ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL },
+    new_value: {
+      status: ExternalScanQueueStatus.EXPORTED,
+      export_voucher_id: voucherId,
+    },
+  }).catch(console.error);
+
+  await logAudit({
+    entity_type: "EXPORT_VOUCHER",
+    entity_id: voucherId,
+    warehouse_id: voucher.warehouse_id,
+    action: AuditAction.EXPORT,
+    user_id: approverId,
+    old_value: { status: ExportVoucherStatus.PENDING_APPROVAL },
+    new_value: {
+      status: ExportVoucherStatus.COMPLETED,
+      atp_deducted: true,
+      reference_id: batchId,
+      reference_type: ExportReferenceType.EXTERNAL_QUEUE_BATCH,
+    },
+  }).catch(console.error);
+
   return { batch_id: batchId, export_voucher_id: voucherId };
+};
+
+export const returnBatchForRevisionFromVoucher = async (
+  voucherId: string,
+  rejectorId: string,
+  reason: string,
+) => {
+  const voucherSnap = await db
+    .collection("export_vouchers")
+    .doc(voucherId)
+    .get();
+  if (!voucherSnap.exists) throw new Error("VOUCHER_NOT_FOUND");
+
+  const voucher = voucherSnap.data() as ExportVoucher;
+  if (!isExternalQueueVoucher(voucher) || !voucher.reference_id) {
+    throw new Error("NOT_EXTERNAL_QUEUE_VOUCHER");
+  }
+
+  const batchId = voucher.reference_id;
+  const scans = await externalScanRepo.findByBatchId(batchId);
+  if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
+  if (
+    scans.some(
+      (scan) => scan.status !== ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL,
+    )
+  ) {
+    throw new Error("INVALID_BATCH_STATUS");
+  }
+
+  const now = new Date();
+  const batch = db.batch();
+  for (const scan of scans) {
+    batch.update(db.collection("external_scan_queue").doc(scan.id), {
+      status: ExternalScanQueueStatus.REVISION_REQUIRED,
+      rejection_reason: reason,
+      revision_requested_by: rejectorId,
+      revision_requested_at: now,
+      sync_time: now,
+    });
+  }
+  await batch.commit();
+
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: voucher.warehouse_id,
+    action: AuditAction.REJECT,
+    user_id: rejectorId,
+    old_value: { status: ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL },
+    new_value: {
+      status: ExternalScanQueueStatus.REVISION_REQUIRED,
+      export_voucher_id: voucherId,
+      rejection_reason: reason,
+    },
+  }).catch(console.error);
+
+  return { batch_id: batchId, export_voucher_id: voucherId };
+};
+
+export const cancelBatchFromVoucher = async (
+  voucherId: string,
+  userId: string,
+  reason: string,
+) => {
+  const voucherSnap = await db
+    .collection("export_vouchers")
+    .doc(voucherId)
+    .get();
+  if (!voucherSnap.exists) throw new Error("VOUCHER_NOT_FOUND");
+
+  const voucher = voucherSnap.data() as ExportVoucher;
+  if (!isExternalQueueVoucher(voucher) || !voucher.reference_id) {
+    throw new Error("NOT_EXTERNAL_QUEUE_VOUCHER");
+  }
+
+  await rejectHeldBatch(voucher.reference_id, userId, reason, [
+    ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL,
+    ExternalScanQueueStatus.REVISION_REQUIRED,
+  ]);
 };
 
 export const updateScanQuantity = async (
@@ -839,7 +1177,8 @@ export const updateScanQuantity = async (
   if (!scan) throw new Error("SCAN_NOT_FOUND");
   if (
     scan.status !== ExternalScanQueueStatus.QUEUED &&
-    scan.status !== ExternalScanQueueStatus.SUBMITTED
+    scan.status !== ExternalScanQueueStatus.SUBMITTED &&
+    scan.status !== ExternalScanQueueStatus.REVISION_REQUIRED
   ) {
     throw new Error("INVALID_SCAN_STATUS");
   }
@@ -871,7 +1210,8 @@ export const updateScanQuantity = async (
     if (currentScan.is_deleted) throw new Error("SCAN_NOT_FOUND");
     if (
       currentScan.status !== ExternalScanQueueStatus.QUEUED &&
-      currentScan.status !== ExternalScanQueueStatus.SUBMITTED
+      currentScan.status !== ExternalScanQueueStatus.SUBMITTED &&
+      currentScan.status !== ExternalScanQueueStatus.REVISION_REQUIRED
     ) {
       throw new Error("INVALID_SCAN_STATUS");
     }
@@ -904,15 +1244,17 @@ export const updateScanQuantity = async (
     atpAfter = atpBefore - quantityDelta;
     onHoldAfter = Math.max(0, onHoldBefore + quantityDelta);
 
+    const now = new Date();
     tx.update(invDoc.ref, {
       atp_quantity: atpAfter,
       on_hold_quantity: onHoldAfter,
-      last_updated_at: new Date(),
+      last_updated_at: now,
     });
 
     tx.update(scanRef, {
       quantity: newQuantity,
-      sync_time: new Date(),
+      atp_held: newQuantity > 0,
+      sync_time: now,
     });
   });
 
@@ -960,17 +1302,21 @@ export const updateScanQuantity = async (
   };
 };
 
-export const rejectBatch = async (
+async function rejectHeldBatch(
   batchId: string,
   managerId: string,
   reason: string,
-) => {
+  allowedStatuses: ExternalScanQueueStatus[],
+) {
   const scans = await externalScanRepo.findByBatchId(batchId);
   if (scans.length === 0) throw new Error("BATCH_NOT_FOUND");
-  if (scans.some((s) => s.status !== ExternalScanQueueStatus.SUBMITTED)) {
+  const statuses = new Set(scans.map((scan) => scan.status));
+  const currentStatus = scans[0].status;
+  if (statuses.size !== 1 || !allowedStatuses.includes(currentStatus)) {
     throw new Error("INVALID_BATCH_STATUS");
   }
 
+  const now = new Date();
   await db.runTransaction(async (tx) => {
     const inventoryDocs = await Promise.all(
       scans.map(async (scan) => {
@@ -987,11 +1333,16 @@ export const rejectBatch = async (
 
     const invMap = new Map<
       string,
-      { ref: any; oldData: any; atp_delta: number; hold_delta: number }
+      {
+        ref: FirebaseFirestore.DocumentReference;
+        oldData: FirebaseFirestore.DocumentData;
+        atp_delta: number;
+        hold_delta: number;
+      }
     >();
 
     for (const { scan, invSnapshot } of inventoryDocs) {
-      if (!invSnapshot.empty) {
+      if (!invSnapshot.empty && scan.atp_held && scan.quantity > 0) {
         const invDoc = invSnapshot.docs[0];
         const path = invDoc.ref.path;
         if (!invMap.has(path)) {
@@ -1011,18 +1362,32 @@ export const rejectBatch = async (
         status: ExternalScanQueueStatus.REJECTED,
         rejection_reason: reason,
         approved_by: managerId,
-        approved_at: new Date(),
+        approved_at: now,
+        atp_held: false,
+        revision_requested_by: null,
+        revision_requested_at: null,
+        sync_time: now,
       });
     }
 
     for (const state of invMap.values()) {
+      const newAtp = Number(state.oldData.atp_quantity ?? 0) + state.atp_delta;
+      const newOnHold = Math.max(
+        0,
+        Number(state.oldData.on_hold_quantity ?? 0) + state.hold_delta,
+      );
+      const newTotal = calculateInventoryTotalQuantity({
+        atp_quantity: newAtp,
+        on_hold_quantity: newOnHold,
+        in_transit_quantity: Number(state.oldData.in_transit_quantity ?? 0),
+        quarantine_quantity: Number(state.oldData.quarantine_quantity ?? 0),
+      });
+
       tx.update(state.ref, {
-        on_hold_quantity: Math.max(
-          0,
-          state.oldData.on_hold_quantity + state.hold_delta,
-        ),
-        atp_quantity: state.oldData.atp_quantity + state.atp_delta,
-        last_updated_at: new Date(),
+        on_hold_quantity: newOnHold,
+        atp_quantity: newAtp,
+        total_quantity: newTotal,
+        last_updated_at: now,
       });
     }
   });
@@ -1033,7 +1398,21 @@ export const rejectBatch = async (
     warehouse_id: scans[0].warehouse_id,
     action: AuditAction.REJECT,
     user_id: managerId,
-    old_value: { status: "SUBMITTED" },
-    new_value: { status: "REJECTED", rejection_reason: reason },
+    old_value: { status: currentStatus },
+    new_value: {
+      status: ExternalScanQueueStatus.REJECTED,
+      rejection_reason: reason,
+    },
   }).catch(console.error);
+}
+
+export const rejectBatch = async (
+  batchId: string,
+  managerId: string,
+  reason: string,
+) => {
+  await rejectHeldBatch(batchId, managerId, reason, [
+    ExternalScanQueueStatus.SUBMITTED,
+    ExternalScanQueueStatus.REVISION_REQUIRED,
+  ]);
 };

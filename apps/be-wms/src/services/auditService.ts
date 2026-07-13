@@ -49,6 +49,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   workflow_versions: "workflow_definitions",
   workflow_instances: "workflow_instances",
   workflow_tasks: "workflow_tasks",
+  PROCESS_CONFIG: "process_configs",
   IMPORT_VOUCHER: "import_vouchers",
   EXPORT_VOUCHER: "export_vouchers",
   TRANSFER_ORDER: "transfer_orders",

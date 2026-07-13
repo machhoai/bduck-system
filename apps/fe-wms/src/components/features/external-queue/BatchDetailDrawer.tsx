@@ -105,18 +105,28 @@ export default function BatchDetailDrawer({
   >({});
 
   const isDraftBatch = batchData?.is_draft || batchData?.status === "QUEUED";
+  const isRevisionBatch = batchData?.status === "REVISION_REQUIRED";
+  const isWaitingExportApproval =
+    batchData?.status === "PENDING_EXPORT_APPROVAL";
+  const canEditBatchQuantity = [
+    "QUEUED",
+    "SUBMITTED",
+    "REVISION_REQUIRED",
+  ].includes(batchData?.status);
   const canManageQueue =
     !readonly &&
     hasPermission("external_scan.manage_queue", batchData?.warehouse_id);
   const canEditQuantity =
     !readonly &&
+    canEditBatchQuantity &&
     (hasPermission("external_scan.edit_quantity", batchData?.warehouse_id) ||
       canManageQueue);
   const canViewPrice = hasPermission(
     "products.price.view",
     batchData?.warehouse_id,
   );
-  const isProcessedBatch = readonly && !isDraftBatch;
+  const isProcessedBatch =
+    readonly && !isDraftBatch && !isWaitingExportApproval;
   const isRejectedBatch = batchData?.status === "REJECTED";
   const processedBy =
     batchData?.processed_by_name ||
@@ -178,7 +188,8 @@ export default function BatchDetailDrawer({
   const itemSummary = useMemo(() => {
     const summary: Record<string, number> = {};
     items.forEach((item: any) => {
-      const code = item.product_code || item.product_name || item.product_id || "Unknown";
+      const code =
+        item.product_code || item.product_name || item.product_id || "Unknown";
       const qty = quantities[item.scan_id] || 0;
       if (qty > 0) {
         summary[code] = (summary[code] || 0) + qty;
@@ -477,6 +488,27 @@ export default function BatchDetailDrawer({
             </div>
           )}
 
+          {isRevisionBatch && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2 text-sm text-[var(--color-error-text)]">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {batchData.rejection_reason ||
+                  drawerText?.hints?.revisionRequired ||
+                  "Batch đã bị cấp duyệt sau trả về. Cấp 1 có thể chỉnh số lượng rồi gửi duyệt lại; batch này không còn nhận thêm dữ liệu scan mới."}
+              </span>
+            </div>
+          )}
+
+          {isWaitingExportApproval && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-3 py-2 text-sm text-[var(--color-status-pending-text)]">
+              <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {drawerText?.hints?.waitingExportApproval ||
+                  "Phiếu xuất đã được tạo và đang chờ cấp duyệt tiếp theo. Chỉ khi duyệt đủ cấp thì tồn kho mới được ghi nhận xuất."}
+              </span>
+            </div>
+          )}
+
           {hasUnsavedChanges && (
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-3 py-2 text-sm text-[var(--color-error-text)]">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -737,7 +769,7 @@ export default function BatchDetailDrawer({
                 </div>
               )}
             </div>
-            
+
             {itemSummary.length > 0 && (
               <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-4 py-3">
                 <p className="mb-2 text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
@@ -745,11 +777,13 @@ export default function BatchDetailDrawer({
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {itemSummary.map(([code, qty]) => (
-                    <div 
-                      key={code} 
+                    <div
+                      key={code}
                       className="flex items-center gap-1.5 rounded-md border border-[var(--color-border-subtle)] bg-white px-2 py-1 shadow-sm"
                     >
-                      <span className="text-xs font-semibold text-[var(--color-text-primary)]">{code}</span>
+                      <span className="text-xs font-semibold text-[var(--color-text-primary)]">
+                        {code}
+                      </span>
                       <span className="flex h-5 items-center justify-center rounded bg-[var(--color-brand-primary-muted)] px-1.5 text-xs font-bold text-[var(--color-brand-primary)]">
                         {qty.toLocaleString()}
                       </span>
