@@ -6,6 +6,7 @@ import type { WorkflowTask } from "@bduck/shared-types";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useReceivingSessionData } from "@/hooks/useTaskSessionData";
 import { useTranslation } from "@/lib/i18n";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useReceivingStore } from "@/stores/useReceivingStore";
 import { createDetailedApiError } from "@/utils/apiError";
@@ -18,20 +19,14 @@ import {
 import ReceivingItemRow from "./ReceivingItemRow";
 import TaskSessionReviewOverlay from "./TaskSessionReviewOverlay";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 interface ReceivingSessionDrawerProps {
     task: WorkflowTask;
     onClose: () => void;
-    mobileBottomSheet?: boolean;
 }
 
-export default function ReceivingSessionDrawer({
-    task,
-    onClose,
-    mobileBottomSheet = false,
-}: ReceivingSessionDrawerProps) {
+export default function ReceivingSessionDrawer({ task, onClose }: ReceivingSessionDrawerProps) {
     const {
         voucherId,
         voucherNumber,
@@ -92,67 +87,45 @@ export default function ReceivingSessionDrawer({
     useEffect(() => {
         if (!sourceVoucherId) return;
 
-        void initSession(
-            sourceVoucherId,
-            sourceVoucherNumber,
-            sourceSupplierName,
-            sourceItems,
-        );
-    }, [
-        initSession,
-        sourceItems,
-        sourceSupplierName,
-        sourceVoucherId,
-        sourceVoucherNumber,
-    ]);
+        void initSession(sourceVoucherId, sourceVoucherNumber, sourceSupplierName, sourceItems);
+    }, [initSession, sourceItems, sourceSupplierName, sourceVoucherId, sourceVoucherNumber]);
 
     const handleSubmit = useCallback(async () => {
         if (isSubmitting || !voucherId) return;
         setSubmitting(true);
 
         const submitAction = async () => {
-            const actualsRes = await fetch(
-                `${API_BASE_URL}/api/import-vouchers/${voucherId}/actuals`,
-                {
-                    method: "PUT",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        items: items.map((item) => ({
-                            id: item.id,
-                            actual_quantity: item.actual_quantity,
-                            notes: item.notes || null,
-                        })),
-                        action_time: new Date().toISOString(),
-                    }),
-                },
-            );
+            const actualsRes = await fetch(`${API_BASE_URL}/api/import-vouchers/${voucherId}/actuals`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    items: items.map((item) => ({
+                        id: item.id,
+                        actual_quantity: item.actual_quantity,
+                        notes: item.notes || null,
+                    })),
+                    action_time: new Date().toISOString(),
+                }),
+            });
 
             if (!actualsRes.ok) {
                 const errorBody = await actualsRes.json().catch(() => null);
                 throw createDetailedApiError(actualsRes, errorBody, t.receiving.submitError);
             }
 
-            const completeRes = await fetch(
-                `${API_BASE_URL}/api/import-vouchers/${voucherId}/complete-receiving`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                },
-            );
+            const completeRes = await fetch(`${API_BASE_URL}/api/import-vouchers/${voucherId}/complete-receiving`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+            });
 
             if (!completeRes.ok) {
                 const errorBody = await completeRes.json().catch(() => null);
                 throw createDetailedApiError(completeRes, errorBody, t.receiving.submitError);
             }
 
-            emitDataMutation([
-                "import_vouchers",
-                "inventory",
-                "workflow_tasks",
-                "audit_logs",
-            ]);
+            emitDataMutation(["import_vouchers", "inventory", "workflow_tasks", "audit_logs"]);
 
             return completeRes.json();
         };
@@ -183,15 +156,7 @@ export default function ReceivingSessionDrawer({
         } finally {
             setSubmitting(false);
         }
-    }, [
-        clearSession,
-        isSubmitting,
-        items,
-        onClose,
-        setSubmitting,
-        t,
-        voucherId,
-    ]);
+    }, [clearSession, isSubmitting, items, onClose, setSubmitting, t, voucherId]);
 
     const handleOpenReview = useCallback(() => {
         if (isSubmitting || !isConfirmed) return;
@@ -199,110 +164,98 @@ export default function ReceivingSessionDrawer({
         setIsReviewOpen(true);
     }, [isConfirmed, isSubmitting, items]);
 
-    const totalExpected = items.reduce(
-        (sum, item) => sum + item.expected_quantity,
-        0,
-    );
+    const totalExpected = items.reduce((sum, item) => sum + item.expected_quantity, 0);
     const totalActual = items.reduce((sum, item) => sum + item.actual_quantity, 0);
     const completedItems = items.filter((item) => item.actual_quantity > 0).length;
     const itemsNeedingReview = items.filter(
-        (item) =>
-            item.actual_quantity === 0 || item.actual_quantity !== item.expected_quantity,
+        (item) => item.actual_quantity === 0 || item.actual_quantity !== item.expected_quantity,
     ).length;
 
     return (
         <>
-        {mobileBottomSheet && (
-            <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden"
-                onClick={onClose}
-            />
-        )}
-
-        <div
-            className={
-                mobileBottomSheet
-                    ? "fixed inset-x-0 bottom-[var(--bottomnav-height)] z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-[var(--color-bg-base)] shadow-2xl md:inset-0 md:max-h-none md:rounded-none md:shadow-none"
-                    : "fixed inset-0 z-50 flex flex-col bg-[var(--color-bg-base)]"
-            }
-        >
-            {mobileBottomSheet && (
-                <div className="flex justify-center border-b border-[var(--color-border-soft)] px-4 pb-1.5 pt-2 md:hidden">
-                    <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
-                </div>
-            )}
-            <ReceivingSessionHeader
-                voucherNumber={voucherNumber || sourceVoucherNumber}
-                supplierName={supplierName || sourceSupplierName}
+            <BottomSheet
+                isOpen
                 onClose={onClose}
-            />
-            <ReceivingSessionStatsBar
-                completedItems={completedItems}
-                totalItems={items.length}
-                totalActual={totalActual}
-                totalExpected={totalExpected}
-                itemsNeedingReview={itemsNeedingReview}
-                lastSavedAt={lastSavedAt}
-            />
+                defaultSnap="full"
+                zIndex={50}
+                headerMode="handle-only"
+                contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+                desktopClassName="md:inset-0 md:bottom-0 md:h-screen md:max-h-none md:rounded-none md:border-0 md:shadow-none"
+            >
+                <div className="flex min-h-0 flex-1 flex-col bg-[var(--color-bg-base)]">
+                    <ReceivingSessionHeader
+                        voucherNumber={voucherNumber || sourceVoucherNumber}
+                        supplierName={supplierName || sourceSupplierName}
+                        onClose={onClose}
+                    />
+                    <ReceivingSessionStatsBar
+                        completedItems={completedItems}
+                        totalItems={items.length}
+                        totalActual={totalActual}
+                        totalExpected={totalExpected}
+                        itemsNeedingReview={itemsNeedingReview}
+                        lastSavedAt={lastSavedAt}
+                    />
 
-            <div className="flex-1 overflow-y-auto px-4 py-3">
-                {isLoading ? (
-                    <ReceivingSessionSkeleton />
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {items.map((item) => (
-                            <ReceivingItemRow
-                                key={item.id}
-                                item={item}
-                                isHighlighted={
-                                    highlightedCode === item.product_barcode.toUpperCase() ||
-                                    highlightedCode === item.product_sku.toUpperCase()
-                                }
-                                onQuantityChange={updateItemQuantity}
-                                onNotesChange={updateItemNotes}
-                            />
-                        ))}
+                    <div className="flex-1 overflow-y-auto px-4 py-3">
+                        {isLoading ? (
+                            <ReceivingSessionSkeleton />
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {items.map((item) => (
+                                    <ReceivingItemRow
+                                        key={item.id}
+                                        item={item}
+                                        isHighlighted={
+                                            highlightedCode === item.product_barcode.toUpperCase() ||
+                                            highlightedCode === item.product_sku.toUpperCase()
+                                        }
+                                        onQuantityChange={updateItemQuantity}
+                                        onNotesChange={updateItemNotes}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
 
-            <ReceivingSessionFooter
-                isConfirmed={isConfirmed}
-                isSubmitting={isSubmitting}
-                completedItems={completedItems}
-                totalItems={items.length}
-                onConfirmChange={setConfirmed}
-                onClose={onClose}
-                onSubmit={handleOpenReview}
-            />
+                    <ReceivingSessionFooter
+                        isConfirmed={isConfirmed}
+                        isSubmitting={isSubmitting}
+                        completedItems={completedItems}
+                        totalItems={items.length}
+                        onConfirmChange={setConfirmed}
+                        onClose={onClose}
+                        onSubmit={handleOpenReview}
+                    />
 
-            {isReviewOpen ? (
-                <TaskSessionReviewOverlay
-                    title={t.receiving.reviewTitle}
-                    description={t.receiving.reviewDescription}
-                    quantityLabel={t.receiving.quantityCount}
-                    expectedLabel={t.receiving.expected}
-                    actualLabel={t.receiving.actual}
-                    diffLabel={t.receiving.diff}
-                    confirmLabel={t.receiving.confirmSubmit}
-                    attentionLabel={t.receiving.needReview}
-                    items={items.map((item) => ({
-                        id: item.id,
-                        product_name: item.product_name,
-                        product_sku: item.product_sku,
-                        product_barcode: item.product_barcode,
-                        product_image_url: item.product_image_url,
-                        location_name: item.location_name,
-                        expected_quantity: item.expected_quantity,
-                        actual_quantity: item.actual_quantity,
-                    }))}
-                    isSubmitting={isSubmitting}
-                    onBack={() => setIsReviewOpen(false)}
-                    onClose={() => setIsReviewOpen(false)}
-                    onConfirm={handleSubmit}
-                />
-            ) : null}
-        </div>
+                    {isReviewOpen ? (
+                        <TaskSessionReviewOverlay
+                            title={t.receiving.reviewTitle}
+                            description={t.receiving.reviewDescription}
+                            quantityLabel={t.receiving.quantityCount}
+                            expectedLabel={t.receiving.expected}
+                            actualLabel={t.receiving.actual}
+                            diffLabel={t.receiving.diff}
+                            confirmLabel={t.receiving.confirmSubmit}
+                            attentionLabel={t.receiving.needReview}
+                            items={items.map((item) => ({
+                                id: item.id,
+                                product_name: item.product_name,
+                                product_sku: item.product_sku,
+                                product_barcode: item.product_barcode,
+                                product_image_url: item.product_image_url,
+                                location_name: item.location_name,
+                                expected_quantity: item.expected_quantity,
+                                actual_quantity: item.actual_quantity,
+                            }))}
+                            isSubmitting={isSubmitting}
+                            onBack={() => setIsReviewOpen(false)}
+                            onClose={() => setIsReviewOpen(false)}
+                            onConfirm={handleSubmit}
+                        />
+                    ) : null}
+                </div>
+            </BottomSheet>
         </>
     );
 }

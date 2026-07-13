@@ -183,15 +183,6 @@ export default function DeviceStatusIndicator({ glass = false }: { glass?: boole
                     </span>
                 )}
             </div>
-
-            {environmentLabel && (
-                <div className={glass
-                    ? "relative flex h-8 aspect-square items-center justify-center rounded-full bg-white/12 border border-white/20 text-white backdrop-blur-md shadow-none text-xxs font-semibold transition-all duration-300"
-                    : "relative flex h-8 aspect-square items-center justify-center rounded-full bg-white border border-transparent text-[var(--color-text-muted)] shadow-sm text-xxs font-semibold transition-all duration-300"
-                }>
-                    {environmentLabel}
-                </div>
-            )}
         </div>
     );
 }

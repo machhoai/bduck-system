@@ -154,7 +154,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="relative flex flex-col gap-4">
+        <div className="relative flex flex-col gap-4 pb-3">
             <div className="absolute -top-12 -left-2 -right-2 lg:-left-4 lg:-right-2 h-60 rounded-b-3xl bg-[var(--color-brand-primary)] pointer-events-none z-0">
             </div>
             {/* ── Header ── */}
@@ -189,7 +189,7 @@ export default function DashboardPage() {
             )}
 
             {/* ── Expense Dashboard Widgets ── */}
-            {hasExpenseAccess && (
+            {/* {hasExpenseAccess && (
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between pb-1.5">
                         <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                         warehouseId={selectedWarehouseId || "ALL"}
                     />
                 </div>
-            )}
+            )} */}
 
             <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between pb-1.5">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                 {/* ── Charts Row ── */}
                 <div
                     id="wms-dashboard-charts"
-                    className="grid grid-cols-1 gap-2 lg:grid-cols-2"
+                    className="grid grid-cols-1 gap-3 lg:grid-cols-2"
                 >
                     <StockDistributionChart
                         data={typeDistribution}
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Tables Row ── */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     <div id="wms-dashboard-low-stock">
                         <LowStockTable
                             products={lowStockProducts}

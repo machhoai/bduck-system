@@ -22,6 +22,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { resolveNonconformityReport } from "@/hooks/useNonconformities";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 interface NonconformityResolveDrawerProps {
   report: NonconformityReport;
@@ -102,7 +103,9 @@ function Field({
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+        <p className="text-xs font-medium text-[var(--color-text-muted)]">
+          {label}
+        </p>
         <p className="mt-0.5 break-words text-sm font-semibold text-[var(--color-text-primary)]">
           {value || "—"}
         </p>
@@ -207,13 +210,154 @@ export default function NonconformityResolveDrawer({
     }
   };
 
+  const renderContent = (mobile = false) => (
+    <>
+      <div className={mobile ? "pt-3" : undefined}>
+        {mobile && (
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-[var(--color-error-border)] bg-[var(--color-error-bg)] p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70 text-[var(--color-error-text)]">
+              <AlertTriangle className="h-4.5 w-4.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+                {report.report_number}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[var(--color-error-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-error-text)]">
+            {issueLabel}
+          </span>
+          <span className="rounded-full bg-[var(--color-status-pending-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-status-pending-text)]">
+            {statusLabel}
+          </span>
+        </div>
+
+        <div className="mt-3">
+          <Field
+            icon={Package}
+            label={copy.fields.product}
+            value={productName}
+          />
+          <Field
+            icon={Warehouse}
+            label={copy.fields.warehouse}
+            value={warehouseName}
+          />
+          <Field
+            icon={Hash}
+            label={copy.fields.location}
+            value={locationName || report.warehouse_location_id}
+          />
+          <Field
+            icon={Scale}
+            label={copy.fields.quantity}
+            value={report.quantity_affected.toLocaleString()}
+          />
+          <Field
+            icon={ShieldAlert}
+            label={copy.fields.reporter}
+            value={reporterName}
+          />
+          <Field
+            icon={FileText}
+            label={copy.fields.createdAt}
+            value={formatDate(report.created_at)}
+          />
+        </div>
+
+        {!canResolve && (
+          <div className="mt-3 flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-3">
+            <ShieldAlert className="h-5 w-5 shrink-0 text-[var(--color-status-pending-icon)]" />
+            <p className="text-xs leading-relaxed text-[var(--color-status-pending-text)]">
+              {isReporter ? copy.selfBlocked : copy.noResolvePermission}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {copy.resolutionTitle}
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {allowedResolutions.map((option) => {
+              const active = resolutionType === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setResolutionType(option)}
+                  disabled={!canResolve || isSubmitting}
+                  aria-pressed={active}
+                  className={`min-h-11 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    active
+                      ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] ring-1 ring-[var(--color-brand-primary)]"
+                      : "border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] hover:bg-[var(--color-neutral-50)]"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {getResolutionLabel(option)}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+                    {getResolutionHint(option)}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {copy.notesLabel}
+          </label>
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={3}
+            disabled={!canResolve || isSubmitting}
+            placeholder={copy.notesPlaceholder}
+            className="mt-2 w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+      </div>
+
+      {mobile && (
+        <div className="sticky bottom-0 -mx-4 mt-4 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]/95 px-4 pb-1 pt-3 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => setShowOtpModal(true)}
+            disabled={!canResolve || !resolutionType || isSubmitting}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-[var(--color-text-on-dark)] shadow-sm transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {copy.resolveButton}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
+      <BottomSheet
+        title={copy.detailTitle}
+        isOpen
+        onClose={onClose}
+        defaultSnap="full"
+        zIndex={120}
+        mobileBreakpoint="lg"
+      >
+        {renderContent(true)}
+      </BottomSheet>
+
       <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+        className="fixed inset-0 z-40 hidden bg-black/40 backdrop-blur-xs lg:block"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-[90%] flex-col bg-white shadow-2xl lg:w-2/3">
+      <div className="fixed inset-y-0 right-0 z-50 hidden w-[90%] flex-col bg-white shadow-2xl lg:flex lg:w-2/3">
         <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-error-bg)] text-[var(--color-error-text)]">
@@ -238,77 +382,7 @@ export default function NonconformityResolveDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--color-error-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-error-text)]">
-              {issueLabel}
-            </span>
-            <span className="rounded-full bg-[var(--color-status-pending-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-status-pending-text)]">
-              {statusLabel}
-            </span>
-          </div>
-
-          <div className="mt-3">
-            <Field icon={Package} label={copy.fields.product} value={productName} />
-            <Field icon={Warehouse} label={copy.fields.warehouse} value={warehouseName} />
-            <Field icon={Hash} label={copy.fields.location} value={locationName || report.warehouse_location_id} />
-            <Field icon={Scale} label={copy.fields.quantity} value={report.quantity_affected.toLocaleString()} />
-            <Field icon={ShieldAlert} label={copy.fields.reporter} value={reporterName} />
-            <Field icon={FileText} label={copy.fields.createdAt} value={formatDate(report.created_at)} />
-          </div>
-
-          {!canResolve && (
-            <div className="mt-3 flex items-start gap-3 rounded-xl border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] p-3">
-              <ShieldAlert className="h-5 w-5 shrink-0 text-[var(--color-status-pending-icon)]" />
-              <p className="text-xs leading-relaxed text-[var(--color-status-pending-text)]">
-                {isReporter ? copy.selfBlocked : copy.noResolvePermission}
-              </p>
-            </div>
-          )}
-
-          <div className="mt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              {copy.resolutionTitle}
-            </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {allowedResolutions.map((option) => {
-                const active = resolutionType === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setResolutionType(option)}
-                    disabled={!canResolve || isSubmitting}
-                    className={`rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      active
-                        ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)]"
-                        : "border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] hover:bg-[var(--color-neutral-50)]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                      {getResolutionLabel(option)}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-                      {getResolutionHint(option)}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              {copy.notesLabel}
-            </label>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              rows={3}
-              disabled={!canResolve || isSubmitting}
-              placeholder={copy.notesPlaceholder}
-              className="mt-2 w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
+          {renderContent()}
         </div>
 
         <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">

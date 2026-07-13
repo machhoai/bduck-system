@@ -44,9 +44,10 @@ export type ExternalCountSession = {
   warehouse_code?: string | null;
   location_name?: string | null;
   location_code?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  submitted_at?: string;
+  action_time?: unknown;
+  created_at?: unknown;
+  updated_at?: unknown;
+  submitted_at?: unknown;
 };
 
 export type ExternalCountRequirementConfig = {

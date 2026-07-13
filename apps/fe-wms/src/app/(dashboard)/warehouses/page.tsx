@@ -189,7 +189,7 @@ export default function WarehousesPage() {
                     </div>
                 )}
 
-                <div className={isMapView ? "flex items-center justify-between gap-2 w-full md:w-fit rounded-full border border-slate-100 bg-white/90 backdrop-blur-md p-1 shadow-md pointer-events-auto w-fit ml-auto md:ml-0" : "flex items-center gap-2"}>
+                <div className={isMapView ? "flex items-center justify-between gap-2 w-full md:w-fit rounded-full pointer-events-auto ml-auto md:ml-0" : "flex items-center gap-2"}>
                     {/* View mode switcher — only visible on warehouses tab */}
                     {activeTab === "warehouses" && (
                         <div className="flex rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-1">

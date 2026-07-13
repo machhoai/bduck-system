@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import gsap from "gsap";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 type SnapPoint = "collapsed" | "half" | "full";
@@ -25,6 +25,10 @@ interface BottomSheetProps {
     isOpen?: boolean;
     onClose?: () => void;
     zIndex?: number;
+    contentClassName?: string;
+    desktopClassName?: string;
+    headerMode?: "default" | "handle-only";
+    mobileBreakpoint?: "md" | "lg";
 }
 
 export function BottomSheet({
@@ -34,14 +38,17 @@ export function BottomSheet({
     isOpen,
     onClose,
     zIndex = 40,
+    contentClassName,
+    desktopClassName,
+    headerMode = "default",
+    mobileBreakpoint = "md",
 }: BottomSheetProps) {
     const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
     const [dragHeight, setDragHeight] = useState<number | null>(null);
     const [isDragActive, setIsDragActive] = useState(false);
+    const [isDesktopLayout, setIsDesktopLayout] = useState(false);
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const sheetRef = useRef<HTMLDivElement>(null);
-    const backdropRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const animationRef = useRef<ReturnType<typeof gsap.timeline> | null>(null);
     const dragStartY = useRef(0);
     const dragStartHeight = useRef(0);
     const dragStartSnap = useRef<SnapPoint>("collapsed");
@@ -54,6 +61,25 @@ export function BottomSheet({
             setSnap(defaultSnap);
         }
     }, [isOpen, defaultSnap]);
+
+    useEffect(() => {
+        setPortalContainer(document.body);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!desktopClassName) {
+            setIsDesktopLayout(false);
+            return undefined;
+        }
+
+        const mediaQuery = window.matchMedia("(min-width: 768px)");
+        const syncDesktopLayout = () => setIsDesktopLayout(mediaQuery.matches);
+
+        syncDesktopLayout();
+        mediaQuery.addEventListener("change", syncDesktopLayout);
+
+        return () => mediaQuery.removeEventListener("change", syncDesktopLayout);
+    }, [desktopClassName]);
 
     const getHeightPx = useCallback(() => {
         if (!sheetRef.current) return 0;
@@ -92,24 +118,24 @@ export function BottomSheet({
         [getHeightPx, snap],
     );
 
-    const handleDragMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-        if (!isDragging.current) return;
+    const handleDragMove = useCallback(
+        (e: ReactPointerEvent<HTMLDivElement>) => {
+            if (!isDragging.current) return;
 
-        const delta = dragStartY.current - e.clientY;
-        if (Math.abs(delta) > DRAG_MOVE_THRESHOLD) {
-            hasMoved.current = true;
-        }
-        if (!hasMoved.current) return;
+            const delta = dragStartY.current - e.clientY;
+            if (Math.abs(delta) > DRAG_MOVE_THRESHOLD) {
+                hasMoved.current = true;
+            }
+            if (!hasMoved.current) return;
 
-        const newHeight = Math.max(
-            onClose ? 20 : COLLAPSED_HEIGHT,
-            dragStartHeight.current + delta,
-        );
-        const maxHeight = window.innerHeight * MAX_HEIGHT_RATIO;
-        const nextHeight = Math.min(newHeight, maxHeight);
-        latestDragHeight.current = nextHeight;
-        setDragHeight(nextHeight);
-    }, [onClose]);
+            const newHeight = Math.max(onClose ? 20 : COLLAPSED_HEIGHT, dragStartHeight.current + delta);
+            const maxHeight = window.innerHeight * MAX_HEIGHT_RATIO;
+            const nextHeight = Math.min(newHeight, maxHeight);
+            latestDragHeight.current = nextHeight;
+            setDragHeight(nextHeight);
+        },
+        [onClose],
+    );
 
     const handleDragEnd = useCallback(
         (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -170,8 +196,7 @@ export function BottomSheet({
         [getHeightPx, onClose],
     );
 
-    const isContentVisible =
-        snap !== "collapsed" || (dragHeight !== null && dragHeight > COLLAPSED_HEIGHT);
+    const isContentVisible = snap !== "collapsed" || (dragHeight !== null && dragHeight > COLLAPSED_HEIGHT);
 
     useEffect(() => {
         if (isOpen === false) return undefined;
@@ -196,157 +221,16 @@ export function BottomSheet({
 
     // Determine visibility states for class lists
     const isSheetOpen = isOpen !== false;
-    const hasCloseHandler = Boolean(onClose);
 
-    useLayoutEffect(() => {
-        const sheet = sheetRef.current;
-        if (!sheet) return undefined;
+    if (!portalContainer) return null;
 
-        const backdrop = backdropRef.current;
-        const content = contentRef.current;
-        const animatedElements = [sheet, backdrop, content].filter(
-            Boolean,
-        ) as HTMLElement[];
-        const reduceMotion = window.matchMedia(
-            "(prefers-reduced-motion: reduce)",
-        ).matches;
-
-        animationRef.current?.kill();
-        gsap.killTweensOf(animatedElements);
-
-        if (reduceMotion) {
-            gsap.set(sheet, {
-                autoAlpha: isSheetOpen ? 1 : 0,
-                pointerEvents: isSheetOpen ? "auto" : "none",
-                scale: 1,
-                yPercent: isSheetOpen ? 0 : 105,
-            });
-            if (backdrop) {
-                gsap.set(backdrop, {
-                    autoAlpha: isSheetOpen ? 1 : 0,
-                    pointerEvents: isSheetOpen ? "auto" : "none",
-                });
-            }
-            if (content && hasCloseHandler) {
-                gsap.set(content, { autoAlpha: isSheetOpen ? 1 : 0, y: 0 });
-            }
-            return undefined;
-        }
-
-        if (isSheetOpen) {
-            const tl = gsap.timeline();
-            animationRef.current = tl;
-
-            gsap.set(sheet, {
-                autoAlpha: 1,
-                pointerEvents: "auto",
-                scale: 0.985,
-                willChange: "transform, opacity",
-                yPercent: 105,
-            });
-
-            if (backdrop) {
-                gsap.set(backdrop, {
-                    autoAlpha: 0,
-                    pointerEvents: "auto",
-                    willChange: "opacity",
-                });
-            }
-            if (content && hasCloseHandler) {
-                gsap.set(content, { autoAlpha: 0, y: 8 });
-            }
-
-            if (backdrop) {
-                tl.to(backdrop, {
-                    autoAlpha: 1,
-                    duration: 0.18,
-                    ease: "sine.out",
-                }, 0);
-            }
-
-            tl.to(sheet, {
-                duration: 0.42,
-                ease: "power3.out",
-                scale: 1,
-                yPercent: 0,
-            }, 0.02);
-
-            if (content && hasCloseHandler) {
-                tl.to(content, {
-                    autoAlpha: 1,
-                    duration: 0.22,
-                    ease: "power2.out",
-                    y: 0,
-                }, 0.16);
-            }
-
-            tl.set(animatedElements, { clearProps: "willChange" });
-
-            return () => {
-                tl.kill();
-            };
-        }
-
-        const tl = gsap.timeline({
-            onComplete: () => {
-                gsap.set(sheet, {
-                    autoAlpha: 0,
-                    pointerEvents: "none",
-                    scale: 1,
-                    yPercent: 105,
-                });
-                if (backdrop) {
-                    gsap.set(backdrop, {
-                        autoAlpha: 0,
-                        pointerEvents: "none",
-                    });
-                }
-                if (content && hasCloseHandler) {
-                    gsap.set(content, { autoAlpha: 0, y: 0 });
-                }
-            },
-        });
-        animationRef.current = tl;
-
-        if (content && hasCloseHandler) {
-            tl.to(content, {
-                autoAlpha: 0,
-                duration: 0.12,
-                ease: "power2.in",
-                y: 6,
-            }, 0);
-        }
-
-        tl.to(sheet, {
-            autoAlpha: 0.98,
-            duration: 0.3,
-            ease: "power2.inOut",
-            scale: 0.985,
-            yPercent: 105,
-        }, 0);
-
-        if (backdrop) {
-            tl.to(backdrop, {
-                autoAlpha: 0,
-                duration: 0.18,
-                ease: "sine.in",
-            }, 0.06);
-        }
-
-        return () => {
-            tl.kill();
-        };
-    }, [isSheetOpen, hasCloseHandler]);
-
-    return (
+    return createPortal(
         <>
             {/* Backdrop overlay for controllable sheets */}
             {onClose && (
                 <div
-                    ref={backdropRef}
                     style={{ zIndex: zIndex - 10 }}
-                    className={`fixed inset-0 bg-black/40 opacity-0 md:hidden ${isSheetOpen ? "" : "pointer-events-none"
-                        }`}
+                    className={`fixed inset-0 bg-black/40 transition-opacity duration-200 ${mobileBreakpoint === "lg" ? "lg:hidden" : "md:hidden"} ${isSheetOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
                     onClick={closeSheet}
                 />
             )}
@@ -354,15 +238,22 @@ export function BottomSheet({
             <div
                 ref={sheetRef}
                 style={{
-                    height: dragHeight === null ? SNAP_HEIGHTS[snap] : `${dragHeight}px`,
+                    height: isDesktopLayout
+                        ? "100%"
+                        : dragHeight === null
+                          ? SNAP_HEIGHTS[snap]
+                          : `${dragHeight}px`,
+                    bottom: isDesktopLayout ? 0 : "var(--bottomnav-height, 68px)",
+                    transform: isSheetOpen ? "translateY(0)" : "translateY(100%)",
+                    opacity: isSheetOpen ? 1 : 0,
+                    pointerEvents: isSheetOpen ? "auto" : "none",
                     zIndex: zIndex,
                 }}
-                className={`fixed inset-x-0 bottom-[var(--bottomnav-height)] max-h-[80%] flex translate-y-full flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] opacity-0 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] md:hidden ${isDragActive ? "transition-none" : "transition-[height] duration-300 ease-out"
-                    } ${isSheetOpen ? "" : "pointer-events-none"}`}
+                className={`fixed inset-x-0 flex max-h-[80%] flex-col overflow-hidden rounded-t-[var(--radius-lg)] border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)] ${desktopClassName ? desktopClassName : mobileBreakpoint === "lg" ? "lg:hidden" : "md:hidden"} ${isDragActive ? "transition-none" : "transition-[height,transform,opacity] duration-300 ease-out"}`}
             >
                 {/* Drag handle & Header */}
                 <div
-                    className="flex flex-shrink-0 cursor-grab touch-none items-center justify-between px-4 pb-1.5 pt-2 active:cursor-grabbing border-b border-[var(--color-border-subtle)]"
+                    className={`flex flex-shrink-0 cursor-grab touch-none items-center justify-between px-4 pb-1.5 pt-2 active:cursor-grabbing border-b border-[var(--color-border-subtle)] ${desktopClassName ? "md:hidden" : ""}`}
                     onPointerDown={handleDragStart}
                     onPointerMove={handleDragMove}
                     onPointerUp={handleDragEnd}
@@ -378,7 +269,7 @@ export function BottomSheet({
                             </p>
                         )}
                     </div>
-                    {onClose ? (
+                    {onClose && headerMode === "default" ? (
                         <button
                             type="button"
                             onClick={closeSheet}
@@ -393,15 +284,13 @@ export function BottomSheet({
 
                 {/* Content — scrollable */}
                 <div
-                    ref={contentRef}
-                    className={`flex-1 overflow-y-auto overscroll-contain px-4 pb-6 transition-opacity duration-200 ${isContentVisible || onClose
-                        ? "opacity-100"
-                        : "opacity-0 pointer-events-none invisible"
+                    className={`${contentClassName ?? "flex-1 overflow-y-auto overscroll-contain px-4 pb-6"} transition-opacity duration-200 ${isContentVisible || onClose ? "opacity-100" : "opacity-0 pointer-events-none invisible"
                         }`}
                 >
                     {children}
                 </div>
             </div>
-        </>
+        </>,
+        portalContainer,
     );
 }

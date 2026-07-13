@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { AlertTriangle, CheckCircle2, ClipboardList, Search, Settings2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Search,
+  Settings2,
+} from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import {
   externalCountApi,
@@ -30,6 +38,8 @@ const copy = {
     warehouse: "Kho",
     location: "Quầy",
     date: "Ngày",
+    businessDate: "Ngày nghiệp vụ",
+    performedAt: "Thời gian thực hiện",
     all: "Tất cả",
     search: "Tìm theo mã checkpoint, quầy, kho hoặc nhân viên...",
     emptyTitle: "Chưa có checkpoint kiểm đếm",
@@ -60,6 +70,8 @@ const copy = {
     warehouse: "仓库",
     location: "柜台",
     date: "日期",
+    businessDate: "业务日期",
+    performedAt: "执行时间",
     all: "全部",
     search: "按检查点、柜台、仓库或员工搜索...",
     emptyTitle: "暂无盘点检查点",
@@ -92,7 +104,54 @@ function toMillis(value: unknown) {
   ) {
     return (value as { toDate: () => Date }).toDate().getTime();
   }
+  if (typeof value === "object") {
+    const timestamp = value as { seconds?: unknown; _seconds?: unknown };
+    const seconds =
+      typeof timestamp.seconds === "number"
+        ? timestamp.seconds
+        : typeof timestamp._seconds === "number"
+          ? timestamp._seconds
+          : null;
+    if (seconds !== null) return seconds * 1000;
+  }
   return 0;
+}
+
+function executionTime(session: ExternalCountSession) {
+  return session.action_time || session.submitted_at || session.created_at;
+}
+
+function formatExecutionTime(value: unknown, lang: "vi" | "zh") {
+  const milliseconds = toMillis(value);
+  if (!milliseconds) return { date: "-", time: "-" };
+  const date = new Date(milliseconds);
+  const locale = lang === "zh" ? "zh-CN" : "vi-VN";
+  return {
+    date: new Intl.DateTimeFormat(locale, {
+      timeZone: "Asia/Ho_Chi_Minh",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat(locale, {
+      timeZone: "Asia/Ho_Chi_Minh",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(date),
+  };
+}
+
+function formatBusinessDate(value: string, lang: "vi" | "zh") {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value || "-";
+  return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function statusClass(status: string) {
@@ -167,7 +226,7 @@ export default function ExternalCountPage() {
       (snapshot) => {
         const rows = snapshot.docs
           .map((doc) => ({ ...doc.data(), id: doc.id }) as ExternalCountSession)
-          .sort((a, b) => toMillis(b.created_at) - toMillis(a.created_at));
+          .sort((a, b) => toMillis(executionTime(b)) - toMillis(executionTime(a)));
         setSessions(rows);
         setIsLoading(false);
       },
@@ -375,6 +434,7 @@ export default function ExternalCountPage() {
                 session.checkpoint_type === "BEFORE_SCAN"
                   ? text.beforeScanLabel
                   : text.beforeSubmitLabel;
+              const performedAt = formatExecutionTime(executionTime(session), lang);
 
               return (
                 <div key={session.id} className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-4">
@@ -404,9 +464,24 @@ export default function ExternalCountPage() {
                         {session.session_number} · {text.idempotency}: {session.idempotency_key || "-"}
                       </p>
                     </div>
-                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">
-                      {session.business_date}
-                    </span>
+                    <div className="min-w-[190px] rounded-md border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-3 py-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                        {text.performedAt}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-[var(--color-text-primary)]">
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarDays className="h-4 w-4 text-[var(--color-brand-primary)]" />
+                          {performedAt.date}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 tabular-nums">
+                          <Clock3 className="h-4 w-4 text-[var(--color-brand-primary)]" />
+                          {performedAt.time}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">
+                        {text.businessDate}: {formatBusinessDate(session.business_date, lang)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
