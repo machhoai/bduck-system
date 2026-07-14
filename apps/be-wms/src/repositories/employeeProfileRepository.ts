@@ -17,6 +17,18 @@ export const findEmployeeProfiles = async (): Promise<EmployeeProfile[]> => {
   return snapshot.docs.map(withId);
 };
 
+export const findEmployeeProfilesByPhone = async (
+  phone: string,
+): Promise<EmployeeProfile[]> => {
+  const normalizedPhone = phone.replace(/[\s().-]/g, "");
+  if (!normalizedPhone) return [];
+
+  const profiles = await findEmployeeProfiles();
+  return profiles.filter(
+    (profile) => profile.phone?.replace(/[\s().-]/g, "") === normalizedPhone,
+  );
+};
+
 export const getEmployeeProfileById = async (
   profileId: string,
 ): Promise<EmployeeProfile | null> => {
@@ -60,7 +72,10 @@ export const findEmployeeProfileByCode = async (
 
 export const createEmployeeProfileRecord = async (
   profileId: string,
-  input: Omit<EmployeeProfile, "id" | "created_at" | "updated_at" | "is_deleted">,
+  input: Omit<
+    EmployeeProfile,
+    "id" | "created_at" | "updated_at" | "is_deleted"
+  >,
 ): Promise<EmployeeProfile> => {
   const now = new Date();
   const profile: EmployeeProfile = {

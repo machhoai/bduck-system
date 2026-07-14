@@ -1,7 +1,4 @@
-import {
-  AuditAction,
-  UserStatus,
-} from "@bduck/shared-types";
+import { AuditAction, UserStatus } from "@bduck/shared-types";
 import type { EmployeeProfile } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import type { z } from "zod";
@@ -147,9 +144,7 @@ export const createEmployeeProfile = async (
   if (input.create_account && input.account) {
     account = await createUser(
       {
-        username: input.account.username,
         email: input.account.email,
-        password: input.account.password,
         full_name: input.full_name,
         employee_id: input.employee_code,
         status: input.account.status ?? UserStatus.ACTIVE,

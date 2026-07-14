@@ -12,8 +12,10 @@ import {
   getUserById,
   getUserWarehouseRoles,
   replaceUserWarehouseRoles,
+  setUniqueUsername,
   softDeleteUserRecord,
   updateUserRecord,
+  UsernameAlreadyExistsError,
 } from "../repositories/userRepository.js";
 import { createUserSchema, updateUserSchema } from "../utils/zodSchemas.js";
 import { sendInitialPasswordSetupInvitation } from "./accountInvitationService.js";
@@ -48,13 +50,13 @@ const conflictError = (field: string, value: string) => ({
 });
 
 const assertUniqueUserFields = async (
-  input: Partial<Pick<User, "username" | "email" | "employee_id">>,
+  input: Partial<Pick<User, "email" | "employee_id">>,
   currentUserId?: string,
 ) => {
   for (const [field, value] of Object.entries(input)) {
     if (!value) continue;
     const existing = await findUserByField(
-      field as "username" | "email" | "employee_id",
+      field as "email" | "employee_id",
       value,
     );
     if (existing && existing.id !== currentUserId) {
@@ -126,7 +128,6 @@ export const createUser = async (
   auditMetadata?: AuditMetadata,
 ): Promise<CreateUserResult> => {
   await assertUniqueUserFields({
-    username: input.username,
     email: input.email,
     employee_id: input.employee_id,
   });
@@ -140,7 +141,7 @@ export const createUser = async (
   try {
     const user = await createUserRecord(authUser.uid, {
       id: authUser.uid,
-      username: input.username,
+      username: "",
       email: input.email,
       password_hash: "firebase-auth",
       full_name: input.full_name,
@@ -193,15 +194,24 @@ export const updateUser = async (
   const existing = await fetchUserById(userId);
   await assertUniqueUserFields(
     {
-      username: input.username,
       email: input.email,
       employee_id: input.employee_id,
     },
     userId,
   );
 
+  if (input.username !== undefined) {
+    try {
+      await setUniqueUsername(userId, input.username);
+    } catch (error) {
+      if (error instanceof UsernameAlreadyExistsError) {
+        throw conflictError("username", input.username);
+      }
+      throw error;
+    }
+  }
+
   const updateData = {
-    username: input.username,
     email: input.email,
     full_name: input.full_name,
     employee_id: input.employee_id,

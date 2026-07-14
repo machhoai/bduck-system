@@ -4,6 +4,16 @@ import type { Role, User, UserWarehouseRole } from "@bduck/shared-types";
 const USERS_COLLECTION = "users";
 const USER_ROLES_COLLECTION = "user_warehouse_roles";
 
+export class UsernameAlreadyExistsError extends Error {
+  constructor(public readonly username: string) {
+    super(`Username "${username}" already exists.`);
+    this.name = "UsernameAlreadyExistsError";
+  }
+}
+
+export const normalizeUsername = (username: string): string =>
+  username.trim().toLowerCase();
+
 export const getUserById = async (uid: string): Promise<User | null> => {
   const userSnap = await db.collection(USERS_COLLECTION).doc(uid).get();
   if (!userSnap.exists) return null;
@@ -50,6 +60,58 @@ export const findUserByField = async (
 
   if (snapshot.empty) return null;
   return snapshot.docs[0].data() as User;
+};
+
+export const findUserByUsername = async (
+  username: string,
+): Promise<User | null> => {
+  const normalized = normalizeUsername(username);
+  if (!normalized) return null;
+
+  const users = await findUsers();
+  return (
+    users.find(
+      (user) => normalizeUsername(user.username || "") === normalized,
+    ) ?? null
+  );
+};
+
+export const setUniqueUsername = async (
+  userId: string,
+  username: string,
+): Promise<void> => {
+  const nextUsername = username.trim();
+  const normalized = normalizeUsername(nextUsername);
+  const userRef = db.collection(USERS_COLLECTION).doc(userId);
+  const activeUsersQuery = db
+    .collection(USERS_COLLECTION)
+    .where("is_deleted", "==", false);
+
+  await db.runTransaction(async (transaction) => {
+    const [userSnapshot, usersSnapshot] = await Promise.all([
+      transaction.get(userRef),
+      transaction.get(activeUsersQuery),
+    ]);
+
+    if (!userSnapshot.exists) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    const conflict = usersSnapshot.docs.some((doc) => {
+      if (doc.id === userId) return false;
+      const user = doc.data() as User;
+      return normalizeUsername(user.username || "") === normalized;
+    });
+
+    if (conflict) {
+      throw new UsernameAlreadyExistsError(nextUsername);
+    }
+
+    transaction.update(userRef, {
+      username: nextUsername,
+      updated_at: new Date(),
+    });
+  });
 };
 
 export const createUserRecord = async (

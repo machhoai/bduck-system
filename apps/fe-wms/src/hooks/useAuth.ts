@@ -40,13 +40,30 @@ export const useAuth = () => {
   const { lang } = useTranslation();
   const copy = AUTH_TOAST_TEXT[lang === "zh" ? "zh" : "vi"];
 
-  const login = async (email: string, password: string): Promise<LoginResult> => {
+  const login = async (
+    identifier: string,
+    password: string,
+  ): Promise<LoginResult> => {
     setIsLoading(true);
 
     const loginAction = async () => {
+      const resolveResponse = await fetch(
+        `${API_BASE_URL}/api/auth/login/resolve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier }),
+        },
+      );
+      const resolveBody = await resolveResponse.json().catch(() => null);
+
+      if (!resolveResponse.ok || !resolveBody?.data?.email) {
+        throw { code: "auth/invalid-credential" };
+      }
+
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        resolveBody.data.email,
         password,
       );
       const idToken = await userCredential.user.getIdToken();
@@ -69,11 +86,15 @@ export const useAuth = () => {
       }
 
       const { data, messages } = await response.json();
-      const activeAssignments = (data.roles || []).filter((r: any) => r.is_active);
+      const activeAssignments = (data.roles || []).filter(
+        (r: any) => r.is_active,
+      );
       // Keep unique role_ids for compatibility with existing Firestore queries.
       const roleIds = activeAssignments
         .map((r: any) => r.role_id)
-        .filter((id: string, i: number, arr: string[]) => arr.indexOf(id) === i);
+        .filter(
+          (id: string, i: number, arr: string[]) => arr.indexOf(id) === i,
+        );
       setAuthData(data.user, data.permissions, roleIds, activeAssignments);
 
       // Lock screen on login
@@ -95,7 +116,7 @@ export const useAuth = () => {
         error: {
           label: copy.retry,
           onClick: () => {
-            void login(email, password);
+            void login(identifier, password);
           },
         },
       },
@@ -163,15 +184,22 @@ export const useAuth = () => {
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     const resetAction = async () => {
-      const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/auth/password-reset/request`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw createDetailedApiError(response, errorData, copy.resetSendFallback);
+        throw createDetailedApiError(
+          response,
+          errorData,
+          copy.resetSendFallback,
+        );
       }
       const data = await response.json();
       return data.messages;
@@ -181,10 +209,12 @@ export const useAuth = () => {
     gooeyToast.promise(actionPromise, {
       loading: copy.resetLoading,
       success: (msgs) => msgs?.[lang] || copy.resetSuccess,
-      error: (err: any) => err?.statusCode === 429 ? copy.resetPending : copy.resetError,
+      error: (err: any) =>
+        err?.statusCode === 429 ? copy.resetPending : copy.resetError,
       description: {
         success: copy.resetSuccessDescription,
-        error: (err: any) => err?.messages?.[lang] || copy.resetErrorDescription,
+        error: (err: any) =>
+          err?.messages?.[lang] || copy.resetErrorDescription,
       },
     });
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   createSessionLogin,
   logoutSession,
+  resolveLoginEmail,
 } from "../../services/authService.js";
 import {
   completeAccountInvitation,
@@ -21,12 +22,17 @@ const sessionLoginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
 });
 
+const loginIdentifierSchema = z.object({
+  identifier: z.string().trim().min(1).max(160),
+});
+
 const accountInvitationTokenSchema = z.object({
   token: z.string().trim().min(32).max(512),
 });
 
 const completeAccountInvitationSchema = accountInvitationTokenSchema.extend({
   password: z.string().min(8).max(128),
+  username: z.string().trim().min(3).max(80).optional(),
 });
 
 const handleAccountInvitationError = (res: Response, error: unknown) => {
@@ -134,6 +140,50 @@ export const sessionLogin = async (req: Request, res: Response) => {
   }
 };
 
+export const resolveLoginIdentifier = async (req: Request, res: Response) => {
+  try {
+    const { identifier } = loginIdentifierSchema.parse(req.body);
+    const email = await resolveLoginEmail(identifier);
+
+    if (!email) {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Thông tin đăng nhập không chính xác.",
+          zh: "登录信息不正确。",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: { email },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        messages: {
+          vi: "Thông tin đăng nhập không hợp lệ.",
+          zh: "登录信息无效。",
+        },
+      });
+    }
+
+    console.error("[authController] resolve login identifier error:", error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Không thể xác thực thông tin đăng nhập.",
+        zh: "无法验证登录信息。",
+      },
+    });
+  }
+};
+
 export const verifyAccountInvitationHandler = async (
   req: Request,
   res: Response,
@@ -159,8 +209,10 @@ export const completeAccountInvitationHandler = async (
   res: Response,
 ) => {
   try {
-    const { token, password } = completeAccountInvitationSchema.parse(req.body);
-    await completeAccountInvitation(token, password);
+    const { token, password, username } = completeAccountInvitationSchema.parse(
+      req.body,
+    );
+    await completeAccountInvitation(token, password, username);
     return res.status(200).json({
       success: true,
       data: null,

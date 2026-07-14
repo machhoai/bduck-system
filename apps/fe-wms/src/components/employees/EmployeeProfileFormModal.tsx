@@ -4,10 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { motion } from "framer-motion";
 import { Plus, Trash2, X } from "lucide-react";
-import {
-  EmployeeProfileStatus,
-  UserStatus,
-} from "@bduck/shared-types";
+import { EmployeeProfileStatus, UserStatus } from "@bduck/shared-types";
 import type { EmployeeProfile, Role, Warehouse } from "@bduck/shared-types";
 import type { UserWithAssignments } from "@/hooks/useUsers";
 
@@ -72,9 +69,7 @@ export function EmployeeProfileFormModal({
   });
   const [createAccount, setCreateAccount] = useState(false);
   const [accountData, setAccountData] = useState({
-    username: "",
     email: "",
-    password: "",
     status: UserStatus.ACTIVE,
   });
   const [assignments, setAssignments] = useState<AssignmentDraft[]>([
@@ -100,9 +95,7 @@ export function EmployeeProfileFormModal({
       });
       setCreateAccount(false);
       setAccountData({
-        username: "",
         email: profile.email || "",
-        password: "",
         status: UserStatus.ACTIVE,
       });
       setAssignments([emptyAssignment()]);
@@ -123,9 +116,7 @@ export function EmployeeProfileFormModal({
     });
     setCreateAccount(false);
     setAccountData({
-      username: "",
       email: "",
-      password: "",
       status: UserStatus.ACTIVE,
     });
     setAssignments([emptyAssignment()]);
@@ -136,11 +127,8 @@ export function EmployeeProfileFormModal({
     setAccountData((current) => ({
       ...current,
       email: current.email || formData.email,
-      username:
-        current.username ||
-        formData.employee_code.toLowerCase().replace(/\s+/g, "."),
     }));
-  }, [createAccount, formData.email, formData.employee_code]);
+  }, [createAccount, formData.email]);
 
   if (!isOpen) return null;
 
@@ -179,11 +167,7 @@ export function EmployeeProfileFormModal({
             create_account: createAccount,
             account: createAccount
               ? {
-                  username: accountData.username,
                   email: accountData.email,
-                  ...(accountData.password
-                    ? { password: accountData.password }
-                    : {}),
                   status: accountData.status,
                   assignments: assignments
                     .filter((assignment) => assignment.role_id)
@@ -258,7 +242,10 @@ export function EmployeeProfileFormModal({
                     required
                     value={formData.full_name}
                     onChange={(event) =>
-                      setFormData({ ...formData, full_name: event.target.value })
+                      setFormData({
+                        ...formData,
+                        full_name: event.target.value,
+                      })
                     }
                     className={inputClassName}
                   />
@@ -286,7 +273,10 @@ export function EmployeeProfileFormModal({
                   <input
                     value={formData.job_title}
                     onChange={(event) =>
-                      setFormData({ ...formData, job_title: event.target.value })
+                      setFormData({
+                        ...formData,
+                        job_title: event.target.value,
+                      })
                     }
                     className={inputClassName}
                   />
@@ -295,7 +285,10 @@ export function EmployeeProfileFormModal({
                   <input
                     value={formData.department}
                     onChange={(event) =>
-                      setFormData({ ...formData, department: event.target.value })
+                      setFormData({
+                        ...formData,
+                        department: event.target.value,
+                      })
                     }
                     className={inputClassName}
                   />
@@ -384,20 +377,11 @@ export function EmployeeProfileFormModal({
 
                 {createAccount && (
                   <div className="grid gap-4">
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      <Field label="Username">
-                        <input
-                          required={createAccount}
-                          value={accountData.username}
-                          onChange={(event) =>
-                            setAccountData({
-                              ...accountData,
-                              username: event.target.value,
-                            })
-                          }
-                          className={inputClassName}
-                        />
-                      </Field>
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      Người dùng sẽ tạo tên đăng nhập và mật khẩu qua email khởi
+                      tạo tài khoản.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Email tài khoản">
                         <input
                           required={createAccount}
@@ -407,20 +391,6 @@ export function EmployeeProfileFormModal({
                             setAccountData({
                               ...accountData,
                               email: event.target.value,
-                            })
-                          }
-                          className={inputClassName}
-                        />
-                      </Field>
-                      <Field label="Mật khẩu tạm">
-                        <input
-                          type="password"
-                          minLength={8}
-                          value={accountData.password}
-                          onChange={(event) =>
-                            setAccountData({
-                              ...accountData,
-                              password: event.target.value,
                             })
                           }
                           className={inputClassName}

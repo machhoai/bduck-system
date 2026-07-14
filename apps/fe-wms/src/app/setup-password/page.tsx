@@ -30,18 +30,20 @@ export default function SetupPasswordPage() {
   const [pageState, setPageState] = useState<PageState>("loading");
   const [token, setToken] = useState("");
   const [invitation, setInvitation] = useState<InvitationInfo | null>(null);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [purpose, setPurpose] = useState("");
+  const isPasswordReset = purpose === "reset";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const currentToken = params.get("token");
     const currentPurpose = params.get("purpose");
-    
+
     if (!currentToken) {
       setPageState("invalid");
       setMessage("Liên kết không hợp lệ.");
@@ -63,6 +65,17 @@ export default function SetupPasswordPage() {
     return "";
   }, [confirmPassword, password]);
 
+  const usernameError = useMemo(() => {
+    if (isPasswordReset || !username) return "";
+    if (username.trim().length < 3) {
+      return "Tên đăng nhập phải có ít nhất 3 ký tự.";
+    }
+    if (username.trim().length > 80) {
+      return "Tên đăng nhập không được vượt quá 80 ký tự.";
+    }
+    return "";
+  }, [isPasswordReset, username]);
+
   const verifyInvitation = async (currentToken: string) => {
     try {
       const response = await fetch(
@@ -79,13 +92,14 @@ export default function SetupPasswordPage() {
 
       if (!response.ok || !body?.success || !body.data) {
         throw new Error(
-          getLocalizedMessage(body?.messages) || "Liên kết đã hết hạn hoặc không còn hiệu lực.",
+          getLocalizedMessage(body?.messages) ||
+            "Liên kết đã hết hạn hoặc không còn hiệu lực.",
         );
       }
 
-      if (body.data?.purpose === "PASSWORD_RESET") {
-        setPurpose("reset");
-      }
+      setPurpose(
+        body.data.purpose === "PASSWORD_RESET" ? "reset" : "setup",
+      );
       setInvitation(body.data);
       setPageState("valid");
       setMessage("");
@@ -101,7 +115,15 @@ export default function SetupPasswordPage() {
 
   const completeInvitation = async (event: FormEvent) => {
     event.preventDefault();
-    if (passwordError || !password || !confirmPassword) return;
+    if (
+      passwordError ||
+      usernameError ||
+      (!isPasswordReset && !username.trim()) ||
+      !password ||
+      !confirmPassword
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -110,7 +132,11 @@ export default function SetupPasswordPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password }),
+          body: JSON.stringify({
+            token,
+            password,
+            ...(!isPasswordReset ? { username: username.trim() } : {}),
+          }),
         },
       );
       const body = (await response
@@ -125,7 +151,9 @@ export default function SetupPasswordPage() {
       }
 
       setPageState("success");
-      setMessage(getLocalizedMessage(body?.messages) || "Đã đặt mật khẩu thành công.");
+      setMessage(
+        getLocalizedMessage(body?.messages) || "Đã đặt mật khẩu thành công.",
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -198,6 +226,26 @@ export default function SetupPasswordPage() {
               {expiresAt && <p>Hết hạn: {expiresAt}</p>}
             </div>
 
+            {!isPasswordReset && (
+              <label className="block">
+                <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
+                  Tên đăng nhập
+                </span>
+                <input
+                  type="text"
+                  minLength={3}
+                  maxLength={80}
+                  autoComplete="username"
+                  value={username}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    setMessage("");
+                  }}
+                  className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm outline-none focus:border-[var(--color-border-focus)]"
+                />
+              </label>
+            )}
+
             <label className="block">
               <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
                 Mật khẩu mới
@@ -228,9 +276,9 @@ export default function SetupPasswordPage() {
               />
             </label>
 
-            {(passwordError || message) && (
+            {(usernameError || passwordError || message) && (
               <p className="text-sm leading-6 text-[var(--color-accent-error)]">
-                {passwordError || message}
+                {usernameError || passwordError || message}
               </p>
             )}
 
@@ -238,13 +286,19 @@ export default function SetupPasswordPage() {
               type="submit"
               disabled={
                 isSubmitting ||
+                Boolean(usernameError) ||
                 Boolean(passwordError) ||
+                (!isPasswordReset && !username.trim()) ||
                 !password ||
                 !confirmPassword
               }
               className="h-10 w-full rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white transition-all active:scale-95 disabled:opacity-50"
             >
-              {isSubmitting ? "Đang đặt mật khẩu..." : "Đặt mật khẩu"}
+              {isSubmitting
+                ? "Đang khởi tạo tài khoản..."
+                : isPasswordReset
+                  ? "Đặt lại mật khẩu"
+                  : "Tạo tên đăng nhập và mật khẩu"}
             </button>
           </form>
         )}

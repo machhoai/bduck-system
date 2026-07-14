@@ -25,7 +25,7 @@ import {
     type RevenueOrderItem,
     type SoldOrderGoodsItem,
 } from "@/hooks/useRevenueDashboard";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import RevenueCharts from "./RevenueCharts";
 import RevenueDateFilter from "./RevenueDateFilter";
@@ -44,9 +44,11 @@ export default function RevenueDashboard() {
     const d = t.revenue;
     const [activeTab, setActiveTab] = useState<RevenueDashboardTab>("revenue");
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() => getDefaultRevenueFilter());
-    const { warehouses, loading: warehousesLoading } = useWarehouses();
+    const { stores, loading: storesLoading } = useStores();
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-    const activeWarehouseId = selectedWarehouseId || warehouses[0]?.id || "";
+    const activeWarehouseId = stores.some((store) => store.id === selectedWarehouseId)
+        ? selectedWarehouseId
+        : stores[0]?.id || "";
     const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
         getDefaultRevenueComparison(getDefaultRevenueFilter()),
     );
@@ -59,7 +61,10 @@ export default function RevenueDashboard() {
         data: comparisonData,
         syncing: comparisonSyncing,
         error: comparisonError,
-    } = useRevenueDashboardComparisons(comparisonFilters, activeWarehouseId);
+    } = useRevenueDashboardComparisons(
+        activeWarehouseId ? comparisonFilters : [],
+        activeWarehouseId,
+    );
     const comparisonLabels = useMemo(() => getRevenueComparisonLabels(comparisonFilters), [comparisonFilters]);
     const comparisonLabel = comparisonLabels.join(", ");
 
@@ -73,6 +78,20 @@ export default function RevenueDashboard() {
         }
     };
 
+    if (!storesLoading && stores.length === 0) {
+        return (
+            <div className="flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 text-center">
+                <PackageSearch
+                    size={36}
+                    className="mb-3 text-[var(--color-text-muted)]"
+                />
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {d.filters.noWarehouse}
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex w-full flex-col gap-4">
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
@@ -80,19 +99,20 @@ export default function RevenueDashboard() {
                     <div>
                         <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{d.filters.warehouse}</p>
                         <p className="mt-1 text-sm font-semibold text-[var(--color-text-primary)]">
-                            {data?.warehouseName || warehouses.find((item) => item.id === activeWarehouseId)?.name || d.filters.selectWarehouse}
+                            {data?.warehouseName || stores.find((item) => item.id === activeWarehouseId)?.name || d.filters.selectWarehouse}
                         </p>
                     </div>
                     <select
+                        aria-label={d.filters.warehouse}
                         value={activeWarehouseId}
                         onChange={(event) => setSelectedWarehouseId(event.target.value)}
-                        disabled={warehousesLoading || warehouses.length === 0}
+                        disabled={storesLoading || stores.length === 0}
                         className="h-10 min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand-primary)] sm:w-80"
                     >
-                        {warehouses.length === 0 && <option value="">{d.filters.noWarehouse}</option>}
-                        {warehouses.map((warehouse) => (
-                            <option key={warehouse.id} value={warehouse.id}>
-                                {warehouse.name}
+                        {stores.length === 0 && <option value="">{d.filters.noWarehouse}</option>}
+                        {stores.map((store) => (
+                            <option key={store.id} value={store.id}>
+                                {store.name}
                             </option>
                         ))}
                     </select>

@@ -85,7 +85,7 @@ export function UserFormModal({
     setIsSubmitting(true);
     try {
       const payload = {
-        username: formData.username,
+        ...(isEdit && user?.username ? { username: formData.username } : {}),
         email: formData.email,
         full_name: formData.full_name,
         employee_id: formData.employee_id,
@@ -131,16 +131,18 @@ export function UserFormModal({
           className="flex-1 space-y-5 overflow-y-auto p-5"
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label={t.users.username}>
-              <input
-                required
-                value={formData.username}
-                onChange={(event) =>
-                  setFormData({ ...formData, username: event.target.value })
-                }
-                className={inputClassName}
-              />
-            </Field>
+            {isEdit && user?.username && (
+              <Field label={t.users.username}>
+                <input
+                  required
+                  value={formData.username}
+                  onChange={(event) =>
+                    setFormData({ ...formData, username: event.target.value })
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+            )}
             <Field label={t.users.email}>
               <input
                 required

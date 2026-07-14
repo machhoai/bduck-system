@@ -4,6 +4,7 @@ import {
   completeAccountInvitationHandler,
   logout,
   requestPasswordResetHandler,
+  resolveLoginIdentifier,
   sendEmailOtp,
   sessionLogin,
   setupMfa,
@@ -15,6 +16,7 @@ import { requireAuth } from "../middlewares/authMiddleware.js";
 const router: ExpressRouter = Router();
 
 router.post("/sessionLogin", sessionLogin);
+router.post("/login/resolve", resolveLoginIdentifier);
 router.post("/logout", logout);
 router.post("/account-invitations/verify", verifyAccountInvitationHandler);
 router.post("/account-invitations/complete", completeAccountInvitationHandler);

@@ -96,8 +96,7 @@ export const MFA_LOCK_TEXT = {
     unlockSuccess: "Mở khóa thành công",
     verifyError: "Mã xác thực không đúng",
     title: "Hệ thống đã khóa",
-    totpInstruction:
-      "Nhập mã từ ứng dụng Google Authenticator để tiếp tục.",
+    totpInstruction: "Nhập mã từ ứng dụng Google Authenticator để tiếp tục.",
     emailInstruction:
       "Nhập mã OTP 6 số đã được gửi đến email của bạn để tiếp tục.",
     unlock: "Mở khóa",
@@ -130,7 +129,9 @@ export const LOGIN_FORM_TEXT = {
   vi: {
     emailRequired: "Vui lòng nhập email",
     emailRequiredDescription:
-      "Bạn cần nhập email vào ô trên để nhận liên kết khôi phục mật khẩu.",
+      "Khôi phục mật khẩu chỉ hỗ trợ email. Vui lòng nhập email tài khoản vào ô trên.",
+    identifier: "Email, tên đăng nhập hoặc số điện thoại",
+    identifierPlaceholder: "Nhập email, tên đăng nhập hoặc số điện thoại",
     version: "Phiên bản",
     title: "Đăng nhập",
     password: "Mật khẩu",
@@ -139,14 +140,15 @@ export const LOGIN_FORM_TEXT = {
     hidePassword: "Ẩn mật khẩu",
     submit: "Đăng nhập hệ thống",
     authenticating: "Đang xác thực...",
-    wrongPasswordTitle: "Sai mật khẩu",
+    wrongPasswordTitle: "Thông tin đăng nhập không đúng",
     wrongPasswordDescription:
-      "Vui lòng kiểm tra lại mật khẩu. Nếu bạn không nhớ mật khẩu, hãy chọn Quên mật khẩu để đặt lại.",
+      "Vui lòng kiểm tra lại thông tin đăng nhập và mật khẩu. Nếu quên mật khẩu, hãy nhập email rồi chọn Quên mật khẩu.",
   },
   zh: {
     emailRequired: "请输入邮箱",
-    emailRequiredDescription:
-      "您需要先在上方输入邮箱，才能接收密码恢复链接。",
+    emailRequiredDescription: "密码恢复仅支持邮箱。请在上方输入账户邮箱。",
+    identifier: "邮箱、用户名或手机号",
+    identifierPlaceholder: "请输入邮箱、用户名或手机号",
     version: "版本",
     title: "登录",
     password: "密码",
@@ -155,9 +157,9 @@ export const LOGIN_FORM_TEXT = {
     hidePassword: "隐藏密码",
     submit: "登录系统",
     authenticating: "正在验证...",
-    wrongPasswordTitle: "密码错误",
+    wrongPasswordTitle: "登录信息不正确",
     wrongPasswordDescription:
-      "请检查密码。如果您忘记了密码，请选择忘记密码进行重置。",
+      "请检查登录信息和密码。如需重置密码，请输入邮箱后选择忘记密码。",
   },
 } as const;
 
@@ -251,8 +253,7 @@ export const PRODUCT_TABLE_TEXT = {
     },
     emptyTitle: "Không tìm thấy sản phẩm nào",
     emptySearchHint: "Thử tìm kiếm với từ khóa khác.",
-    emptyHint:
-      "Chưa có dữ liệu sản phẩm trên hệ thống. Hãy thêm mới.",
+    emptyHint: "Chưa có dữ liệu sản phẩm trên hệ thống. Hãy thêm mới.",
     noDescription: "Không có mô tả",
     yes: "Có",
     no: "Không",
@@ -429,7 +430,7 @@ export const VOUCHER_EXCEL_IMPORT_TEXT = {
     sampleRow: "样本行",
     fileColumns: "文件列 — 拖到下方槽位：",
     systemFields: "系统所需字段：",
-    requiredMappingWarning: '请至少将“产品名称”和“数量”拖入槽位。',
+    requiredMappingWarning: "请至少将“产品名称”和“数量”拖入槽位。",
     readData: "读取数据",
     addValidItems: "将 {{count}} 个有效产品添加到单据",
     stats: {
@@ -465,8 +466,7 @@ export const QUICK_LOCATION_ASSIGN_TEXT = {
     strategies: {
       "all-one": {
         label: "Gán tất cả một vị trí",
-        description:
-          "Chọn 1 vị trí -> gán cho tất cả sản phẩm chưa có vị trí",
+        description: "Chọn 1 vị trí -> gán cho tất cả sản phẩm chưa có vị trí",
       },
       "by-type": {
         label: "Theo loại sản phẩm",
@@ -478,8 +478,7 @@ export const QUICK_LOCATION_ASSIGN_TEXT = {
       },
       "by-stock": {
         label: "Tự động theo tồn kho",
-        description:
-          "Mỗi sản phẩm -> vị trí đã có tồn kho (ATP cao nhất)",
+        description: "Mỗi sản phẩm -> vị trí đã có tồn kho (ATP cao nhất)",
       },
     },
     productTypes: {
@@ -690,7 +689,8 @@ export const IMPORT_VOUCHER_CREATE_TEXT = {
     uploadHint: "PDF, DOCX, XLSX, CSV - tối đa 20MB mỗi tệp - tối đa 5 tệp",
     supplierPlaceholder: "Nhập tên nhà cung cấp",
     poPlaceholder: "Tuỳ chọn, dùng để đối chiếu đơn mua",
-    notesPlaceholder: "Ghi chú ca nhập, điều kiện giao hàng, yêu cầu kiểm đếm...",
+    notesPlaceholder:
+      "Ghi chú ca nhập, điều kiện giao hàng, yêu cầu kiểm đếm...",
     searchProduct: "Tìm theo tên, SKU hoặc barcode",
     chooseFromCatalog: "Chọn sản phẩm từ danh mục",
     selectedItems: "Danh sách nhập kho",
@@ -863,8 +863,7 @@ export const EXPORT_VOUCHER_CREATE_TEXT = {
     noLocationForProduct: "没有包含此产品的库位",
     selectLocation: "选择库位",
     available: "可用",
-    atpWarning:
-      "出库数量 ({quantity}) 超过可用数量 ({atp})，审批时将被拒绝。",
+    atpWarning: "出库数量 ({quantity}) 超过可用数量 ({atp})，审批时将被拒绝。",
     addLocationLine: "添加行",
     confirmTitle: "确认出库信息",
     attachments: "附件",
@@ -1063,8 +1062,7 @@ export const TRANSFER_RECEIVING_TEXT = {
     title: "Nhận hàng điều chuyển",
     sourceFallback: "Kho nguồn",
     destinationFallback: "Kho đích",
-    readyText:
-      "Hàng đã đến kho đích. Bấm để bắt đầu kiểm nhận.",
+    readyText: "Hàng đã đến kho đích. Bấm để bắt đầu kiểm nhận.",
     startReceiving: "Bắt đầu nhận hàng",
     chooseLocations: "Chọn vị trí kho cho từng mặt hàng",
     products: "sản phẩm",
@@ -1174,16 +1172,14 @@ export const PROCESS_CONFIG_TEXT = {
     warehouseScope: "Theo kho",
     activeLevels: "cấp duyệt đang áp dụng",
     approvalChain: "Chuỗi phê duyệt",
-    approvalHint:
-      "Cấp bắt buộc luôn chạy. Cấp tùy chọn chỉ chạy khi được bật.",
+    approvalHint: "Cấp bắt buộc luôn chạy. Cấp tùy chọn chỉ chạy khi được bật.",
     autoApprove: "Tự động duyệt",
     autoApproveHint:
       "Bỏ qua toàn bộ chuỗi phê duyệt khi chứng từ mới được tạo.",
     autoApproveWarning:
       "Khi bật, hệ thống vẫn lưu chuỗi duyệt nhưng chứng từ mới sẽ đi thẳng sang bước tiếp theo.",
     stepOptions: "Điều kiện thao tác",
-    noStepOptions:
-      "Loại chứng từ này chưa có bước thao tác có thể cấu hình.",
+    noStepOptions: "Loại chứng từ này chưa có bước thao tác có thể cấu hình.",
     createDefault: "Tạo cấu hình mặc định",
     createDefaultHint:
       "Hệ thống sẽ lấy chuỗi duyệt mặc định và map role theo dữ liệu hiện tại.",
@@ -1250,8 +1246,7 @@ export const PROCESS_CONFIG_TEXT = {
     approvalHint: "必需级别始终执行。可选级别仅在启用时执行。",
     autoApprove: "自动审批",
     autoApproveHint: "新单据创建时跳过整个审批链。",
-    autoApproveWarning:
-      "启用后，审批链仍会保留，但新单据会直接进入下一步。",
+    autoApproveWarning: "启用后，审批链仍会保留，但新单据会直接进入下一步。",
     stepOptions: "操作条件",
     noStepOptions: "此单据类型暂无可配置的操作步骤。",
     createDefault: "创建默认配置",
@@ -1439,7 +1434,10 @@ export const PROCESS_CONFIG_STEP_TEXT = {
   >
 >;
 
-export function formatApprovalLevelLabel(locale: ComponentLocale, level: number) {
+export function formatApprovalLevelLabel(
+  locale: ComponentLocale,
+  level: number,
+) {
   return PROCESS_CONFIG_TEXT[locale].defaultApprovalLevel.replace(
     "{{level}}",
     String(level),

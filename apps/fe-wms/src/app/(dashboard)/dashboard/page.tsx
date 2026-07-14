@@ -16,7 +16,7 @@ import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
 import { useInventory } from "../../../hooks/useInventory";
 import {
-    useWarehouses,
+    useStores,
     useWarehouseLocations,
 } from "../../../hooks/useWarehouses";
 import { useProducts } from "../../../hooks/useProducts";
@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
     // ── Data hooks (real-time) ──
     const { inventory, loading: invLoading } = useInventory();
-    const { warehouses, loading: whLoading } = useWarehouses();
+    const { stores, loading: whLoading } = useStores();
     const { products, loading: prodLoading } = useProducts();
     const isLoading = invLoading || whLoading || prodLoading;
 
@@ -60,65 +60,78 @@ export default function DashboardPage() {
     >(undefined);
     const isAllWarehouses = !selectedWarehouseId;
 
+    const storeIds = useMemo(
+        () => new Set(stores.map((store) => store.id)),
+        [stores],
+    );
+    const storeInventory = useMemo(
+        () => inventory.filter((item) => storeIds.has(item.warehouse_id)),
+        [inventory, storeIds],
+    );
+
     // ── Locations for specific warehouse ──
     const { locations } = useWarehouseLocations(selectedWarehouseId);
+    const storeLocations = useMemo(
+        () => locations.filter((location) => storeIds.has(location.warehouse_id)),
+        [locations, storeIds],
+    );
 
     // ── Popup state ──
     const [popupMetric, setPopupMetric] = useState<string | null>(null);
 
     // ── Computed KPIs (memoized) ──
     const kpis = useMemo(
-        () => computeKPIs(inventory, warehouses, selectedWarehouseId),
-        [inventory, warehouses, selectedWarehouseId],
+        () => computeKPIs(storeInventory, stores, selectedWarehouseId),
+        [storeInventory, stores, selectedWarehouseId],
     );
 
     const breakdown = useMemo(
-        () => computeWarehouseBreakdown(inventory, warehouses),
-        [inventory, warehouses],
+        () => computeWarehouseBreakdown(storeInventory, stores),
+        [storeInventory, stores],
     );
 
     const lowStockProducts = useMemo(
-        () => computeLowStockProducts(inventory, products, selectedWarehouseId),
-        [inventory, products, selectedWarehouseId],
+        () => computeLowStockProducts(storeInventory, products, selectedWarehouseId),
+        [storeInventory, products, selectedWarehouseId],
     );
 
     const topMost = useMemo(
         () =>
             computeTopProducts(
-                inventory,
+                storeInventory,
                 products,
                 selectedWarehouseId,
                 10,
                 "most",
             ),
-        [inventory, products, selectedWarehouseId],
+        [storeInventory, products, selectedWarehouseId],
     );
 
     const topLeast = useMemo(
         () =>
             computeTopProducts(
-                inventory,
+                storeInventory,
                 products,
                 selectedWarehouseId,
                 10,
                 "least",
             ),
-        [inventory, products, selectedWarehouseId],
+        [storeInventory, products, selectedWarehouseId],
     );
 
     const typeDistribution = useMemo(
         () =>
             computeProductTypeDistribution(
-                inventory,
+                storeInventory,
                 products,
                 selectedWarehouseId,
             ),
-        [inventory, products, selectedWarehouseId],
+        [storeInventory, products, selectedWarehouseId],
     );
 
     const stockComparison = useMemo(
-        () => computeStockComparison(inventory, warehouses),
-        [inventory, warehouses],
+        () => computeStockComparison(storeInventory, stores),
+        [storeInventory, stores],
     );
 
     // ── Permissions ──
@@ -133,7 +146,7 @@ export default function DashboardPage() {
     }
 
     // ── No access state ──
-    if (warehouses.length === 0 && !isLoading) {
+    if (stores.length === 0 && !isLoading) {
         return (
             <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
@@ -175,7 +188,7 @@ export default function DashboardPage() {
 
                 <div id="wms-dashboard-warehouse-filter" className="shrink-0">
                     <WarehouseSelector
-                        warehouses={warehouses}
+                        warehouses={stores}
                         selectedId={selectedWarehouseId}
                         onSelect={setSelectedWarehouseId}
                     />
@@ -184,7 +197,9 @@ export default function DashboardPage() {
 
             {hasRevenueAccess && (
                 <div className="flex flex-col gap-3">
-                    <DashboardRevenueOverview />
+                    <DashboardRevenueOverview
+                        warehouseId={selectedWarehouseId || stores[0]?.id}
+                    />
                 </div>
             )}
 
@@ -205,7 +220,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between pb-1.5">
                     <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
-                        {t.warehouses?.tabWarehouses || "Quản lý Chi phí"}
+                        {d.inventorySectionTitle}
                     </h2>
                 </div>
 
@@ -215,7 +230,7 @@ export default function DashboardPage() {
                         kpis={kpis}
                         loading={false}
                         isAllWarehouses={isAllWarehouses}
-                        locationCount={locations.length}
+                        locationCount={storeLocations.length}
                         onCardClick={(metric) => setPopupMetric(metric)}
                     />
                 </div>

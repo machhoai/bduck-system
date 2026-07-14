@@ -11,6 +11,8 @@ import {
 import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
 import { ActiveStatus } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
+import { groupWarehousesByType } from "@/utils/warehouseGrouping";
+import { WarehouseGroupHeading } from "./WarehouseGroupHeading";
 
 interface WarehouseGridViewProps {
   warehouses: Warehouse[];
@@ -38,6 +40,7 @@ export function WarehouseGridView({
     },
     {},
   );
+  const warehouseGroups = groupWarehousesByType(warehouses);
 
   return (
     <section className="space-y-4">
@@ -76,15 +79,25 @@ export function WarehouseGridView({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {warehouses.map((warehouse) => (
-            <WarehouseCard
-              key={warehouse.id}
-              warehouse={warehouse}
-              locationCount={locationCounts[warehouse.id] || 0}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
+        <div className="space-y-6">
+          {warehouseGroups.map((group) => (
+            <section key={group.type} className="space-y-3">
+              <WarehouseGroupHeading
+                type={group.type}
+                count={group.warehouses.length}
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.warehouses.map((warehouse) => (
+                  <WarehouseCard
+                    key={warehouse.id}
+                    warehouse={warehouse}
+                    locationCount={locationCounts[warehouse.id] || 0}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

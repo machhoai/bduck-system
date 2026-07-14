@@ -11,6 +11,8 @@ import {
 import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
 import { ActiveStatus } from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
+import { groupWarehousesByType } from "@/utils/warehouseGrouping";
+import { WarehouseGroupHeading } from "./WarehouseGroupHeading";
 import { WarehouseTableSkeleton } from "./WarehouseSkeleton";
 
 interface WarehouseTableProps {
@@ -38,6 +40,7 @@ export function WarehouseTable({
     },
     {},
   );
+  const warehouseGroups = groupWarehousesByType(warehouses);
 
   return (
     <section className="space-y-4">
@@ -73,20 +76,27 @@ export function WarehouseTable({
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-          <div className="hidden grid-cols-[1.5fr_0.8fr_0.9fr_0.7fr_1fr] gap-4 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-4 py-3 text-xs font-semibold uppercase text-[var(--color-text-muted)] md:grid">
-            <span>{t.warehouses.name}</span>
-            <span>{t.warehouses.type}</span>
-            <span>{t.warehouses.status}</span>
-            <span>{t.warehouses.locations}</span>
-            <span className="text-right">{t.common.actions}</span>
-          </div>
-          <div className="divide-y divide-[var(--color-border-soft)]">
-            {warehouses.map((warehouse) => (
-              <div
-                key={warehouse.id}
-                className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[1.5fr_0.8fr_0.9fr_0.7fr_1fr] md:items-center md:gap-4"
-              >
+        <div className="space-y-6">
+          {warehouseGroups.map((group) => (
+            <section key={group.type} className="space-y-3">
+              <WarehouseGroupHeading
+                type={group.type}
+                count={group.warehouses.length}
+              />
+              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+                <div className="hidden grid-cols-[1.5fr_0.8fr_0.9fr_0.7fr_1fr] gap-4 border-b border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-4 py-3 text-xs font-semibold uppercase text-[var(--color-text-muted)] md:grid">
+                  <span>{t.warehouses.name}</span>
+                  <span>{t.warehouses.type}</span>
+                  <span>{t.warehouses.status}</span>
+                  <span>{t.warehouses.locations}</span>
+                  <span className="text-right">{t.common.actions}</span>
+                </div>
+                <div className="divide-y divide-[var(--color-border-soft)]">
+                  {group.warehouses.map((warehouse) => (
+                    <div
+                      key={warehouse.id}
+                      className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[1.5fr_0.8fr_0.9fr_0.7fr_1fr] md:items-center md:gap-4"
+                    >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                     {warehouse.name}
@@ -128,9 +138,12 @@ export function WarehouseTable({
                     <Trash2 size={16} />
                   </button>
                 </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            </section>
+          ))}
         </div>
       )}
     </section>

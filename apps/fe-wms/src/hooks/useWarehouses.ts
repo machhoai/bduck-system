@@ -8,8 +8,12 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
-import type { Warehouse, WarehouseLocation } from "@bduck/shared-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  WarehouseType,
+  type Warehouse,
+  type WarehouseLocation,
+} from "@bduck/shared-types";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
@@ -219,6 +223,20 @@ export function useWarehouses() {
     updateWarehouse,
     deleteWarehouse,
   };
+}
+
+/** Revenue-producing locations only. */
+export function useStores() {
+  const warehouseState = useWarehouses();
+  const stores = useMemo(
+    () =>
+      warehouseState.warehouses.filter(
+        (warehouse) => warehouse.type === WarehouseType.STORE,
+      ),
+    [warehouseState.warehouses],
+  );
+
+  return { ...warehouseState, stores };
 }
 
 export function useWarehouseLocations(warehouseId?: string) {

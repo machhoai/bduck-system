@@ -80,7 +80,11 @@ interface DashboardTopProduct {
     groupRevenue: number;
 }
 
-export default function DashboardRevenueOverview() {
+export default function DashboardRevenueOverview({
+    warehouseId,
+}: {
+    warehouseId?: string;
+}) {
     const { t } = useTranslation();
     const d = t.revenue;
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
@@ -91,6 +95,8 @@ export default function DashboardRevenueOverview() {
         [filter],
     );
     const { data, loading, syncing, error } = useRevenueDashboard(filter, {
+        warehouseId,
+        enabled: Boolean(warehouseId),
         keepPreviousData: true,
     });
     const {

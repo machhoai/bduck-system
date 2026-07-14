@@ -7,7 +7,9 @@ import type { MapRef } from "react-map-gl/mapbox";
 import type { Warehouse } from "@bduck/shared-types";
 import Link from "next/link";
 import { useTranslation } from "@/lib/i18n";
+import { groupWarehousesByType } from "@/utils/warehouseGrouping";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { WarehouseGroupHeading } from "./WarehouseGroupHeading";
 import { WarehouseMapCard } from "./WarehouseMapCard";
 import { WarehousePopupCard } from "./WarehousePopupCard";
 
@@ -71,6 +73,10 @@ export function WarehouseMapView({
 
     const warehousesWithCoords = useMemo(
         () => filteredWarehouses.filter((w) => w.coordinate !== null),
+        [filteredWarehouses],
+    );
+    const warehouseGroups = useMemo(
+        () => groupWarehousesByType(filteredWarehouses),
         [filteredWarehouses],
     );
 
@@ -187,15 +193,23 @@ export function WarehouseMapView({
                     </p>
                 </div>
             ) : (
-                <div ref={listRef} className="space-y-2">
-                    {filteredWarehouses.map((warehouse) => (
-                        <div key={warehouse.id} data-warehouse-id={warehouse.id}>
-                            <WarehouseMapCard
-                                warehouse={warehouse}
-                                isSelected={selectedId === warehouse.id}
-                                onSelect={handleSelectWarehouse}
+                <div ref={listRef} className="space-y-5">
+                    {warehouseGroups.map((group) => (
+                        <section key={group.type} className="space-y-2">
+                            <WarehouseGroupHeading
+                                type={group.type}
+                                count={group.warehouses.length}
                             />
-                        </div>
+                            {group.warehouses.map((warehouse) => (
+                                <div key={warehouse.id} data-warehouse-id={warehouse.id}>
+                                    <WarehouseMapCard
+                                        warehouse={warehouse}
+                                        isSelected={selectedId === warehouse.id}
+                                        onSelect={handleSelectWarehouse}
+                                    />
+                                </div>
+                            ))}
+                        </section>
                     ))}
                 </div>
             )}

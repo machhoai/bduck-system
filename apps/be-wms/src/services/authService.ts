@@ -4,9 +4,15 @@ import {
   getUserWarehouseRoles,
   getRoleById,
 } from "../repositories/userRepository.js";
-import type { User, UserWarehouseRole } from "@bduck/shared-types";
+import {
+  UserStatus,
+  type User,
+  type UserWarehouseRole,
+} from "@bduck/shared-types";
 import { activeRoleAssignments, uniqueRoleIds } from "./scopedRoleAccess.js";
 import { getEffectiveRolePermissions } from "./rolePermissionUtils.js";
+import { findUserByUsername } from "../repositories/userRepository.js";
+import { findEmployeeProfilesByPhone } from "../repositories/employeeProfileRepository.js";
 
 export interface AuthSessionResult {
   cookie: string;
@@ -16,6 +22,39 @@ export interface AuthSessionResult {
   roleIds: string[];
   permissions: Record<string, unknown>;
 }
+
+const isUsableLoginUser = (user: User | null): user is User =>
+  Boolean(user && !user.is_deleted && user.status === UserStatus.ACTIVE);
+
+export const resolveLoginEmail = async (
+  identifier: string,
+): Promise<string | null> => {
+  const normalizedIdentifier = identifier.trim();
+  if (!normalizedIdentifier) return null;
+
+  if (normalizedIdentifier.includes("@")) {
+    return normalizedIdentifier;
+  }
+
+  const usernameUser = await findUserByUsername(normalizedIdentifier);
+  if (isUsableLoginUser(usernameUser)) {
+    return usernameUser.email;
+  }
+
+  const matchingProfiles =
+    await findEmployeeProfilesByPhone(normalizedIdentifier);
+  const linkedUserIds = Array.from(
+    new Set(
+      matchingProfiles
+        .map((profile) => profile.user_id)
+        .filter((userId): userId is string => Boolean(userId)),
+    ),
+  );
+
+  if (linkedUserIds.length !== 1) return null;
+  const phoneUser = await getUserById(linkedUserIds[0]);
+  return isUsableLoginUser(phoneUser) ? phoneUser.email : null;
+};
 
 export const createSessionLogin = async (
   idToken: string,

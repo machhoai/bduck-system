@@ -14,17 +14,17 @@ import { LOGIN_FORM_TEXT } from '../../lib/i18n/componentTranslations';
  * Split-panel layout with brand visual + login form
  */
 export default function LoginForm() {
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [hasWrongPasswordError, setHasWrongPasswordError] = useState(false);
     const [mounted, setMounted] = useState(false);
     const { login, resetPassword, isLoading } = useAuth();
     const { lang } = useTranslation();
-    const copy = LOGIN_FORM_TEXT[lang === "zh" ? "zh" : "vi"];
+    const copy = LOGIN_FORM_TEXT[lang === 'zh' ? 'zh' : 'vi'];
 
-    const isAuthenticated = useUserStore(state => state.isAuthenticated);
-    const permissions = useUserStore(state => state.permissions);
+    const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+    const permissions = useUserStore((state) => state.permissions);
     const router = useRouter();
 
     useEffect(() => {
@@ -44,16 +44,20 @@ export default function LoginForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email || !password) return;
+        if (!identifier || !password) return;
         setHasWrongPasswordError(false);
-        const result = await login(email, password);
-        setHasWrongPasswordError(!result.ok && result.reason === "wrong-password");
+        const result = await login(identifier, password);
+        setHasWrongPasswordError(
+            !result.ok && result.reason === 'wrong-password',
+        );
     };
 
     const handleForgotPassword = async () => {
         setHasWrongPasswordError(false);
-        if (!email) {
-            import("goey-toast").then(({ gooeyToast }) => {
+        const email = identifier.trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        if (!isEmail) {
+            import('goey-toast').then(({ gooeyToast }) => {
                 gooeyToast.error(copy.emailRequired, {
                     description: copy.emailRequiredDescription,
                 });
@@ -65,15 +69,17 @@ export default function LoginForm() {
 
     return (
         <div className="min-h-screen flex bg-[var(--color-surface-base)]">
-
             {/* ── Left Panel: Brand Visual ── */}
             <div className="hidden lg:flex lg:w-[45%] relative items-center justify-end">
                 {/* Soft gradient orb */}
                 <div
                     className="absolute w-[500px] h-[500px] rounded-full opacity-20 blur-[120px]"
                     style={{
-                        background: 'radial-gradient(circle, #F5C518 0%, #F59E18 40%, transparent 70%)',
-                        animation: mounted ? 'float 8s ease-in-out infinite' : 'none',
+                        background:
+                            'radial-gradient(circle, #F5C518 0%, #F59E18 40%, transparent 70%)',
+                        animation: mounted
+                            ? 'float 8s ease-in-out infinite'
+                            : 'none',
                     }}
                 />
 
@@ -93,9 +99,14 @@ export default function LoginForm() {
                 <div className="relative z-10 max-w-full">
                     <h1
                         className="text-[5.75rem] text-right font-bold leading-[1.1] tracking-tight mb-2"
-                        style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+                        style={{
+                            fontFamily: 'var(--font-display)',
+                            color: 'var(--color-text-primary)',
+                        }}
                     >
-                        <span className="text-[var(--color-brand-primary)]">Joy World <br /> Cityfuns</span>
+                        <span className="text-[var(--color-brand-primary)]">
+                            Joy World <br /> Cityfuns
+                        </span>
                         <br />
                         WMS
                     </h1>
@@ -103,10 +114,14 @@ export default function LoginForm() {
                     {/* Status indicators */}
                     <div className="mt-1 flex items-center justify-end gap-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-[var(--color-text-muted)]">{copy.version}</span>
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                                {copy.version}
+                            </span>
                         </div>
                         <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
-                        <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
+                        <span className="text-xs text-[var(--color-text-muted)]">
+                            v1.0.0
+                        </span>
                         <div className="w-2 h-2 rounded-full bg-[var(--color-accent-success)] animate-pulse" />
                     </div>
                 </div>
@@ -115,15 +130,19 @@ export default function LoginForm() {
             {/* ── Right Panel: Login Form ── */}
             <div className="flex-1 flex items-center justify-start px-4 lg:pl-10">
                 <div className="w-full max-w-[400px]">
-
                     {/* Mobile brand header */}
                     <div className="lg:hidden mb-2 flex items-center gap-3">
                         <div className="relative z-10 max-w-full">
                             <h1
                                 className="text-[4.75rem] font-bold leading-[1.1] tracking-tight"
-                                style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+                                style={{
+                                    fontFamily: 'var(--font-display)',
+                                    color: 'var(--color-text-primary)',
+                                }}
                             >
-                                <span className="text-[var(--color-brand-primary)]">Joy World <br /> Cityfuns</span>
+                                <span className="text-[var(--color-brand-primary)]">
+                                    Joy World <br /> Cityfuns
+                                </span>
                                 <br />
                                 WMS
                             </h1>
@@ -131,10 +150,14 @@ export default function LoginForm() {
                             {/* Status indicators */}
                             <div className="mb-1 flex items-center justify-start gap-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-[var(--color-text-muted)]">{copy.version}</span>
+                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                        {copy.version}
+                                    </span>
                                 </div>
                                 <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
-                                <span className="text-xs text-[var(--color-text-muted)]">v1.0.0</span>
+                                <span className="text-xs text-[var(--color-text-muted)]">
+                                    v1.0.0
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -151,27 +174,27 @@ export default function LoginForm() {
 
                     {/* Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
-                        {/* Email field */}
+                        {/* Login identifier field */}
                         <div>
                             <label
-                                htmlFor="login-email"
+                                htmlFor="login-identifier"
                                 className="block text-xs font-medium uppercase tracking-wider mb-1 text-[var(--color-text-muted)]"
                             >
-                                Email
+                                {copy.identifier}
                             </label>
                             <input
-                                id="login-email"
-                                name="email"
-                                type="email"
-                                autoComplete="email"
+                                id="login-identifier"
+                                name="identifier"
+                                type="text"
+                                autoComplete="username"
                                 required
                                 disabled={isLoading}
-                                value={email}
+                                value={identifier}
                                 onChange={(e) => {
-                                    setEmail(e.target.value);
+                                    setIdentifier(e.target.value);
                                     setHasWrongPasswordError(false);
                                 }}
-                                placeholder="admin@bduck.com"
+                                placeholder={copy.identifierPlaceholder}
                                 className="
                   w-full h-12 px-4 rounded-[var(--radius-md)] text-sm outline-none
                   bg-[var(--color-surface-input)] border border-[var(--color-border-subtle)]
@@ -211,7 +234,11 @@ export default function LoginForm() {
                                     required
                                     disabled={isLoading}
                                     aria-invalid={hasWrongPasswordError}
-                                    aria-describedby={hasWrongPasswordError ? "login-password-error" : undefined}
+                                    aria-describedby={
+                                        hasWrongPasswordError
+                                            ? 'login-password-error'
+                                            : undefined
+                                    }
                                     value={password}
                                     onChange={(e) => {
                                         setPassword(e.target.value);
@@ -230,21 +257,50 @@ export default function LoginForm() {
                                 <button
                                     type="button"
                                     tabIndex={-1}
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
                                     className="
                     absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius-sm)]
                     text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]
                     transition-colors cursor-pointer
                   "
-                                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
+                                    aria-label={
+                                        showPassword
+                                            ? copy.hidePassword
+                                            : copy.showPassword
+                                    }
                                 >
                                     {showPassword ? (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
                                             <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
-                                            <line x1="1" y1="1" x2="23" y2="23" />
+                                            <line
+                                                x1="1"
+                                                y1="1"
+                                                x2="23"
+                                                y2="23"
+                                            />
                                         </svg>
                                     ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                             <circle cx="12" cy="12" r="3" />
                                         </svg>
@@ -257,7 +313,9 @@ export default function LoginForm() {
                                     role="alert"
                                     className="mt-2 rounded-[var(--radius-md)] border border-[var(--color-accent-error)]/30 bg-[var(--color-accent-error)]/10 px-3 py-2 text-sm leading-5 text-[var(--color-accent-error)]"
                                 >
-                                    <p className="font-semibold">{copy.wrongPasswordTitle}</p>
+                                    <p className="font-semibold">
+                                        {copy.wrongPasswordTitle}
+                                    </p>
                                     <p className="mt-1 text-[var(--color-text-secondary)]">
                                         {copy.wrongPasswordDescription}
                                     </p>
@@ -284,9 +342,24 @@ export default function LoginForm() {
                         >
                             {isLoading ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    <svg
+                                        className="animate-spin h-4 w-4"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="3"
+                                        />
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        />
                                     </svg>
                                     {copy.authenticating}
                                 </span>

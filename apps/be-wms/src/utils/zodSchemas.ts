@@ -217,7 +217,7 @@ const userRoleAssignmentSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  username: z.string().trim().min(3).max(80),
+  username: z.string().trim().min(3).max(80).optional(),
   email: z.string().trim().email().max(160),
   password: z.string().min(8).max(128).optional(),
   full_name: z.string().trim().min(1).max(160),
@@ -243,6 +243,7 @@ const createEmployeeAccountSchema = createUserSchema
     assignments: true,
   })
   .partial({
+    username: true,
     password: true,
     status: true,
     assignments: true,
@@ -257,7 +258,9 @@ const employeeProfileCoreSchema = z.object({
   job_title: z.string().trim().max(120).nullable().optional(),
   department: z.string().trim().max(120).nullable().optional(),
   workplace_warehouse_id: z.string().uuid(),
-  status: z.nativeEnum(EmployeeProfileStatus).default(EmployeeProfileStatus.ACTIVE),
+  status: z
+    .nativeEnum(EmployeeProfileStatus)
+    .default(EmployeeProfileStatus.ACTIVE),
   notes: z.string().trim().max(1000).nullable().optional(),
 });
 
@@ -278,7 +281,8 @@ export const createEmployeeProfileSchema = employeeProfileCoreSchema
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["user_id"],
-        message: "Cannot link an existing user and create a new account at once",
+        message:
+          "Cannot link an existing user and create a new account at once",
       });
     }
   });

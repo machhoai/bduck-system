@@ -14,7 +14,12 @@ import {
     revokeActiveAccountInvitations,
     type AccountInvitation,
 } from "../repositories/accountInvitationRepository.js";
-import { getUserById, findUserByField } from "../repositories/userRepository.js";
+import {
+    findUserByField,
+    getUserById,
+    setUniqueUsername,
+    UsernameAlreadyExistsError,
+} from "../repositories/userRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { sendBrevoEmail } from "./brevoEmailService.js";
 
@@ -68,6 +73,22 @@ const passwordSchemaError = {
     },
 };
 
+const usernameSchemaError = {
+    statusCode: 400,
+    messages: {
+        vi: "Tên đăng nhập phải có từ 3 đến 80 ký tự.",
+        zh: "用户名长度必须为 3 到 80 个字符。",
+    },
+};
+
+const usernameConflictError = (username: string) => ({
+    statusCode: 409,
+    messages: {
+        vi: `Tên đăng nhập "${username}" đã được sử dụng. Vui lòng chọn tên khác.`,
+        zh: `用户名“${username}”已被使用，请选择其他名称。`,
+    },
+});
+
 const createToken = () => randomBytes(32).toString("base64url");
 
 const hashToken = (token: string) =>
@@ -101,7 +122,8 @@ const getAppBaseUrl = () => {
         process.env.NEXT_PUBLIC_APP_URL;
     if (explicitUrl) return explicitUrl.replace(/\/+$/, "");
 
-    const firstCorsOrigin = process.env.BE_WMS_CORS_ORIGIN?.split(",")[0]?.trim();
+    const firstCorsOrigin =
+        process.env.BE_WMS_CORS_ORIGIN?.split(",")[0]?.trim();
     return (firstCorsOrigin || "http://app.wms.localhost").replace(/\/+$/, "");
 };
 
@@ -116,7 +138,10 @@ const assertInvitationUsable = async (
     if (invitation.used_at) throw usedInvitationError;
 
     const expiresAt = toDate(invitation.expires_at);
-    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+    if (
+        Number.isNaN(expiresAt.getTime()) ||
+        expiresAt.getTime() <= Date.now()
+    ) {
         throw expiredInvitationError;
     }
 
@@ -161,10 +186,11 @@ export const sendInitialPasswordSetupInvitation = async (
           <h2>Kích hoạt tài khoản Joy World Cityfuns ERP</h2>
           <p>Xin chào ${safeName},</p>
           <p>Tài khoản của bạn đã được tạo trên hệ thống Joy World Cityfuns ERP.</p>
-          <p><strong>Email đăng nhập:</strong> ${safeEmail}</p>
+          <p><strong>Email tài khoản:</strong> ${safeEmail}</p>
+          <p>Vui lòng tạo tên đăng nhập và mật khẩu để kích hoạt tài khoản.</p>
           <p>
             <a href="${setupUrl}" style="display:inline-block;background:#f5a400;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">
-              Đặt mật khẩu
+              Tạo tên đăng nhập và mật khẩu
             </a>
           </p>
           <p>Liên kết này có hiệu lực trong 24 giờ. Nếu liên kết hết hạn, vui lòng yêu cầu admin gửi lại.</p>
@@ -174,8 +200,9 @@ export const sendInitialPasswordSetupInvitation = async (
             textContent: [
                 `Xin chào ${user.full_name},`,
                 "Tài khoản của bạn đã được tạo trên hệ thống Joy World Cityfuns ERP.",
-                `Email đăng nhập: ${user.email}`,
-                `Đặt mật khẩu tại: ${setupUrl}`,
+                `Email tài khoản: ${user.email}`,
+                "Vui lòng tạo tên đăng nhập và mật khẩu để kích hoạt tài khoản.",
+                `Khởi tạo tài khoản tại: ${setupUrl}`,
                 "Liên kết này có hiệu lực trong 24 giờ. Nếu liên kết hết hạn, vui lòng yêu cầu admin gửi lại.",
             ].join("\n"),
         });
@@ -224,14 +251,17 @@ export const sendPasswordResetEmail = async (
     auditMetadata?: AuditMetadata,
 ): Promise<void> => {
     const user = await findUserByField("email", email);
-    
+
     // For security, do not reveal if the user exists or not.
     // If user is not found, or not active, just return successfully.
     if (!user || user.is_deleted || user.status !== UserStatus.ACTIVE) {
         return;
     }
 
-    const activeInvitation = await findActiveInvitationForUser(user.id, PASSWORD_RESET_PURPOSE);
+    const activeInvitation = await findActiveInvitationForUser(
+        user.id,
+        PASSWORD_RESET_PURPOSE,
+    );
     if (activeInvitation) {
         throw {
             statusCode: 429,
@@ -312,12 +342,30 @@ export const sendPasswordResetEmail = async (
 export const completeAccountInvitation = async (
     token: string,
     password: string,
+    username?: string,
 ): Promise<void> => {
     if (password.length < 8 || password.length > 128) {
         throw passwordSchemaError;
     }
 
     const { invitation, user } = await assertInvitationUsable(token);
+
+    if (invitation.purpose === ACCOUNT_INVITATION_PURPOSE) {
+        const nextUsername = username?.trim() || "";
+        if (nextUsername.length < 3 || nextUsername.length > 80) {
+            throw usernameSchemaError;
+        }
+
+        try {
+            await setUniqueUsername(user.id, nextUsername);
+        } catch (error) {
+            if (error instanceof UsernameAlreadyExistsError) {
+                throw usernameConflictError(nextUsername);
+            }
+            throw error;
+        }
+    }
+
     await auth.updateUser(user.id, {
         password,
         disabled: false,

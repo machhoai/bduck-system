@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * WarehouseSelector — Dropdown chọn kho cho dashboard
+ * WarehouseSelector — Dropdown chọn cửa hàng cho dashboard
  *
- * ► Hiển thị "Tất cả kho" + danh sách kho user có quyền
- * ► RBAC: Chỉ hiển thị kho mà user có warehouses.read
+ * ► Hiển thị "Tất cả cửa hàng" + danh sách cửa hàng user có quyền
+ * ► Danh sách đầu vào đã được useStores giới hạn theo WarehouseType.STORE
  */
 
 import { ChevronDown, Warehouse as WarehouseIcon } from "lucide-react";
@@ -47,6 +47,8 @@ export default function WarehouseSelector({
         <div ref={dropdownRef} className="relative">
             <button
                 type="button"
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/12 px-2.5 text-xs text-white/80 backdrop-blur-md transition-all hover:bg-white/18 hover:border-white/30 active:scale-[0.98] shadow-sm"
             >
@@ -60,7 +62,7 @@ export default function WarehouseSelector({
 
             {isOpen && (
                 <div className="absolute right-0 top-full  mt-1 min-w-[200px] overflow-hidden rounded-[var(--radius-sm)] border border-slate-200/80 bg-white/95 backdrop-blur-lg py-0.5 shadow-lg">
-                    {/* All warehouses option */}
+                    {/* All stores option */}
                     <button
                         type="button"
                         onClick={() => {
@@ -93,13 +95,10 @@ export default function WarehouseSelector({
                                 }`}
                         >
                             <div
-                                className="h-1.5 w-1.5 rounded-full"
-                                style={{
-                                    backgroundColor:
-                                        warehouse.status === "ACTIVE"
-                                            ? "var(--color-accent-success)"
-                                            : "var(--color-text-muted)",
-                                }}
+                                className={`h-1.5 w-1.5 rounded-full ${warehouse.status === "ACTIVE"
+                                    ? "bg-[var(--color-accent-success)]"
+                                    : "bg-[var(--color-text-muted)]"
+                                    }`}
                             />
                             <span className="truncate max-w-[120px]">{warehouse.name}</span>
                             <span className="ml-auto text-xxs text-[var(--color-text-muted)] font-mono">
