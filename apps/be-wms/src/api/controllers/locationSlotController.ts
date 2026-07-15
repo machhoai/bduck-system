@@ -3,13 +3,17 @@ import { z } from "zod";
 import {
   createLocationSlot,
   deleteLocationSlot,
-  deleteLocationSlotProduct,
   fetchLocationSlotById,
-  fetchLocationSlotProducts,
   fetchLocationSlots,
   updateLocationSlot,
-  upsertLocationSlotProduct,
 } from "../../services/locationSlotService.js";
+import {
+  deleteLocationSlotProduct,
+  fetchLocationSlotProducts,
+  upsertLocationSlotProduct,
+} from "../../services/locationSlotProductService.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
+import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   createLocationSlotSchema,
   idParamSchema,
@@ -18,54 +22,44 @@ import {
   updateLocationSlotSchema,
   upsertLocationSlotProductSchema,
 } from "../../utils/zodSchemas.js";
-import { sendError, sendSuccess } from "../../utils/responseHelper.js";
-import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
-
-const getRequestUserId = (req: Request): string => {
-  return (req as any).user?.id || "unknown";
-};
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const handleSlotError = (res: Response, error: unknown) => {
   console.error("[locationSlotController] error:", error);
-
   if (error instanceof z.ZodError) {
     return sendError(
       res,
-      {
-        vi: "Dá»¯ liá»‡u Ä‘áº§u vÃ o khÃ´ng há»£p lá»‡.",
-        zh: "è¾“å…¥æ•°æ®æ— æ•ˆã€‚",
-      },
+      { vi: "Dữ liệu đầu vào không hợp lệ.", zh: "输入数据无效。" },
       400,
       error.flatten(),
     );
   }
-
   const apiError = error as {
     statusCode?: number;
     messages?: { vi: string; zh: string };
   };
-
   if (apiError.statusCode && apiError.messages) {
     return sendError(res, apiError.messages, apiError.statusCode);
   }
-
   return sendError(
     res,
-    {
-      vi: "Lá»—i khi xá»­ lÃ½ giá»£i trong vá»‹ trÃ­.",
-      zh: "å¤„ç†å­åº“ä½æ—¶å‡ºé”™ã€‚",
-    },
+    { vi: "Lỗi khi xử lý giá trong vị trí.", zh: "处理子库位时出错。" },
     500,
   );
 };
 
 export const getLocationSlotsHandler = async (req: Request, res: Response) => {
   try {
-    const filters = slotQuerySchema.parse(req.query);
-    const slots = await fetchLocationSlots(filters);
+    const slots = await fetchLocationSlots(
+      slotQuerySchema.parse(req.query),
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, slots, {
-      vi: "Láº¥y danh sÃ¡ch giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸèŽ·å–å­åº“ä½åˆ—è¡¨ã€‚",
+      vi: "Lấy danh sách giá thành công.",
+      zh: "成功获取子库位列表。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -78,10 +72,13 @@ export const getLocationSlotByIdHandler = async (
 ) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const slot = await fetchLocationSlotById(id);
+    const slot = await fetchLocationSlotById(
+      id,
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, slot, {
-      vi: "Láº¥y thÃ´ng tin giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸèŽ·å–å­åº“ä½ä¿¡æ¯ã€‚",
+      vi: "Lấy thông tin giá thành công.",
+      zh: "成功获取子库位信息。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -93,19 +90,16 @@ export const createLocationSlotHandler = async (
   res: Response,
 ) => {
   try {
-    const data = createLocationSlotSchema.parse(req.body);
     const slot = await createLocationSlot(
-      data,
-      getRequestUserId(req),
+      createLocationSlotSchema.parse(req.body),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(
       res,
       slot,
-      {
-        vi: "Táº¡o giá»£i thÃ nh cÃ´ng.",
-        zh: "æˆåŠŸåˆ›å»ºå­åº“ä½ã€‚",
-      },
+      { vi: "Tạo giá thành công.", zh: "成功创建子库位。" },
       201,
     );
   } catch (error) {
@@ -119,16 +113,16 @@ export const updateLocationSlotHandler = async (
 ) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const data = updateLocationSlotSchema.parse(req.body);
     await updateLocationSlot(
       id,
-      data,
-      getRequestUserId(req),
+      updateLocationSlotSchema.parse(req.body),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {
-      vi: "Cáº­p nháº­t giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸæ›´æ–°å­åº“ä½ã€‚",
+      vi: "Cập nhật giá thành công.",
+      zh: "成功更新子库位。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -143,12 +137,13 @@ export const deleteLocationSlotHandler = async (
     const { id } = idParamSchema.parse(req.params);
     await deleteLocationSlot(
       id,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {
-      vi: "XÃ³a giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸåˆ é™¤å­åº“ä½ã€‚",
+      vi: "Xóa giá thành công.",
+      zh: "成功删除子库位。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -160,11 +155,13 @@ export const getLocationSlotProductsHandler = async (
   res: Response,
 ) => {
   try {
-    const filters = slotProductQuerySchema.parse(req.query);
-    const mappings = await fetchLocationSlotProducts(filters);
+    const mappings = await fetchLocationSlotProducts(
+      slotProductQuerySchema.parse(req.query),
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, mappings, {
-      vi: "Láº¥y danh sÃ¡ch mapping sáº£n pháº©m thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸèŽ·å–äº§å“æ˜ å°„åˆ—è¡¨ã€‚",
+      vi: "Lấy danh sách gán sản phẩm thành công.",
+      zh: "成功获取产品映射列表。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -176,15 +173,15 @@ export const upsertLocationSlotProductHandler = async (
   res: Response,
 ) => {
   try {
-    const data = upsertLocationSlotProductSchema.parse(req.body);
     const mapping = await upsertLocationSlotProduct(
-      data,
-      getRequestUserId(req),
+      upsertLocationSlotProductSchema.parse(req.body),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, mapping, {
-      vi: "GÃ¡n sáº£n pháº©m vÃ o giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸå°†äº§å“åˆ†é…åˆ°å­åº“ä½ã€‚",
+      vi: "Gán sản phẩm vào giá thành công.",
+      zh: "成功将产品分配到子库位。",
     });
   } catch (error) {
     return handleSlotError(res, error);
@@ -199,12 +196,13 @@ export const deleteLocationSlotProductHandler = async (
     const { id } = idParamSchema.parse(req.params);
     await deleteLocationSlotProduct(
       id,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {
-      vi: "Bá» gÃ¡n sáº£n pháº©m khá»i giá»£i thÃ nh cÃ´ng.",
-      zh: "æˆåŠŸç§»é™¤äº§å“æ˜ å°„ã€‚",
+      vi: "Bỏ gán sản phẩm khỏi giá thành công.",
+      zh: "成功移除产品映射。",
     });
   } catch (error) {
     return handleSlotError(res, error);

@@ -14,8 +14,10 @@ import {
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
+import { requireAuthenticatedRequestUser } from "../middlewares/requestAccessContext.js";
 
-const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
+const getRequestUserId = (req: Request) =>
+  requireAuthenticatedRequestUser(req).id;
 
 const handleRoleError = (res: Response, error: unknown) => {
   console.error("[roleController] error:", error);

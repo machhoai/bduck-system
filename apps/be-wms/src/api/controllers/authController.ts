@@ -11,6 +11,7 @@ import {
   verifyAccountInvitation,
 } from "../../services/accountInvitationService.js";
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
+import { buildAuthSessionCookieOptions } from "../../utils/authSessionCookie.js";
 import {
   generateMfaSetup,
   verifyMfaSetup,
@@ -100,12 +101,14 @@ export const sessionLogin = async (req: Request, res: Response) => {
     const sessionResult = await createSessionLogin(idToken);
 
     // Set HttpOnly cookie
-    res.cookie("__session", sessionResult.cookie, {
-      maxAge: sessionResult.expiresIn,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    });
+    res.cookie(
+      "__session",
+      sessionResult.cookie,
+      buildAuthSessionCookieOptions(
+        sessionResult.expiresIn,
+        process.env.NODE_ENV,
+      ),
+    );
 
     return res.status(200).json({
       success: true,

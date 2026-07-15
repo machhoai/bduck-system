@@ -1,8 +1,21 @@
 import { db } from "../config/firebase.js";
-import type { Role, User, UserWarehouseRole } from "@bduck/shared-types";
+import type { Role, User } from "@bduck/shared-types";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 const USERS_COLLECTION = "users";
-const USER_ROLES_COLLECTION = "user_warehouse_roles";
+
+const mapUser = (snapshot: FirebaseFirestore.DocumentSnapshot): User => ({
+  ...(snapshot.data() as Omit<User, "id">),
+  id: snapshot.id,
+});
+
+export {
+  deactivateUserWarehouseRoles,
+  getUserWarehouseRoles,
+  getUserWarehouseRolesForUsers,
+  replaceManagedUserWarehouseRoles,
+  replaceUserWarehouseRoles,
+} from "./userRoleAssignmentRepository.js";
 
 export class UsernameAlreadyExistsError extends Error {
   constructor(public readonly username: string) {
@@ -17,9 +30,7 @@ export const normalizeUsername = (username: string): string =>
 export const getUserById = async (uid: string): Promise<User | null> => {
   const userSnap = await db.collection(USERS_COLLECTION).doc(uid).get();
   if (!userSnap.exists) return null;
-  const data = userSnap.data() as User;
-  if (!data.id) data.id = uid;
-  return data;
+  return mapUser(userSnap);
 };
 
 export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
@@ -44,7 +55,34 @@ export const findUsers = async (): Promise<User[]> => {
     .where("is_deleted", "==", false)
     .get();
 
-  return snapshot.docs.map((doc) => doc.data() as User);
+  return snapshot.docs.map(mapUser);
+};
+
+export const findUsersScoped = async (scope: {
+  isSystemAdmin: boolean;
+  facilityIds: readonly string[];
+}): Promise<User[]> => {
+  const queryAll = async () => {
+    const snapshot = await db
+      .collection(USERS_COLLECTION)
+      .where("is_deleted", "==", false)
+      .get();
+    return snapshot.docs.map(mapUser);
+  };
+  const queryChunk = async (facilityIds: readonly string[]) => {
+    const snapshot = await db
+      .collection(USERS_COLLECTION)
+      .where("is_deleted", "==", false)
+      .where("workplace_facility_id", "in", facilityIds)
+      .get();
+    return snapshot.docs.map(mapUser);
+  };
+  const groups = await executeFacilityScopedQuery({
+    ...scope,
+    queryAll,
+    queryChunk,
+  });
+  return groups.flat();
 };
 
 export const findUserByField = async (
@@ -141,6 +179,7 @@ export const updateUserRecord = async (
       | "full_name"
       | "employee_id"
       | "status"
+      | "workplace_facility_id"
       | "mfa_enabled"
       | "mfa_secret"
       | "email_otp"
@@ -160,68 +199,6 @@ export const softDeleteUserRecord = async (userId: string): Promise<void> => {
     status: "INACTIVE",
     updated_at: new Date(),
   });
-};
-
-export const getUserWarehouseRoles = async (
-  userId: string,
-): Promise<UserWarehouseRole[]> => {
-  const snapshot = await db
-    .collection(USER_ROLES_COLLECTION)
-    .where("user_id", "==", userId)
-    .get();
-
-  return snapshot.docs.map(
-    (doc) =>
-      ({
-        id: doc.id,
-        ...doc.data(),
-      }) as UserWarehouseRole,
-  );
-};
-
-export const replaceUserWarehouseRoles = async (
-  userId: string,
-  assignments: Omit<UserWarehouseRole, "created_at">[],
-): Promise<UserWarehouseRole[]> => {
-  const existing = await getUserWarehouseRoles(userId);
-  const batch = db.batch();
-  const now = new Date();
-
-  existing.forEach((assignment) => {
-    batch.update(db.collection(USER_ROLES_COLLECTION).doc(assignment.id), {
-      is_active: false,
-    });
-  });
-
-  const nextAssignments = assignments.map((assignment) => ({
-    ...assignment,
-    created_at: now,
-  }));
-
-  nextAssignments.forEach((assignment) => {
-    batch.set(
-      db.collection(USER_ROLES_COLLECTION).doc(assignment.id),
-      assignment,
-    );
-  });
-
-  await batch.commit();
-  return nextAssignments;
-};
-
-export const deactivateUserWarehouseRoles = async (
-  userId: string,
-): Promise<void> => {
-  const existing = await getUserWarehouseRoles(userId);
-  if (existing.length === 0) return;
-
-  const batch = db.batch();
-  existing.forEach((assignment) => {
-    batch.update(db.collection(USER_ROLES_COLLECTION).doc(assignment.id), {
-      is_active: false,
-    });
-  });
-  await batch.commit();
 };
 
 export const getRoleById = async (roleId: string): Promise<Role | null> => {

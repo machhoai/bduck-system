@@ -73,6 +73,8 @@ export interface Attachment {
   id: string; // UUID, PK
   entity_type: string; // Polymorphic — table name
   entity_id: string; // IDX — FK to entity
+  /** Denormalized facility scope; null means an explicitly global attachment. */
+  warehouse_id?: string | null;
   file_name: string;
   file_url: string;
   file_type: FileType;

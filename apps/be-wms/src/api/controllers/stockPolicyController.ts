@@ -12,10 +12,10 @@ import {
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
-
-const getRequestUserId = (req: Request): string => {
-  return (req as any).user?.id || "unknown";
-};
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const handleStockPolicyError = (res: Response, error: unknown) => {
   console.error("[stockPolicyController] error:", error);
@@ -54,7 +54,10 @@ const handleStockPolicyError = (res: Response, error: unknown) => {
 export const getStockPoliciesHandler = async (req: Request, res: Response) => {
   try {
     const filters = stockPolicyQuerySchema.parse(req.query);
-    const policies = await fetchStockPolicies(filters as any);
+    const policies = await fetchStockPolicies(
+      filters as any,
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, policies, {
       vi: "Láº¥y chÃ­nh sÃ¡ch tá»“n kho thÃ nh cÃ´ng.",
       zh: "æˆåŠŸèŽ·å–åº“å­˜ç­–ç•¥ã€‚",
@@ -69,7 +72,8 @@ export const upsertStockPolicyHandler = async (req: Request, res: Response) => {
     const data = upsertStockPolicySchema.parse(req.body);
     const policy = await upsertStockPolicy(
       data,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, policy, {
@@ -86,7 +90,8 @@ export const deleteStockPolicyHandler = async (req: Request, res: Response) => {
     const { id } = idParamSchema.parse(req.params);
     await deleteStockPolicy(
       id,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {

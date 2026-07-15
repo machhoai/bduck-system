@@ -15,9 +15,12 @@ import {
   createEmployeeProfileSchema,
   updateEmployeeProfileSchema,
 } from "../../utils/zodSchemas.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const profileIdParamSchema = z.object({ id: z.string().uuid() });
-const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
 
 const handleEmployeeProfileError = (res: Response, error: unknown) => {
   console.error("[employeeProfileController] error:", error);
@@ -52,11 +55,13 @@ const handleEmployeeProfileError = (res: Response, error: unknown) => {
 };
 
 export const getEmployeeProfilesHandler = async (
-  _req: Request,
+  req: Request,
   res: Response,
 ) => {
   try {
-    const profiles = await fetchEmployeeProfiles();
+    const profiles = await fetchEmployeeProfiles(
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, profiles, {
       vi: "Lấy danh sách hồ sơ nhân viên thành công.",
       zh: "成功获取员工档案列表。",
@@ -71,7 +76,8 @@ export const getMyEmployeeProfileHandler = async (
   res: Response,
 ) => {
   try {
-    const profile = await fetchEmployeeProfileByUserId(getRequestUserId(req));
+    const actor = requireAuthenticatedRequestUser(req);
+    const profile = await fetchEmployeeProfileByUserId(actor.id);
     return sendSuccess(res, profile, {
       vi: "Lấy hồ sơ cá nhân thành công.",
       zh: "成功获取个人档案。",
@@ -87,7 +93,10 @@ export const getEmployeeProfileByIdHandler = async (
 ) => {
   try {
     const { id } = profileIdParamSchema.parse(req.params);
-    const profile = await fetchEmployeeProfileById(id);
+    const profile = await fetchEmployeeProfileById(
+      id,
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, profile, {
       vi: "Lấy hồ sơ nhân viên thành công.",
       zh: "成功获取员工档案。",
@@ -103,9 +112,11 @@ export const createEmployeeProfileHandler = async (
 ) => {
   try {
     const data = createEmployeeProfileSchema.parse(req.body);
+    const actor = requireAuthenticatedRequestUser(req);
     const result = await createEmployeeProfile(
       data,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(
@@ -126,10 +137,12 @@ export const updateEmployeeProfileHandler = async (
   try {
     const { id } = profileIdParamSchema.parse(req.params);
     const data = updateEmployeeProfileSchema.parse(req.body);
+    const actor = requireAuthenticatedRequestUser(req);
     const profile = await updateEmployeeProfile(
       id,
       data,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, profile, {
@@ -147,9 +160,11 @@ export const deleteEmployeeProfileHandler = async (
 ) => {
   try {
     const { id } = profileIdParamSchema.parse(req.params);
+    const actor = requireAuthenticatedRequestUser(req);
     await deleteEmployeeProfile(
       id,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {

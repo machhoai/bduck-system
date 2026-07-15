@@ -6,7 +6,7 @@ import {
   listInternalStockCountsHandler,
   submitInternalStockCountHandler,
   updateInternalStockCountItemHandler,
-} from "../controllers/stockCountController.js";
+} from "../controllers/internalStockCountController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 

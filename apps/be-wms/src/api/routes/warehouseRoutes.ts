@@ -16,7 +16,11 @@ const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireAnyScopedPermission("warehouses.read"), getWarehousesHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission("warehouses.read"),
+  getWarehousesHandler,
+);
 router.get(
   "/:id",
   requirePermission("warehouses.read", (req) =>
@@ -27,12 +31,12 @@ router.get(
 router.post("/", requirePermission("warehouses.write"), createWarehouseHandler);
 router.put(
   "/:id",
-  requirePermission("warehouses.write"),
+  requireAnyScopedPermission("warehouses.write"),
   updateWarehouseHandler,
 );
 router.delete(
   "/:id",
-  requirePermission("warehouses.write"),
+  requireAnyScopedPermission("warehouses.write"),
   deleteWarehouseHandler,
 );
 

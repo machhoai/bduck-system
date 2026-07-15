@@ -25,17 +25,17 @@ router.use(requireAuth);
 
 // ── CRUD ──
 router.post("/", requireAnyScopedPermission("transfers.write"), createHandler);
-router.get(
-  "/",
-  requireAnyScopedPermission(["transfers.read", "vouchers.read"]),
-  listHandler,
-);
+router.get("/", requireAnyScopedPermission("transfers.read"), listHandler);
 router.get(
   "/:id",
-  requireAnyScopedPermission(["transfers.read", "vouchers.read"]),
+  requireAnyScopedPermission("transfers.read"),
   getDetailHandler,
 );
-router.put("/:id", requireAnyScopedPermission("transfers.write"), updateHandler);
+router.put(
+  "/:id",
+  requireAnyScopedPermission("transfers.write"),
+  updateHandler,
+);
 
 // ── Transfer → Export (1-click) ──
 router.post(

@@ -11,7 +11,13 @@
     "start": "node dist/index.js",
     "lint": "eslint src/ --ext .ts",
     "lint:fix": "eslint src/ --ext .ts --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:facility-access-planner": "tsx --test src/scripts/facilityAccessBackfillPlanner.test.ts src/scripts/facilityAccessBackfillProgress.test.ts src/repositories/userAccessVersionInvariant.test.ts src/utils/officeScopePolicy.test.ts",
+    "test:authorization": "tsx --test src/services/authorization/accessContextBuilder.identity.test.ts src/services/authorization/accessContextBuilder.malformed.test.ts src/services/authorization/accessContextBuilder.office.test.ts src/services/authorization/authorizationService.test.ts src/services/facilityRelationshipPolicy.test.ts src/services/transferReceivingItemPolicy.test.ts src/services/roleDelegationPolicy.test.ts src/services/userTargetPolicy.test.ts src/repositories/authorizationSourceLoader.test.ts src/api/middlewares/requestAccessContext.test.ts src/api/middlewares/rbacMiddleware.test.ts",
+    "test:identity-security": "tsx --test src/services/roleAssignmentValidity.test.ts src/services/rolePermissionUtils.test.ts src/services/authSessionFlow.test.ts src/api/middlewares/localIntegrationBypass.test.ts src/api/middlewares/rateLimitMiddleware.test.ts src/utils/secureSecret.test.ts src/utils/authSessionCookie.test.ts",
+    "test:scoped-query": "tsx --test src/repositories/facilityScopedQuery.test.ts",
+    "test:security-foundation": "pnpm run test:facility-access-planner && pnpm run test:authorization && pnpm run test:identity-security && pnpm run test:scoped-query",
+    "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts"
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",
@@ -21,6 +27,7 @@
     "date-fns": "^4.3.0",
     "exceljs": "^4.4.0",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.5.2",
     "firebase-admin": "^13.10.0",
     "helmet": "^8.0.0",
     "nodemailer": "^8.0.10",

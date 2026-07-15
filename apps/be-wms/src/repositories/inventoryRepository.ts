@@ -1,6 +1,7 @@
 import { db } from "../config/firebase.js";
 import { calculateInventoryTotalQuantity } from "@bduck/shared-types";
 import type { Inventory } from "@bduck/shared-types";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 /**
  * Inventory Repository
@@ -93,6 +94,39 @@ export const findAll = async (filters?: {
   return snapshot.docs
     .map((doc) => doc.data() as Inventory)
     .filter((record) => record.is_deleted !== true);
+};
+
+export const findAllScoped = async (
+  filters: {
+    warehouse_location_id?: string;
+    product_id?: string;
+  },
+  scope: { isSystemAdmin: boolean; facilityIds: readonly string[] },
+): Promise<Inventory[]> => {
+  const queryFacilities = async (facilityIds?: readonly string[]) => {
+    let query: FirebaseFirestore.Query = db
+      .collection(COLLECTION)
+      .where("is_deleted", "==", false);
+    if (facilityIds) query = query.where("warehouse_id", "in", facilityIds);
+    if (filters.warehouse_location_id) {
+      query = query.where(
+        "warehouse_location_id",
+        "==",
+        filters.warehouse_location_id,
+      );
+    }
+    if (filters.product_id) {
+      query = query.where("product_id", "==", filters.product_id);
+    }
+    const snapshot = await query.get();
+    return snapshot.docs.map((doc) => doc.data() as Inventory);
+  };
+  const groups = await executeFacilityScopedQuery({
+    ...scope,
+    queryAll: () => queryFacilities(),
+    queryChunk: queryFacilities,
+  });
+  return groups.flat();
 };
 
 // ---------------------------------------------------------------------------
@@ -198,7 +232,8 @@ export const upsertQuantityInTransaction = async (
     const docRef = db.collection(COLLECTION).doc(existing.id);
 
     const newAtp = existing.atp_quantity + (deltas.atp_quantity ?? 0);
-    const newOnHold = existing.on_hold_quantity + (deltas.on_hold_quantity ?? 0);
+    const newOnHold =
+      existing.on_hold_quantity + (deltas.on_hold_quantity ?? 0);
     const newInTransit =
       existing.in_transit_quantity + (deltas.in_transit_quantity ?? 0);
     const newQuarantine =

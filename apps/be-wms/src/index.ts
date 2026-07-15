@@ -32,6 +32,11 @@ import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
 import attendanceRoutes from "./api/routes/attendanceRoutes.js";
 import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
 import fileTemplateRoutes from "./api/routes/fileTemplateRoutes.js";
+import {
+  apiRateLimiter,
+  authRateLimiter,
+  resolveTrustProxySetting,
+} from "./api/middlewares/rateLimitMiddleware.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -39,6 +44,7 @@ const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
+app.set("trust proxy", resolveTrustProxySetting());
 app.use(helmet());
 app.use(
   cors({
@@ -51,6 +57,8 @@ app.use(
 );
 app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
+app.use("/api", apiRateLimiter);
+app.use("/api/auth", authRateLimiter);
 
 // ---------------------------------------------------------------------------
 // Routes

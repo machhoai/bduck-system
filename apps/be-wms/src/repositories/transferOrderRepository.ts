@@ -60,6 +60,49 @@ export async function findAll(filters?: {
   return snap.docs.map((d) => d.data() as TransferOrder);
 }
 
+type TransferFilters = Parameters<typeof findAll>[0];
+type TransferFacilityField = "source_warehouse_id" | "destination_warehouse_id";
+
+const applyFilters = (
+  initialQuery: FirebaseFirestore.Query,
+  filters: TransferFilters,
+  scopedField?: TransferFacilityField,
+): FirebaseFirestore.Query => {
+  let query = initialQuery.where("is_deleted", "==", false);
+  const facilityFilters = [
+    ["source_warehouse_id", filters?.source_warehouse_id],
+    ["destination_warehouse_id", filters?.destination_warehouse_id],
+  ] as const;
+  for (const [field, value] of facilityFilters) {
+    if (value && field !== scopedField) query = query.where(field, "==", value);
+  }
+  if (filters?.transfer_type) {
+    query = query.where("transfer_type", "==", filters.transfer_type);
+  }
+  if (filters?.status) query = query.where("status", "==", filters.status);
+  return query;
+};
+
+export async function findAllByFacilityScope(
+  field: TransferFacilityField,
+  facilityIds: readonly string[],
+  filters?: TransferFilters,
+): Promise<TransferOrder[]> {
+  const selectedFacilityId =
+    field === "source_warehouse_id"
+      ? filters?.source_warehouse_id
+      : filters?.destination_warehouse_id;
+  if (selectedFacilityId && !facilityIds.includes(selectedFacilityId))
+    return [];
+
+  let query = applyFilters(db.collection(COLLECTION), filters, field);
+  query = selectedFacilityId
+    ? query.where(field, "==", selectedFacilityId)
+    : query.where(field, "in", [...facilityIds]);
+  const snapshot = await query.get();
+  return snapshot.docs.map((doc) => doc.data() as TransferOrder);
+}
+
 // ─────────────────────────────────────────────
 // ITEMS
 // ─────────────────────────────────────────────

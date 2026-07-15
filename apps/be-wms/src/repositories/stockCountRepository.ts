@@ -42,7 +42,7 @@ export async function findSessionById(
   const snap = await sessionsCollection().doc(id).get();
   if (!snap.exists) return null;
   const session = snap.data() as StockCountSession;
-  return session.is_deleted ? null : session;
+  return session.is_deleted === false ? session : null;
 }
 
 export async function findItemsBySessionId(
@@ -55,16 +55,18 @@ export async function findItemsBySessionId(
 
   return snap.docs
     .map((doc) => doc.data() as StockCountItem)
-    .sort((a, b) => (a.created_at ? toMillis(a.created_at) : 0) - (b.created_at ? toMillis(b.created_at) : 0));
+    .sort(
+      (a, b) =>
+        (a.created_at ? toMillis(a.created_at) : 0) -
+        (b.created_at ? toMillis(b.created_at) : 0),
+    );
 }
 
-export async function findItemById(
-  id: string,
-): Promise<StockCountItem | null> {
+export async function findItemById(id: string): Promise<StockCountItem | null> {
   const snap = await itemsCollection().doc(id).get();
   if (!snap.exists) return null;
   const item = snap.data() as StockCountItem;
-  return item.is_deleted ? null : item;
+  return item.is_deleted === false ? item : null;
 }
 
 export async function findSessions(
@@ -95,7 +97,6 @@ export async function findSessions(
   const snap = await query.get();
   return snap.docs
     .map((doc) => doc.data() as StockCountSession)
-    .filter((session) => session.is_deleted !== true)
+    .filter((session) => session.is_deleted === false)
     .sort((a, b) => toMillis(b.created_at) - toMillis(a.created_at));
 }
-

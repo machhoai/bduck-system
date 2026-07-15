@@ -8,9 +8,9 @@ import { createWarehouseSchema } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { fetchOrganizationById } from "./organizationService.js";
 import {
-  getAccessibleWarehouseIds,
-  type RequestUserContext,
-} from "./warehouseAccess.js";
+  authorizationError,
+  type AuthorizationService,
+} from "./authorization/index.js";
 
 type CreateWarehouseInput = z.infer<typeof createWarehouseSchema>;
 type UpdateWarehouseInput = Partial<CreateWarehouseInput>;
@@ -26,8 +26,12 @@ const notFoundError = {
 export const createWarehouse = async (
   input: CreateWarehouseInput,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<Warehouse> => {
+  if (!authorization.context.isSystemAdmin) {
+    throw authorizationError("AUTHORIZATION_DENIED");
+  }
   await fetchOrganizationById(input.organization_id);
 
   const existingCode = await warehouseRepository.findByCode(input.code);
@@ -71,18 +75,15 @@ export const createWarehouse = async (
 };
 
 export const fetchWarehouses = async (
-  user: RequestUserContext,
+  authorization: AuthorizationService,
 ): Promise<Warehouse[]> => {
-  const accessibleWarehouseIds = getAccessibleWarehouseIds(user);
-
-  if (accessibleWarehouseIds && accessibleWarehouseIds.length === 0) {
-    return [];
-  }
-
-  return warehouseRepository.findWarehouses({ accessibleWarehouseIds });
+  return warehouseRepository.findWarehousesScoped({
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("warehouses.read"),
+  });
 };
 
-export const fetchWarehouseById = async (id: string): Promise<Warehouse> => {
+export const loadWarehouseById = async (id: string): Promise<Warehouse> => {
   const warehouse = await warehouseRepository.findById(id);
   if (!warehouse || warehouse.is_deleted) {
     throw notFoundError;
@@ -91,13 +92,24 @@ export const fetchWarehouseById = async (id: string): Promise<Warehouse> => {
   return warehouse;
 };
 
+export const fetchWarehouseById = async (
+  id: string,
+  authorization: AuthorizationService,
+): Promise<Warehouse> => {
+  const warehouse = await loadWarehouseById(id);
+  authorization.assert("warehouses.read", warehouse.id);
+  return warehouse;
+};
+
 export const updateWarehouse = async (
   id: string,
   input: UpdateWarehouseInput,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchWarehouseById(id);
+  const existing = await loadWarehouseById(id);
+  authorization.assert("warehouses.write", existing.id);
 
   if (
     input.organization_id &&
@@ -136,9 +148,11 @@ export const updateWarehouse = async (
 export const deleteWarehouse = async (
   id: string,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchWarehouseById(id);
+  const existing = await loadWarehouseById(id);
+  authorization.assert("warehouses.write", existing.id);
 
   const hasActiveLocations = await locationRepository.hasActiveLocations(id);
   if (hasActiveLocations) {

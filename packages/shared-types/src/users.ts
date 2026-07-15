@@ -1,6 +1,7 @@
 // Tài khoản, phân quyền, RBAC
 
 import { UserStatus } from "./enums.js";
+import type { UserWarehouseRoleScopeOrigin } from "./facilityAccess.js";
 
 // ─────────────────────────────────────────────
 // USERS & RBAC (ISO 5.3 — Segregation of Duties)
@@ -17,6 +18,9 @@ export interface User {
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;
+
+    /** Canonical workplace field during migration away from warehouse-only naming. */
+    workplace_facility_id?: string | null;
 
     // MFA & 2FA Fields
     mfa_enabled?: boolean;
@@ -55,5 +59,9 @@ export interface UserWarehouseRole {
     valid_from: string; // DATE
     valid_until: string | null; // DATE, nullable
     is_active: boolean;
+    /** Missing legacy values are migrated as LEGACY_DIRECT, never inherited. */
+    scope_origin?: UserWarehouseRoleScopeOrigin;
+    is_deleted?: boolean;
     created_at: Date;
+    updated_at?: Date;
 }

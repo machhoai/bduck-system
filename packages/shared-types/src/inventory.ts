@@ -150,6 +150,8 @@ export interface StockCountSession {
 export interface StockCountItem {
   id: string; // UUID, PK
   session_id: string; // FK → stock_count_sessions
+  /** Denormalized facility discriminator for scoped queries and security rules. */
+  warehouse_id?: string; // FK -> warehouses; optional for legacy records
   inventory_id?: string | null;
   product_id: string; // FK → products
   warehouse_location_id: string; // FK → warehouse_locations

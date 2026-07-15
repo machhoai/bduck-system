@@ -1,6 +1,7 @@
 import { db } from "../config/firebase.js";
 import { BaseRepository } from "./baseRepository.js";
 import type { WarehouseLocation } from "@bduck/shared-types";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 const COLLECTION = "warehouse_locations";
 const INVENTORY_COLLECTION = "inventory";
@@ -33,6 +34,35 @@ class LocationRepository extends BaseRepository<WarehouseLocation> {
     return snapshot.docs.map(
       (doc) => ({ ...doc.data(), id: doc.id }) as WarehouseLocation,
     );
+  }
+
+  async findScoped(scope: {
+    isSystemAdmin: boolean;
+    facilityIds: readonly string[];
+  }): Promise<WarehouseLocation[]> {
+    const groups = await executeFacilityScopedQuery({
+      ...scope,
+      queryAll: async () => {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where("is_deleted", "==", false)
+          .get();
+        return snapshot.docs.map(
+          (doc) => ({ ...doc.data(), id: doc.id }) as WarehouseLocation,
+        );
+      },
+      queryChunk: async (facilityIds) => {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where("is_deleted", "==", false)
+          .where("warehouse_id", "in", facilityIds)
+          .get();
+        return snapshot.docs.map(
+          (doc) => ({ ...doc.data(), id: doc.id }) as WarehouseLocation,
+        );
+      },
+    });
+    return groups.flat();
   }
 
   async findByWarehouseAndCode(

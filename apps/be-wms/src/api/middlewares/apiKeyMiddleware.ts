@@ -1,17 +1,35 @@
 import { Request, Response, NextFunction } from "express";
-import crypto from "crypto";
+import { createHmac } from "node:crypto";
 import { db } from "../../config/firebase.js";
-import { IntegrationClient } from "@bduck/shared-types";
+import type { IntegrationClient } from "@bduck/shared-types";
+import {
+  createLocalIntegrationClient,
+  hasRequiredIntegrationScopes,
+  resolveLocalIntegrationBypass,
+} from "./localIntegrationBypass.js";
+import {
+  hasNonEmptySecret,
+  securelyMatchesSecret,
+} from "../../utils/secureSecret.js";
 
+const rejectMissingIntegrationScope = (res: Response) =>
+  res.status(403).json({
+    success: false,
+    data: null,
+    messages: {
+      vi: "Khong co quyen thuc hien hanh dong nay.",
+      zh: "\u6ca1\u6709\u6267\u884c\u6b64\u64cd\u4f5c\u7684\u6743\u9650\u3002",
+    },
+  });
 
 /**
  * Middleware xác thực API Key cho hệ thống bên ngoài (Scanner/POS).
- * 
+ *
  * Client gửi request với các header:
  * - X-API-Key: Public key
  * - X-Timestamp: Unix timestamp (ms)
  * - X-Signature: HMAC-SHA256(secret, "{method}|{path}|{timestamp}|{body}")
- * 
+ *
  * Lưu ý về Cryptography: Để server có thể tính toán lại mã HMAC-SHA256 nhằm verify signature,
  * Server BẮT BUỘC phải biết Plain Secret. Do đó collection integration_clients phải lưu `api_secret`.
  * Việc dùng bcrypt cho secret sẽ khiến server không thể verify HMAC.
@@ -23,28 +41,13 @@ export const requireApiKey = (requiredScopes: string[]) => {
       const timestampStr = req.header("X-Timestamp");
       const signature = req.header("X-Signature");
 
-      // DEV BYPASS for local ecommerce
-      if (apiKey === "Bduck-Local-Integration-Key") {
-        const whSnap = await db.collection("warehouses").get();
-        const whIds = whSnap.docs.map(d => d.id);
-        (req as any).integrationClient = {
-          id: "ECOM_POS_DEV",
-          client_name: "Local E-Commerce",
-          api_key: apiKey,
-          api_secret: "",
-          scopes: [
-            "scan",
-            "locations.read",
-            "products.read",
-            "external_scan.write",
-            "external_count.read",
-            "external_count.write",
-          ],
-          allowed_warehouse_ids: whIds,
-          ip_whitelist: [],
-          rate_limit_per_minute: 1000,
-          is_active: true
-        };
+      const localBypass = resolveLocalIntegrationBypass(process.env);
+      if (localBypass && securelyMatchesSecret(apiKey, localBypass.apiKey)) {
+        const localClient = createLocalIntegrationClient(localBypass);
+        if (!hasRequiredIntegrationScopes(localClient.scopes, requiredScopes)) {
+          return rejectMissingIntegrationScope(res);
+        }
+        (req as any).integrationClient = localClient;
         return next();
       }
 
@@ -92,7 +95,19 @@ export const requireApiKey = (requiredScopes: string[]) => {
         });
       }
 
-      const client = snapshot.docs[0].data() as IntegrationClient & { api_secret: string };
+      const client = snapshot.docs[0].data() as IntegrationClient & {
+        api_secret?: string;
+      };
+      if (!hasNonEmptySecret(client.api_secret)) {
+        return res.status(401).json({
+          success: false,
+          data: null,
+          messages: {
+            vi: "API Key khong hop le hoac da bi vo hieu hoa.",
+            zh: "API \u5bc6\u94a5\u65e0\u6548\u6216\u5df2\u88ab\u7981\u7528\u3002",
+          },
+        });
+      }
 
       // 3. Check IP Whitelist
       if (client.ip_whitelist && client.ip_whitelist.length > 0) {
@@ -110,15 +125,15 @@ export const requireApiKey = (requiredScopes: string[]) => {
       }
 
       // 4. Verify Signature (HMAC-SHA256)
-      const payloadString = Object.keys(req.body || {}).length > 0 ? JSON.stringify(req.body) : "";
+      const payloadString =
+        Object.keys(req.body || {}).length > 0 ? JSON.stringify(req.body) : "";
       const messageToSign = `${req.method}|${req.originalUrl || req.url}|${timestampStr}|${payloadString}`;
-      
-      const expectedSignature = crypto
-        .createHmac("sha256", client.api_secret)
+
+      const expectedSignature = createHmac("sha256", client.api_secret)
         .update(messageToSign)
         .digest("hex");
 
-      if (signature !== expectedSignature) {
+      if (!securelyMatchesSecret(signature, expectedSignature)) {
         return res.status(401).json({
           success: false,
           data: null,
@@ -130,27 +145,19 @@ export const requireApiKey = (requiredScopes: string[]) => {
       }
 
       // 5. Check Scopes
-      if (requiredScopes.length > 0) {
-        const hasScope = requiredScopes.every((s) => client.scopes.includes(s));
-        if (!hasScope) {
-          return res.status(403).json({
-            success: false,
-            data: null,
-            messages: {
-              vi: "Không có quyền thực hiện hành động này.",
-              zh: "没有执行此操作的权限。",
-            },
-          });
-        }
+      if (!hasRequiredIntegrationScopes(client.scopes, requiredScopes)) {
+        return rejectMissingIntegrationScope(res);
       }
 
       // Inject client into request
       (req as any).integrationClient = client;
 
       // Update last_used_at (không cần đợi)
-      snapshot.docs[0].ref.update({
-        last_used_at: new Date(),
-      }).catch(console.error);
+      snapshot.docs[0].ref
+        .update({
+          last_used_at: new Date(),
+        })
+        .catch(console.error);
 
       return next();
     } catch (error) {

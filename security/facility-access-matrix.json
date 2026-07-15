@@ -1,0 +1,462 @@
+{
+  "version": 1,
+  "policyVersion": "office-scope-v1",
+  "facilities": {
+    "office_a": "OFFICE",
+    "office_b": "OFFICE",
+    "office_future": "OFFICE",
+    "warehouse_c": "MAIN",
+    "store_d": "STORE",
+    "warehouse_e": "MAIN",
+    "store_f": "STORE",
+    "future_store": "STORE"
+  },
+  "actors": {
+    "system_admin": {
+      "active": true,
+      "workplace": "office_a",
+      "global": true,
+      "permissions": ["*"],
+      "facilities": ["*"]
+    },
+    "office_a_manager": {
+      "active": true,
+      "workplace": "office_a",
+      "global": false,
+      "scopeMode": "ALL",
+      "permissions": [
+        "warehouses.read",
+        "warehouses.write",
+        "employees.read",
+        "inventory.read",
+        "inventory.write",
+        "revenue.read",
+        "transfers.read",
+        "transfers.write",
+        "transfers.receive",
+        "vouchers.read",
+        "users.assign_role"
+      ],
+      "facilities": [
+        "office_a",
+        "warehouse_c",
+        "store_d",
+        "warehouse_e",
+        "store_f",
+        "future_store"
+      ]
+    },
+    "office_b_manager": {
+      "active": true,
+      "workplace": "office_b",
+      "global": false,
+      "scopeMode": "SELECTED",
+      "permissions": [
+        "warehouses.read",
+        "employees.read",
+        "inventory.read",
+        "inventory.write",
+        "revenue.read",
+        "transfers.read",
+        "transfers.write",
+        "transfers.receive",
+        "vouchers.read",
+        "users.assign_role"
+      ],
+      "facilities": ["office_b", "warehouse_c", "store_d"]
+    },
+    "office_b_inventory_viewer": {
+      "active": true,
+      "workplace": "office_b",
+      "global": false,
+      "scopeMode": "SELECTED",
+      "permissions": ["inventory.read"],
+      "facilities": ["office_b", "warehouse_c", "store_d"]
+    },
+    "disabled_office_b_manager": {
+      "active": false,
+      "workplace": "office_b",
+      "global": false,
+      "scopeMode": "SELECTED",
+      "permissions": ["inventory.read", "transfers.read"],
+      "facilities": ["office_b", "warehouse_c", "store_d"]
+    },
+    "deleted_office_b_manager": {
+      "active": true,
+      "deleted": true,
+      "workplace": "office_b",
+      "global": false,
+      "scopeMode": "SELECTED",
+      "permissions": ["inventory.read"],
+      "facilities": ["office_b", "warehouse_c", "store_d"]
+    },
+    "revoked_scope_manager": {
+      "active": true,
+      "workplace": "office_b",
+      "global": false,
+      "scopeMode": "SELECTED",
+      "permissions": ["inventory.read", "revenue.read"],
+      "facilities": ["office_b", "warehouse_c"],
+      "revokedFacilities": ["store_d"]
+    },
+    "moved_employee": {
+      "active": true,
+      "workplace": "warehouse_e",
+      "previousWorkplace": "office_b",
+      "global": false,
+      "permissions": ["inventory.read"],
+      "facilities": ["warehouse_e"]
+    },
+    "warehouse_c_staff": {
+      "active": true,
+      "workplace": "warehouse_c",
+      "global": false,
+      "permissions": [
+        "warehouses.read",
+        "inventory.read",
+        "transfers.read",
+        "transfers.write",
+        "vouchers.read"
+      ],
+      "facilities": ["warehouse_c"]
+    },
+    "store_d_staff": {
+      "active": true,
+      "workplace": "store_d",
+      "global": false,
+      "permissions": [
+        "warehouses.read",
+        "inventory.read",
+        "revenue.read",
+        "transfers.read",
+        "transfers.receive",
+        "vouchers.read"
+      ],
+      "facilities": ["store_d"]
+    }
+  },
+  "cases": [
+    {
+      "id": "unauthenticated_is_denied",
+      "actor": null,
+      "action": "warehouses.read",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "admin_reads_any_facility",
+      "actor": "system_admin",
+      "action": "warehouses.read",
+      "facility": "warehouse_e",
+      "allowed": true
+    },
+    {
+      "id": "admin_reads_any_office",
+      "actor": "system_admin",
+      "action": "warehouses.read",
+      "facility": "office_b",
+      "allowed": true
+    },
+    {
+      "id": "office_a_all_includes_future_store",
+      "actor": "office_a_manager",
+      "action": "warehouses.read",
+      "facility": "future_store",
+      "allowed": true
+    },
+    {
+      "id": "office_a_all_excludes_future_office",
+      "actor": "office_a_manager",
+      "action": "warehouses.read",
+      "facility": "office_future",
+      "allowed": false
+    },
+    {
+      "id": "office_a_cannot_manage_other_office",
+      "actor": "office_a_manager",
+      "action": "warehouses.write",
+      "facility": "office_b",
+      "allowed": false
+    },
+    {
+      "id": "office_b_reads_own_office",
+      "actor": "office_b_manager",
+      "action": "warehouses.read",
+      "facility": "office_b",
+      "allowed": true
+    },
+    {
+      "id": "office_b_reads_selected_warehouse",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": true
+    },
+    {
+      "id": "office_b_reads_selected_store",
+      "actor": "office_b_manager",
+      "action": "revenue.read",
+      "facility": "store_d",
+      "allowed": true
+    },
+    {
+      "id": "office_b_cannot_read_outside_scope",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_e",
+      "allowed": false
+    },
+    {
+      "id": "office_b_cannot_see_other_office",
+      "actor": "office_b_manager",
+      "action": "employees.read",
+      "facility": "office_a",
+      "allowed": false
+    },
+    {
+      "id": "scope_without_action_is_denied",
+      "actor": "office_b_inventory_viewer",
+      "action": "inventory.write",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "action_outside_scope_is_denied",
+      "actor": "office_b_inventory_viewer",
+      "action": "inventory.read",
+      "facility": "warehouse_e",
+      "allowed": false
+    },
+    {
+      "id": "disabled_user_is_denied",
+      "actor": "disabled_office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "soft_deleted_user_is_denied",
+      "actor": "deleted_office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "expired_assignment_is_denied",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "assignmentState": "EXPIRED",
+      "allowed": false
+    },
+    {
+      "id": "warehouse_staff_reads_self",
+      "actor": "warehouse_c_staff",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": true
+    },
+    {
+      "id": "warehouse_staff_cannot_read_store",
+      "actor": "warehouse_c_staff",
+      "action": "inventory.read",
+      "facility": "store_d",
+      "allowed": false
+    },
+    {
+      "id": "store_staff_reads_self_revenue",
+      "actor": "store_d_staff",
+      "action": "revenue.read",
+      "facility": "store_d",
+      "allowed": true
+    },
+    {
+      "id": "store_staff_cannot_read_warehouse",
+      "actor": "store_d_staff",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "warehouse_cannot_be_revenue_target",
+      "actor": "office_b_manager",
+      "action": "revenue.read",
+      "facility": "warehouse_c",
+      "resourceFacilityType": "MAIN",
+      "allowed": false
+    },
+    {
+      "id": "transfer_read_by_source",
+      "actor": "office_b_manager",
+      "action": "transfers.read",
+      "sourceFacility": "warehouse_c",
+      "destinationFacility": "warehouse_e",
+      "allowed": true
+    },
+    {
+      "id": "transfer_read_by_destination",
+      "actor": "office_b_manager",
+      "action": "transfers.read",
+      "sourceFacility": "warehouse_e",
+      "destinationFacility": "store_d",
+      "allowed": true
+    },
+    {
+      "id": "transfer_read_requires_one_endpoint",
+      "actor": "office_b_manager",
+      "action": "transfers.read",
+      "sourceFacility": "warehouse_e",
+      "destinationFacility": "store_f",
+      "allowed": false
+    },
+    {
+      "id": "transfer_write_source_allowed",
+      "actor": "office_b_manager",
+      "action": "transfers.write",
+      "sourceFacility": "warehouse_c",
+      "destinationFacility": "warehouse_e",
+      "allowed": true
+    },
+    {
+      "id": "transfer_write_requires_source",
+      "actor": "office_b_manager",
+      "action": "transfers.write",
+      "sourceFacility": "warehouse_e",
+      "destinationFacility": "store_d",
+      "allowed": false
+    },
+    {
+      "id": "transfer_receive_destination_allowed",
+      "actor": "office_b_manager",
+      "action": "transfers.receive",
+      "sourceFacility": "warehouse_e",
+      "destinationFacility": "store_d",
+      "allowed": true
+    },
+    {
+      "id": "transfer_receive_requires_destination",
+      "actor": "office_b_manager",
+      "action": "transfers.receive",
+      "sourceFacility": "warehouse_c",
+      "destinationFacility": "warehouse_e",
+      "allowed": false
+    },
+    {
+      "id": "creator_does_not_bypass_scope",
+      "actor": "office_b_manager",
+      "action": "vouchers.read",
+      "facility": "warehouse_e",
+      "creator": true,
+      "allowed": false
+    },
+    {
+      "id": "self_approval_is_denied",
+      "actor": "office_b_manager",
+      "action": "approvals.approve",
+      "facility": "warehouse_c",
+      "creatorIsActor": true,
+      "allowed": false
+    },
+    {
+      "id": "cannot_grant_outside_scope",
+      "actor": "office_b_manager",
+      "action": "users.assign_role",
+      "facility": "warehouse_e",
+      "allowed": false
+    },
+    {
+      "id": "can_grant_inside_scope_without_escalation",
+      "actor": "office_b_manager",
+      "action": "users.assign_role",
+      "facility": "warehouse_c",
+      "grantedPermissions": ["inventory.read"],
+      "allowed": true
+    },
+    {
+      "id": "cannot_grant_unowned_action",
+      "actor": "office_b_inventory_viewer",
+      "action": "users.assign_role",
+      "facility": "warehouse_c",
+      "grantedPermissions": ["inventory.write"],
+      "allowed": false
+    },
+    {
+      "id": "cannot_grant_global",
+      "actor": "office_b_manager",
+      "action": "users.assign_global_role",
+      "facility": "office_b",
+      "allowed": false
+    },
+    {
+      "id": "revoked_inherited_scope_is_denied",
+      "actor": "revoked_scope_manager",
+      "action": "revenue.read",
+      "facility": "store_d",
+      "allowed": false
+    },
+    {
+      "id": "moved_employee_loses_old_office_scope",
+      "actor": "moved_employee",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "allowed": false
+    },
+    {
+      "id": "moved_employee_gets_new_workplace_scope",
+      "actor": "moved_employee",
+      "action": "inventory.read",
+      "facility": "warehouse_e",
+      "allowed": true
+    },
+    {
+      "id": "deep_link_outside_scope_is_denied",
+      "actor": "office_b_manager",
+      "action": "vouchers.read",
+      "facility": "warehouse_e",
+      "channel": "API_DEEP_LINK",
+      "allowed": false
+    },
+    {
+      "id": "direct_firestore_outside_scope_is_denied",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_e",
+      "channel": "FIRESTORE_DIRECT",
+      "allowed": false
+    },
+    {
+      "id": "broad_firestore_query_is_denied",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "queryScope": "UNBOUNDED",
+      "channel": "FIRESTORE_DIRECT",
+      "allowed": false
+    },
+    {
+      "id": "facility_constrained_firestore_query_is_allowed",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "queryScope": "FACILITY_BOUND",
+      "channel": "FIRESTORE_DIRECT",
+      "allowed": true
+    },
+    {
+      "id": "offline_revocation_does_not_render_cached_data",
+      "actor": "revoked_scope_manager",
+      "action": "inventory.read",
+      "facility": "store_d",
+      "channel": "OFFLINE_CACHE",
+      "allowed": false
+    },
+    {
+      "id": "account_switch_does_not_reuse_previous_cache",
+      "actor": "warehouse_c_staff",
+      "previousActor": "office_a_manager",
+      "action": "inventory.read",
+      "facility": "store_f",
+      "channel": "ACCOUNT_SWITCH_CACHE",
+      "allowed": false
+    }
+  ]
+}

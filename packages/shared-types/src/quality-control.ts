@@ -47,6 +47,8 @@ export interface NonconformityReport {
 export interface QuarantineRecord {
     id: string; // UUID, PK
     nonconformity_report_id: string; // FK → nonconformity_reports
+    /** Denormalized facility discriminator for scoped queries and security rules. */
+    warehouse_id?: string; // FK -> warehouses; optional for legacy records
     product_id: string; // FK → products
     warehouse_location_id: string; // FK → warehouse_locations
     quantity: number;

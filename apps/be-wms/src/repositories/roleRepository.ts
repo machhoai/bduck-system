@@ -21,6 +21,19 @@ class RoleRepository extends BaseRepository<Role> {
     return snapshot.docs[0].data() as Role;
   }
 
+  async findByIds(roleIds: readonly string[]): Promise<Role[]> {
+    const ids = Array.from(new Set(roleIds.filter(Boolean)));
+    if (ids.length === 0) return [];
+    const snapshots = await db.getAll(
+      ...ids.map((id) => db.collection(COLLECTION).doc(id)),
+    );
+    return snapshots.flatMap((snapshot) => {
+      if (!snapshot.exists) return [];
+      const role = { ...snapshot.data(), id: snapshot.id } as Role;
+      return role.is_deleted === false ? [role] : [];
+    });
+  }
+
   async findByParentId(parentId: string | null): Promise<Role[]> {
     const snapshot = await db
       .collection(COLLECTION)

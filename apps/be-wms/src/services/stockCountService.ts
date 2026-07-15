@@ -38,7 +38,10 @@ import {
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { getExternalCountRequirement } from "./externalCountConfigService.js";
 
-type ServiceError = Error & { statusCode: number; messages: Record<string, string> };
+type ServiceError = Error & {
+  statusCode: number;
+  messages: Record<string, string>;
+};
 type InternalCountScope = "WAREHOUSE" | "LOCATION" | "CATEGORY" | "PRODUCT";
 
 export interface InternalStockCountCreateInput {
@@ -86,7 +89,11 @@ export interface ExternalCountCheckpointInput {
   items: ExternalCountCheckpointItemInput[];
 }
 
-function serviceError(statusCode: number, vi: string, zh: string): ServiceError {
+function serviceError(
+  statusCode: number,
+  vi: string,
+  zh: string,
+): ServiceError {
   return Object.assign(new Error(vi), { statusCode, messages: { vi, zh } });
 }
 
@@ -109,38 +116,61 @@ function purposeFromCheckpoint(type: ExternalCountCheckpointType) {
 }
 
 function issueTypeFor(item: StockCountItem) {
-  if (item.condition === StockCountItemCondition.DAMAGED) return IssueType.DAMAGED;
-  if (item.condition === StockCountItemCondition.EXPIRED) return IssueType.EXPIRED;
-  if (item.condition === StockCountItemCondition.MISSING) return IssueType.MISSING;
+  if (item.condition === StockCountItemCondition.DAMAGED)
+    return IssueType.DAMAGED;
+  if (item.condition === StockCountItemCondition.EXPIRED)
+    return IssueType.EXPIRED;
+  if (item.condition === StockCountItemCondition.MISSING)
+    return IssueType.MISSING;
   return IssueType.DISCREPANCY;
 }
 
 async function resolveProduct(input: ExternalCountCheckpointItemInput) {
   if (input.product_id) {
     const product = await productRepository.findById(input.product_id);
-    if (!product) throw serviceError(404, "Khong tim thay san pham.", "未找到产品。");
+    if (!product)
+      throw serviceError(404, "Khong tim thay san pham.", "未找到产品。");
     return product;
   }
   if (input.barcode) {
     const product = await productRepository.findByBarcode(input.barcode);
-    if (!product) throw serviceError(404, "Khong tim thay barcode.", "未找到条码。");
+    if (!product)
+      throw serviceError(404, "Khong tim thay barcode.", "未找到条码。");
     return product;
   }
-  throw serviceError(400, "Moi dong can co barcode hoac product_id.", "每一行都需要条码或产品ID。");
+  throw serviceError(
+    400,
+    "Moi dong can co barcode hoac product_id.",
+    "每一行都需要条码或产品ID。",
+  );
 }
 
 async function enrichSessions(sessions: StockCountSession[]) {
-  const locationIds = [...new Set(sessions.map((s) => s.warehouse_location_id).filter(Boolean))] as string[];
-  const warehouseIds = [...new Set(sessions.map((s) => s.warehouse_id).filter(Boolean))];
+  const locationIds = [
+    ...new Set(sessions.map((s) => s.warehouse_location_id).filter(Boolean)),
+  ] as string[];
+  const warehouseIds = [
+    ...new Set(sessions.map((s) => s.warehouse_id).filter(Boolean)),
+  ];
   const [locations, warehouses] = await Promise.all([
-    Promise.all(locationIds.map(async (id) => [id, await locationRepository.findById(id)] as const)),
-    Promise.all(warehouseIds.map(async (id) => [id, await warehouseRepository.findById(id)] as const)),
+    Promise.all(
+      locationIds.map(
+        async (id) => [id, await locationRepository.findById(id)] as const,
+      ),
+    ),
+    Promise.all(
+      warehouseIds.map(
+        async (id) => [id, await warehouseRepository.findById(id)] as const,
+      ),
+    ),
   ]);
   const locationById = new Map(locations);
   const warehouseById = new Map(warehouses);
 
   return sessions.map((session) => {
-    const location = session.warehouse_location_id ? locationById.get(session.warehouse_location_id) : null;
+    const location = session.warehouse_location_id
+      ? locationById.get(session.warehouse_location_id)
+      : null;
     const warehouse = warehouseById.get(session.warehouse_id);
     return {
       ...session,
@@ -161,7 +191,9 @@ function toInternalDetailSession(session: StockCountSession) {
 }
 
 async function enrichCountItems(items: StockCountItem[]) {
-  const products = await productRepository.findByIds(items.map((item) => item.product_id));
+  const products = await productRepository.findByIds(
+    items.map((item) => item.product_id),
+  );
   const locations = await Promise.all(
     [...new Set(items.map((item) => item.warehouse_location_id))]
       .filter(Boolean)
@@ -187,7 +219,9 @@ async function enrichCountItems(items: StockCountItem[]) {
   });
 }
 
-async function buildInternalInventoryRows(input: InternalStockCountCreateInput) {
+async function buildInternalInventoryRows(
+  input: InternalStockCountCreateInput,
+) {
   const warehouse = await warehouseRepository.findById(input.warehouse_id);
   if (!warehouse || warehouse.is_deleted) {
     throw serviceError(404, "Khong tim thay kho.", "未找到仓库。");
@@ -196,24 +230,42 @@ async function buildInternalInventoryRows(input: InternalStockCountCreateInput) 
   let inventory = await findInventory({ warehouse_id: input.warehouse_id });
 
   if (input.count_scope === "LOCATION") {
-    const locationIds = [...new Set(input.warehouse_location_ids ?? [])].filter(Boolean);
+    const locationIds = [...new Set(input.warehouse_location_ids ?? [])].filter(
+      Boolean,
+    );
     if (locationIds.length === 0) {
-      throw serviceError(400, "Can chon it nhat mot quay/vi tri.", "请至少选择一个库位。");
+      throw serviceError(
+        400,
+        "Can chon it nhat mot quay/vi tri.",
+        "请至少选择一个库位。",
+      );
     }
-    inventory = inventory.filter((item) => locationIds.includes(item.warehouse_location_id));
+    inventory = inventory.filter((item) =>
+      locationIds.includes(item.warehouse_location_id),
+    );
   }
 
   if (input.count_scope === "PRODUCT") {
     const productIds = [...new Set(input.product_ids ?? [])].filter(Boolean);
     if (productIds.length === 0) {
-      throw serviceError(400, "Can chon it nhat mot ma hang.", "请至少选择一个商品。");
+      throw serviceError(
+        400,
+        "Can chon it nhat mot ma hang.",
+        "请至少选择一个商品。",
+      );
     }
-    inventory = inventory.filter((item) => productIds.includes(item.product_id));
+    inventory = inventory.filter((item) =>
+      productIds.includes(item.product_id),
+    );
   }
 
   if (input.count_scope === "CATEGORY") {
     if (!input.category_id) {
-      throw serviceError(400, "Can chon danh muc/giai hang.", "请选择商品分类。");
+      throw serviceError(
+        400,
+        "Can chon danh muc/giai hang.",
+        "请选择商品分类。",
+      );
     }
     const { data: products } = await productRepository.findProducts({
       page: 1,
@@ -224,18 +276,29 @@ async function buildInternalInventoryRows(input: InternalStockCountCreateInput) 
     inventory = inventory.filter((item) => productIds.has(item.product_id));
   }
 
-  return inventory.filter((item) => item.total_quantity > 0 || item.atp_quantity > 0);
+  return inventory.filter(
+    (item) => item.total_quantity > 0 || item.atp_quantity > 0,
+  );
 }
 
-export async function listInternalStockCountSessions(filters: StockCountSessionFilters) {
-  const sessions = await findSessions({ ...filters, source: StockCountSource.INTERNAL_UI });
+export async function listInternalStockCountSessions(
+  filters: StockCountSessionFilters,
+) {
+  const sessions = await findSessions({
+    ...filters,
+    source: StockCountSource.INTERNAL_UI,
+  });
   return enrichSessions(sessions);
 }
 
 export async function getInternalStockCountDetail(id: string) {
   const session = await findSessionById(id);
   if (!session || session.source !== StockCountSource.INTERNAL_UI) {
-    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+    throw serviceError(
+      404,
+      "Khong tim thay phien kiem dem.",
+      "未找到盘点会话。",
+    );
   }
 
   const [enrichedSession] = await enrichSessions([session]);
@@ -257,7 +320,11 @@ export async function createInternalStockCountSession(
   const inventoryRows = await buildInternalInventoryRows(input);
 
   if (inventoryRows.length === 0) {
-    throw serviceError(400, "Khong co ton kho phu hop voi tieu chi kiem dem.", "没有符合盘点条件的库存。");
+    throw serviceError(
+      400,
+      "Khong co ton kho phu hop voi tieu chi kiem dem.",
+      "没有符合盘点条件的库存。",
+    );
   }
 
   const session: StockCountSession = {
@@ -265,7 +332,8 @@ export async function createInternalStockCountSession(
     session_number: internalSessionNumber(now),
     warehouse_id: input.warehouse_id,
     warehouse_location_id:
-      input.count_scope === "LOCATION" && input.warehouse_location_ids?.length === 1
+      input.count_scope === "LOCATION" &&
+      input.warehouse_location_ids?.length === 1
         ? input.warehouse_location_ids[0]
         : null,
     count_scope: input.count_scope,
@@ -275,7 +343,9 @@ export async function createInternalStockCountSession(
       category_id: input.category_id ?? null,
     },
     count_type:
-      input.count_scope === "WAREHOUSE" ? StockCountType.FULL : StockCountType.ADHOC,
+      input.count_scope === "WAREHOUSE"
+        ? StockCountType.FULL
+        : StockCountType.ADHOC,
     count_purpose: StockCountPurpose.ADHOC,
     source: StockCountSource.INTERNAL_UI,
     status: StockCountSessionStatus.IN_PROGRESS,
@@ -302,6 +372,7 @@ export async function createInternalStockCountSession(
   const items: StockCountItem[] = inventoryRows.map((record) => ({
     id: randomUUID(),
     session_id: sessionId,
+    warehouse_id: input.warehouse_id,
     inventory_id: record.id,
     product_id: record.product_id,
     warehouse_location_id: record.warehouse_location_id,
@@ -361,22 +432,35 @@ export async function updateInternalStockCountItem(
     findItemById(itemId),
   ]);
   if (!session || session.source !== StockCountSource.INTERNAL_UI) {
-    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+    throw serviceError(
+      404,
+      "Khong tim thay phien kiem dem.",
+      "未找到盘点会话。",
+    );
   }
   if (!item || item.session_id !== sessionId) {
-    throw serviceError(404, "Khong tim thay dong kiem dem.", "未找到盘点明细。");
+    throw serviceError(
+      404,
+      "Khong tim thay dong kiem dem.",
+      "未找到盘点明细。",
+    );
   }
   if (
     session.status !== StockCountSessionStatus.IN_PROGRESS &&
     session.status !== StockCountSessionStatus.DRAFT
   ) {
-    throw serviceError(409, "Phien kiem dem khong con cho phep cap nhat.", "盘点会话不允许更新。");
+    throw serviceError(
+      409,
+      "Phien kiem dem khong con cho phep cap nhat.",
+      "盘点会话不允许更新。",
+    );
   }
 
   const now = new Date();
   const condition = input.condition ?? StockCountItemCondition.GOOD;
   const discrepancy = input.counted_quantity - item.system_quantity;
-  const hasIssue = discrepancy !== 0 || condition !== StockCountItemCondition.GOOD;
+  const hasIssue =
+    discrepancy !== 0 || condition !== StockCountItemCondition.GOOD;
   const previousCounted = item.counted_quantity;
   const updatePayload: Partial<StockCountItem> = {
     counted_quantity: input.counted_quantity,
@@ -390,20 +474,24 @@ export async function updateInternalStockCountItem(
     notes: input.notes ?? item.notes ?? null,
     recount_count:
       previousCounted === null || previousCounted === undefined
-        ? item.recount_count ?? 0
+        ? (item.recount_count ?? 0)
         : (item.recount_count ?? 0) + 1,
     last_recount_at:
-      previousCounted === null || previousCounted === undefined ? item.last_recount_at ?? null : now,
+      previousCounted === null || previousCounted === undefined
+        ? (item.last_recount_at ?? null)
+        : now,
     updated_at: now,
   };
 
   await itemsCollection().doc(itemId).update(updatePayload);
-  await sessionsCollection().doc(sessionId).update({
-    updated_at: now,
-    discrepancy_count: hasIssue
-      ? FieldValue.increment(item.has_discrepancy ? 0 : 1)
-      : FieldValue.increment(item.has_discrepancy ? -1 : 0),
-  });
+  await sessionsCollection()
+    .doc(sessionId)
+    .update({
+      updated_at: now,
+      discrepancy_count: hasIssue
+        ? FieldValue.increment(item.has_discrepancy ? 0 : 1)
+        : FieldValue.increment(item.has_discrepancy ? -1 : 0),
+    });
 
   await logAudit({
     entity_type: "STOCK_COUNT_ITEM",
@@ -414,7 +502,9 @@ export async function updateInternalStockCountItem(
     old_value: item as unknown as Record<string, unknown>,
     new_value: updatePayload as unknown as Record<string, unknown>,
     ...auditMetadata,
-    action_time: input.action_time ? new Date(input.action_time) : auditMetadata?.action_time,
+    action_time: input.action_time
+      ? new Date(input.action_time)
+      : auditMetadata?.action_time,
   });
 
   return getInternalStockCountDetail(sessionId);
@@ -427,35 +517,60 @@ export async function submitInternalStockCountSession(
 ) {
   const session = await findSessionById(sessionId);
   if (!session || session.source !== StockCountSource.INTERNAL_UI) {
-    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+    throw serviceError(
+      404,
+      "Khong tim thay phien kiem dem.",
+      "未找到盘点会话。",
+    );
   }
   if (session.status !== StockCountSessionStatus.IN_PROGRESS) {
-    throw serviceError(409, "Chi co the nop phien dang kiem dem.", "只能提交进行中的盘点。");
+    throw serviceError(
+      409,
+      "Chi co the nop phien dang kiem dem.",
+      "只能提交进行中的盘点。",
+    );
   }
 
   const items = await findItemsBySessionId(sessionId);
-  const uncounted = items.filter((item) => item.counted_quantity === null || item.counted_quantity === undefined);
+  const uncounted = items.filter(
+    (item) =>
+      item.counted_quantity === null || item.counted_quantity === undefined,
+  );
   if (uncounted.length > 0) {
-    throw serviceError(400, "Can hoan tat tat ca dong truoc khi nop.", "提交前请完成所有明细。");
+    throw serviceError(
+      400,
+      "Can hoan tat tat ca dong truoc khi nop.",
+      "提交前请完成所有明细。",
+    );
   }
 
   const exceptions = items.filter((item) => item.has_discrepancy);
-  const missingEvidence = exceptions.find((item) => (item.evidence_urls ?? []).length === 0);
+  const missingEvidence = exceptions.find(
+    (item) => (item.evidence_urls ?? []).length === 0,
+  );
   if (missingEvidence) {
-    throw serviceError(400, "Dong chenh lech/hang loi can dinh kem hinh anh.", "差异或异常品必须附带图片凭证。");
+    throw serviceError(
+      400,
+      "Dong chenh lech/hang loi can dinh kem hinh anh.",
+      "差异或异常品必须附带图片凭证。",
+    );
   }
 
   const now = new Date();
-  const status = exceptions.length > 0
-    ? StockCountSessionStatus.DISCREPANCY_FOUND
-    : StockCountSessionStatus.VERIFIED;
+  const status =
+    exceptions.length > 0
+      ? StockCountSessionStatus.DISCREPANCY_FOUND
+      : StockCountSessionStatus.VERIFIED;
 
   await db.runTransaction(async (txn) => {
     const inventoryById = new Map<string, Inventory>();
     for (const item of items) {
       if (!item.inventory_id) continue;
-      const snap = await txn.get(db.collection("inventory").doc(item.inventory_id));
-      if (snap.exists) inventoryById.set(item.inventory_id, snap.data() as Inventory);
+      const snap = await txn.get(
+        db.collection("inventory").doc(item.inventory_id),
+      );
+      if (snap.exists)
+        inventoryById.set(item.inventory_id, snap.data() as Inventory);
     }
 
     txn.update(sessionsCollection().doc(sessionId), {
@@ -473,7 +588,14 @@ export async function submitInternalStockCountSession(
         });
       }
     });
-    await writeNonconformities(txn, session, exceptions, inventoryById, userId, now);
+    await writeNonconformities(
+      txn,
+      session,
+      exceptions,
+      inventoryById,
+      userId,
+      now,
+    );
   });
 
   await logAudit({
@@ -498,14 +620,22 @@ export async function cancelInternalStockCountSession(
 ) {
   const session = await findSessionById(sessionId);
   if (!session || session.source !== StockCountSource.INTERNAL_UI) {
-    throw serviceError(404, "Khong tim thay phien kiem dem.", "未找到盘点会话。");
+    throw serviceError(
+      404,
+      "Khong tim thay phien kiem dem.",
+      "未找到盘点会话。",
+    );
   }
   if (
     session.status === StockCountSessionStatus.SUBMITTED ||
     session.status === StockCountSessionStatus.VERIFIED ||
     session.status === StockCountSessionStatus.RESOLVED
   ) {
-    throw serviceError(409, "Khong the huy phien da nop/da xu ly.", "无法取消已提交或已处理的盘点。");
+    throw serviceError(
+      409,
+      "Khong the huy phien da nop/da xu ly.",
+      "无法取消已提交或已处理的盘点。",
+    );
   }
 
   const now = new Date();
@@ -524,27 +654,41 @@ export async function cancelInternalStockCountSession(
     action: AuditAction.CANCEL,
     user_id: userId,
     old_value: session as unknown as Record<string, unknown>,
-    new_value: { status: StockCountSessionStatus.CANCELLED, cancel_reason: reason },
+    new_value: {
+      status: StockCountSessionStatus.CANCELLED,
+      cancel_reason: reason,
+    },
     ...auditMetadata,
   });
 
   return getInternalStockCountDetail(sessionId);
 }
 
-export async function listExternalCountSessions(filters: StockCountSessionFilters) {
-  const sessions = await findSessions({ ...filters, source: StockCountSource.EXTERNAL_API });
+export async function listExternalCountSessions(
+  filters: StockCountSessionFilters,
+) {
+  const sessions = await findSessions({
+    ...filters,
+    source: StockCountSource.EXTERNAL_API,
+  });
   return enrichSessions(sessions);
 }
 
 export async function getExternalCountDetail(id: string) {
   const session = await findSessionById(id);
   if (!session || session.source !== StockCountSource.EXTERNAL_API) {
-    throw serviceError(404, "Khong tim thay checkpoint kiem dem.", "未找到盘点检查点。");
+    throw serviceError(
+      404,
+      "Khong tim thay checkpoint kiem dem.",
+      "未找到盘点检查点。",
+    );
   }
 
   const [enrichedSession] = await enrichSessions([session]);
   const items = await findItemsBySessionId(id);
-  const products = await productRepository.findByIds(items.map((item) => item.product_id));
+  const products = await productRepository.findByIds(
+    items.map((item) => item.product_id),
+  );
   const productById = new Map(products.map((product) => [product.id, product]));
 
   return {
@@ -565,26 +709,38 @@ export async function getExternalCountDetail(id: string) {
 
 function validateClientAccess(client: IntegrationClient, warehouseId: string) {
   if (!client.allowed_warehouse_ids.includes(warehouseId)) {
-    throw serviceError(403, "Client khong co quyen voi kho nay.", "客户端无权访问该仓库。");
+    throw serviceError(
+      403,
+      "Client khong co quyen voi kho nay.",
+      "客户端无权访问该仓库。",
+    );
   }
 }
 
 async function assertLocation(warehouseId: string, locationId: string) {
   const location = await locationRepository.findById(locationId);
-  if (!location || location.warehouse_id !== warehouseId || location.is_deleted) {
+  if (
+    !location ||
+    location.warehouse_id !== warehouseId ||
+    location.is_deleted !== false ||
+    location.status !== "ACTIVE"
+  ) {
     throw serviceError(400, "Quay khong hop le voi kho.", "库位与仓库不匹配。");
   }
 }
 
 async function buildCountItems(
   sessionId: string,
+  warehouseId: string,
   locationId: string,
   inputs: ExternalCountCheckpointItemInput[],
   now: Date,
 ) {
   const products = await Promise.all(inputs.map(resolveProduct));
   const inventory = await findInventory({ warehouse_location_id: locationId });
-  const inventoryByProductId = new Map(inventory.map((record) => [record.product_id, record]));
+  const inventoryByProductId = new Map(
+    inventory.map((record) => [record.product_id, record]),
+  );
 
   return inputs.map((input, index) => {
     const product = products[index] as Product;
@@ -594,7 +750,8 @@ async function buildCountItems(
     const expected = baseAtp ?? currentAtp;
     const condition = input.condition ?? StockCountItemCondition.GOOD;
     const discrepancy = input.counted_quantity - expected;
-    const hasIssue = discrepancy !== 0 || condition !== StockCountItemCondition.GOOD;
+    const hasIssue =
+      discrepancy !== 0 || condition !== StockCountItemCondition.GOOD;
     const evidenceUrls = input.evidence_urls ?? [];
 
     if (hasIssue && evidenceUrls.length === 0) {
@@ -608,6 +765,7 @@ async function buildCountItems(
     const item: StockCountItem = {
       id: randomUUID(),
       session_id: sessionId,
+      warehouse_id: warehouseId,
       inventory_id: inventoryRecord?.id ?? null,
       product_id: product.id,
       warehouse_location_id: locationId,
@@ -644,19 +802,32 @@ async function writeNonconformities(
   now: Date,
 ) {
   exceptions.forEach((item, index) => {
-    const quantity = Math.max(1, Math.abs(item.discrepancy || item.counted_quantity || 0));
+    const quantity = Math.max(
+      1,
+      Math.abs(item.discrepancy || item.counted_quantity || 0),
+    );
     const issueType = issueTypeFor(item);
     const reportId = randomUUID();
     const quarantineId =
-      issueType === IssueType.DAMAGED || issueType === IssueType.EXPIRED ? randomUUID() : null;
+      issueType === IssueType.DAMAGED || issueType === IssueType.EXPIRED
+        ? randomUUID()
+        : null;
 
     if (item.inventory_id) {
       const inventory = inventoryById.get(item.inventory_id);
-      if (!inventory) throw serviceError(400, "Khong tim thay ton kho lien quan.", "未找到相关库存。");
+      if (!inventory)
+        throw serviceError(
+          400,
+          "Khong tim thay ton kho lien quan.",
+          "未找到相关库存。",
+        );
       const shouldReduceAtp = item.discrepancy < 0 || Boolean(quarantineId);
-      const reducedAtp = shouldReduceAtp ? Math.min(quantity, inventory.atp_quantity) : 0;
+      const reducedAtp = shouldReduceAtp
+        ? Math.min(quantity, inventory.atp_quantity)
+        : 0;
       const nextAtp = inventory.atp_quantity - reducedAtp;
-      const onHoldIncrease = item.discrepancy > 0 ? quantity : item.discrepancy < 0 ? reducedAtp : 0;
+      const onHoldIncrease =
+        item.discrepancy > 0 ? quantity : item.discrepancy < 0 ? reducedAtp : 0;
       const quarantineIncrease = quarantineId ? reducedAtp : 0;
       const nextOnHold = inventory.on_hold_quantity + onHoldIncrease;
       const nextQuarantine = inventory.quarantine_quantity + quarantineIncrease;
@@ -692,7 +863,9 @@ async function writeNonconformities(
       discrepancy_reason: item.discrepancy_reason ?? null,
       discrepancy_note: item.discrepancy_note ?? item.notes ?? null,
       issue_type: issueType,
-      status: quarantineId ? NonconformityStatus.QUARANTINED : NonconformityStatus.OPEN,
+      status: quarantineId
+        ? NonconformityStatus.QUARANTINED
+        : NonconformityStatus.OPEN,
       reporter_id: reporterId,
       reviewer_id: null,
       resolved_by: null,
@@ -710,6 +883,7 @@ async function writeNonconformities(
       txn.set(db.collection("quarantine_records").doc(quarantineId), {
         id: quarantineId,
         nonconformity_report_id: reportId,
+        warehouse_id: session.warehouse_id,
         product_id: item.product_id,
         warehouse_location_id: item.warehouse_location_id,
         quantity,
@@ -734,21 +908,36 @@ export async function submitExternalCountCheckpoint(
   validateClientAccess(client, input.warehouse_id);
   await assertLocation(input.warehouse_id, input.warehouse_location_id);
 
-  const duplicate = (await findSessions({
-    warehouse_id: input.warehouse_id,
-    warehouse_location_id: input.warehouse_location_id,
-    business_date: input.business_date,
-    source: StockCountSource.EXTERNAL_API,
-  })).find((session) => session.external_client_id === client.id && session.idempotency_key === input.idempotency_key);
+  const duplicate = (
+    await findSessions({
+      warehouse_id: input.warehouse_id,
+      warehouse_location_id: input.warehouse_location_id,
+      business_date: input.business_date,
+      source: StockCountSource.EXTERNAL_API,
+    })
+  ).find(
+    (session) =>
+      session.external_client_id === client.id &&
+      session.idempotency_key === input.idempotency_key,
+  );
   if (duplicate) return getExternalCountDetail(duplicate.id);
 
   const now = new Date();
   const sessionId = randomUUID();
-  const counted = await buildCountItems(sessionId, input.warehouse_location_id, input.items, now);
-  const exceptions = counted.map(({ item }) => item).filter((item) => item.has_discrepancy);
-  const status = exceptions.length > 0
-    ? StockCountSessionStatus.DISCREPANCY_FOUND
-    : StockCountSessionStatus.VERIFIED;
+  const counted = await buildCountItems(
+    sessionId,
+    input.warehouse_id,
+    input.warehouse_location_id,
+    input.items,
+    now,
+  );
+  const exceptions = counted
+    .map(({ item }) => item)
+    .filter((item) => item.has_discrepancy);
+  const status =
+    exceptions.length > 0
+      ? StockCountSessionStatus.DISCREPANCY_FOUND
+      : StockCountSessionStatus.VERIFIED;
   const session: StockCountSession = {
     id: sessionId,
     session_number: sessionNumber(now),
@@ -787,8 +976,11 @@ export async function submitExternalCountCheckpoint(
     const inventoryById = new Map<string, Inventory>();
     for (const { inventoryRecord } of counted) {
       if (!inventoryRecord) continue;
-      const snap = await txn.get(db.collection("inventory").doc(inventoryRecord.id));
-      if (snap.exists) inventoryById.set(inventoryRecord.id, snap.data() as Inventory);
+      const snap = await txn.get(
+        db.collection("inventory").doc(inventoryRecord.id),
+      );
+      if (snap.exists)
+        inventoryById.set(inventoryRecord.id, snap.data() as Inventory);
     }
 
     txn.set(sessionsCollection().doc(sessionId), session);
@@ -801,7 +993,14 @@ export async function submitExternalCountCheckpoint(
         });
       }
     });
-    await writeNonconformities(txn, session, exceptions, inventoryById, `EXT:${client.id}`, now);
+    await writeNonconformities(
+      txn,
+      session,
+      exceptions,
+      inventoryById,
+      `EXT:${client.id}`,
+      now,
+    );
   });
 
   await logAudit({
@@ -828,8 +1027,16 @@ export async function isExternalCountCheckpointSatisfied(params: {
 }) {
   const config = await getExternalCountRequirement();
   if (!config.enabled) return true;
-  if (params.checkpointType === ExternalCountCheckpointType.BEFORE_SCAN && !config.require_before_scan) return true;
-  if (params.checkpointType === ExternalCountCheckpointType.BEFORE_SUBMIT && !config.require_before_submit) return true;
+  if (
+    params.checkpointType === ExternalCountCheckpointType.BEFORE_SCAN &&
+    !config.require_before_scan
+  )
+    return true;
+  if (
+    params.checkpointType === ExternalCountCheckpointType.BEFORE_SUBMIT &&
+    !config.require_before_submit
+  )
+    return true;
 
   const sessions = await findSessions({
     warehouse_id: params.warehouseId,
@@ -850,15 +1057,22 @@ export async function getExternalCountState(params: {
   businessDate: string;
 }) {
   const config = await getExternalCountRequirement();
-  const [beforeScanSatisfied, beforeSubmitSatisfied, sessions] = await Promise.all([
-    isExternalCountCheckpointSatisfied({ ...params, checkpointType: ExternalCountCheckpointType.BEFORE_SCAN }),
-    isExternalCountCheckpointSatisfied({ ...params, checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT }),
-    listExternalCountSessions({
-      warehouse_id: params.warehouseId,
-      warehouse_location_id: params.warehouseLocationId,
-      business_date: params.businessDate,
-    }),
-  ]);
+  const [beforeScanSatisfied, beforeSubmitSatisfied, sessions] =
+    await Promise.all([
+      isExternalCountCheckpointSatisfied({
+        ...params,
+        checkpointType: ExternalCountCheckpointType.BEFORE_SCAN,
+      }),
+      isExternalCountCheckpointSatisfied({
+        ...params,
+        checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT,
+      }),
+      listExternalCountSessions({
+        warehouse_id: params.warehouseId,
+        warehouse_location_id: params.warehouseLocationId,
+        business_date: params.businessDate,
+      }),
+    ]);
 
   return {
     config,

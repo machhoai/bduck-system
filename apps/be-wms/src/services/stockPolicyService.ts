@@ -5,10 +5,11 @@ import type { z } from "zod";
 import { stockPolicyRepository } from "../repositories/stockPolicyRepository.js";
 import { upsertStockPolicySchema } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
-import { fetchLocationById } from "./locationService.js";
-import { fetchLocationSlotById } from "./locationSlotService.js";
+import { loadLocationById } from "./locationService.js";
+import { loadLocationSlotById } from "./locationSlotService.js";
 import { fetchProductById } from "./productService.js";
-import { fetchWarehouseById } from "./warehouseService.js";
+import { loadWarehouseById } from "./warehouseService.js";
+import type { AuthorizationService } from "./authorization/index.js";
 
 type UpsertStockPolicyInput = z.infer<typeof upsertStockPolicySchema>;
 
@@ -66,30 +67,42 @@ const normalizePolicyInput = (input: UpsertStockPolicyInput) => {
   };
 };
 
-export const fetchStockPolicies = async (filters: {
-  warehouse_id?: string;
-  warehouse_location_id?: string;
-  warehouse_location_slot_id?: string;
-  product_id?: string;
-  scope?: StockPolicyScope;
-}): Promise<InventoryStockPolicy[]> => {
-  return stockPolicyRepository.findByFilters(filters);
+export const fetchStockPolicies = async (
+  filters: {
+    warehouse_id?: string;
+    warehouse_location_id?: string;
+    warehouse_location_slot_id?: string;
+    product_id?: string;
+    scope?: StockPolicyScope;
+  },
+  authorization: AuthorizationService,
+): Promise<InventoryStockPolicy[]> => {
+  if (filters.warehouse_id) {
+    authorization.assert("inventory.read", filters.warehouse_id);
+    return stockPolicyRepository.findByFilters(filters);
+  }
+  return stockPolicyRepository.findByFiltersScoped(filters, {
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("inventory.read"),
+  });
 };
 
 export const upsertStockPolicy = async (
   rawInput: UpsertStockPolicyInput,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<InventoryStockPolicy> => {
   const input = normalizePolicyInput(rawInput);
+  authorization.assert("inventory.write", input.warehouse_id);
 
   await Promise.all([
-    fetchWarehouseById(input.warehouse_id),
+    loadWarehouseById(input.warehouse_id),
     fetchProductById(input.product_id),
   ]);
 
   if (input.warehouse_location_id) {
-    const location = await fetchLocationById(input.warehouse_location_id);
+    const location = await loadLocationById(input.warehouse_location_id);
     if (location.warehouse_id !== input.warehouse_id) {
       throw {
         statusCode: 400,
@@ -102,7 +115,7 @@ export const upsertStockPolicy = async (
   }
 
   if (input.warehouse_location_slot_id) {
-    const slot = await fetchLocationSlotById(input.warehouse_location_slot_id);
+    const slot = await loadLocationSlotById(input.warehouse_location_slot_id);
     if (
       slot.warehouse_id !== input.warehouse_id ||
       slot.warehouse_location_id !== input.warehouse_location_id
@@ -182,10 +195,12 @@ export const upsertStockPolicy = async (
 export const deleteStockPolicy = async (
   id: string,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
   const existing = await stockPolicyRepository.findById(id);
   if (!existing || existing.is_deleted) throw notFoundError;
+  authorization.assert("inventory.write", existing.warehouse_id);
 
   await stockPolicyRepository.softDelete(id);
   await logAudit({

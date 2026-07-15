@@ -17,6 +17,8 @@ import type { ProcessEntityType } from "@bduck/shared-types";
 import { logAudit } from "./auditService.js";
 import { getConfigForEntity } from "./processConfigService.js";
 import { canPerformRoleStep, type ScopedUser } from "./scopedRoleAccess.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import { assertVoucherAccess } from "./voucherAccessPolicy.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMA
@@ -50,7 +52,10 @@ export async function validatePickingAssignment(
   user: StepUser,
   voucherCreatorId: string,
 ): Promise<void> {
-  const config = await getConfigForEntity("EXPORT_VOUCHER" as ProcessEntityType, warehouseId);
+  const config = await getConfigForEntity(
+    "EXPORT_VOUCHER" as ProcessEntityType,
+    warehouseId,
+  );
   const stepOption = config.step_options?.["picking"];
 
   if (!stepOption) return; // No config → allow
@@ -68,7 +73,10 @@ export async function validatePickingAssignment(
       });
     }
   } else if (assignment_mode === "ROLE") {
-    if (!assigned_role_id || !canPerformRoleStep(user, stepOption, warehouseId)) {
+    if (
+      !assigned_role_id ||
+      !canPerformRoleStep(user, stepOption, warehouseId)
+    ) {
       throw Object.assign(new Error("Unauthorized"), {
         statusCode: 403,
         messages: {
@@ -88,6 +96,7 @@ export async function savePickingActuals(
   voucherId: string,
   input: SavePickingActualsInput,
   user: StepUser,
+  authorization: AuthorizationService,
 ): Promise<{ updated: number }> {
   const voucherRef = db.collection("export_vouchers").doc(voucherId);
   const voucherSnap = await voucherRef.get();
@@ -103,6 +112,11 @@ export async function savePickingActuals(
   }
 
   const voucher = voucherSnap.data()!;
+  assertVoucherAccess(
+    authorization,
+    "vouchers.write",
+    typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : "",
+  );
 
   // Step assignment validation
   await validatePickingAssignment(
@@ -121,7 +135,9 @@ export async function savePickingActuals(
     const itemSnap = await itemRef.get();
 
     if (!itemSnap.exists) {
-      console.warn(`[pickingSessionService] Item ${item.id} not found. Skipping.`);
+      console.warn(
+        `[pickingSessionService] Item ${item.id} not found. Skipping.`,
+      );
       continue;
     }
 
@@ -139,7 +155,8 @@ export async function savePickingActuals(
   await logAudit({
     entity_type: "EXPORT_VOUCHER",
     entity_id: voucherId,
-    warehouse_id: typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : null,
+    warehouse_id:
+      typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : null,
     action: AuditAction.UPDATE,
     user_id: user.id,
     old_value: null,

@@ -282,6 +282,26 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
 
+  // ── Office scopes ──
+  {
+    key: "office_scopes.read",
+    group: "warehouses",
+    label: { vi: "Xem phạm vi văn phòng", zh: "查看办公室管理范围" },
+    description: {
+      vi: "Xem các kho và cửa hàng thuộc phạm vi quản lý của văn phòng.",
+      zh: "查看办公室管理范围内的仓库和门店。",
+    },
+  },
+  {
+    key: "office_scopes.write",
+    group: "warehouses",
+    label: { vi: "Cấu hình phạm vi văn phòng", zh: "配置办公室管理范围" },
+    description: {
+      vi: "Cấu hình toàn bộ hoặc danh sách kho và cửa hàng được chọn.",
+      zh: "配置全部模式或指定仓库和门店列表。",
+    },
+  },
+
   // ── Locations ──
   {
     key: "locations.read",
@@ -601,6 +621,26 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
 
+  // ── User assignments ──
+  {
+    key: "users.assign_role",
+    group: "users",
+    label: { vi: "Gán vai trò theo cơ sở", zh: "按场所分配角色" },
+    description: {
+      vi: "Gán vai trò trong phạm vi cơ sở và quyền mà người thao tác đang sở hữu.",
+      zh: "仅在操作者拥有的场所和权限范围内分配角色。",
+    },
+  },
+  {
+    key: "users.assign_global_role",
+    group: "users",
+    label: { vi: "Gán vai trò toàn hệ thống", zh: "分配全局角色" },
+    description: {
+      vi: "Gán vai trò toàn hệ thống; chỉ dành cho quản trị viên hệ thống.",
+      zh: "分配全局角色；仅限系统管理员。",
+    },
+  },
+
   // ── Employees ──
   {
     key: "employees.read",
@@ -780,6 +820,17 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Xem dashboard doanh thu JoyWorld cho cửa hàng B.Duck Cityfuns Landmark 81.",
       zh: "查看 B.Duck Cityfuns Landmark 81 门店的 JoyWorld 营收仪表板。",
+    },
+  },
+
+  // ── Revenue mutation ──
+  {
+    key: "revenue.sync",
+    group: "revenue",
+    label: { vi: "Đồng bộ doanh thu", zh: "同步营收" },
+    description: {
+      vi: "Đồng bộ dữ liệu doanh thu cho cửa hàng trong phạm vi được phép.",
+      zh: "为授权范围内的门店同步营收数据。",
     },
   },
 

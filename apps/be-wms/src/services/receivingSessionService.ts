@@ -26,6 +26,8 @@ import type { ProcessEntityType } from "@bduck/shared-types";
 import { logAudit } from "./auditService.js";
 import { getConfigForEntity } from "./processConfigService.js";
 import { canPerformRoleStep, type ScopedUser } from "./scopedRoleAccess.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import { assertVoucherAccess } from "./voucherAccessPolicy.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMA — Input validation
@@ -94,7 +96,10 @@ export async function validateStepAssignment(
       throw err;
     }
   } else if (assignment_mode === "ROLE") {
-    if (!assigned_role_id || !canPerformRoleStep(user, stepOption, warehouseId)) {
+    if (
+      !assigned_role_id ||
+      !canPerformRoleStep(user, stepOption, warehouseId)
+    ) {
       const err = new Error("Unauthorized step assignment") as Error & {
         statusCode: number;
         messages: Record<string, string>;
@@ -125,13 +130,17 @@ export async function saveReceivingActuals(
   voucherId: string,
   input: SaveActualsInput,
   user: StepUser,
+  authorization: AuthorizationService,
 ): Promise<{ updated: number }> {
   // Verify voucher exists
   const voucherRef = db.collection("import_vouchers").doc(voucherId);
   const voucherSnap = await voucherRef.get();
 
   if (!voucherSnap.exists) {
-    const err = new Error("Voucher not found") as Error & { statusCode: number; messages: Record<string, string> };
+    const err = new Error("Voucher not found") as Error & {
+      statusCode: number;
+      messages: Record<string, string>;
+    };
     err.statusCode = 404;
     err.messages = {
       vi: "Không tìm thấy phiếu nhập.",
@@ -141,6 +150,11 @@ export async function saveReceivingActuals(
   }
 
   const voucher = voucherSnap.data() || {};
+  assertVoucherAccess(
+    authorization,
+    "vouchers.write",
+    typeof voucher.warehouse_id === "string" ? voucher.warehouse_id : "",
+  );
 
   // ── Step assignment validation (Service Layer — LUẬT THÉP) ──
   await validateStepAssignment(
@@ -203,4 +217,3 @@ export async function saveReceivingActuals(
 
   return { updated: updatedCount };
 }
-

@@ -4,27 +4,15 @@ import {
   getUserWarehouseRoles,
   getRoleById,
 } from "../repositories/userRepository.js";
-import {
-  UserStatus,
-  type User,
-  type UserWarehouseRole,
-} from "@bduck/shared-types";
-import { activeRoleAssignments, uniqueRoleIds } from "./scopedRoleAccess.js";
-import { getEffectiveRolePermissions } from "./rolePermissionUtils.js";
 import { findUserByUsername } from "../repositories/userRepository.js";
 import { findEmployeeProfilesByPhone } from "../repositories/employeeProfileRepository.js";
+import {
+  createSessionLoginWithDependencies,
+  type AuthSessionResult,
+} from "./authSessionFlow.js";
+import { isUsableLoginUser } from "./loginUserPolicy.js";
 
-export interface AuthSessionResult {
-  cookie: string;
-  expiresIn: number;
-  user: User;
-  roles: UserWarehouseRole[];
-  roleIds: string[];
-  permissions: Record<string, unknown>;
-}
-
-const isUsableLoginUser = (user: User | null): user is User =>
-  Boolean(user && !user.is_deleted && user.status === UserStatus.ACTIVE);
+export type { AuthSessionResult } from "./authSessionFlow.js";
 
 export const resolveLoginEmail = async (
   identifier: string,
@@ -58,56 +46,15 @@ export const resolveLoginEmail = async (
 
 export const createSessionLogin = async (
   idToken: string,
-): Promise<AuthSessionResult> => {
-  // 1. Verify the ID token first
-  const decodedToken = await auth.verifyIdToken(idToken);
-
-  // 2. Set session expiration to 14 days
-  const expiresIn = 1000 * 60 * 60 * 24 * 14;
-
-  // 3. Create the session cookie
-  const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-
-  // 4. Get the user from DB
-  const user = await getUserById(decodedToken.uid);
-  if (!user) {
-    throw new Error("USER_NOT_FOUND");
-  }
-
-  // 5. Get user roles
-  const userRoles = await getUserWarehouseRoles(user.id);
-
-  // 6. Merge all permissions from assigned roles
-  const mergedPermissions: Record<string, unknown> = {};
-
-  const activeRoles = activeRoleAssignments(userRoles);
-
-  for (const userRole of activeRoles) {
-    const roleDef = await getRoleById(userRole.role_id);
-    if (!roleDef) continue;
-
-    const scope = userRole.warehouse_id || "global";
-
-    if (!mergedPermissions[scope]) {
-      mergedPermissions[scope] = {};
-    }
-
-    // Merge role permissions into the scope
-    mergedPermissions[scope] = {
-      ...(mergedPermissions[scope] as Record<string, unknown>),
-      ...getEffectiveRolePermissions(roleDef),
-    };
-  }
-
-  return {
-    cookie: sessionCookie,
-    expiresIn,
-    user,
-    roles: userRoles,
-    roleIds: uniqueRoleIds(activeRoles),
-    permissions: mergedPermissions,
-  };
-};
+): Promise<AuthSessionResult> =>
+  createSessionLoginWithDependencies(idToken, {
+    verifyIdToken: (token) => auth.verifyIdToken(token),
+    getUserById,
+    getUserWarehouseRoles,
+    getRoleById,
+    createSessionCookie: (token, options) =>
+      auth.createSessionCookie(token, options),
+  });
 
 export const logoutSession = async (sessionCookie: string): Promise<void> => {
   // We only clear the cookie for the current session.

@@ -5,21 +5,25 @@ import {
   upsertStockPolicyHandler,
 } from "../controllers/stockPolicyController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requirePermission("inventory.read"), getStockPoliciesHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission("inventory.read"),
+  getStockPoliciesHandler,
+);
 router.post(
   "/",
-  requirePermission("inventory.write"),
+  requireAnyScopedPermission("inventory.write"),
   upsertStockPolicyHandler,
 );
 router.delete(
   "/:id",
-  requirePermission("inventory.write"),
+  requireAnyScopedPermission("inventory.write"),
   deleteStockPolicyHandler,
 );
 

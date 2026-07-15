@@ -1,8 +1,4 @@
-import { AuditAction } from "@bduck/shared-types";
-import type {
-  WarehouseLocationSlot,
-  WarehouseLocationSlotProduct,
-} from "@bduck/shared-types";
+import { AuditAction, type WarehouseLocationSlot } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import type { z } from "zod";
 import {
@@ -12,38 +8,24 @@ import {
 import {
   createLocationSlotSchema,
   updateLocationSlotSchema,
-  upsertLocationSlotProductSchema,
 } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
-import { fetchLocationById } from "./locationService.js";
-import { fetchProductById } from "./productService.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import { loadLocationById } from "./locationService.js";
+import { assertFacilityRelationship } from "./facilityRelationshipPolicy.js";
 
 type CreateSlotInput = z.infer<typeof createLocationSlotSchema>;
 type UpdateSlotInput = z.infer<typeof updateLocationSlotSchema>;
-type UpsertSlotProductInput = z.infer<typeof upsertLocationSlotProductSchema>;
 
 const notFoundError = {
   statusCode: 404,
   messages: {
-    vi: "Giá»£i/vá»‹ trÃ­ con khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ bá»‹ xÃ³a.",
-    zh: "å­åº“ä½ä¸å­˜åœ¨æˆ–å·²è¢«åˆ é™¤ã€‚",
+    vi: "Giá/vị trí con không tồn tại hoặc đã bị xóa.",
+    zh: "子库位不存在或已被删除。",
   },
 };
 
-export const fetchLocationSlots = async (filters: {
-  warehouse_id?: string;
-  warehouse_location_id?: string;
-}): Promise<WarehouseLocationSlot[]> => {
-  if (filters.warehouse_location_id) {
-    return locationSlotRepository.findByLocation(filters.warehouse_location_id);
-  }
-  if (filters.warehouse_id) {
-    return locationSlotRepository.findByWarehouse(filters.warehouse_id);
-  }
-  return locationSlotRepository.findAll(false);
-};
-
-export const fetchLocationSlotById = async (
+export const loadLocationSlotById = async (
   id: string,
 ): Promise<WarehouseLocationSlot> => {
   const slot = await locationSlotRepository.findById(id);
@@ -51,32 +33,60 @@ export const fetchLocationSlotById = async (
   return slot;
 };
 
+export const fetchLocationSlots = async (
+  filters: { warehouse_id?: string; warehouse_location_id?: string },
+  authorization: AuthorizationService,
+): Promise<WarehouseLocationSlot[]> => {
+  if (filters.warehouse_location_id) {
+    const location = await loadLocationById(filters.warehouse_location_id);
+    authorization.assert("locations.read", location.warehouse_id);
+    if (
+      filters.warehouse_id &&
+      filters.warehouse_id !== location.warehouse_id
+    ) {
+      throw notFoundError;
+    }
+    return locationSlotRepository.findByLocation(filters.warehouse_location_id);
+  }
+  if (filters.warehouse_id) {
+    authorization.assert("locations.read", filters.warehouse_id);
+    return locationSlotRepository.findByWarehouse(filters.warehouse_id);
+  }
+  return locationSlotRepository.findScoped({
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("locations.read"),
+  });
+};
+
+export const fetchLocationSlotById = async (
+  id: string,
+  authorization: AuthorizationService,
+): Promise<WarehouseLocationSlot> => {
+  const slot = await loadLocationSlotById(id);
+  authorization.assert("locations.read", slot.warehouse_id);
+  return slot;
+};
+
 export const createLocationSlot = async (
   input: CreateSlotInput,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<WarehouseLocationSlot> => {
-  const location = await fetchLocationById(input.warehouse_location_id);
-  if (location.warehouse_id !== input.warehouse_id) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Vá»‹ trÃ­ khÃ´ng thuá»™c kho Ä‘Ã£ chá»n.",
-        zh: "åº“ä½ä¸å±žäºŽæ‰€é€‰ä»“åº“ã€‚",
-      },
-    };
-  }
-
-  const codeOwner = await locationSlotRepository.findByLocationAndCode(
-    input.warehouse_location_id,
-    input.code,
-  );
-  if (codeOwner) {
+  authorization.assert("locations.write", input.warehouse_id);
+  const location = await loadLocationById(input.warehouse_location_id);
+  assertFacilityRelationship(input.warehouse_id, location.warehouse_id);
+  if (
+    await locationSlotRepository.findByLocationAndCode(
+      input.warehouse_location_id,
+      input.code,
+    )
+  ) {
     throw {
       statusCode: 409,
       messages: {
-        vi: "MÃ£ giá»£i Ä‘Ã£ tá»“n táº¡i trong vá»‹ trÃ­ nÃ y.",
-        zh: "è¯¥å­åº“ä½ä»£ç å·²å­˜åœ¨ã€‚",
+        vi: "Mã giá đã tồn tại trong vị trí này.",
+        zh: "该子库位代码已存在。",
       },
     };
   }
@@ -91,8 +101,7 @@ export const createLocationSlot = async (
     sort_order: input.sort_order ?? 0,
     description: input.description ?? null,
     is_active: input.is_active ?? true,
-  } as any);
-
+  } as WarehouseLocationSlot);
   await logAudit({
     entity_type: "warehouse_location_slots",
     entity_id: id,
@@ -103,7 +112,6 @@ export const createLocationSlot = async (
     new_value: slot as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
-
   return slot;
 };
 
@@ -111,9 +119,11 @@ export const updateLocationSlot = async (
   id: string,
   input: UpdateSlotInput,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchLocationSlotById(id);
+  const existing = await loadLocationSlotById(id);
+  authorization.assert("locations.write", existing.warehouse_id);
   const updateData = {
     ...(input.name !== undefined ? { name: input.name } : {}),
     ...(input.code !== undefined ? { code: input.code } : {}),
@@ -123,24 +133,22 @@ export const updateLocationSlot = async (
       : {}),
     ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
   };
-
   if (input.code && input.code !== existing.code) {
-    const codeOwner = await locationSlotRepository.findByLocationAndCode(
+    const owner = await locationSlotRepository.findByLocationAndCode(
       existing.warehouse_location_id,
       input.code,
     );
-    if (codeOwner && codeOwner.id !== id) {
+    if (owner && owner.id !== id) {
       throw {
         statusCode: 409,
         messages: {
-          vi: "MÃ£ giá»£i Ä‘Ã£ tá»“n táº¡i trong vá»‹ trÃ­ nÃ y.",
-          zh: "è¯¥å­åº“ä½ä»£ç å·²å­˜åœ¨ã€‚",
+          vi: "Mã giá đã tồn tại trong vị trí này.",
+          zh: "该子库位代码已存在。",
         },
       };
     }
   }
-
-  await locationSlotRepository.update(id, updateData as any);
+  await locationSlotRepository.update(id, updateData);
   await logAudit({
     entity_type: "warehouse_location_slots",
     entity_id: id,
@@ -148,7 +156,7 @@ export const updateLocationSlot = async (
     action: AuditAction.UPDATE,
     user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
-    new_value: updateData as unknown as Record<string, unknown>,
+    new_value: updateData,
     ...auditMetadata,
   });
 };
@@ -156,9 +164,11 @@ export const updateLocationSlot = async (
 export const deleteLocationSlot = async (
   id: string,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchLocationSlotById(id);
+  const existing = await loadLocationSlotById(id);
+  authorization.assert("locations.write", existing.warehouse_id);
   const mappings = await locationSlotProductRepository.findByLocation(
     existing.warehouse_location_id,
   );
@@ -166,134 +176,14 @@ export const deleteLocationSlot = async (
     throw {
       statusCode: 400,
       messages: {
-        vi: "KhÃ´ng thá»ƒ xÃ³a giá»£i Ä‘ang cÃ³ sáº£n pháº©m Ä‘Æ°á»£c gÃ¡n.",
-        zh: "æ— æ³•åˆ é™¤å·²åˆ†é…äº§å“çš„å­åº“ä½ã€‚",
+        vi: "Không thể xóa giá đang có sản phẩm được gán.",
+        zh: "无法删除已分配产品的子库位。",
       },
     };
   }
-
   await locationSlotRepository.softDelete(id);
   await logAudit({
     entity_type: "warehouse_location_slots",
-    entity_id: id,
-    warehouse_id: existing.warehouse_id,
-    action: AuditAction.SOFT_DELETE,
-    user_id: userId,
-    old_value: existing as unknown as Record<string, unknown>,
-    new_value: { is_deleted: true },
-    ...auditMetadata,
-  });
-};
-
-export const fetchLocationSlotProducts = async (filters: {
-  warehouse_id?: string;
-  warehouse_location_id?: string;
-}): Promise<WarehouseLocationSlotProduct[]> => {
-  if (filters.warehouse_location_id) {
-    return locationSlotProductRepository.findByLocation(
-      filters.warehouse_location_id,
-    );
-  }
-  if (filters.warehouse_id) {
-    return locationSlotProductRepository.findByWarehouse(filters.warehouse_id);
-  }
-  return locationSlotProductRepository.findAll(false);
-};
-
-export const upsertLocationSlotProduct = async (
-  input: UpsertSlotProductInput,
-  userId: string,
-  auditMetadata?: AuditMetadata,
-): Promise<WarehouseLocationSlotProduct> => {
-  const [location, slot] = await Promise.all([
-    fetchLocationById(input.warehouse_location_id),
-    fetchLocationSlotById(input.warehouse_location_slot_id),
-    fetchProductById(input.product_id),
-  ]);
-
-  if (
-    location.warehouse_id !== input.warehouse_id ||
-    slot.warehouse_id !== input.warehouse_id ||
-    slot.warehouse_location_id !== input.warehouse_location_id
-  ) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Dá»¯ liá»‡u kho, vá»‹ trÃ­ vÃ  giá»£i khÃ´ng khá»›p nhau.",
-        zh: "ä»“åº“ã€åº“ä½å’Œå­åº“ä½æ•°æ®ä¸åŒ¹é…ã€‚",
-      },
-    };
-  }
-
-  const existing = await locationSlotProductRepository.findByLocationAndProduct(
-    input.warehouse_location_id,
-    input.product_id,
-  );
-
-  if (existing) {
-    await locationSlotProductRepository.update(existing.id, {
-      warehouse_location_slot_id: input.warehouse_location_slot_id,
-      display_order: input.display_order ?? existing.display_order,
-      is_active: input.is_active ?? true,
-    } as any);
-
-    const next = {
-      ...existing,
-      warehouse_location_slot_id: input.warehouse_location_slot_id,
-      display_order: input.display_order ?? existing.display_order,
-      is_active: input.is_active ?? true,
-    };
-
-    await logAudit({
-      entity_type: "warehouse_location_slot_products",
-      entity_id: existing.id,
-      warehouse_id: input.warehouse_id,
-      action: AuditAction.UPDATE,
-      user_id: userId,
-      old_value: existing as unknown as Record<string, unknown>,
-      new_value: next as unknown as Record<string, unknown>,
-      ...auditMetadata,
-    });
-
-    return next;
-  }
-
-  const id = randomUUID();
-  const mapping = await locationSlotProductRepository.create(id, {
-    id,
-    warehouse_id: input.warehouse_id,
-    warehouse_location_id: input.warehouse_location_id,
-    warehouse_location_slot_id: input.warehouse_location_slot_id,
-    product_id: input.product_id,
-    display_order: input.display_order ?? null,
-    is_active: input.is_active ?? true,
-  } as any);
-
-  await logAudit({
-    entity_type: "warehouse_location_slot_products",
-    entity_id: id,
-    warehouse_id: input.warehouse_id,
-    action: AuditAction.CREATE,
-    user_id: userId,
-    old_value: null,
-    new_value: mapping as unknown as Record<string, unknown>,
-    ...auditMetadata,
-  });
-
-  return mapping;
-};
-
-export const deleteLocationSlotProduct = async (
-  id: string,
-  userId: string,
-  auditMetadata?: AuditMetadata,
-): Promise<void> => {
-  const existing = await locationSlotProductRepository.findById(id);
-  if (!existing || existing.is_deleted) throw notFoundError;
-
-  await locationSlotProductRepository.softDelete(id);
-  await logAudit({
-    entity_type: "warehouse_location_slot_products",
     entity_id: id,
     warehouse_id: existing.warehouse_id,
     action: AuditAction.SOFT_DELETE,

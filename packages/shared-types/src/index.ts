@@ -5,6 +5,7 @@ export * from './common.js';
 export * from './utility.js';
 export * from './master-data.js';
 export * from './users.js';
+export * from './facilityAccess.js';
 export * from './inventory.js';
 export * from './vouchers.js';
 export * from './sales-operations.js';

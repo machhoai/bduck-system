@@ -1,0 +1,32 @@
+{
+  "capturedOn": "2026-07-15",
+  "inventoryVersion": 1,
+  "policyVersion": "office-scope-v1",
+  "accessMatrixCases": 43,
+  "auditCounts": {
+    "unsafe-authenticated-firestore-read": 41,
+    "unbound-any-scope-guard": 63,
+    "unbound-specific-scope-guard": 58,
+    "active-user-status-not-enforced": 1,
+    "auth-only-sensitive-route": 1,
+    "sensitive-realtime-listener-reference": 75,
+    "dynamic-realtime-listener-reference": 3,
+    "client-side-access-filter": 7,
+    "shared-sensitive-persistent-cache": 1,
+    "delayed-access-revocation-refresh": 1
+  },
+  "enforcementPolicy": {
+    "currentMode": "REPORT_ONLY",
+    "promotionGate": "Enable --enforce only after backend authorization, query-compatible listeners, Firestore Rules, revocation, and cache tests pass.",
+    "targetCounts": {
+      "unsafe-authenticated-firestore-read": 0,
+      "unbound-any-scope-guard": 0,
+      "unbound-specific-scope-guard": 0,
+      "active-user-status-not-enforced": 0,
+      "auth-only-sensitive-route": 0,
+      "client-side-access-filter": 0,
+      "shared-sensitive-persistent-cache": 0,
+      "delayed-access-revocation-refresh": 0
+    }
+  }
+}

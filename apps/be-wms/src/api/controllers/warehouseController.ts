@@ -12,19 +12,13 @@ import {
   idParamSchema,
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
-import type { RequestUserContext } from "../../services/warehouseAccess.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const updateWarehouseSchema = createWarehouseSchema.partial();
-
-const getRequestUser = (req: Request): RequestUserContext => {
-  const user = (req as any).user || {};
-  return {
-    id: user.id || "unknown",
-    permissions: user.permissions || {},
-    roleNames: user.roleNames || [],
-  };
-};
 
 const handleWarehouseError = (res: Response, error: unknown) => {
   console.error("[warehouseController] error:", error);
@@ -62,7 +56,7 @@ const handleWarehouseError = (res: Response, error: unknown) => {
 
 export const getWarehousesHandler = async (req: Request, res: Response) => {
   try {
-    const warehouses = await fetchWarehouses(getRequestUser(req));
+    const warehouses = await fetchWarehouses(requireRequestAuthorization(req));
     return sendSuccess(res, warehouses, {
       vi: "Lấy danh sách kho thành công.",
       zh: "成功获取仓库列表。",
@@ -75,7 +69,10 @@ export const getWarehousesHandler = async (req: Request, res: Response) => {
 export const getWarehouseByIdHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const warehouse = await fetchWarehouseById(id);
+    const warehouse = await fetchWarehouseById(
+      id,
+      requireRequestAuthorization(req),
+    );
 
     return sendSuccess(res, warehouse, {
       vi: "Lấy thông tin kho thành công.",
@@ -91,7 +88,8 @@ export const createWarehouseHandler = async (req: Request, res: Response) => {
     const data = createWarehouseSchema.parse(req.body);
     const warehouse = await createWarehouse(
       data,
-      getRequestUser(req).id,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 
@@ -116,7 +114,8 @@ export const updateWarehouseHandler = async (req: Request, res: Response) => {
     await updateWarehouse(
       id,
       data,
-      getRequestUser(req).id,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 
@@ -134,7 +133,8 @@ export const deleteWarehouseHandler = async (req: Request, res: Response) => {
     const { id } = idParamSchema.parse(req.params);
     await deleteWarehouse(
       id,
-      getRequestUser(req).id,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 

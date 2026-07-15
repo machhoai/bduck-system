@@ -3,21 +3,26 @@ import type { EmployeeProfile } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import type { z } from "zod";
 import {
-  createEmployeeProfileRecord,
+  createEmployeeProfileAndSyncUser,
   findEmployeeProfileByCode,
-  findEmployeeProfiles,
+  findEmployeeProfilesScoped,
   getEmployeeProfileById,
   getEmployeeProfileByUserId,
   softDeleteEmployeeProfileRecord,
-  updateEmployeeProfileRecord,
+  updateEmployeeProfileAndUserWorkplace,
 } from "../repositories/employeeProfileRepository.js";
-import { getUserById } from "../repositories/userRepository.js";
+import {
+  getUserById,
+  getUserWarehouseRoles,
+} from "../repositories/userRepository.js";
 import {
   createEmployeeProfileSchema,
   updateEmployeeProfileSchema,
 } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { createUser, type CreateUserResult } from "./userService.js";
+import { AuthorizationService } from "./authorization/index.js";
+import { assertCanAccessTargetUser } from "./userTargetPolicy.js";
 
 type CreateEmployeeProfileInput = z.infer<typeof createEmployeeProfileSchema>;
 type UpdateEmployeeProfileInput = z.infer<typeof updateEmployeeProfileSchema>;
@@ -112,14 +117,21 @@ const buildProfilePayload = (
   return payload;
 };
 
-export const fetchEmployeeProfiles = async (): Promise<EmployeeProfile[]> =>
-  findEmployeeProfiles();
+export const fetchEmployeeProfiles = async (
+  authorization: AuthorizationService,
+): Promise<EmployeeProfile[]> =>
+  findEmployeeProfilesScoped({
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("employees.read"),
+  });
 
 export const fetchEmployeeProfileById = async (
   profileId: string,
+  authorization: AuthorizationService,
 ): Promise<EmployeeProfile> => {
   const profile = await getEmployeeProfileById(profileId);
   if (!profile) throw notFoundError;
+  authorization.assert("employees.read", profile.workplace_warehouse_id);
   return profile;
 };
 
@@ -130,13 +142,28 @@ export const fetchEmployeeProfileByUserId = async (
 export const createEmployeeProfile = async (
   input: CreateEmployeeProfileInput,
   actorId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<CreateEmployeeProfileResult> => {
+  authorization.assert("employees.write", input.workplace_warehouse_id);
   await assertUniqueProfileFields({
     employee_code: input.employee_code,
     user_id: input.user_id ?? undefined,
   });
   await assertLinkedUserExists(input.user_id);
+  if (input.user_id) {
+    const linkedUser = await getUserById(input.user_id);
+    if (linkedUser) {
+      const assignments = await getUserWarehouseRoles(linkedUser.id);
+      assertCanAccessTargetUser(
+        authorization,
+        "users.write",
+        linkedUser,
+        assignments,
+      );
+      authorization.assert("users.write", input.workplace_warehouse_id);
+    }
+  }
 
   let account: CreateUserResult | null = null;
   let linkedUserId = input.user_id ?? null;
@@ -147,16 +174,19 @@ export const createEmployeeProfile = async (
         email: input.account.email,
         full_name: input.full_name,
         employee_id: input.employee_code,
+        workplace_facility_id: input.workplace_warehouse_id,
         status: input.account.status ?? UserStatus.ACTIVE,
         assignments: input.account.assignments ?? [],
       },
       actorId,
+      authorization,
       auditMetadata,
+      { createEmployeeProfile: false },
     );
     linkedUserId = account.user.id;
   }
 
-  const profile = await createEmployeeProfileRecord(randomUUID(), {
+  const profile = await createEmployeeProfileAndSyncUser(randomUUID(), {
     ...(buildProfilePayload(input) as Omit<
       EmployeeProfile,
       "id" | "created_at" | "updated_at" | "is_deleted"
@@ -182,9 +212,15 @@ export const updateEmployeeProfile = async (
   profileId: string,
   input: UpdateEmployeeProfileInput,
   actorId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<EmployeeProfile> => {
-  const existing = await fetchEmployeeProfileById(profileId);
+  const existing = await getEmployeeProfileById(profileId);
+  if (!existing) throw notFoundError;
+  authorization.assert("employees.write", existing.workplace_warehouse_id);
+  if (input.workplace_warehouse_id) {
+    authorization.assert("employees.write", input.workplace_warehouse_id);
+  }
   await assertUniqueProfileFields(
     {
       employee_code: input.employee_code,
@@ -193,15 +229,35 @@ export const updateEmployeeProfile = async (
     profileId,
   );
   await assertLinkedUserExists(input.user_id);
+  if (input.user_id && input.user_id !== existing.user_id) {
+    const linkedUser = await getUserById(input.user_id);
+    if (linkedUser) {
+      assertCanAccessTargetUser(
+        authorization,
+        "users.write",
+        linkedUser,
+        await getUserWarehouseRoles(linkedUser.id),
+      );
+      authorization.assert(
+        "users.write",
+        input.workplace_warehouse_id ?? existing.workplace_warehouse_id,
+      );
+    }
+  }
 
   const updateData = Object.fromEntries(
     Object.entries(buildProfilePayload(input)).filter(
       ([, value]) => value !== undefined,
     ),
-  ) as Parameters<typeof updateEmployeeProfileRecord>[1];
+  ) as Parameters<typeof updateEmployeeProfileAndUserWorkplace>[2];
 
-  await updateEmployeeProfileRecord(profileId, updateData);
-  const updated = await fetchEmployeeProfileById(profileId);
+  await updateEmployeeProfileAndUserWorkplace(
+    profileId,
+    input.user_id !== undefined ? input.user_id : existing.user_id,
+    updateData,
+  );
+  const updated = await getEmployeeProfileById(profileId);
+  if (!updated) throw notFoundError;
 
   await logAudit({
     entity_type: "employee_profiles",
@@ -220,9 +276,12 @@ export const updateEmployeeProfile = async (
 export const deleteEmployeeProfile = async (
   profileId: string,
   actorId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchEmployeeProfileById(profileId);
+  const existing = await getEmployeeProfileById(profileId);
+  if (!existing) throw notFoundError;
+  authorization.assert("employees.write", existing.workplace_warehouse_id);
   await softDeleteEmployeeProfileRecord(profileId);
 
   await logAudit({

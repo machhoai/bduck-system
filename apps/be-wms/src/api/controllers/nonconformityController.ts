@@ -4,7 +4,7 @@ import {
   fetchNonconformities,
   fetchNonconformityDetail,
   resolveNonconformity,
-} from "../../services/nonconformityService.js";
+} from "../../services/scopedNonconformityService.js";
 import {
   idParamSchema,
   nonconformityQuerySchema,
@@ -12,9 +12,13 @@ import {
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const getRequestUserId = (req: Request): string => {
-  return (req as any).user?.id || "unknown";
+  return requireAuthenticatedRequestUser(req).id;
 };
 
 const handleNonconformityError = (res: Response, error: unknown) => {
@@ -59,7 +63,7 @@ export const getNonconformitiesHandler = async (
     const filters = nonconformityQuerySchema.parse(req.query);
     const records = await fetchNonconformities(
       filters,
-      (req as any).user?.permissions,
+      requireRequestAuthorization(req),
     );
 
     return sendSuccess(res, records, {
@@ -79,7 +83,7 @@ export const getNonconformityByIdHandler = async (
     const { id } = idParamSchema.parse(req.params);
     const detail = await fetchNonconformityDetail(
       id,
-      (req as any).user?.permissions,
+      requireRequestAuthorization(req),
     );
 
     return sendSuccess(res, detail, {
@@ -109,7 +113,7 @@ export const resolveNonconformityHandler = async (
       },
       getRequestUserId(req),
       getAuditRequestMetadata(req),
-      (req as any).user?.permissions,
+      requireRequestAuthorization(req),
     );
 
     return sendSuccess(res, null, {

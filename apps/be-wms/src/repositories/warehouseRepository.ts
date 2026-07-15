@@ -1,6 +1,7 @@
 import { db } from "../config/firebase.js";
 import { BaseRepository } from "./baseRepository.js";
 import type { Warehouse } from "@bduck/shared-types";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 const COLLECTION = "warehouses";
 
@@ -56,23 +57,35 @@ class WarehouseRepository extends BaseRepository<Warehouse> {
     return !snapshot.empty;
   }
 
-  async findWarehouses(params?: {
-    accessibleWarehouseIds?: string[];
+  async findWarehousesScoped(scope: {
+    isSystemAdmin: boolean;
+    facilityIds: readonly string[];
   }): Promise<Warehouse[]> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where("is_deleted", "==", false)
-      .get();
+    const groups = await executeFacilityScopedQuery({
+      ...scope,
+      queryAll: async () => {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where("is_deleted", "==", false)
+          .get();
+        return snapshot.docs.map(
+          (doc) => ({ ...doc.data(), id: doc.id }) as Warehouse,
+        );
+      },
+      queryChunk: async (facilityIds) => {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where("is_deleted", "==", false)
+          .where("__name__", "in", facilityIds)
+          .get();
+        return snapshot.docs.map(
+          (doc) => ({ ...doc.data(), id: doc.id }) as Warehouse,
+        );
+      },
+    });
 
-    const accessibleIds = params?.accessibleWarehouseIds
-      ? new Set(params.accessibleWarehouseIds)
-      : null;
-
-    return snapshot.docs
-      .map((doc) => ({ ...doc.data(), id: doc.id }) as Warehouse)
-      .filter((warehouse) =>
-        accessibleIds ? accessibleIds.has(warehouse.id) : true,
-      )
+    return groups
+      .flat()
       .sort(
         (a, b) =>
           getSortableTime(

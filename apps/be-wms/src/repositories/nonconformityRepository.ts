@@ -47,7 +47,7 @@ export const findReports = async (
   const snapshot = await query.get();
   return snapshot.docs
     .map((doc) => doc.data() as NonconformityReport)
-    .filter((record) => record.is_deleted !== true);
+    .filter((record) => record.is_deleted === false);
 };
 
 export const findReportById = async (
@@ -57,7 +57,7 @@ export const findReportById = async (
   if (!snapshot.exists) return null;
 
   const record = snapshot.data() as NonconformityReport;
-  return record.is_deleted ? null : record;
+  return record.is_deleted === false ? record : null;
 };
 
 export const findQuarantinesByReportId = async (

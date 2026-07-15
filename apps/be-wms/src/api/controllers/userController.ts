@@ -11,9 +11,12 @@ import {
 import { createUserSchema, updateUserSchema } from "../../utils/zodSchemas.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const userIdParamSchema = z.object({ id: z.string().min(1) });
-const getRequestUserId = (req: Request) => (req as any).user?.id || "unknown";
 
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
 
@@ -49,9 +52,9 @@ const handleUserError = (res: Response, error: unknown) => {
   );
 };
 
-export const getUsersHandler = async (_req: Request, res: Response) => {
+export const getUsersHandler = async (req: Request, res: Response) => {
   try {
-    const users = await fetchUsers();
+    const users = await fetchUsers(requireRequestAuthorization(req));
     return sendSuccess(res, users, {
       vi: "Lấy danh sách người dùng thành công.",
       zh: "成功获取用户列表。",
@@ -64,7 +67,7 @@ export const getUsersHandler = async (_req: Request, res: Response) => {
 export const getUserByIdHandler = async (req: Request, res: Response) => {
   try {
     const { id } = userIdParamSchema.parse(req.params);
-    const user = await fetchUserById(id);
+    const user = await fetchUserById(id, requireRequestAuthorization(req));
     return sendSuccess(res, user, {
       vi: "Lấy người dùng thành công.",
       zh: "成功获取用户。",
@@ -77,9 +80,11 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
     const data = createUserSchema.parse(req.body);
+    const actor = requireAuthenticatedRequestUser(req);
     const result = await createUser(
       data,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(
@@ -99,9 +104,11 @@ export const resendUserInvitationHandler = async (
 ) => {
   try {
     const { id } = userIdParamSchema.parse(req.params);
+    const actor = requireAuthenticatedRequestUser(req);
     const result = await sendUserInvitation(
       id,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, result, {
@@ -117,10 +124,12 @@ export const updateUserHandler = async (req: Request, res: Response) => {
   try {
     const { id } = userIdParamSchema.parse(req.params);
     const data = updateUserSchema.parse(req.body);
+    const actor = requireAuthenticatedRequestUser(req);
     await updateUser(
       id,
       data,
-      getRequestUserId(req),
+      actor.id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, null, {
@@ -135,7 +144,13 @@ export const updateUserHandler = async (req: Request, res: Response) => {
 export const deleteUserHandler = async (req: Request, res: Response) => {
   try {
     const { id } = userIdParamSchema.parse(req.params);
-    await deleteUser(id, getRequestUserId(req), getAuditRequestMetadata(req));
+    const actor = requireAuthenticatedRequestUser(req);
+    await deleteUser(
+      id,
+      actor.id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
     return sendSuccess(res, null, {
       vi: "Xóa mềm người dùng thành công.",
       zh: "成功软删除用户。",

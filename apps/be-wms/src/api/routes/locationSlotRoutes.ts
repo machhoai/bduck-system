@@ -1,4 +1,4 @@
-import { Router, type Request, type Router as ExpressRouter } from "express";
+import { Router, type Router as ExpressRouter } from "express";
 import {
   createLocationSlotHandler,
   deleteLocationSlotHandler,
@@ -10,57 +10,50 @@ import {
   upsertLocationSlotProductHandler,
 } from "../controllers/locationSlotController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-const getWarehouseId = (req: Request) =>
-  typeof req.body?.warehouse_id === "string"
-    ? req.body.warehouse_id
-    : typeof req.query.warehouse_id === "string"
-      ? req.query.warehouse_id
-      : null;
-
 router.get(
   "/",
-  requirePermission("locations.read", getWarehouseId),
+  requireAnyScopedPermission("locations.read"),
   getLocationSlotsHandler,
 );
 router.get(
   "/mappings",
-  requirePermission("locations.read", getWarehouseId),
+  requireAnyScopedPermission("locations.read"),
   getLocationSlotProductsHandler,
 );
 router.get(
   "/:id",
-  requirePermission("locations.read"),
+  requireAnyScopedPermission("locations.read"),
   getLocationSlotByIdHandler,
 );
 router.post(
   "/",
-  requirePermission("locations.write", getWarehouseId),
+  requireAnyScopedPermission("locations.write"),
   createLocationSlotHandler,
 );
 router.put(
   "/:id",
-  requirePermission("locations.write", getWarehouseId),
+  requireAnyScopedPermission("locations.write"),
   updateLocationSlotHandler,
 );
 router.delete(
   "/:id",
-  requirePermission("locations.write", getWarehouseId),
+  requireAnyScopedPermission("locations.write"),
   deleteLocationSlotHandler,
 );
 router.post(
   "/mappings",
-  requirePermission("locations.write", getWarehouseId),
+  requireAnyScopedPermission("locations.write"),
   upsertLocationSlotProductHandler,
 );
 router.delete(
   "/mappings/:id",
-  requirePermission("locations.write", getWarehouseId),
+  requireAnyScopedPermission("locations.write"),
   deleteLocationSlotProductHandler,
 );
 

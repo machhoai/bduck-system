@@ -10,8 +10,9 @@ import * as scannableProductService from "../../services/externalQueueScannableP
 const getWarehouses = async (req: Request, res: Response) => {
   try {
     const client = (req as any).integrationClient!;
-    const warehouses = await warehouseRepository.findWarehouses({
-      accessibleWarehouseIds: client.allowed_warehouse_ids,
+    const warehouses = await warehouseRepository.findWarehousesScoped({
+      isSystemAdmin: false,
+      facilityIds: client.allowed_warehouse_ids,
     });
 
     return res.status(200).json({

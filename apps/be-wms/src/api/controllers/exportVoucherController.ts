@@ -1,8 +1,8 @@
 /**
- * Export Voucher Controller — Thin REST endpoint handlers
+ * Export Voucher Controller â€” Thin REST endpoint handlers
  *
  * Delegates ALL business logic to services.
- * Controller only handles: request parsing → service call → response formatting.
+ * Controller only handles: request parsing â†’ service call â†’ response formatting.
  */
 
 import type { Request, Response, NextFunction } from "express";
@@ -25,10 +25,14 @@ import {
   fetchCompletedVouchers,
   fetchVoucherWithItems,
 } from "../../services/exportVoucherQueryService.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // POST /api/export-vouchers
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function createHandler(
   req: Request,
@@ -36,7 +40,7 @@ export async function createHandler(
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
+    const userId = requireAuthenticatedRequestUser(req).id;
     const parseResult = createExportVoucherSchema.safeParse(req.body);
 
     if (!parseResult.success) {
@@ -44,19 +48,30 @@ export async function createHandler(
         success: false,
         data: null,
         messages: {
-          vi: "Dữ liệu không hợp lệ: " + parseResult.error.issues.map((i) => i.message).join(", "),
-          zh: "数据无效: " + parseResult.error.issues.map((i) => i.message).join(", "),
+          vi:
+            "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
+          zh:
+            "æ•°æ®æ— æ•ˆ: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
         },
       });
       return;
     }
 
-    const voucher = await createExportVoucher(parseResult.data, userId);
+    const voucher = await createExportVoucher(
+      parseResult.data,
+      userId,
+      requireRequestAuthorization(req),
+    );
 
     res.status(201).json({
       success: true,
       data: voucher,
-      messages: { vi: "Đã tạo phiếu xuất kho thành công.", zh: "出库单创建成功。" },
+      messages: {
+        vi: "ÄÃ£ táº¡o phiáº¿u xuáº¥t kho thÃ nh cÃ´ng.",
+        zh: "å‡ºåº“å•åˆ›å»ºæˆåŠŸã€‚",
+      },
     });
   } catch (error: any) {
     const statusCode = error.statusCode || 500;
@@ -74,7 +89,7 @@ export async function updateHandler(
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
+    const userId = requireAuthenticatedRequestUser(req).id;
     const parseResult = updateExportVoucherSchema.safeParse(req.body);
 
     if (!parseResult.success) {
@@ -82,18 +97,30 @@ export async function updateHandler(
         success: false,
         data: null,
         messages: {
-          vi: "Du lieu khong hop le: " + parseResult.error.issues.map((i) => i.message).join(", "),
-          zh: "数据无效: " + parseResult.error.issues.map((i) => i.message).join(", "),
+          vi:
+            "Du lieu khong hop le: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
+          zh:
+            "æ•°æ®æ— æ•ˆ: " +
+            parseResult.error.issues.map((i) => i.message).join(", "),
         },
       });
       return;
     }
 
-    const voucher = await updateExportVoucher(req.params.id as string, parseResult.data, userId);
+    const voucher = await updateExportVoucher(
+      req.params.id as string,
+      parseResult.data,
+      userId,
+      requireRequestAuthorization(req),
+    );
     res.status(200).json({
       success: true,
       data: voucher,
-      messages: { vi: "Phieu xuat kho da duoc cap nhat thanh cong.", zh: "出库单已成功更新。" },
+      messages: {
+        vi: "Phieu xuat kho da duoc cap nhat thanh cong.",
+        zh: "å‡ºåº“å•å·²æˆåŠŸæ›´æ–°ã€‚",
+      },
     });
   } catch (error: any) {
     const statusCode = error.statusCode || 500;
@@ -105,39 +132,59 @@ export async function updateHandler(
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // GET /api/export-vouchers
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getActiveHandler(
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const vouchers = await fetchActiveVouchers();
-    res.status(200).json({ success: true, data: vouchers, messages: { vi: "OK", zh: "OK" } });
+    const vouchers = await fetchActiveVouchers(
+      requireRequestAuthorization(req),
+    );
+    res.status(200).json({
+      success: true,
+      data: vouchers,
+      messages: { vi: "OK", zh: "OK" },
+    });
   } catch (error: any) {
-    res.status(500).json({ success: false, data: null, messages: { vi: error.message, zh: error.message } });
+    res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: error.message, zh: error.message },
+    });
   }
 }
 
 export async function getCompletedHandler(
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const vouchers = await fetchCompletedVouchers();
-    res.status(200).json({ success: true, data: vouchers, messages: { vi: "OK", zh: "OK" } });
+    const vouchers = await fetchCompletedVouchers(
+      requireRequestAuthorization(req),
+    );
+    res.status(200).json({
+      success: true,
+      data: vouchers,
+      messages: { vi: "OK", zh: "OK" },
+    });
   } catch (error: any) {
-    res.status(500).json({ success: false, data: null, messages: { vi: error.message, zh: error.message } });
+    res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: error.message, zh: error.message },
+    });
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // GET /api/export-vouchers/:id
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getByIdHandler(
   req: Request,
@@ -145,130 +192,36 @@ export async function getByIdHandler(
   _next: NextFunction,
 ): Promise<void> {
   try {
-    const result = await fetchVoucherWithItems(req.params.id as string);
+    const result = await fetchVoucherWithItems(
+      req.params.id as string,
+      requireRequestAuthorization(req),
+    );
     if (!result) {
       res.status(404).json({
-        success: false, data: null,
-        messages: { vi: "Không tìm thấy phiếu.", zh: "未找到单据。" },
+        success: false,
+        data: null,
+        messages: { vi: "KhÃ´ng tÃ¬m tháº¥y phiáº¿u.", zh: "æœªæ‰¾åˆ°å•æ®ã€‚" },
       });
       return;
     }
-    res.status(200).json({ success: true, data: result, messages: { vi: "OK", zh: "OK" } });
+    res
+      .status(200)
+      .json({ success: true, data: result, messages: { vi: "OK", zh: "OK" } });
   } catch (error: any) {
-    res.status(500).json({ success: false, data: null, messages: { vi: error.message, zh: error.message } });
+    res.status(500).json({
+      success: false,
+      data: null,
+      messages: { vi: error.message, zh: error.message },
+    });
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PUT /api/export-vouchers/:id/picking-actuals
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function savePickingHandler(
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): Promise<void> {
-  try {
-    const user = {
-      id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
-      roleIds: (req as any).user?.roleIds || [],
-      roleAssignments: (req as any).user?.roleAssignments || [],
-    };
-
-    const parseResult = savePickingActualsSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      res.status(400).json({
-        success: false, data: null,
-        messages: { vi: "Dữ liệu không hợp lệ.", zh: "数据无效。" },
-      });
-      return;
-    }
-
-    const result = await savePickingActuals(req.params.id as string, parseResult.data, user);
-    res.status(200).json({
-      success: true, data: result,
-      messages: {
-        vi: `Đã lưu số liệu soạn hàng (${result.updated} sản phẩm).`,
-        zh: `已保存拣货数据（${result.updated} 个产品）。`,
-      },
-    });
-  } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false, data: null,
-      messages: error.messages || { vi: error.message, zh: error.message },
-    });
-  }
-}
-
-// ─────────────────────────────────────────────
-// POST /api/export-vouchers/:id/complete-picking
-// ─────────────────────────────────────────────
-
-export async function completePickingHandler(
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): Promise<void> {
-  try {
-    const authUser = (req as any).user;
-    const userId = authUser?.id || authUser?.uid || "UNKNOWN";
-    const voucherId = req.params.id as string;
-    const { db } = await import("../../config/firebase.js");
-    const voucherSnap = await db.collection("export_vouchers").doc(voucherId).get();
-    const voucherData = voucherSnap.data() || {};
-
-    await validatePickingAssignment(
-      typeof voucherData.warehouse_id === "string" ? voucherData.warehouse_id : null,
-      {
-        id: userId,
-        roleIds: authUser?.roleIds || [],
-        roleAssignments: authUser?.roleAssignments || [],
-      },
-      typeof voucherData.creator_id === "string" ? voucherData.creator_id : "",
-    );
-
-    await startPicking(voucherId);
-    await completePicking(voucherId, userId);
-
-    res.status(200).json({
-      success: true,
-      data: { voucher_id: voucherId, status: "SHIPPED" },
-      messages: { vi: "Soạn hàng hoàn tất. Tồn kho đã được trừ.", zh: "拣货完成。库存已扣减。" },
-    });
-  } catch (error: any) {
-    console.error("[exportVoucherController] Complete picking error:", error);
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false, data: null,
-      messages: error.messages || { vi: error.message, zh: error.message },
-    });
-  }
-}
-
-// ─────────────────────────────────────────────
-// POST /api/export-vouchers/:id/complete-export
-// ─────────────────────────────────────────────
-
-export async function completeExportHandler(
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): Promise<void> {
-  try {
-    const userId = (req as any).user?.id || (req as any).user?.uid || "UNKNOWN";
-    await completeExport(req.params.id as string, userId);
-
-    res.status(200).json({
-      success: true,
-      data: { voucher_id: req.params.id, status: "COMPLETED" },
-      messages: { vi: "Phiếu xuất kho đã hoàn tất.", zh: "出库单已完成。" },
-    });
-  } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
-      success: false, data: null,
-      messages: error.messages || { vi: error.message, zh: error.message },
-    });
-  }
-}
+export {
+  completeExportHandler,
+  completePickingHandler,
+  savePickingHandler,
+} from "./exportVoucherOperationController.js";

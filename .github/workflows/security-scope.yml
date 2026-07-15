@@ -1,0 +1,55 @@
+name: Facility scope security
+
+on:
+  pull_request:
+    paths:
+      - "apps/be-wms/**"
+      - "apps/fe-wms/**"
+      - "packages/shared-types/**"
+      - "security/**"
+      - "scripts/audit-facility-access.mjs"
+      - "scripts/validate-facility-access-matrix.mjs"
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/security-scope.yml"
+  push:
+    branches: [main, develop, test]
+    paths:
+      - "apps/be-wms/**"
+      - "apps/fe-wms/**"
+      - "packages/shared-types/**"
+      - "security/**"
+      - "scripts/audit-facility-access.mjs"
+      - "scripts/validate-facility-access-matrix.mjs"
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/security-scope.yml"
+
+jobs:
+  policy-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Validate access policy matrix
+        run: pnpm test:access-matrix
+
+      - name: Report current facility access findings
+        run: pnpm security:audit:summary

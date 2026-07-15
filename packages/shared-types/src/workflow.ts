@@ -252,6 +252,8 @@ export interface WorkflowVersion {
 export interface WorkflowInstance {
     id: string;
     workflow_definition_id: string;
+    /** Denormalized facility scope; null means an explicitly global workflow. */
+    warehouse_id?: string | null;
     /** Immutable reference — safe from admin edits */
     workflow_version_id: string;
     entity_type: ApprovalEntityType;
@@ -288,6 +290,8 @@ export interface WorkflowTask {
     id: string;
     /** Parent instance ID (denormalized) */
     instance_id: string;
+    /** Denormalized facility scope for collection-group queries. */
+    warehouse_id?: string | null;
     /** The node ID from WorkflowVersion.nodes[] */
     node_id: string;
     /** Denormalized node type for query convenience */

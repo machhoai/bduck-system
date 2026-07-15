@@ -1,15 +1,15 @@
-/**
- * Export Voucher Query Service — Read-only queries
- *
- * Separates query logic from state machine logic
- * for cleaner architecture and smaller file sizes.
- */
-
+import {
+  ExportVoucherStatus,
+  type ExportVoucher,
+  type ExportVoucherItem,
+} from "@bduck/shared-types";
 import { db } from "../config/firebase.js";
-import { ExportVoucherStatus } from "@bduck/shared-types";
-import type { ExportVoucher, ExportVoucherItem } from "@bduck/shared-types";
-
-const COLLECTION = "export_vouchers";
+import { executeFacilityScopedQuery } from "../repositories/facilityScopedQuery.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import {
+  assertVoucherAccess,
+  loadExportVoucher,
+} from "./voucherAccessPolicy.js";
 
 const ACTIVE_STATUSES = [
   ExportVoucherStatus.DRAFT,
@@ -25,59 +25,103 @@ const COMPLETED_STATUSES = [
   ExportVoucherStatus.CANCELLED,
 ];
 
-/** Fetch vouchers in active states (for "Đang xử lý" tab) */
-export async function fetchActiveVouchers(): Promise<ExportVoucher[]> {
-  const snap = await db
-    .collection(COLLECTION)
-    .where("is_deleted", "==", false)
-    .where("status", "in", ACTIVE_STATUSES)
-    .orderBy("created_at", "desc")
-    .get();
-  return snap.docs.map((d) => d.data() as ExportVoucher);
-}
+const toMillis = (value: unknown): number => {
+  if (value instanceof Date) return value.getTime();
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  return 0;
+};
 
-/** Fetch completed/cancelled vouchers (for "Lịch sử" tab) */
-export async function fetchCompletedVouchers(): Promise<ExportVoucher[]> {
-  const snap = await db
-    .collection(COLLECTION)
-    .where("is_deleted", "==", false)
-    .where("status", "in", COMPLETED_STATUSES)
-    .orderBy("created_at", "desc")
-    .get();
-  return snap.docs.map((d) => d.data() as ExportVoucher);
-}
+const queryByStatuses = async (
+  statuses: readonly ExportVoucherStatus[],
+  facilityIds?: readonly string[],
+): Promise<ExportVoucher[]> => {
+  let query: FirebaseFirestore.Query = db
+    .collection("export_vouchers")
+    .where("is_deleted", "==", false);
+  if (facilityIds) query = query.where("warehouse_id", "in", facilityIds);
+  else query = query.where("status", "in", statuses);
+  const snapshot = await query.orderBy("created_at", "desc").get();
+  return snapshot.docs
+    .map(
+      (document) => ({ id: document.id, ...document.data() }) as ExportVoucher,
+    )
+    .filter((voucher) => statuses.includes(voucher.status));
+};
 
-/** Fetch single voucher by ID with items */
-export async function fetchVoucherWithItems(
+const fetchByStatuses = async (
+  statuses: readonly ExportVoucherStatus[],
+  authorization: AuthorizationService,
+): Promise<ExportVoucher[]> => {
+  const groups = await executeFacilityScopedQuery({
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("vouchers.read"),
+    queryAll: () => queryByStatuses(statuses),
+    queryChunk: (facilityIds) => queryByStatuses(statuses, facilityIds),
+  });
+  return groups
+    .flat()
+    .filter(
+      (voucher, index, vouchers) =>
+        vouchers.findIndex((candidate) => candidate.id === voucher.id) ===
+        index,
+    )
+    .sort(
+      (left, right) => toMillis(right.created_at) - toMillis(left.created_at),
+    );
+};
+
+export const fetchActiveVouchers = (
+  authorization: AuthorizationService,
+): Promise<ExportVoucher[]> => fetchByStatuses(ACTIVE_STATUSES, authorization);
+
+export const fetchCompletedVouchers = (
+  authorization: AuthorizationService,
+): Promise<ExportVoucher[]> =>
+  fetchByStatuses(COMPLETED_STATUSES, authorization);
+
+export const fetchVoucherWithItems = async (
   voucherId: string,
-): Promise<{ voucher: ExportVoucher; items: ExportVoucherItem[] } | null> {
-  const voucherSnap = await db.collection(COLLECTION).doc(voucherId).get();
-  if (!voucherSnap.exists) return null;
-
-  const voucher = voucherSnap.data() as ExportVoucher;
-  const itemsSnap = await db
-    .collection(COLLECTION)
+  authorization: AuthorizationService,
+): Promise<{ voucher: ExportVoucher; items: ExportVoucherItem[] }> => {
+  const voucher = await loadExportVoucher(voucherId);
+  assertVoucherAccess(authorization, "vouchers.read", voucher.warehouse_id);
+  const itemsSnapshot = await db
+    .collection("export_vouchers")
     .doc(voucherId)
     .collection("items")
     .where("is_deleted", "==", false)
     .get();
+  return {
+    voucher,
+    items: itemsSnapshot.docs.map(
+      (document) => document.data() as ExportVoucherItem,
+    ),
+  };
+};
 
-  const items = itemsSnap.docs.map((d) => d.data() as ExportVoucherItem);
-  return { voucher, items };
-}
-
-/** Fetch all vouchers (admin view) */
-export async function fetchAllVouchers(filters?: {
-  warehouse_id?: string;
-}): Promise<ExportVoucher[]> {
-  let query: FirebaseFirestore.Query = db
-    .collection(COLLECTION)
-    .where("is_deleted", "==", false);
-
+export const fetchAllVouchers = async (
+  authorization: AuthorizationService,
+  filters?: { warehouse_id?: string },
+): Promise<ExportVoucher[]> => {
   if (filters?.warehouse_id) {
-    query = query.where("warehouse_id", "==", filters.warehouse_id);
+    assertVoucherAccess(authorization, "vouchers.read", filters.warehouse_id);
+    const snapshot = await db
+      .collection("export_vouchers")
+      .where("is_deleted", "==", false)
+      .where("warehouse_id", "==", filters.warehouse_id)
+      .orderBy("created_at", "desc")
+      .get();
+    return snapshot.docs.map((document) => document.data() as ExportVoucher);
   }
-
-  const snap = await query.orderBy("created_at", "desc").get();
-  return snap.docs.map((d) => d.data() as ExportVoucher);
-}
+  return fetchByStatuses(
+    [...ACTIVE_STATUSES, ...COMPLETED_STATUSES],
+    authorization,
+  );
+};

@@ -48,7 +48,10 @@ export async function createNonconformity(
     return { skipped: true, reason: "nc_report_already_exists" };
   }
 
-  const voucherSnap = await db.collection("import_vouchers").doc(voucherId).get();
+  const voucherSnap = await db
+    .collection("import_vouchers")
+    .doc(voucherId)
+    .get();
   if (!voucherSnap.exists) {
     return { skipped: true, reason: "voucher_not_found" };
   }
@@ -67,7 +70,9 @@ export async function createNonconformity(
     .where("is_deleted", "==", false)
     .get();
 
-  const exceptions = buildImportExceptions(itemsSnap.docs.map((doc) => doc.data()));
+  const exceptions = buildImportExceptions(
+    itemsSnap.docs.map((doc) => doc.data()),
+  );
   if (exceptions.length === 0) {
     return { skipped: true, reason: "no_exception_found" };
   }
@@ -78,8 +83,7 @@ export async function createNonconformity(
     exception,
     reportId: randomUUID(),
     reportNumber: buildReportNumber(now, index),
-    quarantineId:
-      exception.bucketLock === "QUARANTINE" ? randomUUID() : null,
+    quarantineId: exception.bucketLock === "QUARANTINE" ? randomUUID() : null,
   }));
   const reportIds = reportPlans.map((plan) => plan.reportId);
   const quarantineRecordsCreated = reportPlans.filter(
@@ -123,6 +127,7 @@ export async function createNonconformity(
       txn.set(db.collection("quarantine_records").doc(plan.quarantineId), {
         id: plan.quarantineId,
         nonconformity_report_id: plan.reportId,
+        warehouse_id: warehouseId,
         product_id: exception.productId,
         warehouse_location_id: exception.locationId,
         quantity: exception.quantity,

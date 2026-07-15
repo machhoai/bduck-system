@@ -1,15 +1,15 @@
-import { AuditAction, LocationStatus } from "@bduck/shared-types";
+import {
+  AuditAction,
+  LocationStatus,
+  type WarehouseLocation,
+} from "@bduck/shared-types";
 import { randomUUID } from "crypto";
-import type { WarehouseLocation } from "@bduck/shared-types";
 import type { z } from "zod";
 import { locationRepository } from "../repositories/locationRepository.js";
 import { createLocationSchema } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
-import { fetchWarehouseById } from "./warehouseService.js";
-import {
-  canSetLocationQuarantine,
-  type RequestUserContext,
-} from "./warehouseAccess.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import { loadWarehouseById } from "./warehouseService.js";
 
 type CreateLocationInput = z.infer<typeof createLocationSchema>;
 type UpdateLocationInput = Partial<CreateLocationInput>;
@@ -24,27 +24,59 @@ const notFoundError = {
 
 const assertCanUseStatus = (
   status: LocationStatus | undefined,
-  user: RequestUserContext,
+  warehouseId: string,
+  authorization: AuthorizationService,
 ) => {
-  if (status !== LocationStatus.QUARANTINE) return;
-  if (canSetLocationQuarantine(user)) return;
+  if (status === LocationStatus.QUARANTINE) {
+    authorization.assert("locations.quarantine", warehouseId);
+  }
+};
 
-  throw {
-    statusCode: 403,
-    messages: {
-      vi: "Bạn không có quyền chuyển vị trí sang QUARANTINE.",
-      zh: "您没有权限将库位设置为隔离状态。",
-    },
-  };
+export const loadLocationById = async (
+  id: string,
+): Promise<WarehouseLocation> => {
+  const location = await locationRepository.findById(id);
+  if (!location || location.is_deleted) throw notFoundError;
+  return location;
+};
+
+export const fetchLocations = async (
+  authorization: AuthorizationService,
+  warehouseId?: string,
+): Promise<WarehouseLocation[]> => {
+  if (warehouseId) {
+    authorization.assert("locations.read", warehouseId);
+    await loadWarehouseById(warehouseId);
+    return locationRepository.findByWarehouseId(warehouseId);
+  }
+  return locationRepository.findScoped({
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("locations.read"),
+  });
+};
+
+export const fetchLocationById = async (
+  id: string,
+  authorization: AuthorizationService,
+): Promise<WarehouseLocation> => {
+  const location = await loadLocationById(id);
+  authorization.assert("locations.read", location.warehouse_id);
+  return location;
 };
 
 export const createLocation = async (
   input: CreateLocationInput,
-  user: RequestUserContext,
+  userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<WarehouseLocation> => {
-  await fetchWarehouseById(input.warehouse_id);
-  assertCanUseStatus(input.status as LocationStatus, user);
+  authorization.assert("locations.write", input.warehouse_id);
+  await loadWarehouseById(input.warehouse_id);
+  assertCanUseStatus(
+    input.status as LocationStatus,
+    input.warehouse_id,
+    authorization,
+  );
 
   const existingCode = await locationRepository.findByWarehouseAndCode(
     input.warehouse_id,
@@ -54,8 +86,8 @@ export const createLocation = async (
     throw {
       statusCode: 409,
       messages: {
-        vi: `Mã vị trí "${input.code}" đã tồn tại trong kho này.`,
-        zh: `库位代码 "${input.code}" 已在此仓库中存在。`,
+        vi: `Mã vị trí "${input.code}" đã tồn tại trong cơ sở này.`,
+        zh: `库位代码 "${input.code}" 已存在于该设施。`,
       },
     };
   }
@@ -71,58 +103,41 @@ export const createLocation = async (
     warehouse_location_image_url: input.warehouse_location_image_url || null,
     type: input.type,
     status: input.status,
-  } as any);
+  } as WarehouseLocation);
 
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,
     warehouse_id: input.warehouse_id,
     action: AuditAction.CREATE,
-    user_id: user.id,
+    user_id: userId,
     old_value: null,
     new_value: location as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
-
-  return location;
-};
-
-export const fetchLocations = async (
-  warehouseId?: string,
-): Promise<WarehouseLocation[]> => {
-  if (!warehouseId) {
-    return locationRepository.findAll(false);
-  }
-
-  await fetchWarehouseById(warehouseId);
-  return locationRepository.findByWarehouseId(warehouseId);
-};
-
-export const fetchLocationById = async (
-  id: string,
-): Promise<WarehouseLocation> => {
-  const location = await locationRepository.findById(id);
-  if (!location || location.is_deleted) {
-    throw notFoundError;
-  }
-
   return location;
 };
 
 export const updateLocation = async (
   id: string,
   input: UpdateLocationInput,
-  user: RequestUserContext,
+  userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchLocationById(id);
+  const existing = await loadLocationById(id);
   const nextWarehouseId = input.warehouse_id || existing.warehouse_id;
+  authorization.assert("locations.write", existing.warehouse_id);
+  authorization.assert("locations.write", nextWarehouseId);
 
-  if (input.warehouse_id && input.warehouse_id !== existing.warehouse_id) {
-    await fetchWarehouseById(input.warehouse_id);
+  if (nextWarehouseId !== existing.warehouse_id) {
+    await loadWarehouseById(nextWarehouseId);
   }
-
-  assertCanUseStatus(input.status as LocationStatus | undefined, user);
+  assertCanUseStatus(
+    input.status as LocationStatus | undefined,
+    nextWarehouseId,
+    authorization,
+  );
 
   if (
     input.code &&
@@ -136,15 +151,14 @@ export const updateLocation = async (
       throw {
         statusCode: 409,
         messages: {
-          vi: `Mã vị trí "${input.code}" đã tồn tại trong kho này.`,
-          zh: `库位代码 "${input.code}" 已在此仓库中存在。`,
+          vi: `Mã vị trí "${input.code}" đã tồn tại trong cơ sở này.`,
+          zh: `库位代码 "${input.code}" 已存在于该设施。`,
         },
       };
     }
   }
 
-  await locationRepository.update(id, input as any);
-
+  await locationRepository.update(id, input as Partial<WarehouseLocation>);
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,
@@ -153,7 +167,7 @@ export const updateLocation = async (
       input.status === LocationStatus.QUARANTINE
         ? AuditAction.QUARANTINE
         : AuditAction.UPDATE,
-    user_id: user.id,
+    user_id: userId,
     old_value: existing as unknown as Record<string, unknown>,
     new_value: input as unknown as Record<string, unknown>,
     ...auditMetadata,
@@ -163,23 +177,22 @@ export const updateLocation = async (
 export const deleteLocation = async (
   id: string,
   userId: string,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ): Promise<void> => {
-  const existing = await fetchLocationById(id);
-
-  const hasInventory = await locationRepository.hasPositiveInventory(id);
-  if (hasInventory) {
+  const existing = await loadLocationById(id);
+  authorization.assert("locations.write", existing.warehouse_id);
+  if (await locationRepository.hasPositiveInventory(id)) {
     throw {
       statusCode: 400,
       messages: {
         vi: "Không thể xóa vị trí còn tồn kho dương.",
-        zh: "无法删除仍有库存数量的库位。",
+        zh: "无法删除仍有正库存的库位。",
       },
     };
   }
 
   await locationRepository.softDelete(id);
-
   await logAudit({
     entity_type: "warehouse_locations",
     entity_id: id,

@@ -4,6 +4,7 @@ import type {
   WarehouseLocationSlot,
   WarehouseLocationSlotProduct,
 } from "@bduck/shared-types";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 const SLOT_COLLECTION = "warehouse_location_slots";
 const SLOT_PRODUCT_COLLECTION = "warehouse_location_slot_products";
@@ -11,6 +12,25 @@ const SLOT_PRODUCT_COLLECTION = "warehouse_location_slot_products";
 class LocationSlotRepository extends BaseRepository<WarehouseLocationSlot> {
   constructor() {
     super(SLOT_COLLECTION);
+  }
+
+  async findScoped(scope: {
+    isSystemAdmin: boolean;
+    facilityIds: readonly string[];
+  }): Promise<WarehouseLocationSlot[]> {
+    const groups = await executeFacilityScopedQuery({
+      ...scope,
+      queryAll: () => this.findAll(false),
+      queryChunk: async (facilityIds) => {
+        const snapshot = await db
+          .collection(SLOT_COLLECTION)
+          .where("warehouse_id", "in", facilityIds)
+          .where("is_deleted", "==", false)
+          .get();
+        return snapshot.docs.map((doc) => doc.data() as WarehouseLocationSlot);
+      },
+    });
+    return groups.flat().sort((a, b) => a.sort_order - b.sort_order);
   }
 
   async findByWarehouse(warehouseId: string): Promise<WarehouseLocationSlot[]> {
@@ -57,6 +77,27 @@ class LocationSlotRepository extends BaseRepository<WarehouseLocationSlot> {
 class LocationSlotProductRepository extends BaseRepository<WarehouseLocationSlotProduct> {
   constructor() {
     super(SLOT_PRODUCT_COLLECTION);
+  }
+
+  async findScoped(scope: {
+    isSystemAdmin: boolean;
+    facilityIds: readonly string[];
+  }): Promise<WarehouseLocationSlotProduct[]> {
+    const groups = await executeFacilityScopedQuery({
+      ...scope,
+      queryAll: () => this.findAll(false),
+      queryChunk: async (facilityIds) => {
+        const snapshot = await db
+          .collection(SLOT_PRODUCT_COLLECTION)
+          .where("warehouse_id", "in", facilityIds)
+          .where("is_deleted", "==", false)
+          .get();
+        return snapshot.docs.map(
+          (doc) => doc.data() as WarehouseLocationSlotProduct,
+        );
+      },
+    });
+    return groups.flat();
   }
 
   async findByWarehouse(

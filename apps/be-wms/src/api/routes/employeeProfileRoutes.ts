@@ -8,20 +8,36 @@ import {
   updateEmployeeProfileHandler,
 } from "../controllers/employeeProfileController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
 router.get("/me", getMyEmployeeProfileHandler);
-router.get("/", requirePermission("employees.read"), getEmployeeProfilesHandler);
-router.get("/:id", requirePermission("employees.read"), getEmployeeProfileByIdHandler);
-router.post("/", requirePermission("employees.write"), createEmployeeProfileHandler);
-router.put("/:id", requirePermission("employees.write"), updateEmployeeProfileHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission("employees.read"),
+  getEmployeeProfilesHandler,
+);
+router.get(
+  "/:id",
+  requireAnyScopedPermission("employees.read"),
+  getEmployeeProfileByIdHandler,
+);
+router.post(
+  "/",
+  requireAnyScopedPermission("employees.write"),
+  createEmployeeProfileHandler,
+);
+router.put(
+  "/:id",
+  requireAnyScopedPermission("employees.write"),
+  updateEmployeeProfileHandler,
+);
 router.delete(
   "/:id",
-  requirePermission("employees.write"),
+  requireAnyScopedPermission("employees.write"),
   deleteEmployeeProfileHandler,
 );
 

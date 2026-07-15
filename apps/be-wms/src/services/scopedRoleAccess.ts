@@ -2,13 +2,16 @@ import type {
   ApprovalRecord,
   ApprovalScopeMode,
   StepOption,
-  UserWarehouseRole,
 } from "@bduck/shared-types";
+import {
+  isRoleAssignmentActive,
+  type RoleAssignmentValidityInput,
+} from "./roleAssignmentValidity.js";
 
 export interface ScopedUser {
   id: string;
   roleIds?: string[];
-  roleAssignments?: UserWarehouseRole[];
+  roleAssignments?: RoleAssignmentValidityInput[];
 }
 
 interface RoleScopeOptions {
@@ -17,31 +20,23 @@ interface RoleScopeOptions {
   now?: Date;
 }
 
-export function activeRoleAssignments(
-  assignments: UserWarehouseRole[] | undefined,
+export function activeRoleAssignments<T extends RoleAssignmentValidityInput>(
+  assignments: T[] | undefined,
   now = new Date(),
-): UserWarehouseRole[] {
-  return (assignments || []).filter((assignment) => {
-    if (!assignment.is_active) return false;
-
-    const from = assignment.valid_from ? new Date(assignment.valid_from) : null;
-    if (from && from.getTime() > now.getTime()) return false;
-
-    const until = assignment.valid_until
-      ? new Date(assignment.valid_until)
-      : null;
-    if (until && until.getTime() < now.getTime()) return false;
-
-    return true;
-  });
+): T[] {
+  return (assignments || []).filter((assignment) =>
+    isRoleAssignmentActive(assignment, now),
+  );
 }
 
-export function uniqueRoleIds(assignments: UserWarehouseRole[]): string[] {
+export function uniqueRoleIds(
+  assignments: RoleAssignmentValidityInput[],
+): string[] {
   return Array.from(new Set(assignments.map((item) => item.role_id)));
 }
 
 export function hasRoleInScope(
-  assignments: UserWarehouseRole[] | undefined,
+  assignments: RoleAssignmentValidityInput[] | undefined,
   roleId: string | null | undefined,
   warehouseId: string | null | undefined,
   options: RoleScopeOptions = {},
@@ -52,7 +47,7 @@ export function hasRoleInScope(
   return activeAssignments.some((assignment) => {
     if (assignment.role_id !== roleId) return false;
 
-    const isAssignmentGlobal = assignment.warehouse_id == null || assignment.warehouse_id === "";
+    const isAssignmentGlobal = assignment.warehouse_id === null;
 
     if (options.requireGlobal) {
       return isAssignmentGlobal;
@@ -83,10 +78,15 @@ export function canActOnApprovalRecord(
   const approvalWarehouseId = getApprovalWarehouseId(record);
   const requireGlobal = record.approval_scope === "GLOBAL";
 
-  return hasRoleInScope(user.roleAssignments, record.role_id, approvalWarehouseId, {
-    allowGlobalFallback: record.allow_global_fallback === true,
-    requireGlobal,
-  });
+  return hasRoleInScope(
+    user.roleAssignments,
+    record.role_id,
+    approvalWarehouseId,
+    {
+      allowGlobalFallback: record.allow_global_fallback === true,
+      requireGlobal,
+    },
+  );
 }
 
 export function resolveStepWarehouseId(
@@ -123,8 +123,13 @@ export function canPerformRoleStep(
     destinationWarehouseId,
   );
 
-  return hasRoleInScope(user.roleAssignments, stepOption.assigned_role_id, stepWarehouseId, {
-    allowGlobalFallback: stepOption.allow_global_fallback === true,
-    requireGlobal: scope === "GLOBAL",
-  });
+  return hasRoleInScope(
+    user.roleAssignments,
+    stepOption.assigned_role_id,
+    stepWarehouseId,
+    {
+      allowGlobalFallback: stepOption.allow_global_fallback === true,
+      requireGlobal: scope === "GLOBAL",
+    },
+  );
 }

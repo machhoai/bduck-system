@@ -1,121 +1,89 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { auth } from "../../config/firebase.js";
+import { loadAuthorizationRequestSource } from "../../repositories/authorizationSourceRepository.js";
 import {
-  getUserById,
-  getUserWarehouseRoles,
-  getRoleById,
-} from "../../repositories/userRepository.js";
+  AuthorizationError,
+  buildAccessContext,
+} from "../../services/authorization/index.js";
 import {
-  activeRoleAssignments,
-  uniqueRoleIds,
-} from "../../services/scopedRoleAccess.js";
-import { getEffectiveRolePermissions } from "../../services/rolePermissionUtils.js";
+  attachRequestAccess,
+  createAuthenticatedRequestUser,
+} from "./requestAccessContext.js";
+
+const verifyRequestClaims = async (
+  req: Request,
+): Promise<DecodedIdToken | null> => {
+  const authHeader = req.headers.authorization;
+  const bearerToken =
+    authHeader?.startsWith("Bearer ") === true
+      ? authHeader.slice("Bearer ".length)
+      : "";
+  const sessionCookie = req.cookies?.__session || "";
+
+  if (bearerToken) {
+    try {
+      return await auth.verifyIdToken(bearerToken, true);
+    } catch {
+      // A valid session cookie may still authenticate this request.
+    }
+  }
+  if (sessionCookie) {
+    try {
+      return await auth.verifySessionCookie(sessionCookie, true);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const sendUnauthenticated = (res: Response) =>
+  res.status(401).json({
+    success: false,
+    data: null,
+    messages: {
+      vi: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
+      zh: "登录会话无效或已过期。",
+    },
+  });
 
 export const requireAuth = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
+  const decodedClaims = await verifyRequestClaims(req);
+  if (!decodedClaims) return sendUnauthenticated(res);
+
   try {
-    let decodedClaims: DecodedIdToken | null = null;
-    let lastVerificationError: unknown = null;
-
-    const authHeader = req.headers.authorization;
-    const bearerToken =
-      authHeader && authHeader.startsWith("Bearer ")
-        ? authHeader.slice("Bearer ".length)
-        : "";
-    const sessionCookie = req.cookies?.__session || "";
-
-    if (!bearerToken && !sessionCookie) {
-      return res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Bạn chưa đăng nhập.",
-          zh: "您尚未登录。",
-        },
-      });
-    }
-
-    if (bearerToken) {
-      try {
-        decodedClaims = await auth.verifyIdToken(bearerToken, true);
-      } catch (error) {
-        lastVerificationError = error;
-      }
-    }
-
-    if (!decodedClaims && sessionCookie) {
-      try {
-        decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-      } catch (error) {
-        lastVerificationError = error;
-      }
-    }
-
-    if (!decodedClaims) {
-      throw lastVerificationError ?? new Error("Missing valid auth token");
-    }
-
-    // We could re-fetch the user and permissions here to ensure they are fully up-to-date
-    // Or we could attach just the UID and rely on the database for permissions.
-    // For maximum security (and since this is a local-first system that requires high consistency on the backend),
-    // let's fetch the permissions.
-    const user = await getUserById(decodedClaims.uid);
-
-    if (!user || user.is_deleted) {
-      return res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Tài khoản không tồn tại hoặc đã bị xóa.",
-          zh: "账户不存在或已被删除。",
-        },
-      });
-    }
-
-    const userRoles = await getUserWarehouseRoles(user.id);
-    const mergedPermissions: Record<string, unknown> = {};
-    const roleNames: string[] = [];
-
-    const activeRoles = activeRoleAssignments(userRoles);
-
-    for (const userRole of activeRoles) {
-      const roleDef = await getRoleById(userRole.role_id);
-      if (!roleDef) continue;
-      roleNames.push(roleDef.name);
-
-      const scope = userRole.warehouse_id || "global";
-      if (!mergedPermissions[scope]) {
-        mergedPermissions[scope] = {};
-      }
-
-      mergedPermissions[scope] = {
-        ...(mergedPermissions[scope] as Record<string, unknown>),
-        ...getEffectiveRolePermissions(roleDef),
-      };
-    }
-
-    // Inject into request
-    (req as any).user = {
-      ...user,
-      permissions: mergedPermissions,
-      roleAssignments: activeRoles,
-      roleIds: uniqueRoleIds(activeRoles),
-      roleNames,
-    };
-
+    const { snapshot, requestUser } = await loadAuthorizationRequestSource(
+      decodedClaims.uid,
+    );
+    const accessContext = buildAccessContext(snapshot);
+    const authenticatedUser = createAuthenticatedRequestUser(
+      snapshot,
+      accessContext,
+      requestUser,
+    );
+    attachRequestAccess(req, accessContext, authenticatedUser);
     return next();
   } catch (error) {
-    console.error("[authMiddleware] error:", error);
-    return res.status(401).json({
+    if (error instanceof AuthorizationError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        messages: error.messages,
+      });
+    }
+
+    console.error("[authMiddleware] authorization context error:", error);
+    return res.status(500).json({
       success: false,
       data: null,
       messages: {
-        vi: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
-        zh: "登录会话无效或已过期。",
+        vi: "Không thể tải thông tin phân quyền. Vui lòng thử lại sau.",
+        zh: "无法加载授权信息，请稍后重试。",
       },
     });
   }

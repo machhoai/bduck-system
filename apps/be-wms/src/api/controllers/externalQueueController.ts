@@ -15,6 +15,10 @@ import { locationRepository } from "../../repositories/locationRepository.js";
 import { productRepository } from "../../repositories/productRepository.js";
 import { getUsersByIds } from "../../repositories/userRepository.js";
 import { warehouseRepository } from "../../repositories/warehouseRepository.js";
+import {
+  hasNonEmptySecret,
+  securelyMatchesSecret,
+} from "../../utils/secureSecret.js";
 import { z } from "zod";
 
 const EXTERNAL_QUEUE_CONFIG_ENTITY = "EXTERNAL_QUEUE_EXPORT" as const;
@@ -1025,7 +1029,7 @@ export const runScheduledAutoSubmit = async (req: Request, res: Response) => {
     const cronSecret = process.env.EXTERNAL_QUEUE_AUTO_SUBMIT_CRON_SECRET;
     const requestSecret = req.header("x-cron-secret");
 
-    if (!cronSecret) {
+    if (!hasNonEmptySecret(cronSecret)) {
       return res.status(503).json({
         success: false,
         data: null,
@@ -1036,7 +1040,7 @@ export const runScheduledAutoSubmit = async (req: Request, res: Response) => {
       });
     }
 
-    if (requestSecret !== cronSecret) {
+    if (!securelyMatchesSecret(requestSecret, cronSecret)) {
       return res.status(401).json({
         success: false,
         data: null,

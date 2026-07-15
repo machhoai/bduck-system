@@ -2,6 +2,7 @@ import { StockPolicyScope } from "@bduck/shared-types";
 import type { InventoryStockPolicy } from "@bduck/shared-types";
 import { db } from "../config/firebase.js";
 import { BaseRepository } from "./baseRepository.js";
+import { executeFacilityScopedQuery } from "./facilityScopedQuery.js";
 
 const COLLECTION = "inventory_stock_policies";
 
@@ -47,6 +48,49 @@ class StockPolicyRepository extends BaseRepository<InventoryStockPolicy> {
 
     const snapshot = await query.get();
     return snapshot.docs.map((doc) => doc.data() as InventoryStockPolicy);
+  }
+
+  async findByFiltersScoped(
+    filters: {
+      warehouse_location_id?: string;
+      warehouse_location_slot_id?: string;
+      product_id?: string;
+      scope?: StockPolicyScope;
+    },
+    access: { isSystemAdmin: boolean; facilityIds: readonly string[] },
+  ): Promise<InventoryStockPolicy[]> {
+    const queryFacilities = async (facilityIds?: readonly string[]) => {
+      let query: FirebaseFirestore.Query = db
+        .collection(COLLECTION)
+        .where("is_deleted", "==", false);
+      if (facilityIds) query = query.where("warehouse_id", "in", facilityIds);
+      if (filters.warehouse_location_id) {
+        query = query.where(
+          "warehouse_location_id",
+          "==",
+          filters.warehouse_location_id,
+        );
+      }
+      if (filters.warehouse_location_slot_id) {
+        query = query.where(
+          "warehouse_location_slot_id",
+          "==",
+          filters.warehouse_location_slot_id,
+        );
+      }
+      if (filters.product_id) {
+        query = query.where("product_id", "==", filters.product_id);
+      }
+      if (filters.scope) query = query.where("scope", "==", filters.scope);
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data() as InventoryStockPolicy);
+    };
+    const groups = await executeFacilityScopedQuery({
+      ...access,
+      queryAll: () => queryFacilities(),
+      queryChunk: queryFacilities,
+    });
+    return groups.flat();
   }
 
   async findExisting(filters: {

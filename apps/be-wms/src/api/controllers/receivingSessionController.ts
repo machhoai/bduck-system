@@ -20,6 +20,11 @@ import {
   completeReceiving,
 } from "../../services/importVoucherService.js";
 import { sendSuccess, sendError } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
+import { assertVoucherAccess } from "../../services/voucherAccessPolicy.js";
 
 /**
  * PUT /api/import-vouchers/:id/actuals
@@ -32,10 +37,11 @@ export async function saveActuals(
 ): Promise<void> {
   try {
     const voucherId = req.params.id as string;
+    const authenticatedUser = requireAuthenticatedRequestUser(req);
     const user = {
-      id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
-      roleIds: (req as any).user?.roleIds || [],
-      roleAssignments: (req as any).user?.roleAssignments || [],
+      id: authenticatedUser.id,
+      roleIds: authenticatedUser.roleIds,
+      roleAssignments: authenticatedUser.roleAssignments,
     };
 
     // Validate input (Zod — LUẬT THÉP)
@@ -45,8 +51,16 @@ export async function saveActuals(
         success: false,
         data: null,
         messages: {
-          vi: "Dữ liệu không hợp lệ: " + parseResult.error.issues.map((i: { message: string }) => i.message).join(", "),
-          zh: "数据无效: " + parseResult.error.issues.map((i: { message: string }) => i.message).join(", "),
+          vi:
+            "Dữ liệu không hợp lệ: " +
+            parseResult.error.issues
+              .map((i: { message: string }) => i.message)
+              .join(", "),
+          zh:
+            "数据无效: " +
+            parseResult.error.issues
+              .map((i: { message: string }) => i.message)
+              .join(", "),
         },
         errors: parseResult.error.issues,
       });
@@ -54,7 +68,12 @@ export async function saveActuals(
     }
 
     // Service handles assignment validation + data persistence
-    const result = await saveReceivingActuals(voucherId, parseResult.data, user);
+    const result = await saveReceivingActuals(
+      voucherId,
+      parseResult.data,
+      user,
+      requireRequestAuthorization(req),
+    );
 
     res.status(200).json({
       success: true,
@@ -92,37 +111,58 @@ export async function completeReceivingHandler(
 ): Promise<void> {
   try {
     const voucherId = req.params.id as string;
+    const authenticatedUser = requireAuthenticatedRequestUser(req);
     const user = {
-      id: (req as any).user?.id || (req as any).user?.uid || "UNKNOWN",
-      roleIds: (req as any).user?.roleIds || [],
-      roleAssignments: (req as any).user?.roleAssignments || [],
+      id: authenticatedUser.id,
+      roleIds: authenticatedUser.roleIds,
+      roleAssignments: authenticatedUser.roleAssignments,
     };
 
     // Validate step assignment in service layer
     // (reads voucher to get creator_id + warehouse_id, then checks config)
     const { db } = await import("../../config/firebase.js");
-    const voucherSnap = await db.collection("import_vouchers").doc(voucherId).get();
+    const voucherSnap = await db
+      .collection("import_vouchers")
+      .doc(voucherId)
+      .get();
     const voucherData = voucherSnap.data() || {};
+    const authorization = requireRequestAuthorization(req);
+    assertVoucherAccess(
+      authorization,
+      "vouchers.write",
+      typeof voucherData.warehouse_id === "string"
+        ? voucherData.warehouse_id
+        : "",
+    );
     await validateStepAssignment(
       "IMPORT_VOUCHER",
-      typeof voucherData.warehouse_id === "string" ? voucherData.warehouse_id : null,
+      typeof voucherData.warehouse_id === "string"
+        ? voucherData.warehouse_id
+        : null,
       "receiving",
       user,
       typeof voucherData.creator_id === "string" ? voucherData.creator_id : "",
     );
 
     // 1. Advance to RECEIVING
-    await startReceiving(voucherId);
+    await startReceiving(voucherId, authorization);
 
     // 2. Update ATP inventory and advance to COMPLETED
-    await completeReceiving(voucherId, user.id);
+    await completeReceiving(voucherId, user.id, authorization);
 
-    sendSuccess(res, { voucher_id: voucherId, status: "COMPLETED" }, {
-      vi: "Phiên kiểm đếm đã hoàn tất. Tồn kho đã được cập nhật.",
-      zh: "盘点会话已完成。库存已更新。",
-    });
+    sendSuccess(
+      res,
+      { voucher_id: voucherId, status: "COMPLETED" },
+      {
+        vi: "Phiên kiểm đếm đã hoàn tất. Tồn kho đã được cập nhật.",
+        zh: "盘点会话已完成。库存已更新。",
+      },
+    );
   } catch (error: any) {
-    console.error("[receivingSessionController] Complete receiving error:", error);
+    console.error(
+      "[receivingSessionController] Complete receiving error:",
+      error,
+    );
     if (error.statusCode) {
       sendError(
         res,

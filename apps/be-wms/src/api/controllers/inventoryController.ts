@@ -15,6 +15,10 @@ import {
 } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 // ---------------------------------------------------------------------------
 // Error handler
@@ -58,10 +62,6 @@ const handleInventoryError = (res: Response, error: unknown) => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getRequestUserId = (req: Request): string => {
-  return (req as any).user?.id || "unknown";
-};
-
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -69,7 +69,10 @@ const getRequestUserId = (req: Request): string => {
 export const getInventoryHandler = async (req: Request, res: Response) => {
   try {
     const filters = inventoryQuerySchema.parse(req.query);
-    const records = await fetchInventory(filters);
+    const records = await fetchInventory(
+      filters,
+      requireRequestAuthorization(req),
+    );
 
     return sendSuccess(res, records, {
       vi: "Lấy danh sách tồn kho thành công.",
@@ -83,7 +86,10 @@ export const getInventoryHandler = async (req: Request, res: Response) => {
 export const getInventoryByIdHandler = async (req: Request, res: Response) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const record = await fetchInventoryById(id);
+    const record = await fetchInventoryById(
+      id,
+      requireRequestAuthorization(req),
+    );
 
     return sendSuccess(res, record, {
       vi: "Lấy thông tin tồn kho thành công.",
@@ -99,7 +105,8 @@ export const createInventoryHandler = async (req: Request, res: Response) => {
     const data = createInventorySchema.parse(req.body);
     const record = await createInventory(
       data,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 
@@ -124,7 +131,8 @@ export const updateInventoryHandler = async (req: Request, res: Response) => {
     await updateInventory(
       id,
       data,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 
@@ -142,7 +150,8 @@ export const deleteInventoryHandler = async (req: Request, res: Response) => {
     const { id } = idParamSchema.parse(req.params);
     await deleteInventory(
       id,
-      getRequestUserId(req),
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
 

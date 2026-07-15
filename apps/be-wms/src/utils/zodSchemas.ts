@@ -222,6 +222,7 @@ export const createUserSchema = z.object({
   password: z.string().min(8).max(128).optional(),
   full_name: z.string().trim().min(1).max(160),
   employee_id: z.string().trim().min(1).max(80),
+  workplace_facility_id: z.string().uuid().nullable(),
   status: z.nativeEnum(UserStatus).default(UserStatus.ACTIVE),
   assignments: z.array(userRoleAssignmentSchema).default([]),
 });

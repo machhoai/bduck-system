@@ -8,21 +8,33 @@ import {
   updateUserHandler,
 } from "../controllers/userController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requirePermission("users.read"), getUsersHandler);
-router.get("/:id", requirePermission("users.read"), getUserByIdHandler);
-router.post("/", requirePermission("users.write"), createUserHandler);
+router.get("/", requireAnyScopedPermission("users.read"), getUsersHandler);
+router.get(
+  "/:id",
+  requireAnyScopedPermission("users.read"),
+  getUserByIdHandler,
+);
+router.post("/", requireAnyScopedPermission("users.write"), createUserHandler);
 router.post(
   "/:id/invitation",
-  requirePermission("users.write"),
+  requireAnyScopedPermission("users.write"),
   resendUserInvitationHandler,
 );
-router.put("/:id", requirePermission("users.write"), updateUserHandler);
-router.delete("/:id", requirePermission("users.write"), deleteUserHandler);
+router.put(
+  "/:id",
+  requireAnyScopedPermission("users.write"),
+  updateUserHandler,
+);
+router.delete(
+  "/:id",
+  requireAnyScopedPermission("users.write"),
+  deleteUserHandler,
+);
 
 export default router;

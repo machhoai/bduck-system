@@ -7,19 +7,35 @@ import {
   updateInventoryHandler,
 } from "../controllers/inventoryController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requirePermission("inventory.read"), getInventoryHandler);
-router.get("/:id", requirePermission("inventory.read"), getInventoryByIdHandler);
-router.post("/", requirePermission("inventory.write"), createInventoryHandler);
-router.put("/:id", requirePermission("inventory.write"), updateInventoryHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission("inventory.read"),
+  getInventoryHandler,
+);
+router.get(
+  "/:id",
+  requireAnyScopedPermission("inventory.read"),
+  getInventoryByIdHandler,
+);
+router.post(
+  "/",
+  requireAnyScopedPermission("inventory.write"),
+  createInventoryHandler,
+);
+router.put(
+  "/:id",
+  requireAnyScopedPermission("inventory.write"),
+  updateInventoryHandler,
+);
 router.delete(
   "/:id",
-  requirePermission("inventory.write"),
+  requireAnyScopedPermission("inventory.write"),
   deleteInventoryHandler,
 );
 

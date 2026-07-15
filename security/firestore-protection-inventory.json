@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "classes": {
+    "global_authenticated_master_data": {
+      "description": "Shared reference data readable by active authenticated users; writes remain backend-only.",
+      "collections": [
+        "organizations",
+        "product_bom",
+        "product_categories",
+        "products"
+      ]
+    },
+    "global_admin_configuration": {
+      "description": "System-wide configuration readable or mutable only with an explicit global capability.",
+      "collections": [
+        "file_templates",
+        "openapi_warehouse_configs",
+        "process_configs",
+        "report_template_versions",
+        "report_templates",
+        "roles",
+        "system_configs",
+        "workflow_definitions",
+        "workflow_definition_versions"
+      ]
+    },
+    "facility_scoped": {
+      "description": "Business data that must be queried and authorized through an effective facility grant.",
+      "collections": [
+        "adjustment_vouchers",
+        "attendance_late_reports",
+        "attendance_logs",
+        "audit_logs",
+        "employee_profiles",
+        "expenses",
+        "export_voucher_items",
+        "export_vouchers",
+        "external_queue_scannable_products",
+        "external_scan_queue",
+        "gift_export_queue_items",
+        "gift_export_sessions",
+        "import_voucher_items",
+        "import_vouchers",
+        "inventory",
+        "inventory_stock_policies",
+        "nonconformity_reports",
+        "office_scope_configs",
+        "office_scope_edges",
+        "pending_approvals",
+        "pos_transaction_items",
+        "pos_transactions",
+        "purchase_order_items",
+        "purchase_orders",
+        "quarantine_records",
+        "report_exports",
+        "revenue_dashboard_orders",
+        "revenue_dashboard_sold_items",
+        "revenue_dashboards",
+        "revenue_sync",
+        "stock_count_items",
+        "stock_count_sessions",
+        "transfer_order_items",
+        "transfer_orders",
+        "user_warehouse_roles",
+        "users",
+        "vouchers",
+        "warehouse_attendance_exemptions",
+        "warehouse_attendance_policies",
+        "warehouse_location_slot_products",
+        "warehouse_location_slots",
+        "warehouse_locations",
+        "warehouses",
+        "workflow_instances",
+        "workflow_tasks"
+      ]
+    },
+    "user_private_or_participant": {
+      "description": "Documents visible only to their owner, target user, or explicit participants.",
+      "collections": [
+        "in_app_notifications",
+        "lan_transfer_presence",
+        "lan_transfer_requests",
+        "lan_transfer_signals",
+        "notification_dispatches",
+        "notification_push_tokens",
+        "user_access"
+      ]
+    },
+    "backend_only_internal": {
+      "description": "Operational metadata never read directly by the browser.",
+      "collections": [
+        "account_invitations",
+        "counters",
+        "integration_clients",
+        "facility_access_migrations"
+      ]
+    }
+  },
+  "denormalizationBlockers": [
+    {
+      "collection": "users",
+      "issue": "The workplace exists only in employee_profiles, which Firestore Rules cannot reverse-query safely.",
+      "required": "Denormalize workplace_facility_id onto each user document."
+    },
+    {
+      "collection": "stock_count_items",
+      "issue": "Top-level items contain session_id but no facility field.",
+      "required": "Denormalize warehouse_id from the parent session."
+    },
+    {
+      "collection": "quarantine_records",
+      "issue": "Top-level records contain a report reference but no facility field.",
+      "required": "Denormalize warehouse_id from the nonconformity report."
+    },
+    {
+      "collection": "audit_logs",
+      "issue": "warehouse_id is optional, so facility events can become unscopable.",
+      "required": "Require facility_id for facility events and reserve null for global-admin events."
+    },
+    {
+      "collection": "attachments",
+      "issue": "Polymorphic entity_type/entity_id cannot be joined dynamically in Rules.",
+      "required": "Add access_class and facility_id, or serve attachments through the backend."
+    },
+    {
+      "collection": "workflow_instances",
+      "issue": "Legacy polymorphic workflow instances and tasks have no facility field.",
+      "required": "Denormalize facility_id or make the legacy workflow backend/admin-only."
+    },
+    {
+      "collection": "revenue_dashboards",
+      "issue": "The parent stores the facility only inside a nested dashboard object and children have no facility field.",
+      "required": "Add top-level warehouse_id to the parent and children."
+    },
+    {
+      "collection": "revenue_sync",
+      "issue": "Backend writes warehouse_id with a warehouse-period key while the frontend listens to a period-only key.",
+      "required": "Align document identity and schema before scoped Rules are enabled."
+    }
+  ]
+}
