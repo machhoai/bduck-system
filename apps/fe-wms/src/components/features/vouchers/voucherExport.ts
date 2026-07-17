@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import type { User } from "@bduck/shared-types";
 import type { ExportConfig } from "@/utils/exportExcel";
 import { formatExportDate } from "@/utils/exportExcel";
@@ -34,6 +34,8 @@ interface ExportBuildContext {
 }
 
 type RawRecord = Record<string, any>;
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 const TYPE_LABELS: Record<string, string> = {
   IMPORT: "Nhập kho",
@@ -279,19 +281,20 @@ async function fetchVoucherItems(voucher: UnifiedVoucher) {
     : [];
 }
 
-async function fetchVoucherApprovals(voucherId: string) {
-  const snap = await getDocs(
-    query(
-      collection(db, "pending_approvals"),
-      where("entity_id", "==", voucherId),
-    ),
+async function fetchVoucherApprovals(voucher: UnifiedVoucher) {
+  const entityType =
+    voucher.type === "TRANSFER" ? "TRANSFER_ORDER" : `${voucher.type}_VOUCHER`;
+  const response = await fetch(
+    `${API_BASE_URL}/api/approvals/${entityType}/${voucher.id}`,
+    { credentials: "include" },
   );
-  return snap.docs
-    .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-    .sort(
-      (a: RawRecord, b: RawRecord) =>
-        Number(a.level || 0) - Number(b.level || 0),
-    );
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.messages?.vi || "Khong the tai lich su phe duyet.");
+  }
+  return (body.data as RawRecord[]).sort(
+    (a: RawRecord, b: RawRecord) => Number(a.level || 0) - Number(b.level || 0),
+  );
 }
 
 function getApprovalSummary(
@@ -368,7 +371,7 @@ async function buildVoucherExportRows(context: ExportBuildContext) {
       const raw = voucher.raw as RawRecord;
       const [items, approvals] = await Promise.all([
         fetchVoucherItems(voucher),
-        fetchVoucherApprovals(voucher.id),
+        fetchVoucherApprovals(voucher),
       ]);
       const rowItems = items.length > 0 ? items : [null];
       const sourceWarehouseId = raw.source_warehouse_id || voucher.warehouse_id;

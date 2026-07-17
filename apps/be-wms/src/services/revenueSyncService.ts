@@ -37,6 +37,7 @@
 
 import { db } from "../config/firebase.js";
 import { FieldValue } from "firebase-admin/firestore";
+import { AuditAction } from "@bduck/shared-types";
 import {
   getJoyworldToken,
   getRevenueData,
@@ -48,6 +49,7 @@ import {
   getOpenApiShopSummary,
 } from "./openApiRevenueService.js";
 import { LANDMARK_81_WAREHOUSE_ID } from "./revenueDashboardService.js";
+import { logAudit } from "./auditService.js";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -140,7 +142,9 @@ function parseRevenueResponse(
 
   // ── Parse shop summary ──
   const sd = summaryRes?.data;
-  const shopRealMoney = sd ? parseFloat(sd.totalMoney) || parseFloat(sd.shopRealMoney) || 0 : 0;
+  const shopRealMoney = sd
+    ? parseFloat(sd.totalMoney) || parseFloat(sd.shopRealMoney) || 0
+    : 0;
   const refundMoney = sd ? parseFloat(sd.refundMoney) || 0 : 0;
 
   // Use totalRevenue from daily sum; fallback to shopRealMoney for single-day
@@ -172,6 +176,9 @@ export async function syncRevenueForPeriod(
 ): Promise<SyncResult> {
   const docRef = db.collection(COLLECTION).doc(`${warehouseId}_${period}`);
   const existingSnap = await docRef.get();
+  const oldValue = existingSnap.exists
+    ? (existingSnap.data() as RevenueSyncDoc)
+    : null;
 
   // Check staleness
   if (existingSnap.exists) {
@@ -186,8 +193,6 @@ export async function syncRevenueForPeriod(
   const token = useOpenApi ? null : await getJoyworldToken();
   const { startDate, endDate } = getMonthDateRange(period);
 
-  console.log(`[revenueSync] Fetching JoyWorld revenue for ${startDate} → ${endDate}`);
-
   // Call both APIs in parallel:
   // - getRevenueData: daily breakdown for the entire month (realMoney per day)
   // - getShopSummary: summary for last day (totalMoney = thực thu)
@@ -200,20 +205,7 @@ export async function syncRevenueForPeriod(
       : getShopSummary(token as string, endDate),
   ]);
 
-  // Debug: log raw responses
-  console.log("[revenueSync] revenueRes keys:", Object.keys(revenueRes || {}));
-  console.log("[revenueSync] revenueRes.data keys:", Object.keys((revenueRes as any)?.data || {}));
-  const dataXs = (revenueRes as any)?.data?.dataXs;
-  console.log("[revenueSync] dataXs count:", Array.isArray(dataXs) ? dataXs.length : "not array");
-  if (Array.isArray(dataXs) && dataXs.length > 0) {
-    console.log("[revenueSync] dataXs[0] sample:", JSON.stringify(dataXs[0]).slice(0, 200));
-  }
-  console.log("[revenueSync] summaryRes.data:", JSON.stringify((summaryRes as any)?.data || {}).slice(0, 300));
-
   const parsed = parseRevenueResponse(revenueRes, summaryRes, period);
-
-  console.log("[revenueSync] parsed total_revenue:", parsed.total_revenue);
-  console.log("[revenueSync] parsed daily_breakdown entries:", Object.keys(parsed.daily_breakdown).length);
 
   // Upsert to Firestore
   const docData: Record<string, unknown> = {
@@ -228,6 +220,16 @@ export async function syncRevenueForPeriod(
   // Re-read to get server timestamp
   const refreshed = await docRef.get();
   const finalData = refreshed.data() as RevenueSyncDoc;
+  await logAudit({
+    entity_type: "revenue_sync",
+    entity_id: docRef.id,
+    warehouse_id: warehouseId,
+    action: oldValue ? AuditAction.UPDATE : AuditAction.CREATE,
+    user_id: userId,
+    old_value: oldValue ? { ...oldValue } : null,
+    new_value: { ...finalData },
+    notes: "Synchronize store revenue from JoyWorld",
+  });
 
   return { synced: true, data: finalData };
 }

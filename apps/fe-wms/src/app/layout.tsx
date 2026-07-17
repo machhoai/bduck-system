@@ -1,6 +1,7 @@
 import "./globals.css";
 import "quill/dist/quill.snow.css";
 import AuthSessionProvider from "../components/providers/AuthSessionProvider";
+import AccessVersionProvider from "../components/providers/AccessVersionProvider";
 import ToastProvider from "../components/providers/ToastProvider";
 import VersionLogger from "../components/ui/VersionLogger";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
             <body>
                 {children}
                 <AuthSessionProvider />
+                <AccessVersionProvider />
                 <ToastProvider />
                 <VersionLogger />
             </body>

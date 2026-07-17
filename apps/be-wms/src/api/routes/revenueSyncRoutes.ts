@@ -15,15 +15,36 @@ import {
 import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
 import { getOnlineSalesReportHandler } from "../controllers/onlineSalesReportController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/dashboard", getRevenueDashboardHandler);
-router.get("/online-sales", getOnlineSalesReportHandler);
-router.get("/sync/:period", syncRevenueHandler);
-router.get("/cached/:period", getCachedRevenueHandler);
-router.get("/order-details/:orderId", getOrderDetailsHandler);
+router.get(
+  "/dashboard",
+  requireAnyScopedPermission("revenue.read"),
+  getRevenueDashboardHandler,
+);
+router.get(
+  "/online-sales",
+  requireAnyScopedPermission("revenue.read"),
+  getOnlineSalesReportHandler,
+);
+router.get(
+  "/sync/:period",
+  requireAnyScopedPermission("revenue.sync"),
+  syncRevenueHandler,
+);
+router.get(
+  "/cached/:period",
+  requireAnyScopedPermission("revenue.read"),
+  getCachedRevenueHandler,
+);
+router.get(
+  "/order-details/:orderId",
+  requireAnyScopedPermission("revenue.read"),
+  getOrderDetailsHandler,
+);
 
 export default router;

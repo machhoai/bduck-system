@@ -1,360 +1,55 @@
 "use client";
 
-/**
- * useMenuBadges — Realtime badge counts for menu items
- *
- * LUẬT THÉP: Realtime via onSnapshot, no reload buttons.
- * Badge counts:
- * - tasks: approvals + warehouse sessions + voucher completions + nonconformities
- * - vouchers: import/export/transfer vouchers in processing status
- */
+import { useMemo } from "react";
+import { useApprovalTasks } from "./useApprovalTasks";
+import { useExportVouchers } from "./useExportVouchers";
+import { useImportVouchers } from "./useImportVouchers";
+import {
+  countActionableNonconformities,
+  useNonconformities,
+} from "./useNonconformities";
+import { useTransferOrders } from "./useTransferOrders";
 
-import { useEffect, useState, useMemo } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useUserStore } from "@/stores/useUserStore";
+const includesStatus = (
+  value: string,
+  statuses: readonly string[],
+) => statuses.includes(value);
 
-type PermissionScope = { isGlobal: boolean; ids: string[] };
-type PermissionMap = Record<string, Record<string, unknown>>;
+export function useMenuBadges() {
+  const approvals = useApprovalTasks();
+  const imports = useImportVouchers();
+  const exports = useExportVouchers();
+  const transfers = useTransferOrders();
+  const nonconformities = useNonconformities();
 
-export interface MenuBadges {
-    tasks: number;
-    vouchers: number;
-    importVouchers: number;
-    exportVouchers: number;
-    transfers: number;
-    nonconformities: number;
-}
-
-function getScopedPermissionIds(
-    permissions: PermissionMap | null | undefined,
-    permissionKeys: string[],
-): PermissionScope {
-    if (!permissions) return { isGlobal: false, ids: [] };
-    const globalPerms = permissions.global || {};
-    if (globalPerms["*"] === true || permissionKeys.some((key) => globalPerms[key] === true)) {
-        return { isGlobal: true, ids: [] };
-    }
-    const ids = Object.entries(permissions)
-        .filter(([scope, perms]) => (
-            scope !== "global" &&
-            (perms["*"] === true || permissionKeys.some((key) => perms[key] === true))
-        ))
-        .map(([scope]) => scope);
-    return { isGlobal: false, ids };
-}
-
-function canSeeWarehouseScoped(
-    scope: PermissionScope,
-    userId: string,
-    creatorId?: string,
-    warehouseId?: string,
-) {
-    return (
-        scope.isGlobal ||
-        creatorId === userId ||
-        (!!warehouseId && scope.ids.includes(warehouseId))
+  return useMemo(() => {
+    const importTasks = imports.activeVouchers.filter((voucher) =>
+      includesStatus(voucher.status, ["APPROVED", "RECEIVING"]),
+    ).length;
+    const exportTasks = exports.activeVouchers.filter((voucher) =>
+      includesStatus(voucher.status, ["APPROVED", "PICKING", "SHIPPED"]),
+    ).length;
+    const transferTasks = transfers.activeOrders.filter((order) =>
+      includesStatus(order.status, ["PENDING_RECEIVE", "RECEIVING"]),
+    ).length;
+    const nonconformityCount = countActionableNonconformities(
+      nonconformities.reports,
     );
-}
-
-function canSeeTransferScoped(
-    scope: PermissionScope,
-    userId: string,
-    data: { creator_id?: string; source_warehouse_id?: string; destination_warehouse_id?: string },
-) {
-    return (
-        scope.isGlobal ||
-        data.creator_id === userId ||
-        (!!data.source_warehouse_id && scope.ids.includes(data.source_warehouse_id)) ||
-        (!!data.destination_warehouse_id && scope.ids.includes(data.destination_warehouse_id))
-    );
-}
-
-function getApprovalEntityKey(record: {
-    entity_type?: string;
-    entity_id?: string;
-}) {
-    return `${record.entity_type || ""}:${record.entity_id || ""}`;
-}
-
-function filterCurrentPendingApprovalLevel<
-    T extends { entity_type?: string; entity_id?: string; level?: number },
->(records: T[]): T[] {
-    const currentLevelByEntity = new Map<string, number>();
-
-    records.forEach((record) => {
-        const key = getApprovalEntityKey(record);
-        const level = typeof record.level === "number" ? record.level : 0;
-        const current = currentLevelByEntity.get(key);
-        if (current === undefined || level < current) {
-            currentLevelByEntity.set(key, level);
-        }
-    });
-
-    return records.filter((record) => {
-        const level = typeof record.level === "number" ? record.level : 0;
-        return currentLevelByEntity.get(getApprovalEntityKey(record)) === level;
-    });
-}
-
-export function useMenuBadges(): MenuBadges {
-    const [pendingRecords, setPendingRecords] = useState<
-        Array<{
-            entity_type?: string;
-            entity_id?: string;
-            level?: number;
-            role_id?: string;
-            creator_id?: string;
-            warehouse_id?: string;
-            approval_warehouse_id?: string | null;
-            approval_scope?: string;
-            allow_global_fallback?: boolean;
-        }>
-    >([]);
-    const [importVoucherCount, setImportVoucherCount] = useState(0);
-    const [exportVoucherCount, setExportVoucherCount] = useState(0);
-    const [transferCount, setTransferCount] = useState(0);
-    const [importTaskCount, setImportTaskCount] = useState(0);
-    const [exportTaskCount, setExportTaskCount] = useState(0);
-    const [transferTaskCount, setTransferTaskCount] = useState(0);
-    const [nonconformityCount, setNonconformityCount] = useState(0);
-
-    const user = useUserStore((s) => s.user);
-    const roleIds = useUserStore((s) => s.roleIds);
-    const hasScopedRole = useUserStore((s) => s.hasScopedRole);
-    const permissions = useUserStore((s) => s.permissions);
-
-    const accessibleVoucherScopes = useMemo(
-        () => getScopedPermissionIds(permissions, ["vouchers.read"]),
-        [permissions],
-    );
-    const accessibleInventoryScopes = useMemo(
-        () => getScopedPermissionIds(permissions, ["inventory.write"]),
-        [permissions],
-    );
-    const accessibleTransferScopes = useMemo(
-        () => getScopedPermissionIds(permissions, ["transfers.read", "vouchers.read"]),
-        [permissions],
-    );
-
-    // ── Pending approvals count (realtime) ──
-    useEffect(() => {
-        if (!user?.id || roleIds.length === 0) {
-            setPendingRecords([]);
-            return;
-        }
-
-        const q = query(
-            collection(db, "pending_approvals"),
-            where("status", "==", "PENDING"),
-        );
-
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                const records = snap.docs.map((doc) => ({
-                    entity_type: doc.data().entity_type as string | undefined,
-                    entity_id: doc.data().entity_id as string | undefined,
-                    level: doc.data().level as number | undefined,
-                    role_id: doc.data().role_id as string | undefined,
-                    creator_id: doc.data().creator_id as string | undefined,
-                    warehouse_id: doc.data().warehouse_id as string | undefined,
-                    approval_warehouse_id: doc.data().approval_warehouse_id as
-                        | string
-                        | null
-                        | undefined,
-                    approval_scope: doc.data().approval_scope as string | undefined,
-                    allow_global_fallback: doc.data().allow_global_fallback as
-                        | boolean
-                        | undefined,
-                }));
-                setPendingRecords(
-                    filterCurrentPendingApprovalLevel(records).filter((record) =>
-                        hasScopedRole(
-                            record.role_id,
-                            record.approval_warehouse_id === undefined
-                                ? record.warehouse_id
-                                : record.approval_warehouse_id,
-                            {
-                                allowGlobalFallback:
-                                    record.allow_global_fallback === true,
-                                requireGlobal: record.approval_scope === "GLOBAL",
-                            },
-                        ),
-                    ),
-                );
-            },
-            (err) => {
-                console.error("[useMenuBadges] approvals error:", err);
-            },
-        );
-
-        return () => unsub();
-    }, [hasScopedRole, user?.id, roleIds]);
-
-    const tasksCount = useMemo(() => {
-        return pendingRecords.length;
-    }, [pendingRecords]);
-
-    // ── Import vouchers in processing (realtime) ──
-    useEffect(() => {
-        if (!user?.id) return;
-
-        const q = query(
-            collection(db, "import_vouchers"),
-            where("status", "in", ["PENDING_APPROVAL", "APPROVED", "RECEIVING"]),
-            where("is_deleted", "==", false),
-        );
-
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                let count = 0;
-                let taskCount = 0;
-                snap.forEach((doc) => {
-                    const data = doc.data();
-                    const canSee = canSeeWarehouseScoped(
-                        accessibleVoucherScopes,
-                        user.id,
-                        data.creator_id,
-                        data.warehouse_id,
-                    );
-                    if (canSee) count++;
-                    if (canSee && ["APPROVED", "RECEIVING"].includes(data.status)) {
-                        taskCount++;
-                    }
-                });
-                setImportVoucherCount(count);
-                setImportTaskCount(taskCount);
-            },
-            (err) => console.error("[useMenuBadges] import vouchers error:", err),
-        );
-
-        return () => unsub();
-    }, [user?.id, accessibleVoucherScopes]);
-
-    // ── Export vouchers in processing (realtime) ──
-    useEffect(() => {
-        if (!user?.id) return;
-
-        const q = query(
-            collection(db, "export_vouchers"),
-            where("status", "in", ["PENDING_APPROVAL", "APPROVED", "PICKING", "SHIPPED"]),
-            where("is_deleted", "==", false),
-        );
-
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                let count = 0;
-                let taskCount = 0;
-                snap.forEach((doc) => {
-                    const data = doc.data();
-                    const canSee = canSeeWarehouseScoped(
-                        accessibleVoucherScopes,
-                        user.id,
-                        data.creator_id,
-                        data.warehouse_id,
-                    );
-                    if (canSee) count++;
-                    if (canSee && ["APPROVED", "PICKING", "SHIPPED"].includes(data.status)) {
-                        taskCount++;
-                    }
-                });
-                setExportVoucherCount(count);
-                setExportTaskCount(taskCount);
-            },
-            (err) => console.error("[useMenuBadges] export vouchers error:", err),
-        );
-
-        return () => unsub();
-    }, [user?.id, accessibleVoucherScopes]);
-
-    // ── Transfers in processing (realtime) ──
-    useEffect(() => {
-        if (!user?.id) return;
-
-        const q = query(
-            collection(db, "transfer_orders"),
-            where("status", "in", ["PENDING_APPROVAL", "APPROVED", "EXPORT_PENDING", "EXPORT_CREATED", "PICKING", "IN_TRANSIT", "PENDING_RECEIVE", "RECEIVING"]),
-            where("is_deleted", "==", false),
-        );
-
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                let count = 0;
-                let taskCount = 0;
-                snap.forEach((doc) => {
-                    const data = doc.data();
-                    const canSee = canSeeTransferScoped(accessibleTransferScopes, user.id, data);
-                    if (canSee) count++;
-                    if (canSee && ["PENDING_RECEIVE", "RECEIVING"].includes(data.status)) {
-                        taskCount++;
-                    }
-                });
-                setTransferCount(count);
-                setTransferTaskCount(taskCount);
-            },
-            (err) => console.error("[useMenuBadges] transfers error:", err),
-        );
-
-        return () => unsub();
-    }, [user?.id, accessibleTransferScopes]);
-
-    // ── Nonconformity reports needing resolution (realtime) ──
-    useEffect(() => {
-        if (!user?.id) return;
-
-        const q = query(
-            collection(db, "nonconformity_reports"),
-            where("status", "in", ["OPEN", "QUARANTINED", "UNDER_REVIEW"]),
-            where("is_deleted", "==", false),
-        );
-
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                let count = 0;
-                snap.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.reporter_id === user.id) return;
-                    if (accessibleInventoryScopes.isGlobal) {
-                        count++;
-                    } else if (accessibleInventoryScopes.ids.includes(data.warehouse_id)) {
-                        count++;
-                    }
-                });
-                setNonconformityCount(count);
-            },
-            (err) => console.error("[useMenuBadges] nonconformities error:", err),
-        );
-
-        return () => unsub();
-    }, [user?.id, accessibleInventoryScopes]);
-
-    const taskActionCount = useMemo(() => {
-        return (
-            tasksCount +
-            importTaskCount +
-            exportTaskCount +
-            transferTaskCount +
-            nonconformityCount
-        );
-    }, [
-        exportTaskCount,
-        importTaskCount,
-        nonconformityCount,
-        tasksCount,
-        transferTaskCount,
-    ]);
-
+    const importCount = imports.activeVouchers.length;
+    const exportCount = exports.activeVouchers.length;
+    const transferCount = transfers.activeOrders.length;
     return {
-        tasks: taskActionCount,
-        vouchers: importVoucherCount + exportVoucherCount + transferCount,
-        importVouchers: importVoucherCount,
-        exportVouchers: exportVoucherCount,
-        transfers: transferCount,
-        nonconformities: nonconformityCount,
+      tasks:
+        approvals.taskCount +
+        importTasks +
+        exportTasks +
+        transferTasks +
+        nonconformityCount,
+      vouchers: importCount + exportCount + transferCount,
+      importVouchers: importCount,
+      exportVouchers: exportCount,
+      transfers: transferCount,
+      nonconformities: nonconformityCount,
     };
+  }, [approvals.taskCount, exports.activeVouchers, imports.activeVouchers, nonconformities.reports, transfers.activeOrders]);
 }

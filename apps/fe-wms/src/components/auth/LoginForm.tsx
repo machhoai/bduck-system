@@ -6,6 +6,7 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '../../lib/i18n';
 import { LOGIN_FORM_TEXT } from '../../lib/i18n/componentTranslations';
+import { resolveAuthenticatedDestination } from '../../lib/authNavigationPolicy';
 
 /**
  * LoginForm — Clean Enterprise Light Theme
@@ -24,6 +25,8 @@ export default function LoginForm() {
     const copy = LOGIN_FORM_TEXT[lang === 'zh' ? 'zh' : 'vi'];
 
     const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+    const authStatus = useUserStore((state) => state.authStatus);
+    const accessStatus = useUserStore((state) => state.accessStatus);
     const permissions = useUserStore((state) => state.permissions);
     const router = useRouter();
 
@@ -32,15 +35,14 @@ export default function LoginForm() {
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated) {
-            const hasAnyRole = Object.keys(permissions).length > 0;
-            if (!hasAnyRole) {
-                router.push('/no-access');
-            } else {
-                router.push('/dashboard');
-            }
-        }
-    }, [isAuthenticated, permissions, router]);
+        const destination = resolveAuthenticatedDestination({
+            authStatus,
+            isAuthenticated,
+            accessStatus,
+            permissions,
+        });
+        if (destination) router.replace(destination);
+    }, [accessStatus, authStatus, isAuthenticated, permissions, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -18,6 +19,7 @@ import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation"
 import { auth, db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -92,6 +94,8 @@ export function useNotificationSender(
   const canReadHistory = hasPermission("notifications.read");
   const canSendInApp = hasPermission("notifications.send_in_app");
   const canSendEmail = hasPermission("notifications.send_email");
+  const permissions = useUserStore((state) => state.permissions);
+  const isSystemAdmin = getAnyFacilityScope(permissions).isSystemAdmin;
   const [dispatches, setDispatches] = useState<NotificationDispatch[]>([]);
   const [isLoading, setIsLoading] = useState(canReadHistory);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +152,9 @@ export function useNotificationSender(
 
       const dispatchQuery = query(
         collection(db, "notification_dispatches"),
+        ...(isSystemAdmin
+          ? []
+          : [where("created_by", "==", user.uid)]),
         orderBy("created_at", "desc"),
         limit(dispatchLimit),
       );
@@ -174,7 +181,7 @@ export function useNotificationSender(
       unsubscribeAuth();
       unsubscribeSnapshot?.();
     };
-  }, [canReadHistory, dispatchLimit]);
+  }, [canReadHistory, dispatchLimit, isSystemAdmin]);
 
   const sendInAppNotification = useCallback(
     async (payload: SendInAppNotificationPayload) => {

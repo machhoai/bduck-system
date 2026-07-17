@@ -12,10 +12,22 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
+import { useUserStore } from "@/stores/useUserStore";
+import {
   emitDataMutation,
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
+
+export {
+  useAllAttendanceExemptions,
+  useAttendanceLateReports,
+  useAttendanceLogs,
+} from "./useAttendanceRecords";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -128,6 +140,16 @@ export function useAttendanceContext() {
 }
 
 export function useAttendancePolicies() {
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () =>
+      getFacilityPermissionScope(permissions, [
+        "attendance.view",
+        "attendance.check_in",
+        "attendance.config",
+      ]),
+    [permissions],
+  );
   const [policies, setPolicies] = useState<WarehouseAttendancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -159,22 +181,27 @@ export function useAttendancePolicies() {
         return;
       }
 
-      unsubscribeSnapshot = onSnapshot(
-        query(
-          collection(db, "warehouse_attendance_policies"),
-          where("effective_to", "==", null),
-        ),
-        (snapshot) => {
-          if (disposed) return;
-          setPolicies(
-            snapshot.docs.map((doc) => ({
-              ...doc.data(),
-              id: doc.id,
-            })) as WarehouseAttendancePolicy[],
-          );
-          setLoading(false);
+      unsubscribeSnapshot = subscribeToMergedQueries<WarehouseAttendancePolicy>(
+        {
+          queries: buildFacilityScopedQueries({
+            db,
+            collectionName: "warehouse_attendance_policies",
+            facilityField: "warehouse_id",
+            scope: facilityScope,
+            constraints: [where("effective_to", "==", null)],
+          }),
+          mapDocument: (document) =>
+            ({
+              ...document.data(),
+              id: document.id,
+            }) as WarehouseAttendancePolicy,
+          onData: (data) => {
+            if (disposed) return;
+            setPolicies(data);
+            setLoading(false);
+          },
+          onError: () => void loadFallback(),
         },
-        () => void loadFallback(),
       );
     });
 
@@ -183,7 +210,7 @@ export function useAttendancePolicies() {
       unsubscribeAuth();
       unsubscribeSnapshot?.();
     };
-  }, []);
+  }, [facilityScope]);
 
   const updatePolicy = useCallback(
     async (
@@ -266,105 +293,4 @@ export function useAttendanceExemptions(warehouseId?: string | null) {
   );
 
   return { exemptions, loading, updateExemptions };
-}
-
-export function useAllAttendanceExemptions() {
-  const [exemptions, setExemptions] = useState<WarehouseAttendanceExemption[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const exemptionsQuery = query(
-      collection(db, "warehouse_attendance_exemptions"),
-      where("effective_to", "==", null),
-    );
-    const unsubscribe = onSnapshot(
-      exemptionsQuery,
-      (snapshot) => {
-        setExemptions(
-          snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as WarehouseAttendanceExemption[],
-        );
-        setLoading(false);
-      },
-      (err) => {
-        console.error("[useAllAttendanceExemptions] snapshot error:", err);
-        setExemptions([]);
-        setLoading(false);
-      },
-    );
-    return unsubscribe;
-  }, []);
-
-  return { exemptions, loading };
-}
-
-export function useAttendanceLogs(dateFrom: string, dateTo: string) {
-  const [logs, setLogs] = useState<AttendanceLog[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const unsubscribe = onSnapshot(
-      collection(db, "attendance_logs"),
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as AttendanceLog[];
-        setLogs(
-          data.filter(
-            (log) =>
-              log.attendance_date >= dateFrom && log.attendance_date <= dateTo,
-          ),
-        );
-        setLoading(false);
-      },
-      (err) => {
-        console.error("[useAttendanceLogs] snapshot error:", err);
-        setLogs([]);
-        setLoading(false);
-      },
-    );
-    return unsubscribe;
-  }, [dateFrom, dateTo]);
-
-  return { logs, loading };
-}
-
-export function useAttendanceLateReports(dateFrom: string, dateTo: string) {
-  const [reports, setReports] = useState<AttendanceLateReport[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const unsubscribe = onSnapshot(
-      collection(db, "attendance_late_reports"),
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as AttendanceLateReport[];
-        setReports(
-          data.filter(
-            (report) =>
-              report.attendance_date >= dateFrom &&
-              report.attendance_date <= dateTo,
-          ),
-        );
-        setLoading(false);
-      },
-      (err) => {
-        console.error("[useAttendanceLateReports] snapshot error:", err);
-        setReports([]);
-        setLoading(false);
-      },
-    );
-    return unsubscribe;
-  }, [dateFrom, dateTo]);
-
-  return { reports, loading };
 }

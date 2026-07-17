@@ -31,6 +31,7 @@ import {
   loadUserRecord,
   sanitizeUserRecord,
 } from "./userReadService.js";
+import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
 
 export * from "./userCreationService.js";
 
@@ -149,6 +150,7 @@ export const updateUser = async (
     ) as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  await rebuildUserAccessForUsers([userId], "USER_UPDATED", actorId);
 };
 
 export const sendUserInvitation = async (
@@ -203,4 +205,5 @@ export const deleteUser = async (
     new_value: { is_deleted: true, status: UserStatus.INACTIVE },
     ...auditMetadata,
   });
+  await rebuildUserAccessForUsers([userId], "USER_SOFT_DELETED", actorId);
 };

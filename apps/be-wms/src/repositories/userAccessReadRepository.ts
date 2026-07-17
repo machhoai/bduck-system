@@ -71,6 +71,16 @@ export const getActiveUserAccessVersion = async (
   return version?.status === "ACTIVE" ? version : null;
 };
 
+export const findUserAccessVersionsByNumber = async (
+  userId: string,
+  versionNumber: number,
+): Promise<UserAccessVersion[]> => {
+  const snapshot = await getUserAccessVersionsCollectionRef(userId)
+    .where("version_number", "==", versionNumber)
+    .get();
+  return snapshot.docs.map(mapUserAccessVersion);
+};
+
 export const findUserFacilityAccessGrants = async (
   userId: string,
   versionId: string,

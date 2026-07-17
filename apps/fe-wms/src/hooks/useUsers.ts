@@ -1,15 +1,21 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { where } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User, UserWarehouseRole } from "@bduck/shared-types";
 import {
   emitDataMutation,
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
+import { useUserStore } from "@/stores/useUserStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -81,6 +87,11 @@ async function mutateUser(
 }
 
 export function useUsers() {
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
   const [users, setUsers] = useState<UserWithAssignments[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,31 +162,44 @@ export function useUsers() {
         return;
       }
 
-      unsubscribeUsers = onSnapshot(
-        query(collection(db, "users"), where("is_deleted", "==", false)),
-        (snapshot) => {
+      unsubscribeUsers = subscribeToMergedQueries<User>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "users",
+          facilityField: "workplace_facility_id",
+          scope: facilityScope,
+          constraints: [where("is_deleted", "==", false)],
+        }),
+        mapDocument: (document) => ({
+          ...document.data(),
+          id: document.id,
+        }) as User,
+        onData: (records) => {
           if (isDisposed) return;
-          latestUsers = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as User[];
+          latestUsers = records;
           publish();
         },
-        () => void loadApiFallback(),
-      );
+        onError: () => void loadApiFallback(),
+      });
 
-      unsubscribeAssignments = onSnapshot(
-        query(collection(db, "user_warehouse_roles")),
-        (snapshot) => {
+      unsubscribeAssignments = subscribeToMergedQueries<UserWarehouseRole>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "user_warehouse_roles",
+          facilityField: "warehouse_id",
+          scope: facilityScope,
+        }),
+        mapDocument: (document) => ({
+          ...document.data(),
+          id: document.id,
+        }) as UserWarehouseRole,
+        onData: (records) => {
           if (isDisposed) return;
-          latestAssignments = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as UserWarehouseRole[];
+          latestAssignments = records;
           publish();
         },
-        () => void loadApiFallback(),
-      );
+        onError: () => void loadApiFallback(),
+      });
     });
 
     return () => {
@@ -186,7 +210,7 @@ export function useUsers() {
       unsubscribeUsers?.();
       unsubscribeAssignments?.();
     };
-  }, []);
+  }, [facilityScope]);
 
   const createUser = useCallback(async (payload: unknown) => {
     const result = await mutateUser("/api/users", "POST", payload);

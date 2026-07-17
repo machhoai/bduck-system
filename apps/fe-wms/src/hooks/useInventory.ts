@@ -1,150 +1,109 @@
 "use client";
 
-/**
- * useInventory — Real-time Firestore listener for inventory collection
- *
- * ► LUẬT THÉP: Dữ liệu tồn kho cập nhật real-time qua onSnapshot
- * ► RBAC: Chỉ trả về inventory records thuộc kho mà user có quyền
- * ► Denormalized warehouse_id cho phép filter trực tiếp
- */
-
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Inventory } from "@bduck/shared-types";
 import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
 async function fetchInventoryFromApi(signal?: AbortSignal) {
   const response = await fetch(`${API_BASE_URL}/api/inventory`, {
-    method: "GET",
     credentials: "include",
     signal,
   });
   const body = await response.json().catch(() => null);
-
   if (!response.ok || !body?.success) {
     throw createDetailedApiError(response, body, "Khong the tai du lieu ton kho.");
   }
-
   return (body.data || []) as Inventory[];
-}
-
-function getAccessibleWarehouseIds(
-  permissions: Record<string, Record<string, unknown>>,
-): string[] | undefined {
-  const globalPerms = permissions.global || {};
-  if (globalPerms["*"] === true || globalPerms["warehouses.read"] === true) {
-    return undefined; // All warehouses accessible
-  }
-
-  return Object.entries(permissions)
-    .filter(([scope, scopedPermissions]) => {
-      if (scope === "global") return false;
-      return (
-        scopedPermissions["*"] === true ||
-        scopedPermissions["warehouses.read"] === true
-      );
-    })
-    .map(([scope]) => scope);
 }
 
 export function useInventory() {
   const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getFacilityPermissionScope(permissions, ["inventory.read"]),
+    [permissions],
+  );
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const abortController = new AbortController();
-    const accessibleWarehouseIds = getAccessibleWarehouseIds(permissions);
     let unsubscribeSnapshot: (() => void) | undefined;
-    let isDisposed = false;
-
-    const applyInventoryFilter = (data: Inventory[]) =>
-      accessibleWarehouseIds
-        ? data.filter((item) =>
-            accessibleWarehouseIds.includes(item.warehouse_id),
-          )
-        : data;
-
-    // If user has no warehouse access, return empty
-    if (accessibleWarehouseIds && accessibleWarehouseIds.length === 0) {
-      setInventory([]);
-      setLoading(false);
-      return;
-    }
+    let disposed = false;
 
     const loadApiFallback = async () => {
       try {
         const data = await fetchInventoryFromApi(abortController.signal);
-        if (isDisposed) return;
-        setInventory(applyInventoryFilter(data));
-        setError(null);
+        if (!disposed) {
+          setInventory(data);
+          setError(null);
+        }
       } catch (apiError) {
-        if (isDisposed) return;
-        console.error("[useInventory] API fallback error:", apiError);
-        setInventory([]);
-        setError(
-          apiError instanceof Error
-            ? apiError.message
-            : "Không thể tải dữ liệu tồn kho.",
-        );
+        if (!disposed) {
+          console.error("[useInventory] API fallback error:", apiError);
+          setInventory([]);
+          setError(apiError instanceof Error ? apiError.message : "Khong the tai ton kho.");
+        }
       } finally {
-        if (!isDisposed) setLoading(false);
+        if (!disposed) setLoading(false);
       }
     };
 
-    const unsubscribeMutation = subscribeDataMutation("inventory", () => {
-      void loadApiFallback();
-    });
-
+    const unsubscribeMutation = subscribeDataMutation(
+      "inventory",
+      () => void loadApiFallback(),
+    );
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
-        unsubscribeSnapshot = undefined;
-      }
-
+      unsubscribeSnapshot?.();
+      unsubscribeSnapshot = undefined;
       if (!user) {
         void loadApiFallback();
         return;
       }
-
-      const inventoryQuery = query(collection(db, "inventory"));
-
-      unsubscribeSnapshot = onSnapshot(
-        inventoryQuery,
-        (snapshot) => {
-          if (isDisposed) return;
-          const data = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as Inventory[];
-
-          setInventory(applyInventoryFilter(data));
+      unsubscribeSnapshot = subscribeToMergedQueries<Inventory>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "inventory",
+          facilityField: "warehouse_id",
+          scope: facilityScope,
+        }),
+        mapDocument: (document) => ({
+          ...document.data(),
+          id: document.id,
+        }) as Inventory,
+        onData: (data) => {
+          if (disposed) return;
+          setInventory(data);
           setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.error("[useInventory] onSnapshot error:", snapshotError);
           void loadApiFallback();
         },
-      );
+      });
     });
 
     return () => {
-      isDisposed = true;
+      disposed = true;
       abortController.abort();
       unsubscribeMutation();
       unsubscribeAuth();
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubscribeSnapshot?.();
     };
-  }, [permissions]);
+  }, [facilityScope]);
 
   return { inventory, loading, error };
 }

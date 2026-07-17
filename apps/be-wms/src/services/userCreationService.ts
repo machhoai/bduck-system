@@ -29,6 +29,7 @@ import {
   userConflictError,
 } from "./userMutationSupport.js";
 import { createUserView, type UserWithAssignments } from "./userReadService.js";
+import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
 
 type CreateUserInput = z.infer<typeof createUserSchema>;
 
@@ -136,6 +137,11 @@ export const createUser = async (
         ...auditMetadata,
       });
     }
+    await rebuildUserAccessForUsers(
+      [persistedUser.id],
+      "USER_CREATED",
+      actorId,
+    );
 
     let invitationEmailSent = false;
     try {

@@ -11,14 +11,17 @@ import type {
 import { db } from "@/lib/firebase";
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useUserStore } from "@/stores/useUserStore";
-import { createApiErrorFromResponse } from "@/utils/apiError";
-import { authenticatedFetch } from "@/utils/authenticatedFetch";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
 import { FILE_TEMPLATE_CATEGORY_SET } from "@/utils/fileTemplateCategories";
 import { toFileLibraryDate } from "@/utils/fileLibrary";
 import { useUsers } from "./useUsers";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+import {
+  createTemplateRequest,
+  deleteTemplateRequest,
+  fetchTemplatesFromApi,
+  updateTemplateRequest,
+  uploadNewVersionRequest,
+} from "./fileTemplateHookApi";
 
 export interface CreateFileTemplatePayload {
   title: string;
@@ -61,95 +64,6 @@ function normalizeTemplate(template: FileTemplate): FileTemplate {
   };
 }
 
-async function createTemplateRequest(payload: CreateFileTemplatePayload) {
-  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw await createApiErrorFromResponse(
-      response,
-      "Khong the upload bieu mau.",
-    );
-  }
-
-  return response.json();
-}
-
-async function updateTemplateRequest(
-  id: string,
-  payload: UpdateFileTemplatePayload,
-) {
-  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw await createApiErrorFromResponse(
-      response,
-      "Khong the cap nhat bieu mau.",
-    );
-  }
-
-  return response.json();
-}
-
-async function deleteTemplateRequest(id: string) {
-  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    throw await createApiErrorFromResponse(response, "Khong the xoa bieu mau.");
-  }
-
-  return response.json();
-}
-
-async function uploadNewVersionRequest(
-  id: string,
-  payload: UploadNewTemplateVersionPayload,
-) {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/api/file-templates/${id}/version`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    },
-  );
-
-  if (!response.ok) {
-    throw await createApiErrorFromResponse(
-      response,
-      "Khong the cap nhat phien ban bieu mau.",
-    );
-  }
-
-  return response.json();
-}
-
-async function fetchTemplatesFromApi(signal?: AbortSignal) {
-  const response = await authenticatedFetch(`${API_BASE_URL}/api/file-templates`, {
-    method: "GET",
-    signal,
-  });
-
-  if (!response.ok) {
-    throw await createApiErrorFromResponse(
-      response,
-      "Khong the tai danh sach bieu mau.",
-    );
-  }
-
-  const body = await response.json();
-  return ((body.data || []) as FileTemplate[]).map(normalizeTemplate);
-}
-
 function sortTemplates(rows: FileTemplate[]) {
   return [...rows].sort((a, b) => {
     const aTime = toFileLibraryDate(a.created_at)?.getTime() ?? 0;
@@ -159,6 +73,11 @@ function sortTemplates(rows: FileTemplate[]) {
 }
 
 export function useFileTemplates(canViewTemplates: boolean) {
+  const permissions = useUserStore((state) => state.permissions);
+  const isSystemAdmin = useMemo(
+    () => getAnyFacilityScope(permissions).isSystemAdmin,
+    [permissions],
+  );
   const [templates, setTemplates] = useState<FileTemplate[]>([]);
   const [loading, setLoading] = useState(canViewTemplates);
   const hasPermission = useUserStore((s) => s.hasPermission);
@@ -195,6 +114,13 @@ export function useFileTemplates(canViewTemplates: boolean) {
         abortController.abort();
       };
     }
+    if (!isSystemAdmin) {
+      void loadApiFallback();
+      return () => {
+        disposed = true;
+        abortController.abort();
+      };
+    }
 
     setLoading(true);
     const templatesQuery = query(
@@ -223,7 +149,7 @@ export function useFileTemplates(canViewTemplates: boolean) {
       abortController.abort();
       unsubscribe();
     };
-  }, [canViewTemplates]);
+  }, [canViewTemplates, isSystemAdmin]);
 
   const uploadersById = useMemo(
     () => new Map(users.map((user) => [user.id, user])),

@@ -45,7 +45,9 @@
         "inventory_stock_policies",
         "nonconformity_reports",
         "office_scope_configs",
+        "office_scope_ceilings",
         "office_scope_edges",
+        "office_scope_materializations",
         "pending_approvals",
         "pos_transaction_items",
         "pos_transactions",
@@ -92,7 +94,9 @@
         "account_invitations",
         "counters",
         "integration_clients",
-        "facility_access_migrations"
+        "facility_access_migrations",
+        "authorization_shadow_diffs",
+        "office_scope_materialization_jobs"
       ]
     }
   },
@@ -126,16 +130,16 @@
       "collection": "workflow_instances",
       "issue": "Legacy polymorphic workflow instances and tasks have no facility field.",
       "required": "Denormalize facility_id or make the legacy workflow backend/admin-only."
-    },
+    }
+  ],
+  "resolvedDenormalization": [
     {
       "collection": "revenue_dashboards",
-      "issue": "The parent stores the facility only inside a nested dashboard object and children have no facility field.",
-      "required": "Add top-level warehouse_id to the parent and children."
+      "resolution": "Phase 4 writes top-level warehouse_id on the parent; child rules inherit it."
     },
     {
       "collection": "revenue_sync",
-      "issue": "Backend writes warehouse_id with a warehouse-period key while the frontend listens to a period-only key.",
-      "required": "Align document identity and schema before scoped Rules are enabled."
+      "resolution": "Phase 4 aligns backend and frontend on {warehouseId}_{period} and warehouse_id."
     }
   ]
 }

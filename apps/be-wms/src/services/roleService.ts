@@ -5,6 +5,8 @@ import type { z } from "zod";
 import { roleRepository } from "../repositories/roleRepository.js";
 import { createRoleSchema, updateRoleSchema } from "../utils/zodSchemas.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import { findActiveUserIdsByRoleId } from "../repositories/userRepository.js";
+import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
 
 type CreateRoleInput = z.infer<typeof createRoleSchema>;
 type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
@@ -143,6 +145,11 @@ export const updateRole = async (
     new_value: input as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  await rebuildUserAccessForUsers(
+    await findActiveUserIdsByRoleId(id),
+    "ROLE_UPDATED",
+    userId,
+  );
 };
 
 export const deleteRole = async (

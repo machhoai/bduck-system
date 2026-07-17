@@ -41,6 +41,8 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   notification_dispatches: "notification_dispatches",
   account_invitations: "account_invitations",
   file_templates: "file_templates",
+  file_template_bundles: "file_template_bundles",
+  process_documents: "process_documents",
   attendance_logs: "attendance_logs",
   attendance_late_reports: "attendance_late_reports",
   warehouse_attendance_policies: "warehouse_attendance_policies",

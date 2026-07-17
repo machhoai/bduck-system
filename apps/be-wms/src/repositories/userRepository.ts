@@ -11,6 +11,7 @@ const mapUser = (snapshot: FirebaseFirestore.DocumentSnapshot): User => ({
 
 export {
   deactivateUserWarehouseRoles,
+  findActiveUserIdsByRoleId,
   getUserWarehouseRoles,
   getUserWarehouseRolesForUsers,
   replaceManagedUserWarehouseRoles,
@@ -56,6 +57,17 @@ export const findUsers = async (): Promise<User[]> => {
     .get();
 
   return snapshot.docs.map(mapUser);
+};
+
+export const findUserIdsByWorkplace = async (
+  workplaceFacilityId: string,
+): Promise<string[]> => {
+  const snapshot = await db
+    .collection(USERS_COLLECTION)
+    .where("workplace_facility_id", "==", workplaceFacilityId)
+    .where("is_deleted", "==", false)
+    .get();
+  return snapshot.docs.map((document) => document.id).sort();
 };
 
 export const findUsersScoped = async (scope: {

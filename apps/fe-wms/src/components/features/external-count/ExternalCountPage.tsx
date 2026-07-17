@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
 import {
   AlertTriangle,
   CalendarDays,
@@ -17,8 +16,8 @@ import {
   type ExternalCountRequirementConfig,
   type ExternalCountSession,
 } from "@/api/externalCountApi";
-import { db } from "@/lib/firebase";
 import { useTranslation } from "@/lib/i18n";
+import { useExternalCountSessions } from "@/hooks/useExternalCountSessions";
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useUserStore } from "@/stores/useUserStore";
 
@@ -175,8 +174,9 @@ export default function ExternalCountPage() {
   const [locationId, setLocationId] = useState("");
   const [businessDate, setBusinessDate] = useState(todayString());
   const [searchTerm, setSearchTerm] = useState("");
-  const [sessions, setSessions] = useState<ExternalCountSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { sessions, isLoading } = useExternalCountSessions(
+    warehouseId || undefined,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [config, setConfig] = useState<ExternalCountRequirementConfig | null>(null);
 
@@ -194,54 +194,14 @@ export default function ExternalCountPage() {
     setConfig(response.data);
   }, []);
 
-  const loadApiFallback = useCallback(async () => {
-    try {
-      const response = await externalCountApi.list({
-        warehouse_id: warehouseId || undefined,
-        warehouse_location_id: locationId || undefined,
-        business_date: businessDate || undefined,
-      });
-      setSessions(response.data || []);
-    } catch (error) {
-      console.error("[ExternalCountPage] fallback failed", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [businessDate, locationId, warehouseId]);
-
   useEffect(() => {
     void loadConfig();
   }, [loadConfig]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    const countQuery = query(
-      collection(db, "stock_count_sessions"),
-      where("source", "==", "EXTERNAL_API"),
-      where("is_deleted", "==", false),
-    );
-
-    const unsubscribe = onSnapshot(
-      countQuery,
-      (snapshot) => {
-        const rows = snapshot.docs
-          .map((doc) => ({ ...doc.data(), id: doc.id }) as ExternalCountSession)
-          .sort((a, b) => toMillis(executionTime(b)) - toMillis(executionTime(a)));
-        setSessions(rows);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.warn("[ExternalCountPage] onSnapshot failed", error);
-        void loadApiFallback();
-      },
-    );
-
-    return () => unsubscribe();
-  }, [loadApiFallback]);
-
   const visibleSessions = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    return sessions
+    return [...sessions]
+      .sort((a, b) => toMillis(executionTime(b)) - toMillis(executionTime(a)))
       .filter((session) => !warehouseId || session.warehouse_id === warehouseId)
       .filter((session) => !locationId || session.warehouse_location_id === locationId)
       .filter((session) => !businessDate || session.business_date === businessDate)

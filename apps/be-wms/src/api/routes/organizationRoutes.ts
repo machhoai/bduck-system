@@ -9,25 +9,25 @@ import {
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   requireAnyScopedPermission,
-  requirePermission,
+  requireSystemAdmin,
 } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireAnyScopedPermission("organizations.read"), getOrganizationsHandler);
+router.get(
+  "/",
+  requireAnyScopedPermission("organizations.read"),
+  getOrganizationsHandler,
+);
 router.get(
   "/:id",
   requireAnyScopedPermission("organizations.read"),
   getOrganizationByIdHandler,
 );
-router.post("/", requirePermission("organizations.write"), createOrganizationHandler);
-router.put("/:id", requirePermission("organizations.write"), updateOrganizationHandler);
-router.delete(
-  "/:id",
-  requirePermission("organizations.write"),
-  deleteOrganizationHandler,
-);
+router.post("/", requireSystemAdmin, createOrganizationHandler);
+router.put("/:id", requireSystemAdmin, updateOrganizationHandler);
+router.delete("/:id", requireSystemAdmin, deleteOrganizationHandler);
 
 export default router;

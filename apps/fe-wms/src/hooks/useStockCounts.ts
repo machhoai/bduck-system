@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import {
   emitDataMutation,
   subscribeDataMutation,
@@ -15,6 +19,10 @@ import {
   type StockCountSessionRow,
   type UpdateStockCountItemPayload,
 } from "@/api/stockCountApi";
+import {
+  getFacilityPermissionScope,
+  scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
 
 const STOCK_COUNT_ACCESS_PERMISSIONS = [
   "stock_counts.view",
@@ -43,35 +51,22 @@ function toTime(value: unknown): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function getAccessibleWarehouseIds(
-  permissions: Record<string, Record<string, unknown>>,
-) {
-  const globalPerms = permissions.global || {};
-  if (
-    globalPerms["*"] === true ||
-    STOCK_COUNT_ACCESS_PERMISSIONS.some((key) => globalPerms[key] === true)
-  ) {
-    return { isGlobal: true, ids: [] as string[] };
-  }
-  return {
-    isGlobal: false,
-    ids: Object.entries(permissions)
-      .filter(
-        ([scope, scoped]) =>
-          scope !== "global" &&
-          (scoped["*"] === true ||
-            STOCK_COUNT_ACCESS_PERMISSIONS.some((key) => scoped[key] === true)),
-      )
-      .map(([scope]) => scope),
-  };
-}
-
 export function useStockCounts(options: { warehouseId?: string } = {}) {
   const permissions = useUserStore((state) => state.permissions);
-  const accessibleWarehouseIds = useMemo(
-    () => getAccessibleWarehouseIds(permissions),
+  const facilityScope = useMemo(
+    () =>
+      getFacilityPermissionScope(permissions, STOCK_COUNT_ACCESS_PERMISSIONS),
     [permissions],
   );
+  const queryScope = useMemo(() => {
+    if (!options.warehouseId) return facilityScope;
+    return {
+      isSystemAdmin: false,
+      facilityIds: scopeContainsFacility(facilityScope, options.warehouseId)
+        ? [options.warehouseId]
+        : [],
+    };
+  }, [facilityScope, options.warehouseId]);
   const [sessions, setSessions] = useState<StockCountSessionRow[]>([]);
   const [detail, setDetail] = useState<StockCountDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,13 +75,8 @@ export function useStockCounts(options: { warehouseId?: string } = {}) {
 
   const applyRows = useCallback(
     (rows: StockCountSessionRow[]) => {
-      const scoped = accessibleWarehouseIds.isGlobal
-        ? rows
-        : rows.filter((row) =>
-            accessibleWarehouseIds.ids.includes(row.warehouse_id),
-          );
       setSessions(
-        scoped
+        rows
           .filter(
             (row) =>
               !options.warehouseId || row.warehouse_id === options.warehouseId,
@@ -94,7 +84,7 @@ export function useStockCounts(options: { warehouseId?: string } = {}) {
           .sort((a, b) => toTime(b.created_at) - toTime(a.created_at)),
       );
     },
-    [accessibleWarehouseIds, options.warehouseId],
+    [options.warehouseId],
   );
 
   const loadFallback = useCallback(async () => {
@@ -127,34 +117,37 @@ export function useStockCounts(options: { warehouseId?: string } = {}) {
       () => void loadFallback(),
     );
 
-    const stockCountQuery = query(
-      collection(db, "stock_count_sessions"),
-      where("source", "==", "INTERNAL_UI"),
-      where("is_deleted", "==", false),
-    );
-
-    const unsubscribe = onSnapshot(
-      stockCountQuery,
-      (snapshot) => {
-        applyRows(
-          snapshot.docs.map(
-            (doc) => ({ ...doc.data(), id: doc.id }) as StockCountSessionRow,
-          ),
-        );
+    const unsubscribe = subscribeToMergedQueries<StockCountSessionRow>({
+      queries: buildFacilityScopedQueries({
+        db,
+        collectionName: "stock_count_sessions",
+        facilityField: "warehouse_id",
+        scope: queryScope,
+        constraints: [
+          where("source", "==", "INTERNAL_UI"),
+          where("is_deleted", "==", false),
+        ],
+      }),
+      mapDocument: (document) => ({
+        ...document.data(),
+        id: document.id,
+      }) as StockCountSessionRow,
+      onData: (rows) => {
+        applyRows(rows);
         setLoading(false);
         setError(null);
       },
-      (snapshotError) => {
+      onError: (snapshotError) => {
         console.warn("[useStockCounts] snapshot failed", snapshotError);
         void loadFallback();
       },
-    );
+    });
 
     return () => {
       unsubscribeMutation();
       unsubscribe();
     };
-  }, [applyRows, loadFallback]);
+  }, [applyRows, loadFallback, queryScope]);
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);

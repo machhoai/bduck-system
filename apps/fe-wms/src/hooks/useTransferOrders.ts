@@ -1,21 +1,18 @@
 "use client";
 
-/**
- * useTransferOrders — Realtime Firebase listener for transfer orders
- *
- * LUẬT THÉP: No reload buttons. Orders update via onSnapshot.
- *
- * RBAC: Filters client-side by:
- * 1. User is creator (creator_id === userId)
- * 2. Order belongs to a warehouse in user's permission scope
- */
-
-import { useEffect, useState, useMemo } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { where } from "firebase/firestore";
+import {
+  TransferOrderStatus,
+  type TransferOrder,
+} from "@bduck/shared-types";
 import { db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
-import type { TransferOrder } from "@bduck/shared-types";
-import { TransferOrderStatus } from "@bduck/shared-types";
+import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
 
 const ACTIVE_STATUSES: string[] = [
   TransferOrderStatus.DRAFT,
@@ -29,109 +26,78 @@ const ACTIVE_STATUSES: string[] = [
   TransferOrderStatus.RECEIVING,
   TransferOrderStatus.REJECTED,
 ];
-
 const COMPLETED_STATUSES: string[] = [
   TransferOrderStatus.COMPLETED,
   TransferOrderStatus.CANCELLED,
 ];
 
-interface UseTransferOrdersReturn {
-  activeOrders: TransferOrder[];
-  completedOrders: TransferOrder[];
-  loading: boolean;
-}
+const time = (value: unknown) => {
+  if (value instanceof Date) return value.getTime();
+  if (value && typeof value === "object" && "toDate" in value) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  return new Date(value as string).getTime();
+};
 
-export function useTransferOrders(): UseTransferOrdersReturn {
+export function useTransferOrders() {
   const [rawOrders, setRawOrders] = useState<TransferOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = useUserStore((s) => s.user);
-  const permissions = useUserStore((s) => s.permissions);
-
-  const accessibleWarehouseIds = useMemo(() => {
-    if (!permissions) return { isGlobal: false, ids: [] as string[] };
-    const globalPerms = permissions["global"] || {};
-    if (globalPerms["*"] === true || globalPerms["transfers.read"] === true) {
-      return { isGlobal: true, ids: [] as string[] };
-    }
-    const ids: string[] = [];
-    for (const [scope, perms] of Object.entries(permissions)) {
-      if (scope === "global") continue;
-      if (
-        perms["*"] === true ||
-        perms["transfers.read"] === true ||
-        perms["vouchers.read"] === true
-      ) {
-        ids.push(scope);
-      }
-    }
-    return { isGlobal: false, ids };
-  }, [permissions]);
+  const userId = useUserStore((state) => state.user?.id);
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getFacilityPermissionScope(permissions, ["transfers.read"]),
+    [permissions],
+  );
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       setRawOrders([]);
       setLoading(false);
       return;
     }
-
-    const q = query(
-      collection(db, "transfer_orders"),
-      where("is_deleted", "==", false),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const orders: TransferOrder[] = [];
-        snapshot.forEach((doc) => {
-          const data = { id: doc.id, ...doc.data() } as TransferOrder;
-          if (accessibleWarehouseIds.isGlobal) {
-            orders.push(data);
-          } else {
-            const isCreator = data.creator_id === user.id;
-            const srcInScope = accessibleWarehouseIds.ids.includes(
-              data.source_warehouse_id,
-            );
-            const dstInScope = accessibleWarehouseIds.ids.includes(
-              data.destination_warehouse_id,
-            );
-            if (isCreator || srcInScope || dstInScope) orders.push(data);
-          }
-        });
-
-        setRawOrders(
-          orders.sort((a, b) => {
-            const aTime =
-              a.created_at instanceof Date
-                ? a.created_at.getTime()
-                : new Date(a.created_at as unknown as string).getTime();
-            const bTime =
-              b.created_at instanceof Date
-                ? b.created_at.getTime()
-                : new Date(b.created_at as unknown as string).getTime();
-            return bTime - aTime;
+    const constraints = [where("is_deleted", "==", false)];
+    const sourceQueries = buildFacilityScopedQueries({
+      db,
+      collectionName: "transfer_orders",
+      facilityField: "source_warehouse_id",
+      scope: facilityScope,
+      constraints,
+    });
+    const queries = facilityScope.isSystemAdmin
+      ? sourceQueries
+      : sourceQueries.concat(
+          buildFacilityScopedQueries({
+            db,
+            collectionName: "transfer_orders",
+            facilityField: "destination_warehouse_id",
+            scope: facilityScope,
+            constraints,
           }),
         );
+    return subscribeToMergedQueries<TransferOrder>({
+      queries,
+      mapDocument: (document) => ({
+        id: document.id,
+        ...document.data(),
+      }) as TransferOrder,
+      onData: (orders) => {
+        setRawOrders(orders.sort((left, right) => time(right.created_at) - time(left.created_at)));
         setLoading(false);
       },
-      (error) => {
+      onError: (error) => {
         console.error("[useTransferOrders] onSnapshot error:", error);
         setLoading(false);
       },
-    );
-
-    return () => unsubscribe();
-  }, [user?.id, accessibleWarehouseIds]);
+    });
+  }, [facilityScope, userId]);
 
   const activeOrders = useMemo(
-    () => rawOrders.filter((o) => ACTIVE_STATUSES.includes(o.status)),
+    () => rawOrders.filter((order) => ACTIVE_STATUSES.includes(order.status)),
     [rawOrders],
   );
-
   const completedOrders = useMemo(
-    () => rawOrders.filter((o) => COMPLETED_STATUSES.includes(o.status)),
+    () => rawOrders.filter((order) => COMPLETED_STATUSES.includes(order.status)),
     [rawOrders],
   );
-
   return { activeOrders, completedOrders, loading };
 }

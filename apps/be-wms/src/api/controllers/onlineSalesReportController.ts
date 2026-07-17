@@ -1,45 +1,21 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { LANDMARK_81_WAREHOUSE_ID } from "../../services/revenueDashboardService.js";
 import { getOnlineSalesReport } from "../../services/onlineSalesReportService.js";
+import { authorizeOnlineSalesReportRequest } from "../../services/onlineSalesRequestPolicy.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import { requireRequestAuthorization } from "../middlewares/requestAccessContext.js";
 
-const onlineSalesReportQuerySchema = z.object({
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
-
-function hasPermission(req: Request, action: string): boolean {
-  const user = (req as Request & {
-    user?: { permissions?: Record<string, Record<string, unknown>> };
-  }).user;
-  if (!user?.permissions) return false;
-
-  const globalPerms = user.permissions.global || {};
-  const warehousePerms = user.permissions[LANDMARK_81_WAREHOUSE_ID] || {};
-  return (
-    globalPerms["*"] === true ||
-    globalPerms[action] === true ||
-    warehousePerms["*"] === true ||
-    warehousePerms[action] === true
-  );
-}
-
-export const getOnlineSalesReportHandler = async (req: Request, res: Response) => {
+export const getOnlineSalesReportHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
-    if (!hasPermission(req, "revenue.read")) {
-      return sendError(
-        res,
-        {
-          vi: "Ban khong co quyen xem doanh thu online.",
-          zh: "您没有查看线上营收的权限。",
-        },
-        403,
-      );
-    }
-
-    const query = onlineSalesReportQuerySchema.parse(req.query);
+    const query = authorizeOnlineSalesReportRequest(
+      req.query,
+      requireRequestAuthorization(req),
+    );
     const data = await getOnlineSalesReport({
+      warehouseId: query.warehouseId,
       from: query.from,
       to: query.to,
     });
@@ -54,19 +30,26 @@ export const getOnlineSalesReportHandler = async (req: Request, res: Response) =
     if (error instanceof z.ZodError) {
       return sendError(
         res,
-        { vi: "Khoang ngay doanh thu online khong hop le.", zh: "线上营收日期范围无效。" },
+        {
+          vi: "Khoang ngay doanh thu online khong hop le.",
+          zh: "线上营收日期范围无效。",
+        },
         400,
         error.flatten(),
       );
     }
 
+    const apiError = error as {
+      statusCode?: number;
+      messages?: { vi: string; zh: string };
+    };
     return sendError(
       res,
-      {
+      apiError.messages ?? {
         vi: "Loi tai du lieu doanh thu online. Vui long thu lai sau.",
         zh: "加载线上营收数据失败，请稍后重试。",
       },
-      500,
+      apiError.statusCode ?? 500,
     );
   }
 };

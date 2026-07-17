@@ -1,118 +1,53 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { documentId, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   WarehouseType,
   type Warehouse,
   type WarehouseLocation,
 } from "@bduck/shared-types";
-import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
+import {
+  emitDataMutation,
+  subscribeDataMutation,
+} from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
-import { createDetailedApiError } from "@/utils/apiError";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
-
-type ApiCollectionResponse<T> = {
-  success?: boolean;
-  data?: T[];
-  messages?: { vi?: string; zh?: string };
-};
-
-async function fetchCollection<T>(
-  path: string,
-  signal?: AbortSignal,
-): Promise<T[]> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "GET",
-    credentials: "include",
-    signal,
-  });
-  const body = (await response
-    .json()
-    .catch(() => null)) as ApiCollectionResponse<T> | null;
-
-  if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the tai du lieu kho.");
-  }
-
-  return body.data || [];
-}
-
-async function callWarehouseApi(
-  path: string,
-  method: "POST" | "PUT" | "DELETE",
-  payload?: unknown,
-) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-  const body = await response.json().catch(() => null);
-
-  if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the luu du lieu kho.");
-  }
-
-  return body;
-}
-
-function getAccessibleWarehouseIds(
-  permissions: Record<string, Record<string, unknown>>,
-): string[] | undefined {
-  const globalPerms = permissions.global || {};
-  if (globalPerms["*"] === true || globalPerms["warehouses.read"] === true) {
-    return undefined;
-  }
-
-  return Object.entries(permissions)
-    .filter(([scope, scopedPermissions]) => {
-      if (scope === "global") return false;
-      return (
-        scopedPermissions["*"] === true ||
-        scopedPermissions["warehouses.read"] === true
-      );
-    })
-    .map(([scope]) => scope);
-}
+import {
+  getAnyFacilityScope,
+  scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
+import { useWarehouseLocationMutations } from "./useWarehouseLocationMutations";
+import { callWarehouseApi, fetchWarehouseCollection } from "./warehouseHookApi";
 
 export function useWarehouses() {
   const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const abortController = new AbortController();
-    const accessibleWarehouseIds = getAccessibleWarehouseIds(permissions);
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
 
     const loadApiFallback = async () => {
       try {
-        const data = await fetchCollection<Warehouse>(
+        const data = await fetchWarehouseCollection<Warehouse>(
           "/api/warehouses",
           abortController.signal,
         );
         if (isDisposed) return;
-        setWarehouses(
-          accessibleWarehouseIds
-            ? data.filter((warehouse) =>
-                accessibleWarehouseIds.includes(warehouse.id),
-              )
-            : data,
-        );
+        setWarehouses(data);
         setError(null);
       } catch (apiError) {
         if (isDisposed) return;
@@ -143,35 +78,30 @@ export function useWarehouses() {
         return;
       }
 
-      const warehousesQuery = query(
-        collection(db, "warehouses"),
-        where("is_deleted", "==", false),
-        orderBy("created_at", "desc"),
-      );
-
-      unsubscribeSnapshot = onSnapshot(
-        warehousesQuery,
-        (snapshot) => {
+      unsubscribeSnapshot = subscribeToMergedQueries<Warehouse>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "warehouses",
+          facilityField: documentId(),
+          scope: facilityScope,
+          constraints: [where("is_deleted", "==", false)],
+        }),
+        mapDocument: (document) =>
+          ({
+            ...document.data(),
+            id: document.id,
+          }) as Warehouse,
+        onData: (data) => {
           if (isDisposed) return;
-          const data = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as Warehouse[];
-          setWarehouses(
-            accessibleWarehouseIds
-              ? data.filter((warehouse) =>
-                  accessibleWarehouseIds.includes(warehouse.id),
-                )
-              : data,
-          );
+          setWarehouses(data);
           setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.warn("[useWarehouses] onSnapshot error:", snapshotError);
           void loadApiFallback();
         },
-      );
+      });
     });
 
     return () => {
@@ -181,39 +111,27 @@ export function useWarehouses() {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [permissions]);
+  }, [facilityScope]);
 
-  const createWarehouse = useCallback(
-    async (payload: unknown) => {
-      const result = await callWarehouseApi("/api/warehouses", "POST", payload);
-      emitDataMutation(["warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const updateWarehouse = useCallback(
-    async (id: string, payload: unknown) => {
-      const result = await callWarehouseApi(
-        `/api/warehouses/${id}`,
-        "PUT",
-        payload,
-      );
-      emitDataMutation(["warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const deleteWarehouse = useCallback(
-    async (id: string) => {
-      const result = await callWarehouseApi(
-        `/api/warehouses/${id}`,
-        "DELETE",
-      );
-      emitDataMutation(["warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
+  const createWarehouse = useCallback(async (payload: unknown) => {
+    const result = await callWarehouseApi("/api/warehouses", "POST", payload);
+    emitDataMutation(["warehouses", "audit_logs"]);
+    return result;
+  }, []);
+  const updateWarehouse = useCallback(async (id: string, payload: unknown) => {
+    const result = await callWarehouseApi(
+      `/api/warehouses/${id}`,
+      "PUT",
+      payload,
+    );
+    emitDataMutation(["warehouses", "audit_logs"]);
+    return result;
+  }, []);
+  const deleteWarehouse = useCallback(async (id: string) => {
+    const result = await callWarehouseApi(`/api/warehouses/${id}`, "DELETE");
+    emitDataMutation(["warehouses", "audit_logs"]);
+    return result;
+  }, []);
 
   return {
     warehouses,
@@ -241,44 +159,50 @@ export function useStores() {
 
 export function useWarehouseLocations(warehouseId?: string) {
   const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
+  const queryScope = useMemo(() => {
+    if (!warehouseId) return facilityScope;
+    return {
+      isSystemAdmin: false,
+      facilityIds: scopeContainsFacility(facilityScope, warehouseId)
+        ? [warehouseId]
+        : [],
+    };
+  }, [facilityScope, warehouseId]);
   const [locations, setLocations] = useState<WarehouseLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const abortController = new AbortController();
-    const accessibleWarehouseIds = getAccessibleWarehouseIds(permissions);
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
 
     const loadApiFallback = async () => {
       try {
         const data =
-          !warehouseId && accessibleWarehouseIds
+          !warehouseId && !facilityScope.isSystemAdmin
             ? (
                 await Promise.all(
-                  accessibleWarehouseIds.map((id) =>
-                    fetchCollection<WarehouseLocation>(
+                  facilityScope.facilityIds.map((id) =>
+                    fetchWarehouseCollection<WarehouseLocation>(
                       `/api/locations?warehouse_id=${id}`,
                       abortController.signal,
                     ),
                   ),
                 )
               ).flat()
-            : await fetchCollection<WarehouseLocation>(
+            : await fetchWarehouseCollection<WarehouseLocation>(
                 warehouseId
                   ? `/api/locations?warehouse_id=${warehouseId}`
                   : "/api/locations",
                 abortController.signal,
               );
         if (isDisposed) return;
-        setLocations(
-          accessibleWarehouseIds
-            ? data.filter((location) =>
-                accessibleWarehouseIds.includes(location.warehouse_id),
-              )
-            : data,
-        );
+        setLocations(data);
         setError(null);
       } catch (apiError) {
         if (isDisposed) return;
@@ -313,45 +237,33 @@ export function useWarehouseLocations(warehouseId?: string) {
         return;
       }
 
-      const locationsQuery = warehouseId
-        ? query(
-            collection(db, "warehouse_locations"),
-            where("warehouse_id", "==", warehouseId),
-            where("is_deleted", "==", false),
-            orderBy("created_at", "desc"),
-          )
-        : query(
-            collection(db, "warehouse_locations"),
-            where("is_deleted", "==", false),
-            orderBy("created_at", "desc"),
-          );
-
-      unsubscribeSnapshot = onSnapshot(
-        locationsQuery,
-        (snapshot) => {
+      unsubscribeSnapshot = subscribeToMergedQueries<WarehouseLocation>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "warehouse_locations",
+          facilityField: "warehouse_id",
+          scope: queryScope,
+          constraints: [where("is_deleted", "==", false)],
+        }),
+        mapDocument: (document) =>
+          ({
+            ...document.data(),
+            id: document.id,
+          }) as WarehouseLocation,
+        onData: (data) => {
           if (isDisposed) return;
-          const data = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as WarehouseLocation[];
-          setLocations(
-            accessibleWarehouseIds
-              ? data.filter((location) =>
-                  accessibleWarehouseIds.includes(location.warehouse_id),
-                )
-              : data,
-          );
+          setLocations(data);
           setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.warn(
             "[useWarehouseLocations] onSnapshot error:",
             snapshotError,
           );
           void loadApiFallback();
         },
-      );
+      });
     });
 
     return () => {
@@ -361,36 +273,10 @@ export function useWarehouseLocations(warehouseId?: string) {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [warehouseId, permissions]);
+  }, [facilityScope, queryScope, warehouseId]);
 
-  const createLocation = useCallback(
-    async (payload: unknown) => {
-      const result = await callWarehouseApi("/api/locations", "POST", payload);
-      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const updateLocation = useCallback(
-    async (id: string, payload: unknown) => {
-      const result = await callWarehouseApi(
-        `/api/locations/${id}`,
-        "PUT",
-        payload,
-      );
-      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
-  const deleteLocation = useCallback(
-    async (id: string) => {
-      const result = await callWarehouseApi(`/api/locations/${id}`, "DELETE");
-      emitDataMutation(["warehouse_locations", "warehouses", "audit_logs"]);
-      return result;
-    },
-    [],
-  );
+  const { createLocation, updateLocation, deleteLocation } =
+    useWarehouseLocationMutations();
 
   return {
     locations,

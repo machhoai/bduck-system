@@ -11,7 +11,7 @@ import {
   updateProductBomHandler,
 } from "../controllers/productBomController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
@@ -19,7 +19,7 @@ const router: ExpressRouter = Router();
 router.get(
   "/",
   requireAuth,
-  requirePermission("products.read"),
+  requireAnyScopedPermission("products.read"),
   getProductsHandler,
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.get(
   "/:id",
   requireAuth,
-  requirePermission("products.read"),
+  requireAnyScopedPermission("products.read"),
   getProductByIdHandler,
 );
 
@@ -35,7 +35,7 @@ router.get(
 router.post(
   "/",
   requireAuth,
-  requirePermission("products.write"),
+  requireAnyScopedPermission("products.write"),
   createProductHandler,
 );
 
@@ -43,7 +43,7 @@ router.post(
 router.put(
   "/:id",
   requireAuth,
-  requirePermission("products.write"),
+  requireAnyScopedPermission("products.write"),
   updateProductHandler,
 );
 
@@ -51,7 +51,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth,
-  requirePermission("products.write"),
+  requireAnyScopedPermission("products.write"),
   deleteProductHandler,
 );
 
@@ -63,7 +63,7 @@ router.delete(
 router.get(
   "/:id/bom",
   requireAuth,
-  requirePermission("products.read"),
+  requireAnyScopedPermission("products.read"),
   getProductBomHandler,
 );
 
@@ -71,7 +71,7 @@ router.get(
 router.put(
   "/:id/bom",
   requireAuth,
-  requirePermission("products.write"),
+  requireAnyScopedPermission("products.write"),
   updateProductBomHandler,
 );
 

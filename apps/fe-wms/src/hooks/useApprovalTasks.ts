@@ -8,10 +8,15 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { ApprovalRecord } from "@bduck/shared-types";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -53,7 +58,8 @@ function toTime(value: unknown): number {
     }
 
     if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
-    if (typeof timestamp._seconds === "number") return timestamp._seconds * 1000;
+    if (typeof timestamp._seconds === "number")
+      return timestamp._seconds * 1000;
   }
 
   const time = new Date(value as string | number).getTime();
@@ -64,7 +70,9 @@ function getEntityKey(record: ApprovalRecord): string {
   return `${record.entity_type}:${record.entity_id}`;
 }
 
-function filterCurrentPendingLevel(records: ApprovalRecord[]): ApprovalRecord[] {
+function filterCurrentPendingLevel(
+  records: ApprovalRecord[],
+): ApprovalRecord[] {
   const currentLevelByEntity = new Map<string, number>();
 
   records.forEach((record) => {
@@ -100,6 +108,11 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
   const user = useUserStore((s) => s.user);
   const userRoleIds = useUserStore((s) => s.roleIds);
   const hasScopedRole = useUserStore((s) => s.hasScopedRole);
+  const permissions = useUserStore((s) => s.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
 
   useEffect(() => {
     if (!user?.id || userRoleIds.length === 0) {
@@ -132,22 +145,23 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
       setLoading(false);
     };
 
-    const q = query(
-      collection(db, "pending_approvals"),
-      where("status", "==", "PENDING"),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const records: ApprovalRecord[] = [];
-        snapshot.forEach((doc) => {
-          records.push({ id: doc.id, ...doc.data() } as ApprovalRecord);
-        });
-
-        applyRecords(records);
-      },
-      async (error) => {
+    const constraints = [where("status", "==", "PENDING")];
+    const approvalQueries = buildFacilityScopedQueries({
+      db,
+      collectionName: "pending_approvals",
+      facilityField: "approval_warehouse_id",
+      scope: facilityScope,
+      constraints,
+    });
+    const unsubscribe = subscribeToMergedQueries<ApprovalRecord>({
+      queries: approvalQueries,
+      mapDocument: (document) =>
+        ({
+          id: document.id,
+          ...document.data(),
+        }) as ApprovalRecord,
+      onData: applyRecords,
+      onError: async (error) => {
         console.error("[useApprovalTasks] onSnapshot error:", error);
         try {
           applyRecords(await fetchPendingApprovalsFromApi());
@@ -156,10 +170,10 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
           setLoading(false);
         }
       },
-    );
+    });
 
     return () => unsubscribe();
-  }, [hasScopedRole, user?.id, userRoleIds]);
+  }, [facilityScope, hasScopedRole, user?.id, userRoleIds]);
 
   const selfCreatedIds = useMemo(() => {
     if (!user?.id) return new Set<string>();

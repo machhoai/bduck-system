@@ -64,11 +64,47 @@ const normalizedSources = (grant: UserFacilityAccessGrant) =>
       JSON.stringify(left).localeCompare(JSON.stringify(right)),
     );
 
+const normalizedAdminSources = (
+  value: UserAccessMetadata | UserAccessVersion,
+) =>
+  JSON.stringify(
+    [
+      ...(Array.isArray(value.system_admin_sources)
+        ? value.system_admin_sources
+        : []),
+    ]
+      .map((source) => ({
+        assignment_id: source.assignment_id,
+        office_id: source.office_id,
+        role_id: source.role_id,
+        type: source.type,
+      }))
+      .sort((left, right) =>
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      ),
+  );
+
+const hasValidAdminSourceManifest = (
+  value: UserAccessMetadata | UserAccessVersion,
+) => {
+  const sources = Array.isArray(value.system_admin_sources)
+    ? value.system_admin_sources
+    : [];
+  return value.is_global_admin
+    ? sources.length > 0 &&
+        sources.every(
+          (source) =>
+            source.type === "SYSTEM_GLOBAL" && source.office_id === null,
+        )
+    : sources.length === 0;
+};
+
 const grantManifest = (grant: UserFacilityAccessGrant) =>
   JSON.stringify({
     access_version: grant.access_version,
     access_version_id: grant.access_version_id,
     facility_id: grant.facility_id,
+    facility_type: grant.facility_type,
     id: grant.id,
     is_deleted: grant.is_deleted,
     permissions: Object.entries(grant.permissions).sort(([left], [right]) =>
@@ -95,6 +131,9 @@ export const assertUserAccessSnapshotPlan = (
     !version.source_fingerprint ||
     metadata.workplace_facility_id !== version.workplace_facility_id ||
     metadata.is_global_admin !== version.is_global_admin ||
+    !hasValidAdminSourceManifest(metadata) ||
+    !hasValidAdminSourceManifest(version) ||
+    normalizedAdminSources(metadata) !== normalizedAdminSources(version) ||
     metadata.facility_grant_count !== count ||
     version.facility_grant_count !== count ||
     metadata.is_deleted ||
@@ -133,6 +172,8 @@ export const assertStoredVersionMatchesPlan = (
     stored.source_fingerprint !== expected.source_fingerprint ||
     stored.workplace_facility_id !== expected.workplace_facility_id ||
     stored.is_global_admin !== expected.is_global_admin ||
+    !hasValidAdminSourceManifest(stored) ||
+    normalizedAdminSources(stored) !== normalizedAdminSources(expected) ||
     stored.facility_grant_count !== grantCount ||
     stored.is_deleted
   ) {
@@ -203,6 +244,9 @@ export const assertActiveMetadataMatchesVersion = (
     metadata.source_fingerprint !== version.source_fingerprint ||
     metadata.workplace_facility_id !== version.workplace_facility_id ||
     metadata.is_global_admin !== version.is_global_admin ||
+    !hasValidAdminSourceManifest(metadata) ||
+    !hasValidAdminSourceManifest(version) ||
+    normalizedAdminSources(metadata) !== normalizedAdminSources(version) ||
     metadata.facility_grant_count !== version.facility_grant_count
   ) {
     throw new Error("USER_ACCESS_ACTIVE_VERSION_POINTER_MISMATCH");

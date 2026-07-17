@@ -16,7 +16,11 @@ import {
     Warehouse as WarehouseIcon,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { LocationType, type WarehouseLocation } from "@bduck/shared-types";
+import {
+    LocationType,
+    WarehouseType,
+    type WarehouseLocation,
+} from "@bduck/shared-types";
 
 import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
 import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
@@ -25,6 +29,7 @@ import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleto
 import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { WarehouseInfoSheet } from "@/components/warehouses/WarehouseInfoSheet";
+import { OfficeFacilityDetail } from "@/components/office-scope/OfficeFacilityDetail";
 
 import StatCardGrid from "@/components/inventory/StatCardGrid";
 import StockDistributionChart from "@/components/inventory/StockDistributionChart";
@@ -214,7 +219,7 @@ export default function WarehouseDetailPage() {
     }, [categories, locations, products, slots]);
 
     const warehouseExportConfig = useMemo<ExportConfig | null>(() => {
-        if (!warehouse) return null;
+        if (!warehouse || warehouse.type === WarehouseType.OFFICE) return null;
 
         return {
             ...buildWarehouseInventoryExportConfig(exportContext),
@@ -323,8 +328,23 @@ export default function WarehouseDetailPage() {
         return updateWarehouse(warehouseId, payload);
     };
 
+    if (warehousesLoading) {
+        return <WarehouseTableSkeleton />;
+    }
+
+    if (warehouse?.type === WarehouseType.OFFICE) {
+        return (
+            <OfficeFacilityDetail
+                office={warehouse}
+                facilities={warehouses}
+                managerName={managerName}
+                onSaveOffice={handleSaveWarehouse}
+            />
+        );
+    }
+
     const isLoading =
-        warehousesLoading || invLoading || prodLoading || categoriesLoading;
+        invLoading || prodLoading || categoriesLoading;
 
     if (isLoading) {
         return <WarehouseTableSkeleton />;

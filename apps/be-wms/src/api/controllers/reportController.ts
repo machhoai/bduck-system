@@ -17,11 +17,12 @@ import {
   updateExcelReportTemplateSchema,
 } from "../../utils/reportSchemas.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
-import type { RequestUserContext } from "../../services/warehouseAccess.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
-function getRequestUser(req: Request): RequestUserContext {
-  return (req as any).user as RequestUserContext;
-}
+const getRequestUser = (req: Request) => requireAuthenticatedRequestUser(req);
 
 function handleReportError(res: Response, error: unknown) {
   console.error("[reportController] error:", error);
@@ -108,6 +109,7 @@ export async function createExcelReportTemplateHandler(
     const data = await createExcelReportTemplate(
       input,
       getRequestUser(req),
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(
@@ -135,6 +137,7 @@ export async function updateExcelReportTemplateHandler(
       id,
       input,
       getRequestUser(req),
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, data, {
@@ -150,7 +153,12 @@ export async function previewExcelReportHandler(req: Request, res: Response) {
   try {
     const { id } = reportIdParamSchema.parse(req.params);
     const input = exportExcelReportSchema.parse(req.body);
-    const data = await previewExcelReport(id, input.mapping, getRequestUser(req));
+    const data = await previewExcelReport(
+      id,
+      input.mapping,
+      getRequestUser(req),
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, data, {
       vi: "Đã preview dữ liệu báo cáo.",
       zh: "已预览报表数据。",
@@ -168,6 +176,7 @@ export async function exportExcelReportHandler(req: Request, res: Response) {
       id,
       input.mapping,
       getRequestUser(req),
+      requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
     res.setHeader(

@@ -116,6 +116,17 @@ const requiredCases = [
   "facility_constrained_firestore_query_is_allowed",
   "offline_revocation_does_not_render_cached_data",
   "account_switch_does_not_reuse_previous_cache",
+  "office_manager_writes_inside_ceiling",
+  "office_manager_cannot_expand_outside_ceiling",
+  "direct_grant_does_not_expand_office_ceiling",
+  "two_admins_same_revision_conflicts",
+  "unconfigured_office_fails_closed",
+  "office_without_employees_completes_materialization",
+  "partial_rebuild_failure_is_retryable",
+  "selected_scope_adds_facility_and_rebuilds_users",
+  "selected_scope_removes_facility_and_revokes_users",
+  "office_role_change_rebuilds_inherited_permissions",
+  "direct_and_inherited_grants_merge_without_ceiling_bypass",
 ];
 
 for (const caseId of requiredCases) {

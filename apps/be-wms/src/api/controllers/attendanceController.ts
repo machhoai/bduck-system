@@ -8,9 +8,13 @@ import {
   fetchAttendancePolicies,
   updateAttendanceExemptions,
   updateAttendancePolicy,
-} from "../../services/attendanceService.js";
+} from "../../services/scopedAttendanceService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const warehouseParamSchema = z.object({ warehouseId: z.string().uuid() });
 const checkInSchema = z.object({
@@ -61,7 +65,7 @@ const updateExemptionsSchema = z.object({
     .default([]),
 });
 
-const getRequestUser = (req: Request) => (req as any).user;
+const getRequestUser = (req: Request) => requireAuthenticatedRequestUser(req);
 const getHeaderValue = (req: Request, headerName: string) => {
   const value = req.headers[headerName.toLowerCase()];
   return Array.isArray(value) ? value.join(",") : value;
@@ -116,6 +120,7 @@ export const getAttendanceContextHandler = async (
     const context = await fetchAttendanceContext(
       getRequestUser(req),
       getRequestIpCandidates(req),
+      requireRequestAuthorization(req),
     );
     return sendSuccess(res, context, {
       vi: "Lấy ngữ cảnh chấm công thành công.",
@@ -134,6 +139,7 @@ export const checkInAttendanceHandler = async (req: Request, res: Response) => {
       input,
       getRequestIpCandidates(req),
       getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
     );
     return sendSuccess(
       res,
@@ -156,6 +162,7 @@ export const createLateArrivalReportHandler = async (
       getRequestUser(req),
       input,
       getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
     );
     return sendSuccess(
       res,
@@ -173,7 +180,9 @@ export const getAttendancePoliciesHandler = async (
   res: Response,
 ) => {
   try {
-    const policies = await fetchAttendancePolicies(getRequestUser(req));
+    const policies = await fetchAttendancePolicies(
+      requireRequestAuthorization(req),
+    );
     return sendSuccess(res, policies, {
       vi: "Lấy cấu hình chấm công thành công.",
       zh: "成功获取考勤配置。",
@@ -195,6 +204,7 @@ export const updateAttendancePolicyHandler = async (
       warehouseId,
       input,
       getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
     );
     return sendSuccess(res, policy, {
       vi: "Đã áp dụng cấu hình chấm công.",
@@ -214,6 +224,7 @@ export const getAttendanceExemptionsHandler = async (
     const exemptions = await fetchAttendanceExemptions(
       getRequestUser(req),
       warehouseId,
+      requireRequestAuthorization(req),
     );
     return sendSuccess(res, exemptions, {
       vi: "Lấy danh sách miễn chấm công thành công.",
@@ -236,6 +247,7 @@ export const updateAttendanceExemptionsHandler = async (
       warehouseId,
       input.excluded_user_ids,
       getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
     );
     return sendSuccess(res, exemptions, {
       vi: "Đã cập nhật danh sách miễn chấm công.",

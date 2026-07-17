@@ -185,7 +185,10 @@ export default function RevenueDashboard() {
                                 comparisonCount={comparisonData.length}
                                 onPointClick={handleChartPointClick}
                             />
-                            <OnlineRevenueSection filter={filter} />
+                            <OnlineRevenueSection
+                                filter={filter}
+                                warehouseId={activeWarehouseId}
+                            />
                             <TopProductsByGroup groups={data.topProductGroups} />
                         </div>
                     )}

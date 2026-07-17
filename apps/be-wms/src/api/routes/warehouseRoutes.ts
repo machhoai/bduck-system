@@ -10,6 +10,7 @@ import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   requireAnyScopedPermission,
   requirePermission,
+  requireSystemAdmin,
 } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
@@ -28,7 +29,7 @@ router.get(
   ),
   getWarehouseByIdHandler,
 );
-router.post("/", requirePermission("warehouses.write"), createWarehouseHandler);
+router.post("/", requireSystemAdmin, createWarehouseHandler);
 router.put(
   "/:id",
   requireAnyScopedPermission("warehouses.write"),

@@ -50,6 +50,7 @@ export interface OnlineSalesReport {
 }
 
 export interface OnlineSalesReportParams {
+  warehouseId: string;
   from: string;
   to: string;
 }
@@ -64,6 +65,7 @@ export async function getOnlineSalesReport(
 
   const baseUrl = (process.env.CITYFUNS_API_BASE_URL || DEFAULT_CITYFUNS_API_BASE_URL).replace(/\/$/, "");
   const qs = new URLSearchParams({
+    warehouseId: params.warehouseId,
     from: params.from,
     to: params.to,
   });

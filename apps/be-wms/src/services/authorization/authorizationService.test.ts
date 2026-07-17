@@ -67,6 +67,8 @@ const context = createAccessContext({
         "locations.write": true,
         "vouchers.read": true,
         "vouchers.write": true,
+        "external_scan.view": true,
+        "external_scan.manage_queue": true,
       },
       sources: [directSource("office")],
     },
@@ -115,6 +117,8 @@ describe("AuthorizationService", () => {
       "stock_counts.count",
       "external_count.view",
       "external_count.count",
+      "external_scan.view",
+      "external_scan.manage_queue",
     ]) {
       assert.equal(service.can(action, "office"), false);
     }

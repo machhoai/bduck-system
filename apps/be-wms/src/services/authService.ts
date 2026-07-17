@@ -2,7 +2,6 @@ import { auth } from "../config/firebase.js";
 import {
   getUserById,
   getUserWarehouseRoles,
-  getRoleById,
 } from "../repositories/userRepository.js";
 import { findUserByUsername } from "../repositories/userRepository.js";
 import { findEmployeeProfilesByPhone } from "../repositories/employeeProfileRepository.js";
@@ -11,6 +10,9 @@ import {
   type AuthSessionResult,
 } from "./authSessionFlow.js";
 import { isUsableLoginUser } from "./loginUserPolicy.js";
+import { ensureSessionUserAccessWithDependencies } from "./authAccessBootstrapService.js";
+import { loadMaterializedAccessContext } from "./materializedAccessContextService.js";
+import { materializeUserAccess } from "./userAccessMaterializationService.js";
 
 export type { AuthSessionResult } from "./authSessionFlow.js";
 
@@ -51,7 +53,11 @@ export const createSessionLogin = async (
     verifyIdToken: (token) => auth.verifyIdToken(token),
     getUserById,
     getUserWarehouseRoles,
-    getRoleById,
+    ensureUserAccess: (userId) =>
+      ensureSessionUserAccessWithDependencies(userId, {
+        loadAccessContext: loadMaterializedAccessContext,
+        materializeAccess: materializeUserAccess,
+      }),
     createSessionCookie: (token, options) =>
       auth.createSessionCookie(token, options),
   });

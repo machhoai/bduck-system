@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import type { User } from "@bduck/shared-types";
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
@@ -31,7 +38,7 @@ export function useLanPresence() {
   );
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id || !user.workplace_facility_id) return;
     const presenceRef = doc(
       db,
       "lan_transfer_presence",
@@ -47,6 +54,7 @@ export function useLanPresence() {
           device_id: deviceId,
           display_name: getLanDisplayName(user),
           email: user.email || null,
+          workplace_facility_id: user.workplace_facility_id,
           last_seen_at: now,
           expires_at: new Date(now.getTime() + PRESENCE_TTL_MS),
         },
@@ -73,12 +81,16 @@ export function useLanPresence() {
   }, [deviceId, isAuthenticated, user]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
+    if (!isAuthenticated || !user?.id || !user.workplace_facility_id) {
       setPeers([]);
       return;
     }
 
-    const unsubscribe = onSnapshot(collection(db, "lan_transfer_presence"), (snap) => {
+    const presenceQuery = query(
+      collection(db, "lan_transfer_presence"),
+      where("workplace_facility_id", "==", user.workplace_facility_id),
+    );
+    const unsubscribe = onSnapshot(presenceQuery, (snap) => {
       const now = Date.now();
       const rows = snap.docs
         .map((item) => buildPresence(item.id, item.data()))
@@ -92,7 +104,7 @@ export function useLanPresence() {
     });
 
     return unsubscribe;
-  }, [deviceId, isAuthenticated, user?.id]);
+  }, [deviceId, isAuthenticated, user?.id, user?.workplace_facility_id]);
 
   return { deviceId, peers: visiblePeers };
 }

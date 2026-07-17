@@ -55,7 +55,7 @@ export const activateUserAccessSnapshotInTransaction = async (
   transaction: FirebaseFirestore.Transaction,
   plan: UserAccessSnapshotWritePlan,
   timestamps: ActivationTimestamps,
-): Promise<void> => {
+): Promise<"ACTIVATED" | "UNCHANGED"> => {
   const expectedGrants = plan.grants.map(({ data }) => data);
   assertSnapshotWritePlanReferences(plan);
   assertUserAccessSnapshotPlan(plan.metadata, plan.version, expectedGrants);
@@ -105,7 +105,7 @@ export const activateUserAccessSnapshotInTransaction = async (
     : null;
   if (stagedVersion.status === "ACTIVE") {
     assertActiveMetadataMatchesVersion(existingMetadata, stagedVersion);
-    return;
+    return "UNCHANGED";
   }
   if (stagedVersion.status !== "BUILDING") {
     throw new Error("USER_ACCESS_VERSION_NOT_ACTIVATABLE");
@@ -169,4 +169,5 @@ export const activateUserAccessSnapshotInTransaction = async (
       sync_time: timestamps.syncTime,
     });
   }
+  return "ACTIVATED";
 };

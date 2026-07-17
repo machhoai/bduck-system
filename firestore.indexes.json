@@ -1,6 +1,209 @@
 {
   "indexes": [
     {
+      "collectionGroup": "attendance_late_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "attendance_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "attendance_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "attendance_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "employee_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "export_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "import_vouchers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "inventory_stock_policies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "inventory_stock_policies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "scope", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "nonconformity_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "approval_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "approval_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "entity_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "stock_count_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "source", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "transfer_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "source_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "transfer_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workplace_facility_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_attendance_exemptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "effective_to", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_attendance_policies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "effective_to", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_locations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_location_slots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_location_slots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "warehouse_location_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_location_slot_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warehouse_location_slot_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "warehouse_location_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "attachments",
       "queryScope": "COLLECTION",
       "fields": [
@@ -14,6 +217,29 @@
         },
         {
           "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "entity_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entity_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sync_time",
           "order": "DESCENDING"
         },
         {
@@ -132,6 +358,21 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "external_scan_queue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "client_id",
           "order": "ASCENDING"
         },
@@ -204,6 +445,21 @@
         {
           "fieldPath": "__name__",
           "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "expenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "period",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
         }
       ],
       "density": "SPARSE_ALL"
@@ -408,6 +664,21 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "notification_dispatches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "created_by",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "organizations",
       "queryScope": "COLLECTION",
       "fields": [
@@ -421,6 +692,44 @@
         },
         {
           "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "role_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "approval_warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "role_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouse_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ],
@@ -479,6 +788,25 @@
         {
           "fieldPath": "__name__",
           "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "user_access_rebuild_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_deleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "requested_at",
+          "order": "ASCENDING"
         }
       ],
       "density": "SPARSE_ALL"

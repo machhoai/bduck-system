@@ -23,6 +23,8 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 import { createUser, type CreateUserResult } from "./userService.js";
 import { AuthorizationService } from "./authorization/index.js";
 import { assertCanAccessTargetUser } from "./userTargetPolicy.js";
+import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
+import { buildEmployeeProfilePayload as buildProfilePayload } from "./employeeProfilePayload.js";
 
 type CreateEmployeeProfileInput = z.infer<typeof createEmployeeProfileSchema>;
 type UpdateEmployeeProfileInput = z.infer<typeof updateEmployeeProfileSchema>;
@@ -47,9 +49,6 @@ const conflictError = (messageVi: string, messageZh: string) => ({
     zh: messageZh,
   },
 });
-
-const cleanNullable = (value: string | null | undefined) =>
-  value?.trim() ? value.trim() : null;
 
 const assertUniqueProfileFields = async (
   input: Partial<Pick<EmployeeProfile, "employee_code" | "user_id">>,
@@ -88,33 +87,6 @@ const assertLinkedUserExists = async (userId: string | null | undefined) => {
       },
     };
   }
-};
-
-const buildProfilePayload = (
-  input: CreateEmployeeProfileInput | UpdateEmployeeProfileInput,
-): Partial<
-  Omit<EmployeeProfile, "id" | "created_at" | "updated_at" | "is_deleted">
-> => {
-  const payload: Partial<
-    Omit<EmployeeProfile, "id" | "created_at" | "updated_at" | "is_deleted">
-  > = {};
-
-  if ("user_id" in input) payload.user_id = input.user_id ?? null;
-  if ("employee_code" in input) payload.employee_code = input.employee_code;
-  if ("full_name" in input) payload.full_name = input.full_name;
-  if ("email" in input) payload.email = cleanNullable(input.email);
-  if ("phone" in input) payload.phone = cleanNullable(input.phone);
-  if ("job_title" in input) payload.job_title = cleanNullable(input.job_title);
-  if ("department" in input) {
-    payload.department = cleanNullable(input.department);
-  }
-  if ("workplace_warehouse_id" in input) {
-    payload.workplace_warehouse_id = input.workplace_warehouse_id;
-  }
-  if ("status" in input) payload.status = input.status;
-  if ("notes" in input) payload.notes = cleanNullable(input.notes);
-
-  return payload;
 };
 
 export const fetchEmployeeProfiles = async (
@@ -204,6 +176,13 @@ export const createEmployeeProfile = async (
     new_value: profile as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  if (profile.user_id) {
+    await rebuildUserAccessForUsers(
+      [profile.user_id],
+      "EMPLOYEE_PROFILE_CREATED",
+      actorId,
+    );
+  }
 
   return { profile, account };
 };
@@ -269,6 +248,13 @@ export const updateEmployeeProfile = async (
     new_value: updated as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  await rebuildUserAccessForUsers(
+    [existing.user_id, updated.user_id].filter((userId): userId is string =>
+      Boolean(userId),
+    ),
+    "EMPLOYEE_PROFILE_UPDATED",
+    actorId,
+  );
 
   return updated;
 };
@@ -294,4 +280,11 @@ export const deleteEmployeeProfile = async (
     new_value: { is_deleted: true },
     ...auditMetadata,
   });
+  if (existing.user_id) {
+    await rebuildUserAccessForUsers(
+      [existing.user_id],
+      "EMPLOYEE_PROFILE_SOFT_DELETED",
+      actorId,
+    );
+  }
 };

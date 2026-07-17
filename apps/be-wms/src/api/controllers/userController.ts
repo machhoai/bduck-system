@@ -4,6 +4,7 @@ import {
   createUser,
   deleteUser,
   fetchUserById,
+  fetchUserEffectiveAccess,
   fetchUsers,
   sendUserInvitation,
   updateUser,
@@ -71,6 +72,25 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
     return sendSuccess(res, user, {
       vi: "Lấy người dùng thành công.",
       zh: "成功获取用户。",
+    });
+  } catch (error) {
+    return handleUserError(res, error);
+  }
+};
+
+export const getUserEffectiveAccessHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { id } = userIdParamSchema.parse(req.params);
+    const data = await fetchUserEffectiveAccess(
+      id,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Lấy phạm vi quyền hiệu lực thành công.",
+      zh: "成功获取有效权限范围。",
     });
   } catch (error) {
     return handleUserError(res, error);

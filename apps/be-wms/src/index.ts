@@ -13,6 +13,7 @@ import productRoutes from "./api/routes/productRoutes.js";
 import roleRoutes from "./api/routes/roleRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
+import officeScopeRoutes from "./api/routes/officeScopeRoutes.js";
 import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
 import exportVoucherRoutes from "./api/routes/exportVoucherRoutes.js";
 import approvalRoutes from "./api/routes/approvalRoutes.js";
@@ -32,6 +33,8 @@ import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
 import attendanceRoutes from "./api/routes/attendanceRoutes.js";
 import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
 import fileTemplateRoutes from "./api/routes/fileTemplateRoutes.js";
+import fileTemplateBundleRoutes from "./api/routes/fileTemplateBundleRoutes.js";
+import processDocumentRoutes from "./api/routes/processDocumentRoutes.js";
 import {
   apiRateLimiter,
   authRateLimiter,
@@ -72,6 +75,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/warehouses", warehouseRoutes);
+app.use("/api/office-scopes", officeScopeRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/location-slots", locationSlotRoutes);
 app.use("/api/import-vouchers", importVoucherRoutes);
@@ -93,6 +97,8 @@ app.use("/api/external-queue", externalQueueRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/employee-profiles", employeeProfileRoutes);
 app.use("/api/file-templates", fileTemplateRoutes);
+app.use("/api/file-template-bundles", fileTemplateBundleRoutes);
+app.use("/api/process-documents", processDocumentRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({

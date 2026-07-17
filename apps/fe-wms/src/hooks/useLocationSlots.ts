@@ -1,8 +1,8 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { where } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   WarehouseLocationSlot,
   WarehouseLocationSlotProduct,
@@ -12,58 +12,32 @@ import {
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
-import { createDetailedApiError } from "@/utils/apiError";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
-
-type ApiCollectionResponse<T> = {
-  success?: boolean;
-  data?: T[];
-  messages?: { vi?: string; zh?: string };
-};
-
-async function fetchCollection<T>(
-  path: string,
-  signal?: AbortSignal,
-): Promise<T[]> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "GET",
-    credentials: "include",
-    signal,
-  });
-  const body = (await response
-    .json()
-    .catch(() => null)) as ApiCollectionResponse<T> | null;
-
-  if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the tai du lieu slot.");
-  }
-
-  return body.data || [];
-}
-
-async function callSlotApi(
-  path: string,
-  method: "POST" | "PUT" | "DELETE",
-  payload?: unknown,
-) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-  const body = await response.json().catch(() => null);
-
-  if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the luu du lieu slot.");
-  }
-
-  return body;
-}
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
+import { useUserStore } from "@/stores/useUserStore";
+import {
+  getAnyFacilityScope,
+  scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
+import { callSlotApi, fetchSlotCollection } from "./locationSlotHookApi";
 
 export function useLocationSlots(warehouseId?: string, locationId?: string) {
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
+  const queryScope = useMemo(() => {
+    if (!warehouseId) return facilityScope;
+    return {
+      isSystemAdmin: false,
+      facilityIds: scopeContainsFacility(facilityScope, warehouseId)
+        ? [warehouseId]
+        : [],
+    };
+  }, [facilityScope, warehouseId]);
   const [slots, setSlots] = useState<WarehouseLocationSlot[]>([]);
   const [mappings, setMappings] = useState<WarehouseLocationSlotProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,11 +64,11 @@ export function useLocationSlots(warehouseId?: string, locationId?: string) {
     const loadApiFallback = async () => {
       try {
         const [slotData, mappingData] = await Promise.all([
-          fetchCollection<WarehouseLocationSlot>(
+          fetchSlotCollection<WarehouseLocationSlot>(
             slotPath,
             abortController.signal,
           ),
-          fetchCollection<WarehouseLocationSlotProduct>(
+          fetchSlotCollection<WarehouseLocationSlotProduct>(
             mappingPath,
             abortController.signal,
           ),
@@ -143,86 +117,74 @@ export function useLocationSlots(warehouseId?: string, locationId?: string) {
         return;
       }
 
-      const slotCollection = collection(db, "warehouse_location_slots");
-      const mappingCollection = collection(
-        db,
-        "warehouse_location_slot_products",
-      );
-      const slotsQuery = locationId
-        ? query(
-            slotCollection,
-            where("warehouse_location_id", "==", locationId),
-            where("is_deleted", "==", false),
-          )
-        : warehouseId
-          ? query(
-              slotCollection,
-              where("warehouse_id", "==", warehouseId),
-              where("is_deleted", "==", false),
-            )
-          : query(slotCollection, where("is_deleted", "==", false));
-
-      const mappingsQuery = locationId
-        ? query(
-            mappingCollection,
-            where("warehouse_location_id", "==", locationId),
-            where("is_deleted", "==", false),
-          )
-        : warehouseId
-          ? query(
-              mappingCollection,
-              where("warehouse_id", "==", warehouseId),
-              where("is_deleted", "==", false),
-            )
-          : query(mappingCollection, where("is_deleted", "==", false));
+      const constraints = [
+        ...(locationId
+          ? [where("warehouse_location_id", "==", locationId)]
+          : []),
+        where("is_deleted", "==", false),
+      ];
 
       let loadedSlots = false;
       let loadedMappings = false;
 
-      unsubscribeSlots = onSnapshot(
-        slotsQuery,
-        (snapshot) => {
+      unsubscribeSlots = subscribeToMergedQueries<WarehouseLocationSlot>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "warehouse_location_slots",
+          facilityField: "warehouse_id",
+          scope: queryScope,
+          constraints,
+        }),
+        mapDocument: (document) =>
+          ({
+            ...document.data(),
+            id: document.id,
+          }) as WarehouseLocationSlot,
+        onData: (data) => {
           if (isDisposed) return;
-          const data = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as WarehouseLocationSlot[];
           setSlots(data.sort((a, b) => a.sort_order - b.sort_order));
           loadedSlots = true;
           if (loadedMappings) setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.warn(
             "[useLocationSlots] slot snapshot error:",
             snapshotError,
           );
           void loadApiFallback();
         },
-      );
+      });
 
-      unsubscribeMappings = onSnapshot(
-        mappingsQuery,
-        (snapshot) => {
-          if (isDisposed) return;
-          setMappings(
-            snapshot.docs.map((doc) => ({
-              ...doc.data(),
-              id: doc.id,
-            })) as WarehouseLocationSlotProduct[],
-          );
-          loadedMappings = true;
-          if (loadedSlots) setLoading(false);
-          setError(null);
-        },
-        (snapshotError) => {
-          console.warn(
-            "[useLocationSlots] mapping snapshot error:",
-            snapshotError,
-          );
-          void loadApiFallback();
-        },
-      );
+      unsubscribeMappings =
+        subscribeToMergedQueries<WarehouseLocationSlotProduct>({
+          queries: buildFacilityScopedQueries({
+            db,
+            collectionName: "warehouse_location_slot_products",
+            facilityField: "warehouse_id",
+            scope: queryScope,
+            constraints,
+          }),
+          mapDocument: (document) =>
+            ({
+              ...document.data(),
+              id: document.id,
+            }) as WarehouseLocationSlotProduct,
+          onData: (data) => {
+            if (isDisposed) return;
+            setMappings(data);
+            loadedMappings = true;
+            if (loadedSlots) setLoading(false);
+            setError(null);
+          },
+          onError: (snapshotError) => {
+            console.warn(
+              "[useLocationSlots] mapping snapshot error:",
+              snapshotError,
+            );
+            void loadApiFallback();
+          },
+        });
     });
 
     return () => {
@@ -234,7 +196,7 @@ export function useLocationSlots(warehouseId?: string, locationId?: string) {
       if (unsubscribeSlots) unsubscribeSlots();
       if (unsubscribeMappings) unsubscribeMappings();
     };
-  }, [locationId, warehouseId]);
+  }, [locationId, queryScope, warehouseId]);
 
   const createSlot = useCallback(async (payload: unknown) => {
     const result = await callSlotApi("/api/location-slots", "POST", payload);

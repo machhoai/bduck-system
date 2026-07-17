@@ -103,7 +103,11 @@ export default function DashboardRevenueOverview({
         data: onlineData,
         loading: onlineLoading,
         error: onlineError,
-    } = useOnlineSalesReport(filter, { keepPreviousData: true });
+    } = useOnlineSalesReport(filter, {
+        warehouseId,
+        enabled: Boolean(warehouseId),
+        keepPreviousData: true,
+    });
     const [detail, setDetail] = useState<RevenueDetail | null>(null);
     const topProducts = useMemo(
         () => getDashboardTopProducts(data?.topProductGroups ?? []),

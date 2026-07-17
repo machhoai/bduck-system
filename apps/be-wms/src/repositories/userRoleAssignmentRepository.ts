@@ -37,6 +37,25 @@ export const getUserWarehouseRolesForUsers = async (
   return assignments;
 };
 
+export const findActiveUserIdsByRoleId = async (
+  roleId: string,
+): Promise<string[]> => {
+  const snapshot = await db
+    .collection(USER_ROLES_COLLECTION)
+    .where("role_id", "==", roleId)
+    .get();
+  return Array.from(
+    new Set(
+      snapshot.docs.flatMap((document) => {
+        const assignment = mapAssignment(document);
+        return assignment.is_active && assignment.is_deleted === false
+          ? [assignment.user_id]
+          : [];
+      }),
+    ),
+  ).sort();
+};
+
 export const replaceUserWarehouseRoles = async (
   userId: string,
   assignments: Omit<UserWarehouseRole, "created_at">[],

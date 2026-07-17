@@ -102,6 +102,78 @@ const firestoreAuthorizationSourceReader: AuthorizationSourceReader = {
     ),
 };
 
+const createTransactionAuthorizationSourceReader = (
+  transaction: FirebaseFirestore.Transaction,
+): AuthorizationSourceReader => {
+  const getTransactionDocumentsByIds = async (
+    collectionName: string,
+    documentIds: readonly string[],
+  ): Promise<AuthorizationSourceDocument[]> => {
+    const ids = Array.from(new Set(documentIds));
+    if (ids.length === 0) return [];
+    const documents: AuthorizationSourceDocument[] = [];
+    for (let index = 0; index < ids.length; index += BATCH_GET_SIZE) {
+      const refs = ids
+        .slice(index, index + BATCH_GET_SIZE)
+        .map((id) => db.collection(collectionName).doc(id));
+      const snapshots = await transaction.getAll(...refs);
+      snapshots
+        .map(toSourceDocument)
+        .filter((document): document is AuthorizationSourceDocument =>
+          Boolean(document),
+        )
+        .forEach((document) => documents.push(document));
+    }
+    return documents;
+  };
+  const queryTransactionDocuments = async (
+    query: FirebaseFirestore.Query,
+  ): Promise<AuthorizationSourceDocument[]> => {
+    const snapshot = await transaction.get(query);
+    return snapshot.docs.map((document) => ({
+      id: document.id,
+      data: document.data(),
+    }));
+  };
+
+  return {
+    async getUser(actorId) {
+      return toSourceDocument(
+        await transaction.get(db.collection(USERS_COLLECTION).doc(actorId)),
+      );
+    },
+    findProfiles: (actorId) =>
+      queryTransactionDocuments(
+        db.collection(PROFILES_COLLECTION).where("user_id", "==", actorId),
+      ),
+    findAssignments: (actorId) =>
+      queryTransactionDocuments(
+        db.collection(ASSIGNMENTS_COLLECTION).where("user_id", "==", actorId),
+      ),
+    getRoles: (roleIds) =>
+      getTransactionDocumentsByIds(ROLES_COLLECTION, roleIds),
+    getFacilities: (facilityIds) =>
+      getTransactionDocumentsByIds(FACILITIES_COLLECTION, facilityIds),
+    findAllFacilityCandidates: () =>
+      queryTransactionDocuments(
+        db.collection(FACILITIES_COLLECTION).where("is_deleted", "==", false),
+      ),
+    async getOfficeConfig(officeId) {
+      return toSourceDocument(
+        await transaction.get(
+          db.collection(OFFICE_SCOPE_CONFIGS_COLLECTION).doc(officeId),
+        ),
+      );
+    },
+    findOfficeEdges: (officeId) =>
+      queryTransactionDocuments(
+        db
+          .collection(OFFICE_SCOPE_EDGES_COLLECTION)
+          .where("office_id", "==", officeId),
+      ),
+  };
+};
+
 export const loadAuthorizationRequestSource = (
   actorId: string,
   now = new Date(),
@@ -121,3 +193,14 @@ export const loadAuthorizationSourceSnapshot = async (
   now = new Date(),
 ): Promise<AuthorizationSourceSnapshot> =>
   (await loadAuthorizationRequestSource(actorId, now)).snapshot;
+
+export const loadAuthorizationRequestSourceInTransaction = (
+  transaction: FirebaseFirestore.Transaction,
+  actorId: string,
+  now = new Date(),
+): Promise<AuthorizationRequestSource> =>
+  loadAuthorizationRequestSourceFromReader(
+    createTransactionAuthorizationSourceReader(transaction),
+    actorId,
+    now,
+  );

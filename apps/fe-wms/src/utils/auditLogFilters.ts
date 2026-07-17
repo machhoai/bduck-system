@@ -86,10 +86,14 @@ export function getAuditDate(value: unknown): Date | null {
   return null;
 }
 
-export function formatAuditDate(value: unknown, fallback = "-") {
+export function formatAuditDate(
+  value: unknown,
+  fallback = "-",
+  locale = "vi-VN",
+) {
   const date = getAuditDate(value);
   if (!date) return fallback;
-  return new Intl.DateTimeFormat("vi-VN", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "medium",
   }).format(date);

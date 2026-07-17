@@ -30,6 +30,9 @@ export default function DashboardGroupLayout({
   const router = useRouter();
   const pathname = usePathname();
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+  const authStatus = useUserStore((s) => s.authStatus);
+  const accessStatus = useUserStore((s) => s.accessStatus);
+  const accessEpoch = useUserStore((s) => s.accessEpoch);
   const [isMounted, setIsMounted] = useState(false);
   const hasAccess = usePagePermission(pathname);
   const { isLocked } = useMFA();
@@ -40,20 +43,27 @@ export default function DashboardGroupLayout({
   }, []);
 
   useEffect(() => {
-    if (isMounted && !isAuthenticated) {
+    if (isMounted && authStatus === "SIGNED_OUT") {
       router.replace("/login");
     }
-  }, [isMounted, isAuthenticated, router]);
+  }, [authStatus, isMounted, router]);
 
   // Trước khi hydrate hoặc khi chưa auth → hiện skeleton
-  if (!isMounted || !isAuthenticated) {
+  const isVerifyingAccess =
+    accessStatus === "VERIFYING" || accessStatus === "OFFLINE_UNVERIFIED";
+  const isVerifyingAuth =
+    authStatus === "INITIALIZING" || authStatus === "VERIFYING";
+  if (!isMounted || isVerifyingAuth || !isAuthenticated || isVerifyingAccess) {
     return <DashboardSkeleton />;
   }
 
   return (
     <I18nProvider>
       <MFALockScreen />
-      <div className={`h-full w-full transition-all duration-300 ${isLocked ? 'blur-md pointer-events-none select-none' : ''}`}>
+      <div
+        key={accessEpoch}
+        className={`h-full w-full transition-all duration-300 ${isLocked ? "blur-md pointer-events-none select-none" : ""}`}
+      >
         <GuideProvider>
           <DashboardLayout>
             {hasAccess ? children : <Forbidden403 />}

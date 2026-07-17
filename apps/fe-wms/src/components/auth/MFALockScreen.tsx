@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useMFA } from "../../hooks/useMFA";
 import { useUserStore } from "../../stores/useUserStore";
 import { useTranslation } from "../../lib/i18n";
@@ -56,6 +56,9 @@ export const MFALockScreen = () => {
     const [method, setMethod] = useState<"totp" | "email">("totp");
     const [isFocused, setIsFocused] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const validationInFlightRef = useRef(false);
+    const emailInFlightRef = useRef(false);
 
     useEffect(() => {
         if (isLocked && user) {
@@ -69,6 +72,9 @@ export const MFALockScreen = () => {
     }, [isLocked, user]);
 
     const sendEmailOtp = useCallback(async () => {
+        if (emailInFlightRef.current) return;
+        emailInFlightRef.current = true;
+        setIsSendingEmail(true);
         try {
             await gooeyToast.promise(
                 fetch(`${API_BASE_URL}/api/auth/mfa/send-email`, {
@@ -87,11 +93,15 @@ export const MFALockScreen = () => {
             );
         } catch (e) {
             console.error(e);
+        } finally {
+            emailInFlightRef.current = false;
+            setIsSendingEmail(false);
         }
     }, [copy]);
 
     const verifyCode = async (token: string) => {
-        if (isValidating) return;
+        if (validationInFlightRef.current) return;
+        validationInFlightRef.current = true;
         setIsValidating(true);
         try {
             await gooeyToast.promise(
@@ -109,12 +119,10 @@ export const MFALockScreen = () => {
                     success: () => {
                         unlockScreen();
                         setCode("");
-                        setIsValidating(false);
                         return copy.unlockSuccess;
                     },
                     error: () => {
                         setCode("");
-                        setIsValidating(false);
                         return copy.verifyError;
                     }
                 }
@@ -122,6 +130,8 @@ export const MFALockScreen = () => {
         } catch (error) {
             console.error(error);
             setCode("");
+        } finally {
+            validationInFlightRef.current = false;
             setIsValidating(false);
         }
     };
@@ -265,8 +275,9 @@ export const MFALockScreen = () => {
                         type="button"
                         onClick={() => {
                             setMethod("email");
-                            sendEmailOtp();
+                            void sendEmailOtp();
                         }}
+                        disabled={isSendingEmail}
                         className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-brand-primary)] transition-colors w-full p-2 font-medium cursor-pointer"
                     >
                         <EnvelopeIcon className="w-4 h-4" />
@@ -277,7 +288,8 @@ export const MFALockScreen = () => {
                 {method === "email" && (
                     <button
                         type="button"
-                        onClick={sendEmailOtp}
+                        onClick={() => void sendEmailOtp()}
+                        disabled={isSendingEmail}
                         className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-brand-primary)] transition-colors w-full p-2 font-medium cursor-pointer"
                     >
                         {copy.resendOtp}

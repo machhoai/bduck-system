@@ -1,319 +1,435 @@
 rules_version = '2';
 
-/**
- * Firestore Security Rules — BDuck WMS
- *
- * ► Nguyên tắc: Authenticated users mới được đọc/ghi.
- * ► Write operations chính nên đi qua BE (Admin SDK) để đảm bảo RBAC.
- * ► Client SDK chỉ cần READ cho realtime listeners (onSnapshot).
- */
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ── Helper Functions ──
-    function isAuthenticated() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    // ── Product Categories: Authenticated users can read ──
+    function accessPath() {
+      return /databases/$(database)/documents/user_access/$(request.auth.uid);
+    }
+
+    function access() {
+      return get(accessPath()).data;
+    }
+
+    function hasActiveAccess() {
+      return signedIn()
+        && exists(accessPath())
+        && access().is_deleted == false
+        && access().active_version_id is string
+        && access().active_version_id.size() > 0;
+    }
+
+    function isSystemAdmin() {
+      return hasActiveAccess() && access().is_global_admin == true;
+    }
+
+    function grantPath(facilityId) {
+      return /databases/$(database)/documents/user_access/$(request.auth.uid)/versions/$(access().active_version_id)/facilities/$(facilityId);
+    }
+
+    function hasFacilityGrant(facilityId) {
+      return hasActiveAccess()
+        && facilityId is string
+        && facilityId.size() > 0
+        && exists(grantPath(facilityId))
+        && get(grantPath(facilityId)).data.is_deleted == false
+        && get(grantPath(facilityId)).data.user_id == request.auth.uid
+        && get(grantPath(facilityId)).data.facility_id == facilityId
+        && get(grantPath(facilityId)).data.access_version_id == access().active_version_id
+        && get(grantPath(facilityId)).data.access_version == access().access_version;
+    }
+
+    function hasFacilityPermission(facilityId, action) {
+      return isSystemAdmin()
+        || (hasFacilityGrant(facilityId)
+          && ((action in get(grantPath(facilityId)).data.permissions
+              && get(grantPath(facilityId)).data.permissions[action] == true)
+            || ('*' in get(grantPath(facilityId)).data.permissions
+              && get(grantPath(facilityId)).data.permissions['*'] == true)));
+    }
+
+    function readableFacilityDirectory(facilityId) {
+      return isSystemAdmin() || hasFacilityGrant(facilityId);
+    }
+
+    function hasResourceFacility(fieldName, action) {
+      return isSystemAdmin()
+        || (fieldName in resource.data
+          && hasFacilityPermission(resource.data[fieldName], action));
+    }
+
+    // Authenticated global master data. Client writes always go through Admin SDK.
     match /product_categories/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Write only via Admin SDK (BE)
+      allow read: if signedIn();
+      allow write: if false;
     }
-
-    // ── Products: Authenticated users can read ──
     match /products/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if signedIn();
       allow write: if false;
     }
-
-    // ── Organizations: Authenticated users can read for warehouse selector ──
+    match /product_bom/{docId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
     match /organizations/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if signedIn();
       allow write: if false;
     }
 
-    // ── Warehouses: Authenticated users can read ──
-    match /warehouses/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Warehouse Locations: Authenticated users can read ──
-    match /warehouse_locations/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /warehouse_location_slots/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /warehouse_location_slot_products/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Users: Authenticated users can read (for user lists, approver pickers) ──
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /employee_profiles/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Roles: Authenticated users can read (for RBAC) ──
+    // Global configuration is visible only to an exact materialized system admin.
     match /roles/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isSystemAdmin();
       allow write: if false;
     }
-
-    // ── User Warehouse Roles: Authenticated users can read own ──
-    match /user_warehouse_roles/{docId} {
-      allow read: if isAuthenticated();
+    match /workflow_definitions/{docId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+      match /versions/{versionId} {
+        allow read: if isSystemAdmin();
+        allow write: if false;
+      }
+    }
+    match /process_configs/{docId} {
+      allow read: if isSystemAdmin();
       allow write: if false;
     }
-
-    // ── Audit Logs: Authenticated read (for admin audit trail) ──
-    match /audit_logs/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
     match /file_templates/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isSystemAdmin();
+      allow write: if false;
+    }
+    match /system_configs/{docId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+    }
+    match /openapi_warehouse_configs/{docId} {
+      allow read: if isSystemAdmin();
       allow write: if false;
     }
 
-    match /lan_transfer_presence/{docId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated()
+    // The current user may observe only their own materialized access pointer/snapshot.
+    match /user_access/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
+      match /versions/{versionId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow write: if false;
+        match /facilities/{facilityId} {
+          allow read: if signedIn() && request.auth.uid == userId;
+          allow write: if false;
+        }
+      }
+    }
+
+    match /warehouses/{facilityId} {
+      allow read: if readableFacilityDirectory(facilityId);
+      allow write: if false;
+    }
+    match /office_scope_configs/{officeId} {
+      allow read: if hasFacilityPermission(officeId, 'office_scopes.read');
+      allow write: if false;
+    }
+    match /office_scope_ceilings/{officeId} {
+      allow read: if hasFacilityPermission(officeId, 'office_scopes.read');
+      allow write: if false;
+    }
+    match /office_scope_edges/{edgeId} {
+      allow read: if hasResourceFacility('office_id', 'office_scopes.read');
+      allow write: if false;
+    }
+    match /office_scope_materializations/{operationId} {
+      allow read: if hasResourceFacility('office_id', 'office_scopes.read');
+      allow write: if false;
+    }
+    match /office_scope_materialization_jobs/{operationId} {
+      allow read, write: if false;
+    }
+    match /warehouse_locations/{docId} {
+      allow read: if 'warehouse_id' in resource.data
+        && readableFacilityDirectory(resource.data.warehouse_id);
+      allow write: if false;
+    }
+    match /warehouse_location_slots/{docId} {
+      allow read: if 'warehouse_id' in resource.data
+        && readableFacilityDirectory(resource.data.warehouse_id);
+      allow write: if false;
+    }
+    match /warehouse_location_slot_products/{docId} {
+      allow read: if 'warehouse_id' in resource.data
+        && readableFacilityDirectory(resource.data.warehouse_id);
+      allow write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn()
+        && (request.auth.uid == userId
+          || isSystemAdmin()
+          || ('workplace_facility_id' in resource.data
+            && hasFacilityGrant(resource.data.workplace_facility_id)));
+      allow write: if false;
+    }
+    match /employee_profiles/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || isSystemAdmin()
+          || hasFacilityGrant(resource.data.workplace_warehouse_id));
+      allow write: if false;
+    }
+    match /user_warehouse_roles/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || isSystemAdmin()
+          || (resource.data.warehouse_id != null
+            && hasFacilityGrant(resource.data.warehouse_id)));
+      allow write: if false;
+    }
+
+    match /audit_logs/{docId} {
+      allow read: if isSystemAdmin()
+        || hasResourceFacility('warehouse_id', 'audit.read');
+      allow write: if false;
+    }
+
+    match /inventory/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read');
+      allow write: if false;
+    }
+    match /inventory_stock_policies/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read');
+      allow write: if false;
+    }
+
+    match /vouchers/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
+      allow write: if false;
+    }
+    match /import_vouchers/{voucherId} {
+      allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
+      allow write: if false;
+      match /items/{itemId} {
+        function parentVoucher() {
+          return get(/databases/$(database)/documents/import_vouchers/$(voucherId)).data;
+        }
+        allow read: if hasFacilityPermission(parentVoucher().warehouse_id, 'vouchers.read');
+        allow write: if false;
+      }
+    }
+    match /export_vouchers/{voucherId} {
+      allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
+      allow write: if false;
+      match /items/{itemId} {
+        function parentVoucher() {
+          return get(/databases/$(database)/documents/export_vouchers/$(voucherId)).data;
+        }
+        allow read: if hasFacilityPermission(parentVoucher().warehouse_id, 'vouchers.read');
+        allow write: if false;
+      }
+    }
+
+    match /transfer_orders/{transferId} {
+      function canReadTransfer() {
+        return hasFacilityPermission(resource.data.source_warehouse_id, 'transfers.read')
+          || hasFacilityPermission(resource.data.destination_warehouse_id, 'transfers.read');
+      }
+      allow read: if canReadTransfer();
+      allow write: if false;
+      match /items/{itemId} {
+        function parentTransfer() {
+          return get(/databases/$(database)/documents/transfer_orders/$(transferId)).data;
+        }
+        allow read: if hasFacilityPermission(parentTransfer().source_warehouse_id, 'transfers.read')
+          || hasFacilityPermission(parentTransfer().destination_warehouse_id, 'transfers.read');
+        allow write: if false;
+      }
+    }
+
+    match /stock_count_sessions/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read')
+        || hasResourceFacility('warehouse_id', 'stock_counts.view')
+        || hasResourceFacility('warehouse_id', 'external_count.view');
+      allow write: if false;
+    }
+    match /stock_count_items/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read')
+        || hasResourceFacility('warehouse_id', 'stock_counts.view')
+        || hasResourceFacility('warehouse_id', 'external_count.view');
+      allow write: if false;
+    }
+    match /nonconformity_reports/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read');
+      allow write: if false;
+    }
+    match /quarantine_records/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'inventory.read');
+      allow write: if false;
+    }
+
+    match /warehouse_attendance_policies/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'attendance.view')
+        || hasResourceFacility('warehouse_id', 'attendance.check_in')
+        || hasResourceFacility('warehouse_id', 'attendance.config');
+      allow write: if false;
+    }
+    match /warehouse_attendance_exemptions/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.view')
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.config'));
+      allow write: if false;
+    }
+    match /attendance_logs/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.view'));
+      allow write: if false;
+    }
+    match /attendance_late_reports/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.view'));
+      allow write: if false;
+    }
+
+    match /pending_approvals/{docId} {
+      function approvalFacility() {
+        return ('approval_warehouse_id' in resource.data
+            && resource.data.approval_warehouse_id != null)
+          ? resource.data.approval_warehouse_id
+          : resource.data.warehouse_id;
+      }
+      allow read: if isSystemAdmin() || hasFacilityGrant(approvalFacility());
+      allow write: if false;
+    }
+
+    match /expenses/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'expenses.read');
+      allow write: if false;
+    }
+    match /revenue_sync/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'revenue.read');
+      allow write: if false;
+    }
+    match /revenue_dashboards/{dashboardId} {
+      allow read: if hasResourceFacility('warehouse_id', 'revenue.read');
+      allow write: if false;
+      match /orders/{orderId} {
+        function dashboard() {
+          return get(/databases/$(database)/documents/revenue_dashboards/$(dashboardId)).data;
+        }
+        allow read: if hasFacilityPermission(dashboard().warehouse_id, 'revenue.read');
+        allow write: if false;
+      }
+      match /sold_items/{itemId} {
+        function dashboard() {
+          return get(/databases/$(database)/documents/revenue_dashboards/$(dashboardId)).data;
+        }
+        allow read: if hasFacilityPermission(dashboard().warehouse_id, 'revenue.read');
+        allow write: if false;
+      }
+    }
+
+    match /external_scan_queue/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'external_scan.view')
+        || hasResourceFacility('warehouse_id', 'external_scan.manage_queue');
+      allow write: if false;
+    }
+    match /external_queue_scannable_products/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'external_scan.view')
+        || hasResourceFacility('warehouse_id', 'external_scan.manage_queue');
+      allow write: if false;
+    }
+
+    match /in_app_notifications/{docId} {
+      allow read: if signedIn() && resource.data.target_user_id == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.target_user_id == request.auth.uid
+        && request.resource.data.target_user_id == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
+      allow create, delete: if false;
+    }
+    match /notification_dispatches/{docId} {
+      allow read: if isSystemAdmin()
+        || (signedIn() && resource.data.created_by == request.auth.uid);
+      allow write: if false;
+    }
+    match /notification_push_tokens/{docId} {
+      allow read: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.user_id == request.auth.uid
         && request.resource.data.user_id == request.auth.uid;
       allow delete: if false;
     }
 
+    // Legacy workflow documents without a facility discriminator are backend-only.
+    match /workflow_instances/{docId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+      match /tasks/{taskId} {
+        allow read: if isSystemAdmin();
+        allow write: if false;
+      }
+    }
+    match /{path=**}/tasks/{taskId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+    }
+
+    match /lan_transfer_presence/{docId} {
+      function currentWorkplace() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.workplace_facility_id;
+      }
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || ('workplace_facility_id' in resource.data
+            && resource.data.workplace_facility_id == currentWorkplace()));
+      allow create: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.workplace_facility_id is string
+        && request.resource.data.workplace_facility_id == currentWorkplace();
+      allow update: if signedIn()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.workplace_facility_id == resource.data.workplace_facility_id;
+      allow delete: if false;
+    }
     match /lan_transfer_requests/{requestId} {
-      function isParticipant() {
+      function participant() {
         return resource.data.from_user_id == request.auth.uid
           || resource.data.to_user_id == request.auth.uid;
       }
-
-      function isRequestParticipant() {
+      function requestParticipant() {
         return request.resource.data.from_user_id == request.auth.uid
           || request.resource.data.to_user_id == request.auth.uid;
       }
-
-      allow read: if isAuthenticated() && isParticipant();
-      allow create: if isAuthenticated()
+      allow read: if signedIn() && participant();
+      allow create: if signedIn()
         && request.resource.data.from_user_id == request.auth.uid
-        && request.resource.data.status == "pending";
-      allow update: if isAuthenticated()
-        && isParticipant()
-        && isRequestParticipant()
+        && request.resource.data.status == 'pending';
+      allow update: if signedIn()
+        && participant()
+        && requestParticipant()
         && request.resource.data.from_user_id == resource.data.from_user_id
         && request.resource.data.to_user_id == resource.data.to_user_id;
       allow delete: if false;
-
       match /signals/{signalId} {
-        function parent() {
+        function parentRequest() {
           return get(/databases/$(database)/documents/lan_transfer_requests/$(requestId)).data;
         }
-
-        function isSignalParticipant() {
-          return parent().from_user_id == request.auth.uid
-            || parent().to_user_id == request.auth.uid;
+        function signalParticipant() {
+          return parentRequest().from_user_id == request.auth.uid
+            || parentRequest().to_user_id == request.auth.uid;
         }
-
-        allow read: if isAuthenticated() && isSignalParticipant();
-        allow create: if isAuthenticated()
-          && isSignalParticipant()
+        allow read: if signedIn() && signalParticipant();
+        allow create: if signedIn()
+          && signalParticipant()
           && request.resource.data.sender_id == request.auth.uid;
         allow update, delete: if false;
       }
     }
 
-    // ── Product BOM: Authenticated read ──
-    match /product_bom/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Vouchers (Import/Export/Transfer): Authenticated read ──
-    match /vouchers/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Inventory: Authenticated read ──
-    match /inventory/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /inventory_stock_policies/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /warehouse_attendance_policies/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /warehouse_attendance_exemptions/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /attendance_logs/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Workflow Definitions: Authenticated read (+ versions subcollection) ──
-    match /workflow_definitions/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /versions/{versionId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── Workflow Instances: Authenticated read (+ tasks subcollection) ──
-    match /workflow_instances/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /tasks/{taskId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── CollectionGroup: tasks (required for collectionGroup queries) ──
-    // collectionGroup("tasks") bypasses nested match rules above.
-    match /{path=**}/tasks/{taskId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Import Vouchers: Authenticated read (+ items subcollection) ──
-    match /import_vouchers/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /items/{itemId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── Export Vouchers: Authenticated read (+ items subcollection) ──
-    match /export_vouchers/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /items/{itemId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── Transfer Orders: Authenticated read (+ items subcollection) ──
-    match /transfer_orders/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /items/{itemId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── In-App Notifications: Read own + mark as read ──
-    match /in_app_notifications/{docId} {
-      allow read: if isAuthenticated();
-      // Allow user to mark own notifications as read
-      allow update: if isAuthenticated()
-        && resource.data.target_user_id == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
-      allow create, delete: if false;
-    }
-
-    // ── Notification Dispatches: Authenticated read, write only via BE ──
-    match /notification_dispatches/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Nonconformity Reports: Authenticated read ──
-    match /nonconformity_reports/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /quarantine_records/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /stock_count_sessions/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    match /stock_count_items/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Pending Approvals: Authenticated read (for TaskInbox realtime) ──
-    match /pending_approvals/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Write only via Admin SDK (BE)
-    }
-
-    // ── Process Configs: Authenticated read (for admin config page) ──
-    match /process_configs/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Expenses: Authenticated read (for expense dashboard realtime) ──
-    match /expenses/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Revenue Sync: Authenticated read (for dashboard revenue overlay) ──
-    match /revenue_sync/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-
-    // ── Revenue Dashboard: Authenticated read for realtime cached JoyWorld dashboards ──
-    match /revenue_dashboards/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-
-      match /orders/{orderId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-
-      match /sold_items/{itemId} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-
-    // ── Default: Deny all ──
     match /{document=**} {
       allow read, write: if false;
     }

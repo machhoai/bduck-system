@@ -2,15 +2,20 @@
 
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EmployeeProfile } from "@bduck/shared-types";
 import {
   emitDataMutation,
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -78,6 +83,11 @@ async function mutateEmployeeProfile(
 }
 
 export function useEmployeeProfiles() {
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getAnyFacilityScope(permissions),
+    [permissions],
+  );
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,24 +133,26 @@ export function useEmployeeProfiles() {
         return;
       }
 
-      unsubscribeSnapshot = onSnapshot(
-        query(
-          collection(db, "employee_profiles"),
-          where("is_deleted", "==", false),
-        ),
-        (snapshot) => {
+      unsubscribeSnapshot = subscribeToMergedQueries<EmployeeProfile>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "employee_profiles",
+          facilityField: "workplace_warehouse_id",
+          scope: facilityScope,
+          constraints: [where("is_deleted", "==", false)],
+        }),
+        mapDocument: (document) => ({
+          ...document.data(),
+          id: document.id,
+        }) as EmployeeProfile,
+        onData: (records) => {
           if (isDisposed) return;
-          setProfiles(
-            snapshot.docs.map((doc) => ({
-              ...doc.data(),
-              id: doc.id,
-            })) as EmployeeProfile[],
-          );
+          setProfiles(records);
           setIsLoading(false);
           setError(null);
         },
-        () => void loadApiFallback(),
-      );
+        onError: () => void loadApiFallback(),
+      });
     });
 
     return () => {
@@ -150,7 +162,7 @@ export function useEmployeeProfiles() {
       unsubscribeAuth();
       unsubscribeSnapshot?.();
     };
-  }, []);
+  }, [facilityScope]);
 
   const createProfile = useCallback(async (payload: unknown) => {
     const result = await mutateEmployeeProfile(

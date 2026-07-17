@@ -17,7 +17,7 @@ export default function ExpenseDashboardWidgets({
         period,
         { keepPreviousData: true },
     );
-    const { revenue: revenueSync } = useRevenueSync(period);
+    const { revenue: revenueSync } = useRevenueSync(period, warehouseId);
 
     // Override KPIs with JoyWorld real-time revenue when available
     const joyRevenue = revenueSync?.total_revenue ?? 0;

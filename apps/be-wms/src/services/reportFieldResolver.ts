@@ -7,11 +7,7 @@ import type {
 import { db } from "../config/firebase.js";
 import * as inventoryRepo from "../repositories/inventoryRepository.js";
 import { productRepository } from "../repositories/productRepository.js";
-import {
-  canReadWarehouse,
-  getAccessibleWarehouseIds,
-  type RequestUserContext,
-} from "./warehouseAccess.js";
+import type { AuthorizationService } from "./authorization/index.js";
 
 export interface ResolvedReportField {
   fieldInstanceId: string;
@@ -29,15 +25,19 @@ function assertCurrentStockOnly(params: InventoryStockByProductParams): void {
   };
 }
 
-async function findProduct(params: InventoryStockByProductParams): Promise<Product> {
+async function findProduct(
+  params: InventoryStockByProductParams,
+): Promise<Product> {
   if (params.product_id) {
-    const snap = await db.collection("products").doc(params.product_id).get();
-    if (snap.exists) {
-      const product = snap.data() as Product;
+    const snapshot = await db
+      .collection("products")
+      .doc(params.product_id)
+      .get();
+    if (snapshot.exists) {
+      const product = snapshot.data() as Product;
       if (!product.is_deleted) return product;
     }
   }
-
   const product = await productRepository.findByCode(params.product_code);
   if (!product) {
     throw {
@@ -51,30 +51,19 @@ async function findProduct(params: InventoryStockByProductParams): Promise<Produ
   return product;
 }
 
-function filterByPermission(
-  records: Inventory[],
+function inventoryScope(
   params: InventoryStockByProductParams,
-  user: RequestUserContext,
-): Inventory[] {
+  authorization: AuthorizationService,
+): { isSystemAdmin: boolean; facilityIds: readonly string[] } {
   if (params.warehouse_scope === "specific_warehouse") {
-    const warehouseId = params.warehouse_id || "";
-    if (!warehouseId || !canReadWarehouse(user, warehouseId)) {
-      throw {
-        statusCode: 403,
-        messages: {
-          vi: "Bạn không có quyền xem tồn kho của kho đã chọn.",
-          zh: "您无权查看所选仓库的库存。",
-        },
-      };
-    }
-    return records.filter((record) => record.warehouse_id === warehouseId);
+    const facilityId = params.warehouse_id || "";
+    authorization.assert("inventory.read", facilityId);
+    return { isSystemAdmin: false, facilityIds: [facilityId] };
   }
-
-  const accessibleWarehouseIds = getAccessibleWarehouseIds(user);
-  if (!accessibleWarehouseIds) return records;
-  return records.filter((record) =>
-    accessibleWarehouseIds.includes(record.warehouse_id),
-  );
+  return {
+    isSystemAdmin: authorization.context.isSystemAdmin,
+    facilityIds: authorization.facilityIdsFor("inventory.read"),
+  };
 }
 
 function formatStockValue(
@@ -95,32 +84,36 @@ function formatStockValue(
 
 async function resolveInventoryStockByProduct(
   instance: ReportFieldInstance,
-  user: RequestUserContext,
+  authorization: AuthorizationService,
 ): Promise<ResolvedReportField> {
   const params = instance.params;
   assertCurrentStockOnly(params);
   const product = await findProduct(params);
-  const records = await inventoryRepo.findByProduct(product.id);
-  const allowedRecords = filterByPermission(records, params, user);
-  const total = allowedRecords.reduce(
+  const records = await inventoryRepo.findAllScoped(
+    { product_id: product.id },
+    inventoryScope(params, authorization),
+  );
+  const total = records.reduce(
     (sum, record) => sum + Number(record[params.quantity_bucket] || 0),
     0,
   );
-
   return {
     fieldInstanceId: instance.id,
-    value: formatStockValue(total, product, allowedRecords, params),
+    value: formatStockValue(total, product, records, params),
   };
 }
 
 export async function resolveReportFieldInstances(
   instances: ReportFieldInstance[],
-  user: RequestUserContext,
+  authorization: AuthorizationService,
 ): Promise<Map<string, string | number>> {
   const entries = await Promise.all(
     instances.map(async (instance) => {
       if (instance.field_key === "inventory.stock_by_product") {
-        const resolved = await resolveInventoryStockByProduct(instance, user);
+        const resolved = await resolveInventoryStockByProduct(
+          instance,
+          authorization,
+        );
         return [resolved.fieldInstanceId, resolved.value] as const;
       }
       throw {
@@ -132,6 +125,5 @@ export async function resolveReportFieldInstances(
       };
     }),
   );
-
   return new Map(entries);
 }

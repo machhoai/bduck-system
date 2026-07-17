@@ -13,8 +13,6 @@ import {
   type AuthorizationSourceSnapshot,
 } from "../../services/authorization/index.js";
 
-export type LegacyScopedPermissions = Record<string, Record<string, boolean>>;
-
 export type RequestUserIdentity = Pick<
   User,
   | "id"
@@ -32,11 +30,47 @@ export type RequestUserIdentity = Pick<
 
 export interface AuthenticatedRequestUser extends RequestUserIdentity {
   uid: string;
-  permissions: LegacyScopedPermissions;
   roleAssignments: AuthorizationAssignment[];
   roleIds: string[];
   roleNames: string[];
 }
+
+/**
+ * Identity-only routes (for example MFA) must not depend on a materialized
+ * facility-access snapshot. They still receive the same safe request-user
+ * shape, but no role or facility authorization is implied.
+ */
+export const createAuthenticatedIdentityRequestUser = (
+  authenticatedUserId: string,
+  requestUser: User | null,
+): AuthenticatedRequestUser => {
+  if (
+    !requestUser ||
+    requestUser.id !== authenticatedUserId ||
+    requestUser.status !== UserStatus.ACTIVE ||
+    requestUser.is_deleted !== false
+  ) {
+    throw authorizationError("AUTHORIZATION_ACTOR_INACTIVE");
+  }
+
+  return {
+    id: requestUser.id,
+    uid: requestUser.id,
+    username: requestUser.username,
+    email: requestUser.email,
+    full_name: requestUser.full_name,
+    employee_id: requestUser.employee_id,
+    status: requestUser.status,
+    is_deleted: requestUser.is_deleted,
+    created_at: requestUser.created_at,
+    updated_at: requestUser.updated_at,
+    workplace_facility_id: requestUser.workplace_facility_id,
+    mfa_enabled: requestUser.mfa_enabled,
+    roleAssignments: [],
+    roleIds: [],
+    roleNames: [],
+  };
+};
 
 declare module "express" {
   interface Request {
@@ -68,17 +102,6 @@ const collectContextSources = (
     grant.sources.forEach(addSource),
   );
   return Array.from(sources.values());
-};
-
-const deriveLegacyPermissions = (
-  context: AccessContext,
-): LegacyScopedPermissions => {
-  const permissions: LegacyScopedPermissions = {};
-  Object.values(context.grants).forEach((grant) => {
-    permissions[grant.facilityId] = { ...grant.permissions };
-  });
-  if (context.isSystemAdmin) permissions.global = { "*": true };
-  return permissions;
 };
 
 export const createAuthenticatedRequestUser = (
@@ -128,7 +151,6 @@ export const createAuthenticatedRequestUser = (
     updated_at: requestUser.updated_at,
     workplace_facility_id: requestUser.workplace_facility_id,
     mfa_enabled: requestUser.mfa_enabled,
-    permissions: deriveLegacyPermissions(context),
     roleAssignments: snapshot.assignments
       .filter((assignment) => assignmentIds.has(assignment.id))
       .sort((left, right) => left.id.localeCompare(right.id)),

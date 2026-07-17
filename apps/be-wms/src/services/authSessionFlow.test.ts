@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   UserStatus,
-  type Role,
   type User,
   type UserWarehouseRole,
 } from "@bduck/shared-types";
@@ -41,19 +40,6 @@ const activeAssignment = (
   ...overrides,
 });
 
-const adminRole: Role = {
-  id: "role-admin",
-  name: "ADMIN",
-  description: null,
-  color: "#000000",
-  parent_id: null,
-  permissions: { "users.read": true },
-  board_position: null,
-  is_deleted: false,
-  created_at: new Date("2026-07-01T00:00:00.000Z"),
-  updated_at: new Date("2026-07-01T00:00:00.000Z"),
-};
-
 const dependenciesFor = (
   user: User | null,
   events: string[],
@@ -74,9 +60,8 @@ const dependenciesFor = (
       activeAssignment({ id: "empty-scope", warehouse_id: "" }),
     ];
   },
-  getRoleById: async () => {
-    events.push("get-role-definition");
-    return adminRole;
+  ensureUserAccess: async () => {
+    events.push("ensure-access");
   },
   createSessionCookie: async () => {
     events.push("create-cookie");
@@ -96,21 +81,15 @@ test("creates a cookie only after validating user and active role state", async 
     "verify-token",
     "get-user",
     "get-roles",
-    "get-role-definition",
+    "ensure-access",
     "create-cookie",
   ]);
   assert.deepEqual(
     result.roles.map(({ id }) => id),
     ["assignment-a"],
   );
-  assert.equal("global" in result.permissions, false);
-  assert.deepEqual(result.permissions, {
-    "warehouse-a": { "users.read": true },
-  });
-  assert.equal(
-    (result.permissions["warehouse-a"] as Record<string, unknown>)["*"],
-    undefined,
-  );
+  assert.deepEqual(result.roleIds, ["role-admin"]);
+  assert.equal(Object.hasOwn(result, "permissions"), false);
 });
 
 test("never creates a cookie for missing, inactive, suspended or deleted users", async () => {
@@ -158,5 +137,26 @@ test("fails closed when the persisted deletion flag is missing", async () => {
     ),
     /USER_ACCOUNT_NOT_ACTIVE/,
   );
+  assert.equal(events.includes("create-cookie"), false);
+});
+
+test("never creates a cookie when materialized access cannot be prepared", async () => {
+  const events: string[] = [];
+  const dependencies = dependenciesFor(activeUser(), events);
+  dependencies.ensureUserAccess = async () => {
+    events.push("ensure-access");
+    throw new Error("AUTHORIZATION_SOURCE_INVALID");
+  };
+
+  await assert.rejects(
+    createSessionLoginWithDependencies("id-token", dependencies),
+    /AUTHORIZATION_SOURCE_INVALID/,
+  );
+  assert.deepEqual(events, [
+    "verify-token",
+    "get-user",
+    "get-roles",
+    "ensure-access",
+  ]);
   assert.equal(events.includes("create-cookie"), false);
 });

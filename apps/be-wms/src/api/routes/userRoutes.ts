@@ -3,6 +3,7 @@ import {
   createUserHandler,
   deleteUserHandler,
   getUserByIdHandler,
+  getUserEffectiveAccessHandler,
   getUsersHandler,
   resendUserInvitationHandler,
   updateUserHandler,
@@ -15,6 +16,11 @@ const router: ExpressRouter = Router();
 router.use(requireAuth);
 
 router.get("/", requireAnyScopedPermission("users.read"), getUsersHandler);
+router.get(
+  "/:id/effective-access",
+  requireAnyScopedPermission("users.read"),
+  getUserEffectiveAccessHandler,
+);
 router.get(
   "/:id",
   requireAnyScopedPermission("users.read"),

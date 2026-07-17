@@ -2,16 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { where } from "firebase/firestore";
 import type {
   NonconformityReport,
   NonconformityStatus,
   ResolutionType,
 } from "@bduck/shared-types";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
 import { useUserStore } from "@/stores/useUserStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -46,33 +51,6 @@ function toTime(value: unknown): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function getAccessibleWarehouseIds(
-  permissions: Record<string, Record<string, unknown>>,
-) {
-  const globalPerms = permissions.global || {};
-  if (
-    globalPerms["*"] === true ||
-    globalPerms["inventory.read"] === true ||
-    globalPerms["inventory.write"] === true
-  ) {
-    return { isGlobal: true, ids: [] as string[] };
-  }
-
-  return {
-    isGlobal: false,
-    ids: Object.entries(permissions)
-      .filter(([scope, scopedPermissions]) => {
-        if (scope === "global") return false;
-        return (
-          scopedPermissions["*"] === true ||
-          scopedPermissions["inventory.read"] === true ||
-          scopedPermissions["inventory.write"] === true
-        );
-      })
-      .map(([scope]) => scope),
-  };
-}
-
 async function fetchReportsFromApi(signal?: AbortSignal) {
   const response = await fetch(`${API_BASE_URL}/api/nonconformities`, {
     method: "GET",
@@ -105,8 +83,12 @@ export function useNonconformities(options: { enabled?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const accessibleWarehouseIds = useMemo(
-    () => getAccessibleWarehouseIds(permissions),
+  const facilityScope = useMemo(
+    () =>
+      getFacilityPermissionScope(permissions, [
+        "inventory.read",
+        "inventory.write",
+      ]),
     [permissions],
   );
 
@@ -123,13 +105,8 @@ export function useNonconformities(options: { enabled?: boolean } = {}) {
     let isDisposed = false;
 
     const applyRecords = (records: NonconformityReport[]) => {
-      const scoped = accessibleWarehouseIds.isGlobal
-        ? records
-        : records.filter((report) =>
-            accessibleWarehouseIds.ids.includes(report.warehouse_id),
-          );
       setReports(
-        scoped
+        records
           .filter((report) => report.is_deleted !== true)
           .sort((a, b) => toTime(b.created_at) - toTime(a.created_at)),
       );
@@ -171,28 +148,29 @@ export function useNonconformities(options: { enabled?: boolean } = {}) {
         return;
       }
 
-      const reportsQuery = query(
-        collection(db, "nonconformity_reports"),
-        where("is_deleted", "==", false),
-      );
-
-      unsubscribeSnapshot = onSnapshot(
-        reportsQuery,
-        (snapshot) => {
+      unsubscribeSnapshot = subscribeToMergedQueries<NonconformityReport>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "nonconformity_reports",
+          facilityField: "warehouse_id",
+          scope: facilityScope,
+          constraints: [where("is_deleted", "==", false)],
+        }),
+        mapDocument: (document) => ({
+          ...document.data(),
+          id: document.id,
+        }) as NonconformityReport,
+        onData: (data) => {
           if (isDisposed) return;
-          const data = snapshot.docs.map((doc) => ({
-            ...doc.data(),
-            id: doc.id,
-          })) as NonconformityReport[];
           applyRecords(data);
           setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.warn("[useNonconformities] onSnapshot error:", snapshotError);
           void loadApiFallback();
         },
-      );
+      });
     });
 
     return () => {
@@ -202,7 +180,7 @@ export function useNonconformities(options: { enabled?: boolean } = {}) {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [accessibleWarehouseIds, enabled]);
+  }, [enabled, facilityScope]);
 
   return { reports, loading, error };
 }

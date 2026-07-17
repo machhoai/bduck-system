@@ -23,101 +23,16 @@ import {
   type ExpenseItem,
 } from "@bduck/shared-types";
 import * as expenseRepo from "../repositories/expenseRepository.js";
-import { logAudit, type AuditMetadata } from "./auditService.js";
+import type { AuditMetadata } from "./auditService.js";
 import { calculateAutoExpenses } from "./expenseCalculationService.js";
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-function buildDocId(warehouseId: string, period: string): string {
-  return `${warehouseId}_${period}`;
-}
-
-function createDefaultItems(): Record<string, ExpenseItem> {
-  const items: Record<string, ExpenseItem> = {};
-  for (const cat of Object.values(ExpenseCategory)) {
-    items[cat] = {
-      actual_amount: 0,
-      budget_amount: null,
-      suggested_amount: null,
-      attachments: [],
-      note: null,
-    };
-  }
-  return items;
-}
-
-function createDefaultDocument(
-  warehouseId: string,
-  period: string,
-  userId: string,
-): ExpenseDocument {
-  const now = new Date();
-  return {
-    id: buildDocId(warehouseId, period),
-    warehouse_id: warehouseId,
-    period,
-    status: ExpenseStatus.OPEN,
-    items: createDefaultItems() as Record<ExpenseCategory, ExpenseItem>,
-    custom_items: {},
-    created_by: userId,
-    updated_by: userId,
-    is_deleted: false,
-    created_at: now,
-    updated_at: now,
-  };
-}
-
-function closedPeriodError() {
-  return {
-    statusCode: 400,
-    messages: {
-      vi: "Kỳ kế toán đã chốt. Không thể cập nhật chi phí.",
-      zh: "会计期间已结账，无法更新费用。",
-    },
-  };
-}
-
-async function getWritableExpenseDocument(
-  warehouseId: string,
-  period: string,
-  userId: string,
-): Promise<ExpenseDocument> {
-  const docId = buildDocId(warehouseId, period);
-  const doc =
-    (await expenseRepo.getById(docId)) ??
-    createDefaultDocument(warehouseId, period, userId);
-
-  if (doc.status === ExpenseStatus.CLOSED) {
-    throw closedPeriodError();
-  }
-
-  return doc;
-}
-
-async function writeExpenseAudit(params: {
-  action: AuditAction;
-  warehouseId: string;
-  period: string;
-  userId: string;
-  oldValue: Record<string, unknown> | null;
-  newValue: Record<string, unknown> | null;
-  notes: string;
-  auditMetadata?: AuditMetadata;
-}) {
-  await logAudit({
-    entity_type: "expenses",
-    entity_id: buildDocId(params.warehouseId, params.period),
-    warehouse_id: params.warehouseId,
-    action: params.action,
-    user_id: params.userId,
-    old_value: params.oldValue,
-    new_value: params.newValue,
-    notes: params.notes,
-    ...params.auditMetadata,
-  });
-}
+import {
+  buildExpenseDocumentId as buildDocId,
+  createDefaultExpenseDocument as createDefaultDocument,
+  createDefaultExpenseItems as createDefaultItems,
+  getWritableExpenseDocument,
+  writeExpenseAudit,
+} from "./expenseServiceSupport.js";
+export { closePeriod, reopenPeriod } from "./expensePeriodService.js";
 
 // ─────────────────────────────────────────────
 // GET — Single Warehouse (Lazy Init + Auto Suggest)
@@ -157,9 +72,11 @@ async function getForSingleWarehouse(
   }
 
   // Persist the updated suggestions (non-blocking fire-and-forget)
-  expenseRepo.upsert(docId, doc).catch((err) =>
-    console.error("[expenseService] Failed to persist suggestions:", err),
-  );
+  expenseRepo
+    .upsert(docId, doc)
+    .catch((err) =>
+      console.error("[expenseService] Failed to persist suggestions:", err),
+    );
 
   return doc;
 }
@@ -170,8 +87,9 @@ async function getForSingleWarehouse(
 
 async function getConsolidatedView(
   period: string,
+  warehouseIds: readonly string[],
 ): Promise<ExpenseDocument> {
-  const docs = await expenseRepo.findByPeriod(period);
+  const docs = await expenseRepo.findByPeriod(period, warehouseIds);
 
   // Build a virtual aggregated document
   const aggregated = createDefaultDocument("ALL", period, "system");
@@ -202,9 +120,10 @@ export async function getExpenseData(
   warehouseId: string,
   period: string,
   userId: string,
+  consolidatedWarehouseIds: readonly string[] = [],
 ): Promise<ExpenseDocument> {
   if (warehouseId === "ALL") {
-    return getConsolidatedView(period);
+    return getConsolidatedView(period, consolidatedWarehouseIds);
   }
   return getForSingleWarehouse(warehouseId, period, userId);
 }
@@ -350,93 +269,5 @@ export async function deleteCustomExpenseItem(
     auditMetadata,
   });
 
-  return doc;
-}
-
-export async function closePeriod(
-  warehouseId: string,
-  period: string,
-  userId: string,
-  auditMetadata?: AuditMetadata,
-): Promise<ExpenseDocument> {
-  const docId = buildDocId(warehouseId, period);
-  let doc = await expenseRepo.getById(docId);
-
-  if (!doc) {
-    doc = createDefaultDocument(warehouseId, period, userId);
-  }
-
-  if (doc.status === ExpenseStatus.CLOSED) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Kỳ kế toán đã được chốt trước đó.",
-        zh: "会计期间已经结账。",
-      },
-    };
-  }
-
-  doc.status = ExpenseStatus.CLOSED;
-  doc.updated_by = userId;
-  doc.updated_at = new Date();
-
-  await expenseRepo.upsert(docId, doc);
-  await writeExpenseAudit({
-    action: AuditAction.UPDATE,
-    warehouseId,
-    period,
-    userId,
-    oldValue: { status: ExpenseStatus.OPEN },
-    newValue: { status: ExpenseStatus.CLOSED },
-    notes: "Close expense accounting period",
-    auditMetadata,
-  });
-  return doc;
-}
-
-export async function reopenPeriod(
-  warehouseId: string,
-  period: string,
-  userId: string,
-  auditMetadata?: AuditMetadata,
-): Promise<ExpenseDocument> {
-  const docId = buildDocId(warehouseId, period);
-  const doc = await expenseRepo.getById(docId);
-
-  if (!doc) {
-    throw {
-      statusCode: 404,
-      messages: {
-        vi: "Không tìm thấy kỳ kế toán.",
-        zh: "未找到会计期间。",
-      },
-    };
-  }
-
-  if (doc.status === ExpenseStatus.OPEN) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Kỳ kế toán đang mở, không cần mở lại.",
-        zh: "会计期间已开放，无需重新打开。",
-      },
-    };
-  }
-
-  doc.status = ExpenseStatus.OPEN;
-  doc.updated_by = userId;
-  doc.updated_at = new Date();
-
-  await expenseRepo.upsert(docId, doc);
-  await writeExpenseAudit({
-    action: AuditAction.UPDATE,
-    warehouseId,
-    period,
-    userId,
-    oldValue: { status: ExpenseStatus.CLOSED },
-    newValue: { status: ExpenseStatus.OPEN },
-    notes: "Reopen expense accounting period",
-    auditMetadata,
-  });
   return doc;
 }

@@ -17,12 +17,16 @@ import { chartColors, donutColors, formatAxisValue, formatCurrency, formatNumber
 
 interface OnlineRevenueSectionProps {
     filter: RevenueDashboardFilter;
+    warehouseId: string;
 }
 
-export default function OnlineRevenueSection({ filter }: OnlineRevenueSectionProps) {
+export default function OnlineRevenueSection({ filter, warehouseId }: OnlineRevenueSectionProps) {
     const { t } = useTranslation();
     const d = t.revenue.online;
-    const { data, loading, error } = useOnlineSalesReport(filter);
+    const { data, loading, error } = useOnlineSalesReport(filter, {
+        warehouseId,
+        enabled: Boolean(warehouseId),
+    });
 
     return (
         <section className="rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4 shadow-sm ring-1 ring-black/[0.04]">

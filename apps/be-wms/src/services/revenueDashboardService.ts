@@ -216,6 +216,7 @@ export async function getRevenueDashboardData(
   await docRef.set(
     {
       cacheKey,
+      warehouse_id: warehouseId,
       mode: params.mode,
       range: dashboard.range,
       dashboard: dashboardSummary,

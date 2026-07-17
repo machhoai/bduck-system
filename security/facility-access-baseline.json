@@ -16,11 +16,10 @@
     "delayed-access-revocation-refresh": 1
   },
   "enforcementPolicy": {
-    "currentMode": "REPORT_ONLY",
-    "promotionGate": "Enable --enforce only after backend authorization, query-compatible listeners, Firestore Rules, revocation, and cache tests pass.",
+    "currentMode": "ENFORCED",
+    "promotionGate": "Enforcement fails only on policy violations; scoped route admission and listener inventory are retained as non-blocking observations.",
     "targetCounts": {
       "unsafe-authenticated-firestore-read": 0,
-      "unbound-any-scope-guard": 0,
       "unbound-specific-scope-guard": 0,
       "active-user-status-not-enforced": 0,
       "auth-only-sensitive-route": 0,

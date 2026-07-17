@@ -445,6 +445,8 @@ const vi = {
         tabs: {
             uploadedFiles: "Tệp đã tải lên",
             templates: "Biểu mẫu",
+            templateBundles: "Bộ biểu mẫu",
+            processes: "Quy trình",
         },
         searchPlaceholder:
             "Tìm theo tên tệp, người upload, mã lệnh, mục đích...",
@@ -1141,7 +1143,8 @@ const vi = {
 
     inventoryDashboard: {
         title: "Tổng quan cửa hàng",
-        subtitle: "Giám sát số lượng, vị trí và trạng thái hàng hóa tại cửa hàng",
+        subtitle:
+            "Giám sát số lượng, vị trí và trạng thái hàng hóa tại cửa hàng",
         inventorySectionTitle: "Tồn kho cửa hàng",
         allWarehouses: "Tất cả cửa hàng",
         selectWarehouse: "Chọn cửa hàng",
@@ -2156,6 +2159,150 @@ const vi = {
                     "Trang điều chuyển hỗ trợ tạo lệnh chuyển hàng giữa các kho, theo dõi tuyến chuyển và xác nhận nhận hàng.",
             },
         },
+    },
+    officeScope: {
+        title: "Phạm vi quản lý của văn phòng",
+        description:
+            "Quyền của nhân sự thuộc văn phòng được kế thừa theo phạm vi này.",
+        tabTitle: "Phạm vi văn phòng",
+        overviewTitle: "Tổng quan phạm vi văn phòng",
+        overviewDescription:
+            "Theo dõi trạng thái cấu hình, số cơ sở hiệu lực và nhân sự kế thừa của từng văn phòng.",
+        searchPlaceholder: "Tìm theo tên hoặc mã văn phòng...",
+        searchFacilities: "Tìm cơ sở...",
+        selectVisible: "Chọn tất cả",
+        deselectVisible: "Bỏ chọn",
+        noFacilityMatches: "Không tìm thấy cơ sở phù hợp.",
+        officeCount: "Văn phòng",
+        configuredCount: "Đang hiệu lực",
+        attentionCount: "Cần cấu hình",
+        noOffices: "Chưa có văn phòng nào trong phạm vi được phép",
+        noOfficesHint:
+            "Văn phòng mới sẽ xuất hiện tại đây với phạm vi SELECTED rỗng.",
+        noSearchResults: "Không tìm thấy văn phòng phù hợp",
+        staleDraft:
+            "Phạm vi đã thay đổi ở một phiên khác. Bản nháp hiện tại đã bị khóa để tránh ghi đè dữ liệu mới.",
+        loadLatest: "Tải bản mới nhất",
+        unsavedChanges: "Thay đổi chưa lưu: thêm {added}, gỡ {removed} cơ sở.",
+        noUnsavedChanges: "Không có thay đổi chưa lưu.",
+        discardDraft: "Hủy bản nháp",
+        reviewChanges: "Xem lại thay đổi",
+        reviewTitle: "Xác nhận thay đổi phạm vi",
+        reviewDescription:
+            "Kiểm tra cơ sở được thêm hoặc gỡ trước khi cập nhật quyền kế thừa.",
+        nextMode: "Chế độ sau cập nhật",
+        nextFacilityCount: "Số cơ sở hiệu lực",
+        revocationWarning:
+            "Thao tác này gỡ {facilities} cơ sở và có thể thu hồi quyền đang kế thừa của {employees} nhân sự.",
+        addedFacilities: "Cơ sở được thêm",
+        removedFacilities: "Cơ sở bị gỡ",
+        noAddedFacilities: "Không thêm cơ sở nào.",
+        noRemovedFacilities: "Không gỡ cơ sở nào.",
+        confirmSave: "Xác nhận cập nhật",
+        facilitiesCount: "cơ sở",
+        employeeCount: "nhân sự",
+        scopeStatuses: {
+            UNCONFIGURED: "Chưa cấu hình",
+            INACTIVE: "Không hiệu lực",
+            EMPTY: "Phạm vi rỗng",
+            ACTIVE: "Đang hiệu lực",
+        },
+        modes: {
+            ALL: "Toàn bộ cơ sở",
+            SELECTED: "Cơ sở được chọn",
+            UNCONFIGURED: "Chưa có chế độ",
+        },
+        allMode: "Toàn bộ kho và cửa hàng",
+        allModeHint: "Tự động bao gồm cả cơ sở được tạo trong tương lai.",
+        selectedMode: "Các cơ sở được chọn",
+        selectedModeHint:
+            "Chỉ quản lý những kho và cửa hàng được đánh dấu bên dưới.",
+        adminOnly:
+            "Chỉ quản trị viên hệ thống được thay đổi phạm vi quản lý của văn phòng.",
+        delegatedWriteHint:
+            "Quản lý văn phòng chỉ có thể chọn cơ sở nằm trong trần quản trị đã được system admin cấu hình.",
+        ceilingTitle: "Trần quản trị phạm vi",
+        ceilingDescription:
+            "Giới hạn tối đa mà quản lý văn phòng được phép chọn. Direct grant không mở rộng giới hạn này.",
+        ceilingNotConfigured:
+            "Chưa được system admin cấu hình; mọi thao tác mở rộng đều bị chặn.",
+        ceilingModes: {
+            ALL: "Toàn bộ kho và cửa hàng, bao gồm cơ sở tạo mới",
+            SELECTED: "Chỉ các cơ sở được chọn làm trần",
+        },
+        savingCeiling: "Đang lưu trần quản trị...",
+        saveCeiling: "Lưu trần quản trị",
+        saveCeilingSuccess: "Đã cập nhật trần quản trị",
+        saveCeilingError: "Không thể cập nhật trần quản trị",
+        saveCeilingSuccessDesc:
+            "Trần mới đã được ghi audit và áp dụng cho các lần chỉnh phạm vi tiếp theo.",
+        saveCeilingErrorDesc:
+            "Chỉ system admin được mở rộng trần. Vui lòng kiểm tra revision và thử lại.",
+        warehouses: "Kho",
+        stores: "Cửa hàng",
+        effectiveScope: "Phạm vi hiệu lực",
+        affectedEmployees: "Nhân sự bị ảnh hưởng",
+        inheritedScope: "Phạm vi kế thừa",
+        inheritedHint:
+            "Thông tin chỉ đọc, được tính từ nơi làm việc và role tại văn phòng.",
+        directAssignments: "Phân quyền trực tiếp nâng cao",
+        directAssignmentsHint:
+            "Chỉ dùng cho ngoại lệ; không thay thế phạm vi kế thừa từ văn phòng.",
+        workplace: "Nơi làm việc",
+        selectWorkplace: "Chọn văn phòng, kho hoặc cửa hàng",
+        noFacilities: "Không có cơ sở phù hợp trong phạm vi được phép.",
+        noEffectiveScope: "Chưa có cơ sở nào trong phạm vi hiệu lực.",
+        revision: "Phiên bản phạm vi",
+        saving: "Đang lưu phạm vi văn phòng...",
+        saveSuccess: "Đã cập nhật phạm vi văn phòng",
+        saveError: "Không thể cập nhật phạm vi văn phòng",
+        saveSuccessDesc:
+            "Quyền kế thừa đang được tính lại và thay đổi đã được ghi audit log.",
+        saveErrorDesc: "Vui lòng kiểm tra quyền và thử lại.",
+        save: "Lưu phạm vi",
+        preview: "Xem trước phạm vi",
+        sourceInherited: "Kế thừa từ văn phòng",
+        sourceDirect: "Gán trực tiếp",
+        sourceLegacy: "Gán trực tiếp cũ",
+        sourceSystem: "Quản trị hệ thống",
+        accessUnavailable: "Chưa có bản quyền hiệu lực để hiển thị.",
+        historyTitle: "Lịch sử thay đổi phạm vi",
+        historyDescription:
+            "Theo dõi từng phiên bản, người thao tác và tác động của thay đổi quyền kế thừa.",
+        historyLoadError:
+            "Không thể tải lịch sử phạm vi. Hệ thống sẽ tự thử lại khi dữ liệu thay đổi.",
+        noHistory: "Chưa có thay đổi phạm vi nào được ghi nhận.",
+        historyBeforeValue: "Giá trị trước",
+        historyAfterValue: "Giá trị sau",
+        historyNoSelectedFacilities: "Không có cơ sở được chọn.",
+        historyAddedSelection: "Thêm vào danh sách được chọn",
+        historyRemovedSelection: "Gỡ khỏi danh sách được chọn",
+        historyNoAddedSelection: "Không thêm lựa chọn nào.",
+        historyNoRemovedSelection: "Không gỡ lựa chọn nào.",
+        unknownActor: "Người dùng không xác định",
+        actionTime: "Thao tác lúc",
+        syncTime: "Ghi nhận lúc",
+        affectedAtChange: "Nhân sự được tính lại quyền",
+        notRecorded: "Chưa ghi nhận",
+        historyAllDynamicHint:
+            "Chế độ Toàn bộ là phạm vi động; kho và cửa hàng tạo mới sau này cũng tự động được kế thừa.",
+        materializationNotRecorded:
+            "Phiên bản cũ chưa ghi nhận trạng thái áp dụng quyền.",
+        materializationProgress:
+            "Hoàn tất {completed}/{requested}, lỗi {failed}.",
+        materializationStatuses: {
+            PENDING: "Đang áp dụng",
+            COMPLETED: "Đã hoàn tất",
+            FAILED: "Áp dụng thất bại",
+        },
+        retryMaterialization: "Thử lại user lỗi",
+        retryingMaterialization: "Đang áp dụng lại quyền...",
+        retryMaterializationSuccess: "Đã hoàn tất thử lại",
+        retryMaterializationError: "Không thể thử lại",
+        retryMaterializationSuccessDesc:
+            "Các user bị lỗi đã được xử lý lại theo cách idempotent.",
+        retryMaterializationErrorDesc:
+            "Vui lòng kiểm tra quyền hoặc trạng thái rebuild rồi thử lại.",
     },
     systemSettings: {
         admin: "Quản trị",

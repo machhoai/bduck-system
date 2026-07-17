@@ -10,6 +10,7 @@ import { useMfaStore } from "../stores/useMfaStore";
 import { createDetailedApiError } from "@/utils/apiError";
 import { useTranslation } from "@/lib/i18n";
 import { AUTH_TOAST_TEXT } from "@/lib/i18n/componentTranslations";
+import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -95,7 +96,8 @@ export const useAuth = () => {
         .filter(
           (id: string, i: number, arr: string[]) => arr.indexOf(id) === i,
         );
-      setAuthData(data.user, data.permissions, roleIds, activeAssignments);
+      await isolateClientDataForAccount(data.user.id);
+      setAuthData(data.user, roleIds, activeAssignments);
 
       // Lock screen on login
       useMfaStore.getState().lockScreen();
@@ -156,6 +158,7 @@ export const useAuth = () => {
 
       await firebaseSignOut(auth);
       clearAuth();
+      await isolateClientDataForAccount(null);
 
       return { backendSessionCleared };
     };

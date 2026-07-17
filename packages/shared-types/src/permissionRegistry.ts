@@ -493,6 +493,42 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "查看所有单据附件。没有此权限时，用户只能看到自己上传的文件。",
     },
   },
+  {
+    key: "file_template_bundles.manage",
+    group: "file_library",
+    label: { vi: "Quản lý bộ biểu mẫu", zh: "管理表单模板包" },
+    description: {
+      vi: "Tạo, chỉnh sửa và xóa các bộ biểu mẫu từ những biểu mẫu đã tải lên.",
+      zh: "使用已上传的表单模板创建、编辑和删除模板包。",
+    },
+  },
+  {
+    key: "process_documents.view",
+    group: "file_library",
+    label: { vi: "Xem quy trình", zh: "查看流程文档" },
+    description: {
+      vi: "Xem trực tiếp và tải xuống tài liệu quy trình PDF.",
+      zh: "在线查看并下载 PDF 流程文档。",
+    },
+  },
+  {
+    key: "process_documents.upload",
+    group: "file_library",
+    label: { vi: "Tải lên quy trình", zh: "上传流程文档" },
+    description: {
+      vi: "Tải tài liệu quy trình dạng PDF lên thư viện.",
+      zh: "将 PDF 流程文档上传到文件库。",
+    },
+  },
+  {
+    key: "process_documents.delete",
+    group: "file_library",
+    label: { vi: "Xóa quy trình", zh: "删除流程文档" },
+    description: {
+      vi: "Xóa mềm tài liệu quy trình khỏi thư viện.",
+      zh: "从文件库中软删除流程文档。",
+    },
+  },
 
   // ── Vouchers ──
   {

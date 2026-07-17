@@ -1,357 +1,174 @@
-/**
- * Approval Controller — REST endpoints for approval actions
- *
- * GET  /pending              — List pending approvals for current user
- * GET  /:entityType/:entityId — Approval timeline for a specific entity
- * POST /:id/approve          — Approve a record
- * POST /:id/reject           — Reject a record
- *
- * ARCHITECTURE: Controller → Service → Repository (layered)
- * All routes require authentication (requireAuth middleware).
- */
+import type { ProcessEntityType } from "@bduck/shared-types";
+import type { Request, Response } from "express";
+import { z } from "zod";
+import * as approvalService from "../../services/scopedApprovalService.js";
+import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
-import type { Request, Response, NextFunction } from "express";
-import * as approvalService from "../../services/approvalService.js";
+const idSchema = z.string().trim().min(1).max(128);
+const approvalBodySchema = z.object({
+  comments: z.string().trim().max(1000).optional().nullable(),
+  otp: z.string().trim().max(20).optional().nullable(),
+});
+const rejectionSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+  otp: z.string().trim().max(20).optional().nullable(),
+});
+const cancelSchema = z.object({
+  reason: z.string().trim().max(1000).optional(),
+  otp: z.string().trim().max(20).optional(),
+});
+const forceCancelSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+});
 
-/**
- * GET /api/approvals/pending
- * Returns pending approvals for the current user's roles.
- * Replaces the old workflow tasks collectionGroup query.
- */
-export async function getPendingApprovals(
+const entityParams = (req: Request) => ({
+  entityType: idSchema.parse(req.params.entityType) as ProcessEntityType,
+  entityId: idSchema.parse(req.params.entityId),
+});
+
+const handleError = (res: Response, error: unknown): void => {
+  console.error("[approvalController] error:", error);
+  const apiError = error as {
+    statusCode?: number;
+    messages?: { vi: string; zh: string };
+  };
+  sendError(
+    res,
+    apiError.messages ?? {
+      vi: "Lỗi khi xử lý phê duyệt.",
+      zh: "处理审批时出错。",
+    },
+    error instanceof z.ZodError ? 400 : (apiError.statusCode ?? 500),
+  );
+};
+
+export const getPendingApprovals = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const user = (req as any).user;
-
-    const records = await approvalService.getPendingTasksForUser({
-      id: user?.id || user?.uid || "UNKNOWN",
-      roleIds: user?.roleIds || [],
-      roleAssignments: user?.roleAssignments || [],
-    });
-
-    res.json({
-      success: true,
-      data: records,
-      messages: {
-        vi: `Tìm thấy ${records.length} phiếu chờ duyệt.`,
-        zh: `找到 ${records.length} 个待审批单据。`,
-      },
+    const records = await approvalService.getPendingTasksForUser(
+      requireAuthenticatedRequestUser(req),
+      requireRequestAuthorization(req),
+    );
+    sendSuccess(res, records, {
+      vi: `Tìm thấy ${records.length} phiếu chờ duyệt.`,
+      zh: `找到 ${records.length} 个待审批单据。`,
     });
   } catch (error) {
-    next(error);
+    handleError(res, error);
   }
-}
+};
 
-/**
- * GET /api/approvals/:entityType/:entityId
- * Returns the full approval timeline for a voucher/order.
- */
-export async function getApprovalTimeline(
+export const getApprovalTimeline = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const entityType = req.params.entityType as string;
-    const entityId = req.params.entityId as string;
-
+    const { entityType, entityId } = entityParams(req);
     const records = await approvalService.getApprovalTimeline(
-      entityType as any,
+      entityType,
       entityId,
+      requireRequestAuthorization(req),
     );
-
-    res.json({
-      success: true,
-      data: records,
-      messages: {
-        vi: "Đã tải timeline phê duyệt.",
-        zh: "已加载审批时间线。",
-      },
+    sendSuccess(res, records, {
+      vi: "Đã tải lịch sử phê duyệt.",
+      zh: "审批时间线已加载。",
     });
   } catch (error) {
-    next(error);
+    handleError(res, error);
   }
-}
+};
 
-/**
- * POST /api/approvals/:id/approve
- * Approve a specific approval record.
- *
- * Body: { comments?: string }
- */
-export async function approveHandler(
+export const approveHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const approvalId = req.params.id as string;
-    const authUser = (req as any).user;
-    const userId = authUser?.id;
-    const { comments, otp } = req.body ?? {};
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Không xác định được người dùng.",
-          zh: "无法识别用户。",
-        },
-      });
-      return;
-    }
-
+    const input = approvalBodySchema.parse(req.body ?? {});
     const result = await approvalService.approveLevel(
-      approvalId,
-      userId,
-      comments,
-      otp,
-      {
-        id: userId,
-        roleIds: authUser?.roleIds || [],
-        roleAssignments: authUser?.roleAssignments || [],
-      },
+      idSchema.parse(req.params.id),
+      requireAuthenticatedRequestUser(req),
+      input.comments,
+      input.otp,
+      requireRequestAuthorization(req),
     );
-
-    res.json({
-      success: true,
-      data: {
-        allApproved: result.allApproved,
-        levelCompleted: result.levelCompleted,
-      },
-      messages: {
-        vi: result.allApproved
-          ? "Tất cả cấp phê duyệt đã hoàn thành."
-          : "Đã phê duyệt thành công.",
-        zh: result.allApproved
-          ? "所有审批级别已完成。"
-          : "审批成功。",
-      },
+    sendSuccess(res, result, {
+      vi: "Đã phê duyệt thành công.",
+      zh: "审批成功。",
     });
-  } catch (error: any) {
-    if (error.statusCode) {
-      res.status(error.statusCode).json({
-        success: false,
-        data: null,
-        messages: error.messages || { vi: error.message, zh: error.message },
-      });
-      return;
-    }
-    next(error);
+  } catch (error) {
+    handleError(res, error);
   }
-}
+};
 
-/**
- * POST /api/approvals/:id/reject
- * Reject a specific approval record.
- *
- * Body: { reason: string }
- */
-export async function rejectHandler(
+export const rejectHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const approvalId = req.params.id as string;
-    const authUser = (req as any).user;
-    const userId = authUser?.id;
-    const { reason, otp } = req.body ?? {};
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Không xác định được người dùng.",
-          zh: "无法识别用户。",
-        },
-      });
-      return;
-    }
-
-    await approvalService.rejectApproval(approvalId, userId, reason, otp, {
-      id: userId,
-      roleIds: authUser?.roleIds || [],
-      roleAssignments: authUser?.roleAssignments || [],
-    });
-
-    res.json({
-      success: true,
-      data: null,
-      messages: {
-        vi: "Đã từ chối phê duyệt.",
-        zh: "已拒绝审批。",
-      },
-    });
-  } catch (error: any) {
-    if (error.statusCode) {
-      res.status(error.statusCode).json({
-        success: false,
-        data: null,
-        messages: error.messages || { vi: error.message, zh: error.message },
-      });
-      return;
-    }
-    next(error);
+    const input = rejectionSchema.parse(req.body ?? {});
+    await approvalService.rejectApproval(
+      idSchema.parse(req.params.id),
+      requireAuthenticatedRequestUser(req),
+      input.reason,
+      input.otp,
+      requireRequestAuthorization(req),
+    );
+    sendSuccess(res, null, { vi: "Đã từ chối phê duyệt.", zh: "审批已拒绝。" });
+  } catch (error) {
+    handleError(res, error);
   }
-}
+};
 
-/**
- * POST /api/approvals/:entityType/:entityId/cancel
- * Cancel all pending approvals for an entity (creator only).
- *
- * Body: { reason?: string }
- */
-export async function cancelHandler(
+export const cancelHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const entityType = req.params.entityType as string;
-    const entityId = req.params.entityId as string;
-    const userId = (req as any).user?.id;
-    const { reason, otp } = req.body ?? {};
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Không xác định được người dùng.",
-          zh: "无法识别用户。",
-        },
-      });
-      return;
-    }
-
+    const input = cancelSchema.parse(req.body ?? {});
+    const { entityType, entityId } = entityParams(req);
     await approvalService.cancelByCreator(
-      entityType as any,
+      entityType,
       entityId,
-      userId,
-      reason,
-      otp,
+      requireAuthenticatedRequestUser(req),
+      input.reason,
+      input.otp,
+      requireRequestAuthorization(req),
     );
-
-    res.json({
-      success: true,
-      data: null,
-      messages: {
-        vi: "Đã hủy lệnh thành công.",
-        zh: "已成功撤销单据。",
-      },
+    sendSuccess(res, null, {
+      vi: "Đã hủy lệnh thành công.",
+      zh: "单据已撤销。",
     });
-  } catch (error: any) {
-    if (error.statusCode) {
-      res.status(error.statusCode).json({
-        success: false,
-        data: null,
-        messages: error.messages || { vi: error.message, zh: error.message },
-      });
-      return;
-    }
-    next(error);
+  } catch (error) {
+    handleError(res, error);
   }
-}
+};
 
-/**
- * POST /api/approvals/:entityType/:entityId/force-cancel
- * Force-cancel a voucher at any status (privileged users only).
- *
- * Requires permission: vouchers.force_cancel
- * Body: { reason: string } (mandatory)
- */
-export async function forceCancelHandler(
+export const forceCancelHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const entityType = req.params.entityType as string;
-    const entityId = req.params.entityId as string;
-    const userId = (req as any).user?.id;
-    const userPermissions = (req as any).user?.permissions ?? {};
-    const { reason } = req.body ?? {};
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Không xác định được người dùng.",
-          zh: "无法识别用户。",
-        },
-      });
-      return;
-    }
-
-    // ── Permission check: vouchers.force_cancel ──
-    const hasForceCancel = (() => {
-      const globalPerms = userPermissions["global"] || {};
-      if (globalPerms["*"] === true) return true;
-      if (globalPerms["vouchers.force_cancel"] === true) return true;
-      // Check warehouse-scoped permissions
-      return Object.entries(userPermissions).some(
-        ([scope, perms]: [string, any]) => {
-          if (scope === "global") return false;
-          return perms["*"] === true || perms["vouchers.force_cancel"] === true;
-        },
-      );
-    })();
-
-    if (!hasForceCancel) {
-      res.status(403).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Bạn không có quyền hủy lệnh đặc biệt.",
-          zh: "您没有强制撤销权限。",
-        },
-      });
-      return;
-    }
-
-    if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
-      res.status(400).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Lý do hủy là bắt buộc.",
-          zh: "撤销原因为必填项。",
-        },
-      });
-      return;
-    }
-
+    const input = forceCancelSchema.parse(req.body ?? {});
+    const { entityType, entityId } = entityParams(req);
+    const user = requireAuthenticatedRequestUser(req);
     await approvalService.forceCancel(
-      entityType as any,
+      entityType,
       entityId,
-      userId,
-      reason,
+      user.id,
+      input.reason,
+      requireRequestAuthorization(req),
     );
-
-    res.json({
-      success: true,
-      data: null,
-      messages: {
-        vi: "Đã hủy lệnh thành công (quyền đặc biệt).",
-        zh: "已成功强制撤销单据。",
-      },
+    sendSuccess(res, null, {
+      vi: "Đã hủy lệnh bằng quyền đặc biệt.",
+      zh: "单据已强制撤销。",
     });
-  } catch (error: any) {
-    if (error.statusCode) {
-      res.status(error.statusCode).json({
-        success: false,
-        data: null,
-        messages: error.messages || { vi: error.message, zh: error.message },
-      });
-      return;
-    }
-    next(error);
+  } catch (error) {
+    handleError(res, error);
   }
-}
+};

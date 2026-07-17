@@ -23,7 +23,8 @@ import {
   reseedConfigHandler,
 } from "../controllers/processConfigController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requirePermission } from "../middlewares/rbacMiddleware.js";
+import { getRequestAuthorization } from "../middlewares/requestAccessContext.js";
+import { requireSystemAdmin } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
@@ -57,12 +58,8 @@ function requireConfigReadAccess(
   res: Response,
   next: NextFunction,
 ) {
-  const user = (req as any).user;
-  const permissions = user?.permissions as
-    | Record<string, Record<string, unknown>>
-    | undefined;
-
-  if (!permissions) {
+  const authorization = getRequestAuthorization(req);
+  if (!authorization) {
     return res.status(403).json({
       success: false,
       data: null,
@@ -81,11 +78,11 @@ function requireConfigReadAccess(
     "workflows.manage",
   ];
 
-  const hasPermission = Object.values(permissions).some(
-    (scopedPermissions) =>
-      scopedPermissions["*"] === true ||
-      allowedActions.some((action: string) => scopedPermissions[action] === true),
-  );
+  const hasPermission =
+    authorization.context.isSystemAdmin ||
+    allowedActions.some(
+      (action) => authorization.facilityIdsFor(action).length > 0,
+    );
 
   if (hasPermission) {
     return next();
@@ -101,10 +98,10 @@ function requireConfigReadAccess(
   });
 }
 
-router.get("/", requirePermission("workflows.manage"), getAllConfigsHandler);
+router.get("/", requireSystemAdmin, getAllConfigsHandler);
 router.get("/:entityType", requireConfigReadAccess, getConfigHandler);
-router.put("/:id", requirePermission("workflows.manage"), updateConfigHandler);
-router.post("/seed/:entityType", requirePermission("workflows.manage"), seedConfigHandler);
-router.post("/reseed/:entityType", requirePermission("workflows.manage"), reseedConfigHandler);
+router.put("/:id", requireSystemAdmin, updateConfigHandler);
+router.post("/seed/:entityType", requireSystemAdmin, seedConfigHandler);
+router.post("/reseed/:entityType", requireSystemAdmin, reseedConfigHandler);
 
 export default router;

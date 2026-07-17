@@ -1,5 +1,9 @@
 import { randomUUID } from "crypto";
-import { AuditAction, type ReportExcelMapping } from "@bduck/shared-types";
+import {
+  AuditAction,
+  type ReportExcelMapping,
+  type User,
+} from "@bduck/shared-types";
 import type {
   ReportExportRecord,
   ReportTemplate,
@@ -19,69 +23,19 @@ import {
   readReportFile,
   saveReportFile,
 } from "./reportStorageService.js";
+import { resolveReportFieldInstances } from "./reportFieldResolver.js";
+import type { AuthorizationService } from "./authorization/index.js";
 import {
-  resolveReportFieldInstances,
-} from "./reportFieldResolver.js";
-import type { RequestUserContext } from "./warehouseAccess.js";
+  REPORT_XLSX_CONTENT_TYPE,
+  assertReportShareAllowed,
+  assertReportXlsxFile,
+  canAccessReportTemplate,
+  createReportTimestamps,
+} from "./reportTemplatePolicy.js";
 
-const XLSX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+type ReportActor = Pick<User, "id">;
 
-function assertXlsxFile(fileName: string, buffer: Buffer) {
-  if (!fileName.toLowerCase().endsWith(".xlsx")) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "Chỉ hỗ trợ file Excel .xlsx.",
-        zh: "仅支持 .xlsx Excel 文件。",
-      },
-    };
-  }
-  if (buffer.length > 10 * 1024 * 1024) {
-    throw {
-      statusCode: 400,
-      messages: {
-        vi: "File Excel không được vượt quá 10MB.",
-        zh: "Excel 文件不能超过 10MB。",
-      },
-    };
-  }
-}
-
-function nowStamped() {
-  const now = new Date();
-  return {
-    created_at: now,
-    updated_at: now,
-    action_time: now,
-    sync_time: now,
-    is_deleted: false,
-  };
-}
-
-function canAccessTemplate(template: ReportTemplate, userId: string) {
-  return template.owner_id === userId || template.visibility === "shared";
-}
-
-function assertShareAllowed(
-  visibility: ReportTemplateVisibility,
-  user: RequestUserContext,
-) {
-  if (visibility !== "shared") return;
-  const globalPerms = user.permissions?.global || {};
-  if (globalPerms["*"] === true || globalPerms["reports.templates.share"] === true) {
-    return;
-  }
-  throw {
-    statusCode: 403,
-    messages: {
-      vi: "Bạn không có quyền chia sẻ mẫu báo cáo.",
-      zh: "您无权共享报表模板。",
-    },
-  };
-}
-
-export async function listReportTemplates(user: RequestUserContext) {
+export async function listReportTemplates(user: ReportActor) {
   return reportRepo.findVisibleTemplates(user.id);
 }
 
@@ -93,13 +47,14 @@ export async function createExcelReportTemplate(
     visibility: ReportTemplateVisibility;
     mapping: ReportExcelMapping;
   },
-  user: RequestUserContext,
+  user: ReportActor,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) {
-  assertShareAllowed(input.visibility, user);
+  assertReportShareAllowed(input.visibility, authorization);
 
   const fileBuffer = Buffer.from(input.file_base64, "base64");
-  assertXlsxFile(input.original_file_name, fileBuffer);
+  assertReportXlsxFile(input.original_file_name, fileBuffer);
   const workbook = await loadWorkbookFromBuffer(fileBuffer);
   const workbookMeta = extractWorkbookMeta(workbook);
 
@@ -110,7 +65,7 @@ export async function createExcelReportTemplate(
     versionId,
     input.original_file_name,
   );
-  await saveReportFile(storagePath, fileBuffer, XLSX_CONTENT_TYPE);
+  await saveReportFile(storagePath, fileBuffer, REPORT_XLSX_CONTENT_TYPE);
 
   const template: ReportTemplate = {
     id: templateId,
@@ -120,7 +75,7 @@ export async function createExcelReportTemplate(
     owner_id: user.id,
     active_version_id: versionId,
     status: "active",
-    ...nowStamped(),
+    ...createReportTimestamps(),
   };
   const version: ReportTemplateVersion = {
     id: versionId,
@@ -132,7 +87,7 @@ export async function createExcelReportTemplate(
     mapping: input.mapping,
     status: "active",
     created_by: user.id,
-    ...nowStamped(),
+    ...createReportTimestamps(),
   };
 
   await reportRepo.createTemplate(template);
@@ -157,15 +112,20 @@ export async function updateExcelReportTemplate(
     visibility?: ReportTemplateVisibility;
     mapping?: ReportExcelMapping;
   },
-  user: RequestUserContext,
+  user: ReportActor,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) {
   const template = await getOwnedTemplate(templateId, user.id);
-  if (input.visibility) assertShareAllowed(input.visibility, user);
+  if (input.visibility) {
+    assertReportShareAllowed(input.visibility, authorization);
+  }
   const activeVersion = await getActiveVersion(template);
 
   if (input.mapping) {
-    await reportRepo.updateVersion(activeVersion.id, { mapping: input.mapping });
+    await reportRepo.updateVersion(activeVersion.id, {
+      mapping: input.mapping,
+    });
   }
   await reportRepo.updateTemplate(template.id, {
     name: input.name ?? template.name,
@@ -187,7 +147,7 @@ export async function updateExcelReportTemplate(
 
 export async function getReportTemplateDetail(
   templateId: string,
-  user: RequestUserContext,
+  user: ReportActor,
 ) {
   const template = await getAccessibleTemplate(templateId, user.id);
   const version = await getActiveVersion(template);
@@ -196,7 +156,7 @@ export async function getReportTemplateDetail(
 
 export async function readTemplateWorkbookFile(
   templateId: string,
-  user: RequestUserContext,
+  user: ReportActor,
 ) {
   const { version } = await getReportTemplateDetail(templateId, user);
   return {
@@ -221,7 +181,7 @@ async function getOwnedTemplate(templateId: string, userId: string) {
 
 async function getAccessibleTemplate(templateId: string, userId: string) {
   const template = await reportRepo.findTemplateById(templateId);
-  if (!template || !canAccessTemplate(template, userId)) {
+  if (!template || !canAccessReportTemplate(template, userId)) {
     throw {
       statusCode: 404,
       messages: {
@@ -259,11 +219,15 @@ async function getActiveVersion(template: ReportTemplate) {
 export async function previewExcelReport(
   templateId: string,
   mappingOverride: ReportExcelMapping | undefined,
-  user: RequestUserContext,
+  user: ReportActor,
+  authorization: AuthorizationService,
 ) {
   const { version } = await getReportTemplateDetail(templateId, user);
   const mapping = mappingOverride ?? version.mapping;
-  const resolved = await resolveReportFieldInstances(mapping.field_instances, user);
+  const resolved = await resolveReportFieldInstances(
+    mapping.field_instances,
+    authorization,
+  );
   return mapping.cell_mappings.map((cellMapping) => ({
     ...cellMapping,
     value: resolved.get(cellMapping.field_instance_id) ?? null,
@@ -273,12 +237,16 @@ export async function previewExcelReport(
 export async function exportExcelReport(
   templateId: string,
   mappingOverride: ReportExcelMapping | undefined,
-  user: RequestUserContext,
+  user: ReportActor,
+  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) {
   const { template, version } = await getReportTemplateDetail(templateId, user);
   const mapping = mappingOverride ?? version.mapping;
-  const resolved = await resolveReportFieldInstances(mapping.field_instances, user);
+  const resolved = await resolveReportFieldInstances(
+    mapping.field_instances,
+    authorization,
+  );
   const templateBuffer = await readReportFile(version.storage_path);
   const workbook = await loadWorkbookFromBuffer(templateBuffer);
   applyExcelMapping(workbook, mapping, resolved);
@@ -287,7 +255,7 @@ export async function exportExcelReport(
   const exportId = randomUUID();
   const outputFileName = `${template.name.replace(/[^a-zA-Z0-9._-]/g, "_")}.xlsx`;
   const storagePath = buildExportStoragePath(exportId, outputFileName);
-  await saveReportFile(storagePath, outputBuffer, XLSX_CONTENT_TYPE);
+  await saveReportFile(storagePath, outputBuffer, REPORT_XLSX_CONTENT_TYPE);
 
   const record: ReportExportRecord = {
     id: exportId,
@@ -298,7 +266,7 @@ export async function exportExcelReport(
     output_file_name: outputFileName,
     storage_path: storagePath,
     error_message: null,
-    ...nowStamped(),
+    ...createReportTimestamps(),
   };
   await reportRepo.createExportRecord(record);
   await logAudit({

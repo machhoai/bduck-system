@@ -1,26 +1,18 @@
 "use client";
 
-/**
- * useExportVouchers — Realtime Firebase listener for export vouchers
- *
- * LUẬT THÉP: No reload buttons. Vouchers update via onSnapshot.
- *
- * RBAC: Filters vouchers client-side by:
- * 1. User is creator (creator_id === userId)
- * 2. Voucher belongs to a warehouse in user's permission scope
- */
-
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { where } from "firebase/firestore";
 import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
+  ExportVoucherStatus,
+  type ExportVoucher,
+} from "@bduck/shared-types";
 import { db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
-import type { ExportVoucher } from "@bduck/shared-types";
-import { ExportVoucherStatus } from "@bduck/shared-types";
+import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
 
 const ACTIVE_STATUSES: string[] = [
   ExportVoucherStatus.DRAFT,
@@ -30,94 +22,65 @@ const ACTIVE_STATUSES: string[] = [
   ExportVoucherStatus.PICKING,
   ExportVoucherStatus.SHIPPED,
 ];
-
 const COMPLETED_STATUSES: string[] = [
   ExportVoucherStatus.COMPLETED,
   ExportVoucherStatus.CANCELLED,
 ];
 
-interface UseExportVouchersReturn {
-  activeVouchers: ExportVoucher[];
-  completedVouchers: ExportVoucher[];
-  loading: boolean;
-}
+const time = (value: unknown) => {
+  if (value instanceof Date) return value.getTime();
+  if (value && typeof value === "object" && "toDate" in value) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+  return new Date(value as string).getTime();
+};
 
-export function useExportVouchers(): UseExportVouchersReturn {
+export function useExportVouchers() {
   const [rawVouchers, setRawVouchers] = useState<ExportVoucher[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = useUserStore((s) => s.user);
-  const permissions = useUserStore((s) => s.permissions);
-
-  const accessibleWarehouseIds = useMemo(() => {
-    if (!permissions) return { isGlobal: false, ids: [] as string[] };
-    const globalPerms = permissions["global"] || {};
-    if (globalPerms["*"] === true || globalPerms["vouchers.read"] === true) {
-      return { isGlobal: true, ids: [] as string[] };
-    }
-    const ids: string[] = [];
-    for (const [scope, perms] of Object.entries(permissions)) {
-      if (scope === "global") continue;
-      if (perms["*"] === true || perms["vouchers.read"] === true) {
-        ids.push(scope);
-      }
-    }
-    return { isGlobal: false, ids };
-  }, [permissions]);
+  const userId = useUserStore((state) => state.user?.id);
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getFacilityPermissionScope(permissions, ["vouchers.read"]),
+    [permissions],
+  );
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       setRawVouchers([]);
       setLoading(false);
       return;
     }
-
-    const q = query(
-      collection(db, "export_vouchers"),
-      where("is_deleted", "==", false),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const vouchers: ExportVoucher[] = [];
-        snapshot.forEach((doc) => {
-          const data = { id: doc.id, ...doc.data() } as ExportVoucher;
-          if (accessibleWarehouseIds.isGlobal) {
-            vouchers.push(data);
-          } else {
-            const isCreator = data.creator_id === user.id;
-            const inScope = accessibleWarehouseIds.ids.includes(data.warehouse_id);
-            if (isCreator || inScope) vouchers.push(data);
-          }
-        });
-
-        setRawVouchers(
-          vouchers.sort((a, b) => {
-            const aTime = a.created_at instanceof Date ? a.created_at.getTime() : new Date(a.created_at as any).getTime();
-            const bTime = b.created_at instanceof Date ? b.created_at.getTime() : new Date(b.created_at as any).getTime();
-            return bTime - aTime;
-          }),
-        );
+    return subscribeToMergedQueries<ExportVoucher>({
+      queries: buildFacilityScopedQueries({
+        db,
+        collectionName: "export_vouchers",
+        facilityField: "warehouse_id",
+        scope: facilityScope,
+        constraints: [where("is_deleted", "==", false)],
+      }),
+      mapDocument: (document) => ({
+        id: document.id,
+        ...document.data(),
+      }) as ExportVoucher,
+      onData: (vouchers) => {
+        setRawVouchers(vouchers.sort((left, right) => time(right.created_at) - time(left.created_at)));
         setLoading(false);
       },
-      (error) => {
+      onError: (error) => {
         console.error("[useExportVouchers] onSnapshot error:", error);
         setLoading(false);
       },
-    );
-
-    return () => unsubscribe();
-  }, [user?.id, accessibleWarehouseIds]);
+    });
+  }, [facilityScope, userId]);
 
   const activeVouchers = useMemo(
-    () => rawVouchers.filter((v) => ACTIVE_STATUSES.includes(v.status)),
+    () => rawVouchers.filter((voucher) => ACTIVE_STATUSES.includes(voucher.status)),
     [rawVouchers],
   );
-
   const completedVouchers = useMemo(
-    () => rawVouchers.filter((v) => COMPLETED_STATUSES.includes(v.status)),
+    () => rawVouchers.filter((voucher) => COMPLETED_STATUSES.includes(voucher.status)),
     [rawVouchers],
   );
-
   return { activeVouchers, completedVouchers, loading };
 }

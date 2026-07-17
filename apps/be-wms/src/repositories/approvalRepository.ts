@@ -64,6 +64,37 @@ export async function findPendingByRoleIds(
   return records;
 }
 
+export async function findPendingByRolesAndFacilities(
+  roleIds: readonly string[],
+  facilityIds: readonly string[],
+): Promise<ApprovalRecord[]> {
+  const roles = Array.from(new Set(roleIds.filter(Boolean)));
+  const facilities = Array.from(new Set(facilityIds.filter(Boolean)));
+  if (roles.length === 0 || facilities.length === 0) return [];
+
+  const records = new Map<string, ApprovalRecord>();
+  for (const facilityId of facilities) {
+    for (let index = 0; index < roles.length; index += 30) {
+      const roleChunk = roles.slice(index, index + 30);
+      for (const field of ["approval_warehouse_id", "warehouse_id"] as const) {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where("role_id", "in", roleChunk)
+          .where(field, "==", facilityId)
+          .where("status", "==", "PENDING")
+          .get();
+        snapshot.docs.forEach((document) => {
+          records.set(document.id, {
+            id: document.id,
+            ...document.data(),
+          } as ApprovalRecord);
+        });
+      }
+    }
+  }
+  return [...records.values()];
+}
+
 /**
  * Find all approval records for a specific entity.
  * Returns sorted by level ascending.

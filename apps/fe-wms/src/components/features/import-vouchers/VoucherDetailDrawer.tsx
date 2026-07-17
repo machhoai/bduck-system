@@ -34,8 +34,9 @@ import {
     CheckCircle2,
     ClipboardSignature,
 } from "lucide-react";
-import { doc, collection, query as fsQuery, onSnapshot, getDoc, where } from "firebase/firestore";
+import { doc, collection, query as fsQuery, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useEntityApprovers } from "@/hooks/useEntityApprovers";
 import { gooeyToast } from "goey-toast";
 import { useTranslation } from "@/lib/i18n";
 import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
@@ -173,7 +174,7 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
     const [cancelReason, setCancelReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [legacyApproverName, setLegacyApproverName] = useState("");
-    const [approvers, setApprovers] = useState<{ id: string; name: string; approved_at: Date | null }[]>([]);
+    const approvers = useEntityApprovers(voucher.id);
 
     const entityType = useMemo(() => getEntityType(voucher), [voucher]);
     const { config: processConfig } = useProcessConfig(entityType, voucher.warehouse_id);
@@ -218,44 +219,6 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                 .catch(() => setLegacyApproverName(voucher.approver_id!));
         }
     }, [voucher.creator_id, voucher.warehouse_id, voucher.approver_id]);
-
-    // ── Load approvers from pending_approvals ──
-    useEffect(() => {
-        const approvalsQuery = fsQuery(
-            collection(db, "pending_approvals"),
-            where("entity_id", "==", voucher.id),
-            where("status", "==", "APPROVED"),
-        );
-
-        const unsub = onSnapshot(approvalsQuery, async (snap) => {
-            const records = snap.docs.map((d) => d.data());
-            records.sort((a, b) => (a.level || 0) - (b.level || 0));
-
-            const approverData = await Promise.all(
-                records.map(async (record) => {
-                    let name = record.approver_id;
-                    if (record.approver_id) {
-                        try {
-                            const uSnap = await getDoc(doc(db, "users", record.approver_id));
-                            if (uSnap.exists()) {
-                                const u = uSnap.data();
-                                name = u?.full_name || u?.email || record.approver_id;
-                            }
-                        } catch {}
-                    }
-                    return {
-                        id: record.approver_id,
-                        name,
-                        approved_at: record.approved_at,
-                    };
-                }),
-            );
-
-            setApprovers(approverData);
-        });
-
-        return () => unsub();
-    }, [voucher.id]);
 
     // ── Load items + resolve products ──
     useEffect(() => {

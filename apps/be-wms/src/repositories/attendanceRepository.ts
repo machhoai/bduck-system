@@ -30,17 +30,28 @@ export const getActiveAttendancePolicy = async (
 export const listActiveAttendancePolicies = async (
   warehouseIds?: string[],
 ): Promise<WarehouseAttendancePolicy[]> => {
-  const snapshot = await db
-    .collection(POLICIES_COLLECTION)
-    .where("effective_to", "==", null)
-    .get();
+  if (warehouseIds && warehouseIds.length === 0) return [];
+  if (!warehouseIds) {
+    const snapshot = await db
+      .collection(POLICIES_COLLECTION)
+      .where("effective_to", "==", null)
+      .get();
+    return snapshot.docs.map((doc) => doc.data() as WarehouseAttendancePolicy);
+  }
 
-  const policies = snapshot.docs.map(
-    (doc) => doc.data() as WarehouseAttendancePolicy,
-  );
-  if (!warehouseIds) return policies;
-  const scope = new Set(warehouseIds);
-  return policies.filter((policy) => scope.has(policy.warehouse_id));
+  const policies: WarehouseAttendancePolicy[] = [];
+  const uniqueIds = Array.from(new Set(warehouseIds));
+  for (let index = 0; index < uniqueIds.length; index += 30) {
+    const snapshot = await db
+      .collection(POLICIES_COLLECTION)
+      .where("warehouse_id", "in", uniqueIds.slice(index, index + 30))
+      .where("effective_to", "==", null)
+      .get();
+    policies.push(
+      ...snapshot.docs.map((doc) => doc.data() as WarehouseAttendancePolicy),
+    );
+  }
+  return policies;
 };
 
 export const replaceActiveAttendancePolicy = async (

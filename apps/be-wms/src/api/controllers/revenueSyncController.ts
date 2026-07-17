@@ -1,195 +1,119 @@
-/**
- * Revenue Sync Controller
- *
- * Handles HTTP requests for triggering revenue sync from JoyWorld API.
- * Protected by requireAuth middleware.
- */
-
 import type { Request, Response } from "express";
-import {
-  syncRevenueForPeriod,
-  getCachedRevenue,
-} from "../../services/revenueSyncService.js";
+import { z } from "zod";
 import {
   getJoyworldToken,
   getOrderDetail,
 } from "../../services/joyworldService.js";
+import { LANDMARK_81_WAREHOUSE_ID } from "../../services/revenueDashboardService.js";
+import {
+  getCachedRevenue,
+  syncRevenueForPeriod,
+} from "../../services/revenueSyncService.js";
+import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
-/**
- * GET /api/revenue/sync/:period
- *
- * Triggers a revenue sync for the given period (YYYY-MM).
- * If Firestore data is fresh (<5 min), returns cached data without re-fetching.
- */
-export async function syncRevenueHandler(
+const periodSchema = z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/);
+const warehouseQuerySchema = z.object({
+  warehouseId: z.string().uuid().default(LANDMARK_81_WAREHOUSE_ID),
+});
+const orderIdSchema = z.string().trim().min(1).max(128);
+
+const serializeRevenue = <T extends { sync_time: unknown }>(data: T) => {
+  const syncTime = data.sync_time as { toDate?: () => Date } | null;
+  return {
+    ...data,
+    sync_time: syncTime?.toDate ? syncTime.toDate() : (syncTime ?? null),
+  };
+};
+
+const handleRevenueError = (res: Response, error: unknown): void => {
+  console.error("[revenueSyncController] error:", error);
+  const apiError = error as {
+    statusCode?: number;
+    messages?: { vi: string; zh: string };
+  };
+  sendError(
+    res,
+    apiError.messages ?? {
+      vi: "Lỗi xử lý dữ liệu doanh thu.",
+      zh: "处理营收数据时出错。",
+    },
+    error instanceof z.ZodError ? 400 : (apiError.statusCode ?? 500),
+    error instanceof z.ZodError ? error.flatten() : undefined,
+  );
+};
+
+export const syncRevenueHandler = async (
   req: Request,
   res: Response,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const period = String(req.params.period || "");
-    const warehouseId = String(req.query.warehouseId || "");
-
-    // Validate period format
-    if (!period || !/^\d{4}-\d{2}$/.test(period)) {
-      res.status(400).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Kỳ kế toán không hợp lệ. Định dạng: YYYY-MM",
-          zh: "会计期间格式无效。格式：YYYY-MM",
-        },
-      });
-      return;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const user = (req as any).user as { id: string } | undefined;
-    const userId = user?.id || "system";
-
-    const result = await syncRevenueForPeriod(period, userId, warehouseId || undefined);
-
-    // Convert Firestore Timestamp to ISO string for JSON response
-    const syncTimeValue = result.data.sync_time;
-    const syncTimeDate =
-      syncTimeValue && typeof (syncTimeValue as any).toDate === "function"
-        ? (syncTimeValue as any).toDate()
-        : syncTimeValue;
-
-    res.json({
-      success: true,
-      data: {
-        ...result.data,
-        sync_time: syncTimeDate ?? null,
+    const period = periodSchema.parse(req.params.period);
+    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const authorization = requireRequestAuthorization(req);
+    authorization.assert("revenue.sync", warehouseId);
+    const result = await syncRevenueForPeriod(
+      period,
+      requireAuthenticatedRequestUser(req).id,
+      warehouseId,
+    );
+    sendSuccess(
+      res,
+      {
+        ...serializeRevenue(result.data),
         was_refreshed: result.synced,
       },
-      messages: {
+      {
         vi: result.synced
           ? "Đã đồng bộ doanh thu từ hệ thống chính."
-          : "Dữ liệu doanh thu vẫn còn mới, không cần đồng bộ lại.",
+          : "Dữ liệu doanh thu vẫn còn mới.",
         zh: result.synced
           ? "已从主系统同步营收数据。"
-          : "营收数据仍然是最新的，无需重新同步。",
+          : "营收数据仍然是最新的。",
       },
-    });
+    );
   } catch (error) {
-    console.error("[revenueSyncController] sync error:", error);
-    res.status(500).json({
-      success: false,
-      data: null,
-      messages: {
-        vi: "Lỗi đồng bộ doanh thu. Vui lòng thử lại sau.",
-        zh: "同步营收数据时出错。请稍后重试。",
-      },
-    });
+    handleRevenueError(res, error);
   }
-}
+};
 
-/**
- * GET /api/revenue/cached/:period
- *
- * Returns cached revenue data without triggering sync.
- */
-export async function getCachedRevenueHandler(
+export const getCachedRevenueHandler = async (
   req: Request,
   res: Response,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const period = String(req.params.period || "");
-    const warehouseId = String(req.query.warehouseId || "");
-
-    if (!period || !/^\d{4}-\d{2}$/.test(period)) {
-      res.status(400).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Kỳ kế toán không hợp lệ.",
-          zh: "会计期间格式无效。",
-        },
-      });
-      return;
-    }
-
-    const data = await getCachedRevenue(period, warehouseId || undefined);
-
-    // Convert Firestore Timestamp to ISO string for JSON response
-    let responseData = null;
-    if (data) {
-      const syncTimeValue = data.sync_time;
-      const syncTimeDate =
-        syncTimeValue && typeof (syncTimeValue as any).toDate === "function"
-          ? (syncTimeValue as any).toDate()
-          : syncTimeValue;
-      responseData = { ...data, sync_time: syncTimeDate ?? null };
-    }
-
-    res.json({
-      success: true,
-      data: responseData,
-      messages: {
-        vi: data
-          ? "Dữ liệu doanh thu đã được tải."
-          : "Chưa có dữ liệu doanh thu cho kỳ này.",
-        zh: data
-          ? "营收数据已加载。"
-          : "该期间尚无营收数据。",
-      },
+    const period = periodSchema.parse(req.params.period);
+    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    requireRequestAuthorization(req).assert("revenue.read", warehouseId);
+    const data = await getCachedRevenue(period, warehouseId);
+    sendSuccess(res, data ? serializeRevenue(data) : null, {
+      vi: data
+        ? "Dữ liệu doanh thu đã được tải."
+        : "Chưa có dữ liệu doanh thu cho kỳ này.",
+      zh: data ? "营收数据已加载。" : "该期间尚无营收数据。",
     });
   } catch (error) {
-    console.error("[revenueSyncController] cached error:", error);
-    res.status(500).json({
-      success: false,
-      data: null,
-      messages: {
-        vi: "Lỗi tải dữ liệu doanh thu.",
-        zh: "加载营收数据时出错。",
-      },
-    });
+    handleRevenueError(res, error);
   }
-}
+};
 
-/**
- * GET /api/revenue/order-details/:orderId
- *
- * Proxy to fetch order details from JoyWorld
- */
-export async function getOrderDetailsHandler(
+export const getOrderDetailsHandler = async (
   req: Request,
   res: Response,
-): Promise<void> {
+): Promise<void> => {
   try {
-    const orderId = String(req.params.orderId || "");
-    if (!orderId) {
-      res.status(400).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Thiếu mã đơn hàng.",
-          zh: "缺少订单号。",
-        },
-      });
-      return;
-    }
-    
-    const token = await getJoyworldToken();
-    const response = await getOrderDetail(token, orderId);
-
-    res.json({
-      success: true,
-      data: response.data || response,
-      messages: {
-        vi: "Tải chi tiết đơn hàng thành công.",
-        zh: "成功加载订单详情。",
-      },
+    const orderId = orderIdSchema.parse(req.params.orderId);
+    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    requireRequestAuthorization(req).assert("revenue.read", warehouseId);
+    const response = await getOrderDetail(await getJoyworldToken(), orderId);
+    sendSuccess(res, response.data || response, {
+      vi: "Tải chi tiết đơn hàng thành công.",
+      zh: "成功加载订单详情。",
     });
   } catch (error) {
-    console.error("[revenueSyncController] getOrderDetailsHandler error:", error);
-    res.status(500).json({
-      success: false,
-      data: null,
-      messages: {
-        vi: "Lỗi tải chi tiết đơn hàng.",
-        zh: "加载订单详情时出错。",
-      },
-    });
+    handleRevenueError(res, error);
   }
-}
+};

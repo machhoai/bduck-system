@@ -4,14 +4,21 @@ import { useEffect, useState } from "react";
 import type React from "react";
 import { X } from "lucide-react";
 import { UserStatus } from "@bduck/shared-types";
-import type { Role, UserWarehouseRole, Warehouse } from "@bduck/shared-types";
+import type { Role, Warehouse } from "@bduck/shared-types";
 import type { UserWithAssignments } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
+import { EffectiveAccessPreview } from "./EffectiveAccessPreview";
 import {
   createEmptyAssignment,
   UserAssignmentEditor,
   type AssignmentDraft,
 } from "./UserAssignmentEditor";
+import {
+  dedupeAssignments,
+  toAssignmentDraft,
+  UserFormField as Field,
+  userFormInputClassName as inputClassName,
+} from "./userFormSupport";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -38,6 +45,7 @@ export function UserFormModal({
     password: "",
     full_name: "",
     employee_id: "",
+    workplace_facility_id: "",
     status: UserStatus.ACTIVE,
   });
   const [assignments, setAssignments] = useState<AssignmentDraft[]>([
@@ -55,6 +63,7 @@ export function UserFormModal({
         password: "",
         full_name: user.full_name,
         employee_id: user.employee_id,
+        workplace_facility_id: user.workplace_facility_id || "",
         status: user.status,
       });
       setAssignments(
@@ -62,7 +71,7 @@ export function UserFormModal({
           ? user.assignments
               .filter((assignment) => assignment.is_active)
               .map(toAssignmentDraft)
-          : [createEmptyAssignment()],
+          : [createEmptyAssignment(user.workplace_facility_id || "")],
       );
       return;
     }
@@ -73,10 +82,11 @@ export function UserFormModal({
       password: "",
       full_name: "",
       employee_id: "",
+      workplace_facility_id: warehouses[0]?.id || "",
       status: UserStatus.ACTIVE,
     });
-    setAssignments([createEmptyAssignment()]);
-  }, [isOpen, user]);
+    setAssignments([createEmptyAssignment(warehouses[0]?.id || "")]);
+  }, [isOpen, user, warehouses]);
 
   if (!isOpen) return null;
 
@@ -89,6 +99,7 @@ export function UserFormModal({
         email: formData.email,
         full_name: formData.full_name,
         employee_id: formData.employee_id,
+        workplace_facility_id: formData.workplace_facility_id,
         status: formData.status,
         ...(formData.password ? { password: formData.password } : {}),
         assignments: dedupeAssignments(assignments)
@@ -174,6 +185,28 @@ export function UserFormModal({
                 className={inputClassName}
               />
             </Field>
+            <Field label={t.officeScope.workplace}>
+              <select
+                required
+                value={formData.workplace_facility_id}
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    workplace_facility_id: event.target.value,
+                  })
+                }
+                className={inputClassName}
+              >
+                <option value="" disabled>
+                  {t.officeScope.selectWorkplace}
+                </option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name} · {t.warehouses.types[warehouse.type]}
+                  </option>
+                ))}
+              </select>
+            </Field>
             {isEdit && (
               <Field label={t.users.password}>
                 <input
@@ -208,12 +241,23 @@ export function UserFormModal({
             </Field>
           </div>
 
-          <UserAssignmentEditor
-            assignments={assignments}
-            roles={roles}
-            warehouses={warehouses}
-            onChange={setAssignments}
-          />
+          <EffectiveAccessPreview userId={user?.id} facilities={warehouses} />
+
+          <details className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
+              {t.officeScope.directAssignments}
+            </summary>
+            <p className="mb-4 mt-2 text-xs text-[var(--color-text-muted)]">
+              {t.officeScope.directAssignmentsHint}
+            </p>
+            <UserAssignmentEditor
+              assignments={assignments}
+              roles={roles}
+              warehouses={warehouses}
+              defaultFacilityId={formData.workplace_facility_id}
+              onChange={setAssignments}
+            />
+          </details>
         </form>
 
         <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
@@ -236,50 +280,5 @@ export function UserFormModal({
         </div>
       </div>
     </div>
-  );
-}
-
-const inputClassName =
-  "h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]";
-
-function assignmentKey(assignment: AssignmentDraft) {
-  return `${assignment.warehouse_id || "global"}:${assignment.role_id}`;
-}
-
-function dedupeAssignments(assignments: AssignmentDraft[]) {
-  const byScopeAndRole = new Map<string, AssignmentDraft>();
-
-  assignments.forEach((assignment) => {
-    if (!assignment.role_id) return;
-    byScopeAndRole.set(assignmentKey(assignment), assignment);
-  });
-
-  return Array.from(byScopeAndRole.values());
-}
-
-function toAssignmentDraft(assignment: UserWarehouseRole): AssignmentDraft {
-  return {
-    warehouse_id: assignment.warehouse_id || "",
-    role_id: assignment.role_id,
-    valid_from: assignment.valid_from,
-    valid_until: assignment.valid_until || "",
-    is_active: assignment.is_active,
-  };
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }

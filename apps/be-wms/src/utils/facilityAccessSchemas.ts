@@ -22,6 +22,7 @@ export const officeScopeQuerySchema = z.object({
 export const officeScopeMutationSchema = z
   .object({
     scope_mode: z.enum(["ALL", "SELECTED"]),
+    expected_revision: z.number().int().min(0),
     target_facility_ids: z
       .array(facilityAccessIdSchema)
       .max(500)
@@ -53,6 +54,26 @@ export const officeScopeMutationSchema = z
     }
   });
 
+export const officeScopeCeilingMutationSchema = z
+  .object({
+    scope_mode: z.enum(["ALL", "SELECTED"]),
+    expected_revision: z.number().int().min(0),
+    target_facility_ids: z
+      .array(facilityAccessIdSchema)
+      .max(500)
+      .default([])
+      .transform((ids) => Array.from(new Set(ids))),
+  })
+  .superRefine((value, context) => {
+    if (value.scope_mode === "ALL" && value.target_facility_ids.length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["target_facility_ids"],
+        message: "ALL ceiling must not contain selected target facilities",
+      });
+    }
+  });
+
 export const accessGrantQuerySchema = z.object({
   user_id: facilityAccessIdSchema.optional(),
   facility_id: facilityAccessIdSchema.optional(),
@@ -73,6 +94,9 @@ export const facilityAccessMigrationOptionsSchema = z.object({
 
 export type OfficeScopeMutationInput = z.infer<
   typeof officeScopeMutationSchema
+>;
+export type OfficeScopeCeilingMutationInput = z.infer<
+  typeof officeScopeCeilingMutationSchema
 >;
 export type FacilityAccessMigrationOptions = z.infer<
   typeof facilityAccessMigrationOptionsSchema

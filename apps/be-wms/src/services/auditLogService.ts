@@ -5,59 +5,25 @@ import {
   type AuditLogSearchParams,
 } from "../repositories/auditLogRepository.js";
 import { auditLogQuerySchema } from "../utils/zodSchemas.js";
+import {
+  authorizationError,
+  type AuthorizationService,
+} from "./authorization/index.js";
 
 export type AuditLogQueryInput = z.infer<typeof auditLogQuerySchema>;
 
-/**
- * User permissions shape injected by authMiddleware.
- * Keys are "global" or warehouse UUIDs, values are permission maps.
- */
-type UserPermissions = Record<string, Record<string, unknown>>;
-
-/**
- * Extract the warehouse IDs that a user has `audit.read` permission for.
- * Returns `undefined` if the user has global access (no restriction needed).
- */
-function extractAllowedWarehouseIds(
-  permissions: UserPermissions,
-): string[] | undefined {
-  const globalPerms = permissions["global"] || {};
-
-  // Global admin or global audit.read → unrestricted
-  if (globalPerms["*"] === true || globalPerms["audit.read"] === true) {
-    return undefined;
-  }
-
-  // Collect warehouse-scoped audit.read permissions
-  const warehouseIds: string[] = [];
-  for (const [scope, scopePerms] of Object.entries(permissions)) {
-    if (scope === "global") continue;
-    if (scopePerms["*"] === true || scopePerms["audit.read"] === true) {
-      warehouseIds.push(scope);
-    }
-  }
-
-  return warehouseIds;
-}
-
 export const fetchAuditLogs = async (
   input: AuditLogQueryInput,
-  userPermissions?: UserPermissions,
+  authorization: AuthorizationService,
 ): Promise<AuditLog[]> => {
-  const allowedWarehouseIds = userPermissions
-    ? extractAllowedWarehouseIds(userPermissions)
-    : undefined;
+  const allowedWarehouseIds = authorization.context.isSystemAdmin
+    ? undefined
+    : authorization.facilityIdsFor("audit.read");
 
-  if (allowedWarehouseIds && allowedWarehouseIds.length === 0) {
-    return [];
-  }
-
-  if (
-    input.warehouse_id &&
-    allowedWarehouseIds &&
-    !allowedWarehouseIds.includes(input.warehouse_id)
-  ) {
-    return [];
+  if (input.warehouse_id) {
+    authorization.assert("audit.read", input.warehouse_id);
+  } else if (allowedWarehouseIds?.length === 0) {
+    throw authorizationError("AUTHORIZATION_DENIED");
   }
 
   const params: AuditLogSearchParams = {

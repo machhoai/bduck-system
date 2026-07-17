@@ -1,8 +1,19 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { fetchAuditLogs } from "../../services/auditLogService.js";
+import { authorizationError } from "../../services/authorization/index.js";
 import { auditLogQuerySchema } from "../../utils/zodSchemas.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
+
+const exportActionSchema = z.object({
+  entity_type: z.string().trim().min(1).max(120),
+  filters: z.record(z.string(), z.unknown()).optional(),
+  warehouse_id: z.string().uuid().nullable().optional(),
+});
 
 const handleAuditLogError = (res: Response, error: unknown) => {
   console.error("[auditLogController] error:", error);
@@ -19,23 +30,24 @@ const handleAuditLogError = (res: Response, error: unknown) => {
     );
   }
 
+  const apiError = error as {
+    statusCode?: number;
+    messages?: { vi: string; zh: string };
+  };
   return sendError(
     res,
-    {
+    apiError.messages ?? {
       vi: "Lỗi khi tải audit log.",
       zh: "加载审计日志时出错。",
     },
-    500,
+    apiError.statusCode ?? 500,
   );
 };
 
 export const getAuditLogsHandler = async (req: Request, res: Response) => {
   try {
     const query = auditLogQuerySchema.parse(req.query);
-    const user = (req as any).user;
-    const userPermissions = user?.permissions || {};
-
-    const logs = await fetchAuditLogs(query, userPermissions);
+    const logs = await fetchAuditLogs(query, requireRequestAuthorization(req));
 
     return sendSuccess(res, logs, {
       vi: "Lấy audit log thành công.",
@@ -48,18 +60,14 @@ export const getAuditLogsHandler = async (req: Request, res: Response) => {
 
 export const logExportActionHandler = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
-    const { entity_type, filters, warehouse_id } = req.body;
-
-    if (!entity_type) {
-      return sendError(
-        res,
-        {
-          vi: "Thiếu thông tin entity_type.",
-          zh: "缺少 entity_type 信息。",
-        },
-        400,
-      );
+    const user = requireAuthenticatedRequestUser(req);
+    const authorization = requireRequestAuthorization(req);
+    const { entity_type, filters, warehouse_id } = exportActionSchema.parse(
+      req.body ?? {},
+    );
+    if (warehouse_id) authorization.assert("audit.read", warehouse_id);
+    else if (!authorization.context.isSystemAdmin) {
+      throw authorizationError("AUTHORIZATION_DENIED");
     }
 
     const { logAudit } = await import("../../services/auditService.js");
@@ -68,10 +76,10 @@ export const logExportActionHandler = async (req: Request, res: Response) => {
     await logAudit({
       entity_type,
       entity_id: "EXPORT",
-      warehouse_id: warehouse_id || null,
+      warehouse_id: warehouse_id ?? null,
       action: AuditAction.EXPORT,
-      user_id: user?.id || "system",
-      user_name: user?.full_name || user?.username || user?.email || null,
+      user_id: user.id,
+      user_name: user.full_name || user.username || user.email || null,
       entity_name: entity_type,
       old_value: filters ? { filters } : null,
       new_value: null,
@@ -90,14 +98,6 @@ export const logExportActionHandler = async (req: Request, res: Response) => {
       },
     );
   } catch (error) {
-    console.error("[logExportActionHandler] error:", error);
-    return sendError(
-      res,
-      {
-        vi: "Lỗi khi ghi log xuất dữ liệu.",
-        zh: "记录导出数据日志时出错。",
-      },
-      500,
-    );
+    return handleAuditLogError(res, error);
   }
 };

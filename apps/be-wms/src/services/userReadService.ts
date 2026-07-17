@@ -1,4 +1,12 @@
-import type { User, UserWarehouseRole } from "@bduck/shared-types";
+import type {
+  User,
+  UserEffectiveAccessSnapshot,
+  UserWarehouseRole,
+} from "@bduck/shared-types";
+import {
+  findUserFacilityAccessGrants,
+  getUserAccessMetadata,
+} from "../repositories/userAccessReadRepository.js";
 import {
   findUsersScoped,
   getUserById,
@@ -96,4 +104,30 @@ export const fetchUserById = async (
   const assignments = await getUserWarehouseRoles(userId);
   assertCanAccessTargetUser(authorization, "users.read", user, assignments);
   return createUserView(user, assignments, authorization);
+};
+
+export const fetchUserEffectiveAccess = async (
+  userId: string,
+  authorization: AuthorizationService,
+): Promise<UserEffectiveAccessSnapshot> => {
+  const user = await loadUserRecord(userId);
+  const assignments = await getUserWarehouseRoles(userId);
+  assertCanAccessTargetUser(
+    authorization,
+    "users.read",
+    user,
+    assignments,
+  );
+  const metadata = await getUserAccessMetadata(userId);
+  if (!metadata?.active_version_id) return { metadata, grants: [] };
+  const grants = await findUserFacilityAccessGrants(
+    userId,
+    metadata.active_version_id,
+  );
+  const visibleGrants = authorization.context.isSystemAdmin
+    ? grants
+    : grants.filter((grant) =>
+        authorization.hasFacilityAccess(grant.facility_id),
+      );
+  return { metadata, grants: visibleGrants };
 };

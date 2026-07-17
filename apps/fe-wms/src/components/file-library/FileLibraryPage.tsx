@@ -4,14 +4,18 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
     FileSpreadsheet,
     FileText,
+    FileArchive,
     Files,
     FolderOpen,
     Library,
     LockKeyhole,
+    Workflow,
 } from "lucide-react";
 import type { FileTemplate } from "@bduck/shared-types";
 import { useFileLibrary } from "@/hooks/useFileLibrary";
 import { useFileTemplates } from "@/hooks/useFileTemplates";
+import { useFileTemplateBundles } from "@/hooks/useFileTemplateBundles";
+import { useProcessDocuments } from "@/hooks/useProcessDocuments";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
@@ -30,8 +34,14 @@ import FileTemplateGrid from "./FileTemplateGrid";
 import FileTemplateUploadPanel from "./FileTemplateUploadPanel";
 import FileTemplateVersionHistory from "./FileTemplateVersionHistory";
 import FileTemplateVersionModal from "./FileTemplateVersionModal";
+import FileTemplateBundleTab from "./FileTemplateBundleTab";
+import ProcessDocumentTab from "./ProcessDocumentTab";
 
-type FileLibraryTab = "uploaded" | "templates";
+type FileLibraryTab =
+    | "uploaded"
+    | "templates"
+    | "templateBundles"
+    | "processes";
 
 const defaultFilters: FileLibraryFilters = {
     search: "",
@@ -63,7 +73,9 @@ function MetricCard({
 }) {
     return (
         <div className="flex items-center gap-2 p-2">
-            <div className={`flex h-full aspect-square items-center justify-center rounded-[var(--radius-sm)] ${tone}`}>
+            <div
+                className={`flex h-full aspect-square items-center justify-center rounded-[var(--radius-sm)] ${tone}`}
+            >
                 {icon}
             </div>
             <div className="min-w-0">
@@ -94,20 +106,24 @@ function sortTemplates(
 
         const aValue =
             filters.sortBy === "size"
-                ? a.file_size ?? null
-                : toFileLibraryDate(a.created_at)?.getTime() ?? null;
+                ? (a.file_size ?? null)
+                : (toFileLibraryDate(a.created_at)?.getTime() ?? null);
         const bValue =
             filters.sortBy === "size"
-                ? b.file_size ?? null
-                : toFileLibraryDate(b.created_at)?.getTime() ?? null;
+                ? (b.file_size ?? null)
+                : (toFileLibraryDate(b.created_at)?.getTime() ?? null);
 
         if (aValue === null && bValue === null) {
-            return a.title.localeCompare(b.title, "vi", { sensitivity: "base" });
+            return a.title.localeCompare(b.title, "vi", {
+                sensitivity: "base",
+            });
         }
         if (aValue === null) return 1;
         if (bValue === null) return -1;
         if (aValue === bValue) {
-            return a.title.localeCompare(b.title, "vi", { sensitivity: "base" });
+            return a.title.localeCompare(b.title, "vi", {
+                sensitivity: "base",
+            });
         }
 
         return (aValue - bValue) * directionFactor;
@@ -121,6 +137,13 @@ export default function FileLibraryPage() {
     const canViewTemplates = hasPermission("file_templates.view");
     const canUploadTemplates = hasPermission("file_templates.upload");
     const canAccessTemplates = canViewTemplates || canUploadTemplates;
+    const canManageTemplateBundles = hasPermission(
+        "file_template_bundles.manage",
+    );
+    const canViewProcesses = hasPermission("process_documents.view");
+    const canUploadProcesses = hasPermission("process_documents.upload");
+    const canDeleteProcesses = hasPermission("process_documents.delete");
+    const canAccessProcesses = canViewProcesses || canUploadProcesses;
     const {
         templates,
         loading: templatesLoading,
@@ -132,17 +155,40 @@ export default function FileLibraryPage() {
         deleteTemplate,
         uploadNewVersion,
     } = useFileTemplates(canViewTemplates);
+    const {
+        bundles,
+        loading: bundlesLoading,
+        createBundle,
+        updateBundle,
+        deleteBundle,
+    } = useFileTemplateBundles(canViewTemplates);
+    const {
+        documents: processDocuments,
+        loading: processDocumentsLoading,
+        createDocument,
+        deleteDocument,
+    } = useProcessDocuments(canViewProcesses);
 
     const [activeTab, setActiveTab] = useState<FileLibraryTab>(
-        canAccessTemplates ? "templates" : "uploaded",
+        canAccessTemplates
+            ? "templates"
+            : canAccessProcesses
+              ? "processes"
+              : "uploaded",
     );
     const [uploadedFilters, setUploadedFilters] =
         useState<FileLibraryFilters>(defaultFilters);
     const [templateFilters, setTemplateFilters] =
         useState<FileLibraryFilters>(defaultFilters);
-    const [editingTemplate, setEditingTemplate] = useState<FileTemplate | null>(null);
-    const [versionTemplate, setVersionTemplate] = useState<FileTemplate | null>(null);
-    const [historyTemplate, setHistoryTemplate] = useState<FileTemplate | null>(null);
+    const [editingTemplate, setEditingTemplate] = useState<FileTemplate | null>(
+        null,
+    );
+    const [versionTemplate, setVersionTemplate] = useState<FileTemplate | null>(
+        null,
+    );
+    const [historyTemplate, setHistoryTemplate] = useState<FileTemplate | null>(
+        null,
+    );
     const [deleteTarget, setDeleteTarget] = useState<FileTemplate | null>(null);
 
     const copy = t.fileLibrary;
@@ -150,10 +196,15 @@ export default function FileLibraryPage() {
         copy.purposes[key];
 
     useEffect(() => {
-        if (!canAccessTemplates && activeTab === "templates") {
+        if (
+            !canAccessTemplates &&
+            (activeTab === "templates" || activeTab === "templateBundles")
+        ) {
+            setActiveTab("uploaded");
+        } else if (!canAccessProcesses && activeTab === "processes") {
             setActiveTab("uploaded");
         }
-    }, [activeTab, canAccessTemplates]);
+    }, [activeTab, canAccessProcesses, canAccessTemplates]);
 
     const filteredFiles = useMemo(
         () => filterFileLibraryItems(files, uploadedFilters, purposeResolver),
@@ -189,32 +240,59 @@ export default function FileLibraryPage() {
                 .includes(keyword);
         });
         return sortTemplates(filtered, templateFilters);
-    }, [copy.templates.categories, getUploaderName, templateFilters, templates]);
+    }, [
+        copy.templates.categories,
+        getUploaderName,
+        templateFilters,
+        templates,
+    ]);
 
     const counts = useMemo(() => {
-        const baseCounts = { total: 0, pdf: 0, docx: 0, xlsx: 0, csv: 0, other: 0 };
+        const baseCounts = {
+            total: 0,
+            pdf: 0,
+            docx: 0,
+            xlsx: 0,
+            csv: 0,
+            other: 0,
+        };
         if (activeTab === "uploaded") {
-            return files.reduce((acc, file) => {
-                acc.total += 1;
-                if (file.format in acc) {
-                    acc[file.format as keyof typeof baseCounts] += 1;
-                } else {
-                    acc.other += 1;
-                }
-                return acc;
-            }, { ...baseCounts });
+            return files.reduce(
+                (acc, file) => {
+                    acc.total += 1;
+                    if (file.format in acc) {
+                        acc[file.format as keyof typeof baseCounts] += 1;
+                    } else {
+                        acc.other += 1;
+                    }
+                    return acc;
+                },
+                { ...baseCounts },
+            );
+        } else if (activeTab === "templates") {
+            return templates.reduce(
+                (acc, template) => {
+                    acc.total += 1;
+                    if (template.file_format in acc) {
+                        acc[template.file_format as keyof typeof baseCounts] +=
+                            1;
+                    } else {
+                        acc.other += 1;
+                    }
+                    return acc;
+                },
+                { ...baseCounts },
+            );
+        } else if (activeTab === "processes") {
+            return {
+                ...baseCounts,
+                total: processDocuments.length,
+                pdf: processDocuments.length,
+            };
         } else {
-            return templates.reduce((acc, template) => {
-                acc.total += 1;
-                if (template.file_format in acc) {
-                    acc[template.file_format as keyof typeof baseCounts] += 1;
-                } else {
-                    acc.other += 1;
-                }
-                return acc;
-            }, { ...baseCounts });
+            return { ...baseCounts, total: bundles.length };
         }
-    }, [files, templates, activeTab]);
+    }, [activeTab, bundles.length, files, processDocuments.length, templates]);
 
     if (loading) {
         return <FileLibrarySkeleton />;
@@ -244,34 +322,84 @@ export default function FileLibraryPage() {
                         tone="bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
                         icon={<Files size={17} />}
                     />
-                    <MetricCard label="PDF" value={counts.pdf} tone={metricTone.pdf} icon={<FileText size={17} />} />
-                    <MetricCard label="DOCX" value={counts.docx} tone={metricTone.docx} icon={<FileText size={17} />} />
-                    <MetricCard label="XLSX" value={counts.xlsx} tone={metricTone.xlsx} icon={<FileSpreadsheet size={17} />} />
-                    <MetricCard label="CSV" value={counts.csv} tone={metricTone.csv} icon={<FileSpreadsheet size={17} />} />
+                    <MetricCard
+                        label="PDF"
+                        value={counts.pdf}
+                        tone={metricTone.pdf}
+                        icon={<FileText size={17} />}
+                    />
+                    <MetricCard
+                        label="DOCX"
+                        value={counts.docx}
+                        tone={metricTone.docx}
+                        icon={<FileText size={17} />}
+                    />
+                    <MetricCard
+                        label="XLSX"
+                        value={counts.xlsx}
+                        tone={metricTone.xlsx}
+                        icon={<FileSpreadsheet size={17} />}
+                    />
+                    <MetricCard
+                        label="CSV"
+                        value={counts.csv}
+                        tone={metricTone.csv}
+                        icon={<FileSpreadsheet size={17} />}
+                    />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 sm:grid-cols-2 lg:grid-cols-4">
                 {canAccessTemplates && (
                     <button
                         type="button"
                         onClick={() => setActiveTab("templates")}
-                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${activeTab === "templates"
-                            ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
-                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
-                            }`}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+                            activeTab === "templates"
+                                ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+                        }`}
                     >
                         <Library size={16} />
                         {copy.tabs.templates}
                     </button>
                 )}
+                {canViewTemplates && (
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("templateBundles")}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+                            activeTab === "templateBundles"
+                                ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+                        }`}
+                    >
+                        <FileArchive size={16} />
+                        {copy.tabs.templateBundles}
+                    </button>
+                )}
+                {canAccessProcesses && (
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("processes")}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+                            activeTab === "processes"
+                                ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+                        }`}
+                    >
+                        <Workflow size={16} />
+                        {copy.tabs.processes}
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={() => setActiveTab("uploaded")}
-                    className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${activeTab === "uploaded"
-                        ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
-                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
-                        }`}
+                    className={`flex h-10 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-sm font-bold transition ${
+                        activeTab === "uploaded"
+                            ? "bg-[var(--color-brand-primary)] text-[var(--color-text-on-dark)]"
+                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-subtle)]"
+                    }`}
                 >
                     <Files size={16} />
                     {copy.tabs.uploadedFiles}
@@ -285,12 +413,19 @@ export default function FileLibraryPage() {
                         onChange={setUploadedFilters}
                         t={copy}
                     />
-                    <FileLibraryTable files={filteredFiles} t={copy} lang={lang} />
+                    <FileLibraryTable
+                        files={filteredFiles}
+                        t={copy}
+                        lang={lang}
+                    />
                 </>
-            ) : (
+            ) : activeTab === "templates" ? (
                 <div className="grid gap-3">
                     {canUploadTemplates && (
-                        <FileTemplateUploadPanel t={copy} onCreate={createTemplate} />
+                        <FileTemplateUploadPanel
+                            t={copy}
+                            onCreate={createTemplate}
+                        />
                     )}
 
                     {canViewTemplates ? (
@@ -321,7 +456,10 @@ export default function FileLibraryPage() {
                         </>
                     ) : (
                         <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 text-center">
-                            <LockKeyhole size={28} className="text-[var(--color-text-muted)]" />
+                            <LockKeyhole
+                                size={28}
+                                className="text-[var(--color-text-muted)]"
+                            />
                             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                 {copy.templates.noViewTitle}
                             </p>
@@ -331,6 +469,27 @@ export default function FileLibraryPage() {
                         </div>
                     )}
                 </div>
+            ) : activeTab === "templateBundles" ? (
+                <FileTemplateBundleTab
+                    bundles={bundles}
+                    templates={templates}
+                    loading={bundlesLoading || templatesLoading}
+                    canManage={canManageTemplateBundles}
+                    lang={lang}
+                    onCreate={createBundle}
+                    onUpdate={updateBundle}
+                    onDelete={deleteBundle}
+                />
+            ) : (
+                <ProcessDocumentTab
+                    documents={processDocuments}
+                    loading={processDocumentsLoading}
+                    canUpload={canUploadProcesses}
+                    canDelete={canDeleteProcesses}
+                    lang={lang}
+                    onCreate={createDocument}
+                    onDelete={deleteDocument}
+                />
             )}
 
             {editingTemplate && (
@@ -338,7 +497,9 @@ export default function FileLibraryPage() {
                     template={editingTemplate}
                     t={copy}
                     onClose={() => setEditingTemplate(null)}
-                    onSave={(payload) => updateTemplate(editingTemplate.id, payload)}
+                    onSave={(payload) =>
+                        updateTemplate(editingTemplate.id, payload)
+                    }
                 />
             )}
             {versionTemplate && (
@@ -346,7 +507,9 @@ export default function FileLibraryPage() {
                     template={versionTemplate}
                     t={copy}
                     onClose={() => setVersionTemplate(null)}
-                    onUpload={(payload) => uploadNewVersion(versionTemplate.id, payload)}
+                    onUpload={(payload) =>
+                        uploadNewVersion(versionTemplate.id, payload)
+                    }
                 />
             )}
             {historyTemplate && (

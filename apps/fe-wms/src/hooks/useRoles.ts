@@ -2,10 +2,15 @@
 
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Role } from "@bduck/shared-types";
-import { emitDataMutation, subscribeDataMutation } from "@/lib/dataInvalidation";
+import {
+  emitDataMutation,
+  subscribeDataMutation,
+} from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import { useUserStore } from "@/stores/useUserStore";
+import { getAnyFacilityScope } from "@/utils/facilityPermissionScope";
 import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
@@ -20,7 +25,11 @@ async function fetchRolesFromApi(signal?: AbortSignal) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    throw createDetailedApiError(response, errorData, "Khong the tai danh sach role.");
+    throw createDetailedApiError(
+      response,
+      errorData,
+      "Khong the tai danh sach role.",
+    );
   }
 
   const body = await response.json();
@@ -48,6 +57,11 @@ async function mutateRole(
 }
 
 export function useRoles() {
+  const permissions = useUserStore((state) => state.permissions);
+  const isSystemAdmin = useMemo(
+    () => getAnyFacilityScope(permissions).isSystemAdmin,
+    [permissions],
+  );
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +105,10 @@ export function useRoles() {
         void loadApiFallback();
         return;
       }
+      if (!isSystemAdmin) {
+        void loadApiFallback();
+        return;
+      }
 
       const rolesQuery = query(
         collection(db, "roles"),
@@ -120,7 +138,7 @@ export function useRoles() {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, []);
+  }, [isSystemAdmin]);
 
   const createRole = useCallback(async (payload: unknown) => {
     const result = await mutateRole("/api/roles", "POST", payload);

@@ -27,6 +27,8 @@
       "permissions": [
         "warehouses.read",
         "warehouses.write",
+        "office_scopes.read",
+        "office_scopes.write",
         "employees.read",
         "inventory.read",
         "inventory.write",
@@ -53,6 +55,8 @@
       "scopeMode": "SELECTED",
       "permissions": [
         "warehouses.read",
+        "office_scopes.read",
+        "office_scopes.write",
         "employees.read",
         "inventory.read",
         "inventory.write",
@@ -457,6 +461,111 @@
       "facility": "store_f",
       "channel": "ACCOUNT_SWITCH_CACHE",
       "allowed": false
+    },
+    {
+      "id": "office_manager_writes_inside_ceiling",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "store_d",
+      "office": "office_b",
+      "ceilingMode": "SELECTED",
+      "ceilingFacilities": ["warehouse_c", "store_d"],
+      "allowed": true
+    },
+    {
+      "id": "office_manager_cannot_expand_outside_ceiling",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "warehouse_e",
+      "office": "office_b",
+      "ceilingMode": "SELECTED",
+      "ceilingFacilities": ["warehouse_c", "store_d"],
+      "allowed": false
+    },
+    {
+      "id": "direct_grant_does_not_expand_office_ceiling",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "warehouse_e",
+      "office": "office_b",
+      "directGrant": true,
+      "ceilingFacilities": ["warehouse_c", "store_d"],
+      "allowed": false
+    },
+    {
+      "id": "two_admins_same_revision_conflicts",
+      "actor": "system_admin",
+      "action": "office_scopes.write",
+      "facility": "office_b",
+      "expectedRevision": 3,
+      "persistedRevision": 4,
+      "allowed": false
+    },
+    {
+      "id": "unconfigured_office_fails_closed",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "office_future",
+      "scopeConfigured": false,
+      "ceilingConfigured": false,
+      "allowed": false
+    },
+    {
+      "id": "office_without_employees_completes_materialization",
+      "actor": "system_admin",
+      "action": "office_scopes.write",
+      "facility": "office_future",
+      "affectedEmployees": 0,
+      "expectedMaterializationStatus": "COMPLETED",
+      "allowed": true
+    },
+    {
+      "id": "partial_rebuild_failure_is_retryable",
+      "actor": "system_admin",
+      "action": "office_scopes.write",
+      "facility": "office_b",
+      "materializationStatus": "FAILED",
+      "failedUsers": 1,
+      "retryIdempotent": true,
+      "allowed": true
+    },
+    {
+      "id": "selected_scope_adds_facility_and_rebuilds_users",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "store_d",
+      "office": "office_b",
+      "scopeMutation": "ADD",
+      "expectedMaterializationStatus": "COMPLETED",
+      "allowed": true
+    },
+    {
+      "id": "selected_scope_removes_facility_and_revokes_users",
+      "actor": "office_b_manager",
+      "action": "office_scopes.write",
+      "facility": "warehouse_c",
+      "office": "office_b",
+      "scopeMutation": "REMOVE",
+      "expectedAccessVersionIncrement": true,
+      "allowed": true
+    },
+    {
+      "id": "office_role_change_rebuilds_inherited_permissions",
+      "actor": "office_b_manager",
+      "action": "inventory.write",
+      "facility": "warehouse_c",
+      "roleMutation": true,
+      "expectedAccessVersionIncrement": true,
+      "allowed": true
+    },
+    {
+      "id": "direct_and_inherited_grants_merge_without_ceiling_bypass",
+      "actor": "office_b_manager",
+      "action": "inventory.read",
+      "facility": "warehouse_c",
+      "directGrant": true,
+      "inheritedGrant": true,
+      "allowed": true
     }
   ]
 }

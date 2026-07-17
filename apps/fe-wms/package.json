@@ -9,7 +9,8 @@
     "start": "next start --port 3000",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:firestore-rules:unit": "node --test src/security/firestoreRules.test.mjs"
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",
@@ -30,6 +31,7 @@
     "goey-toast": "^0.4.0",
     "gsap": "^3.15.0",
     "ionicons": "^8.0.13",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.16.0",
     "mapbox-gl": "^3.24.0",
     "motion": "^12.40.0",
@@ -52,6 +54,7 @@
   "devDependencies": {
     "@bduck/eslint-config": "workspace:*",
     "@bduck/tsconfig": "workspace:*",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@types/mapbox-gl": "^3.5.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

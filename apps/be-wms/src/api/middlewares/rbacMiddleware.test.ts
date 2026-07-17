@@ -11,6 +11,7 @@ import { attachRequestAccess } from "./requestAccessContext.js";
 import {
   requireAnyScopedPermission,
   requirePermission,
+  requireSystemAdmin,
 } from "./rbacMiddleware.js";
 
 type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
@@ -187,5 +188,16 @@ describe("rbacMiddleware", () => {
     assert.equal(result.statusCode, 403);
     assert.ok((body.messages?.vi?.length ?? 0) > 0);
     assert.ok((body.messages?.zh?.length ?? 0) > 0);
+  });
+
+  it("admits only a factory-issued system administrator context", () => {
+    assert.equal(
+      execute(requireSystemAdmin, createRequest(adminContext)).nextCalls,
+      1,
+    );
+    assert.equal(
+      execute(requireSystemAdmin, createRequest(userContext)).statusCode,
+      403,
+    );
   });
 });

@@ -1,15 +1,22 @@
 import type { NextFunction, Request, Response } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
+import { UserStatus } from "@bduck/shared-types";
 import { auth } from "../../config/firebase.js";
 import { loadAuthorizationRequestSource } from "../../repositories/authorizationSourceRepository.js";
+import { getUserById } from "../../repositories/userRepository.js";
 import {
   AuthorizationError,
   buildAccessContext,
 } from "../../services/authorization/index.js";
 import {
+  getAuthorizationRolloutMode,
+  resolveAuthorizationContext,
+} from "../../services/authorizationRolloutService.js";
+import {
   attachRequestAccess,
   createAuthenticatedRequestUser,
 } from "./requestAccessContext.js";
+import { createRequireIdentityAuth } from "./identityAuthMiddleware.js";
 
 const verifyRequestClaims = async (
   req: Request,
@@ -48,6 +55,18 @@ const sendUnauthenticated = (res: Response) =>
     },
   });
 
+const sendAuthorizationError = (res: Response, error: AuthorizationError) =>
+  res.status(error.statusCode).json({
+    success: false,
+    data: null,
+    messages: error.messages,
+  });
+
+export const requireIdentityAuth = createRequireIdentityAuth({
+  verifyClaims: verifyRequestClaims,
+  loadUser: getUserById,
+});
+
 export const requireAuth = async (
   req: Request,
   res: Response,
@@ -60,21 +79,28 @@ export const requireAuth = async (
     const { snapshot, requestUser } = await loadAuthorizationRequestSource(
       decodedClaims.uid,
     );
-    const accessContext = buildAccessContext(snapshot);
+    const user = requestUser;
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new AuthorizationError("AUTHORIZATION_ACTOR_INACTIVE");
+    }
+    const rolloutMode = getAuthorizationRolloutMode();
+    const liveContext =
+      rolloutMode === "SHADOW" ? buildAccessContext(snapshot) : null;
+    const accessContext = await resolveAuthorizationContext(
+      decodedClaims.uid,
+      liveContext,
+      rolloutMode,
+    );
     const authenticatedUser = createAuthenticatedRequestUser(
       snapshot,
       accessContext,
-      requestUser,
+      user,
     );
     attachRequestAccess(req, accessContext, authenticatedUser);
     return next();
   } catch (error) {
     if (error instanceof AuthorizationError) {
-      return res.status(error.statusCode).json({
-        success: false,
-        data: null,
-        messages: error.messages,
-      });
+      return sendAuthorizationError(res, error);
     }
 
     console.error("[authMiddleware] authorization context error:", error);

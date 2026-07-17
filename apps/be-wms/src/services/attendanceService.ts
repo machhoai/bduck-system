@@ -8,7 +8,6 @@ import {
   type AttendanceLog,
   type EmployeeProfile,
   type User,
-  type UserWarehouseRole,
   type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
 import {
@@ -18,7 +17,6 @@ import {
   getActiveAttendancePolicy,
   getTodaySuccessAttendanceLog,
   listActiveAttendanceExemptions,
-  listActiveAttendancePolicies,
   replaceActiveAttendancePolicy,
   replaceAttendanceExemptions,
 } from "../repositories/attendanceRepository.js";
@@ -27,47 +25,14 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 
 const TIMEZONE = "Asia/Ho_Chi_Minh" as const;
 
-interface RequestUser extends User {
-  permissions?: Record<string, Record<string, unknown>>;
-  roleAssignments?: UserWarehouseRole[];
+type RequestUser = Pick<User, "id">;
+
+export interface AttendanceCapabilities {
+  canCheckIn: boolean;
+  canView: boolean;
+  canConfigure: boolean;
+  canExport: boolean;
 }
-
-const permissionAllowed = (
-  user: RequestUser,
-  action: string,
-  warehouseId?: string | null,
-) => {
-  const permissions = user.permissions || {};
-  const globalPerms = permissions.global || {};
-  if (globalPerms["*"] === true || globalPerms[action] === true) return true;
-
-  if (warehouseId) {
-    const scoped = permissions[warehouseId] || {};
-    return scoped["*"] === true || scoped[action] === true;
-  }
-
-  return Object.entries(permissions).some(([scope, scoped]) => {
-    if (scope === "global") return false;
-    return scoped["*"] === true || scoped[action] === true;
-  });
-};
-
-const accessibleWarehouseIdsForAction = (
-  user: RequestUser,
-  action: string,
-): string[] | undefined => {
-  const permissions = user.permissions || {};
-  const globalPerms = permissions.global || {};
-  if (globalPerms["*"] === true || globalPerms[action] === true)
-    return undefined;
-
-  return Object.entries(permissions)
-    .filter(
-      ([scope, scoped]) =>
-        scope !== "global" && (scoped["*"] === true || scoped[action] === true),
-    )
-    .map(([scope]) => scope);
-};
 
 const getVietnamDateKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -194,19 +159,21 @@ const auditAttendanceLog = async (
 export const fetchAttendanceContext = async (
   user: RequestUser,
   requestIpInput?: string | Array<string | null | undefined> | null,
+  capabilities: AttendanceCapabilities = {
+    canCheckIn: false,
+    canView: false,
+    canConfigure: false,
+    canExport: false,
+  },
 ): Promise<AttendanceCheckInContext> => {
   const requestIps = normalizeIpCandidates(requestIpInput);
   const currentIpAddress = requestIps[0] ?? null;
   const profile = await getEmployeeProfileByUserId(user.id);
   const warehouseId = profile?.workplace_warehouse_id ?? null;
-  const canViewAttendance = permissionAllowed(user, "attendance.view");
-  const hasCheckInPermission = permissionAllowed(
-    user,
-    "attendance.check_in",
-    warehouseId,
-  );
-  const canConfigureAttendance = permissionAllowed(user, "attendance.config");
-  const canExportAttendance = permissionAllowed(user, "attendance.export");
+  const canViewAttendance = capabilities.canView;
+  const hasCheckInPermission = capabilities.canCheckIn;
+  const canConfigureAttendance = capabilities.canConfigure;
+  const canExportAttendance = capabilities.canExport;
 
   if (!profile || !warehouseId) {
     return {
@@ -280,14 +247,6 @@ export const checkInAttendance = async (
       400,
       "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
       "账号尚未配置唯一的考勤工作地点。",
-    );
-  }
-
-  if (!permissionAllowed(user, "attendance.check_in", warehouseId)) {
-    throw createApiError(
-      403,
-      "Bạn không có quyền sử dụng chức năng check-in.",
-      "您无权使用打卡功能。",
     );
   }
 
@@ -413,14 +372,6 @@ export const createLateArrivalReport = async (
     );
   }
 
-  if (!permissionAllowed(user, "attendance.check_in", warehouseId)) {
-    throw createApiError(
-      403,
-      "Bạn không có quyền sử dụng chức năng báo đến trễ.",
-      "您无权使用迟到报告功能。",
-    );
-  }
-
   const attendanceRequired = await isAttendanceRequired(user.id, warehouseId);
   if (!attendanceRequired) {
     throw createApiError(
@@ -469,25 +420,12 @@ export const createLateArrivalReport = async (
   return report;
 };
 
-export const fetchAttendancePolicies = async (user: RequestUser) =>
-  listActiveAttendancePolicies(
-    accessibleWarehouseIdsForAction(user, "attendance.config"),
-  );
-
 export const updateAttendancePolicy = async (
   user: RequestUser,
   warehouseId: string,
   input: { enabled: boolean; ip_addresses: string[] },
   auditMetadata?: AuditMetadata,
 ) => {
-  if (!permissionAllowed(user, "attendance.config", warehouseId)) {
-    throw createApiError(
-      403,
-      "Bạn không có quyền cấu hình kho này.",
-      "您无权配置该仓库。",
-    );
-  }
-
   const oldPolicy = await getActiveAttendancePolicy(warehouseId);
   const policy = await replaceActiveAttendancePolicy(warehouseId, {
     enabled: input.enabled,
@@ -519,14 +457,6 @@ export const fetchAttendanceExemptions = async (
   user: RequestUser,
   warehouseId: string,
 ) => {
-  if (!permissionAllowed(user, "attendance.config", warehouseId)) {
-    throw createApiError(
-      403,
-      "Bạn không có quyền xem cấu hình kho này.",
-      "您无权查看该仓库配置。",
-    );
-  }
-
   return listActiveAttendanceExemptions(warehouseId);
 };
 
@@ -536,14 +466,6 @@ export const updateAttendanceExemptions = async (
   excludedUserIds: string[],
   auditMetadata?: AuditMetadata,
 ) => {
-  if (!permissionAllowed(user, "attendance.config", warehouseId)) {
-    throw createApiError(
-      403,
-      "Bạn không có quyền cấu hình kho này.",
-      "您无权配置该仓库。",
-    );
-  }
-
   const oldExemptions = await listActiveAttendanceExemptions(warehouseId);
   const exemptions = await replaceAttendanceExemptions(
     warehouseId,

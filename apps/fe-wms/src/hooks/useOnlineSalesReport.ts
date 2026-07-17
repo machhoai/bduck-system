@@ -62,6 +62,8 @@ interface ApiResponse<T> {
 }
 
 interface UseOnlineSalesReportOptions {
+  warehouseId?: string;
+  enabled?: boolean;
   keepPreviousData?: boolean;
 }
 
@@ -70,12 +72,20 @@ export function useOnlineSalesReport(
   options: UseOnlineSalesReportOptions = {},
 ) {
   const range = useMemo(() => normalizeRange(filter), [filter]);
+  const warehouseId = options.warehouseId?.trim() || "";
+  const enabled = options.enabled ?? Boolean(warehouseId);
   const keepPreviousData = options.keepPreviousData ?? false;
   const [data, setData] = useState<OnlineSalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled || !warehouseId) {
+      if (!keepPreviousData) setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     const controller = new AbortController();
 
     async function load() {
@@ -83,6 +93,7 @@ export function useOnlineSalesReport(
       setError(null);
       try {
         const qs = new URLSearchParams({
+          warehouseId,
           from: range.startDate,
           to: range.endDate,
         });
@@ -110,7 +121,7 @@ export function useOnlineSalesReport(
 
     void load();
     return () => controller.abort();
-  }, [keepPreviousData, range.startDate, range.endDate]);
+  }, [enabled, keepPreviousData, range.startDate, range.endDate, warehouseId]);
 
   return { data, loading, error, range };
 }

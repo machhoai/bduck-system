@@ -1,4 +1,5 @@
 import type { ISOTimestamped, SoftDeletable } from "./utility.js";
+import type { ActiveStatus, AuditAction, WarehouseType } from "./enums.js";
 
 export const FACILITY_ACCESS_POLICY_VERSION = "office-scope-v1" as const;
 
@@ -6,14 +7,32 @@ export const FACILITY_ACCESS_POLICY_VERSION = "office-scope-v1" as const;
 // security rules helpers, migration scripts, and backend repositories.
 export const OFFICE_SCOPE_CONFIGS_COLLECTION = "office_scope_configs" as const;
 export const OFFICE_SCOPE_EDGES_COLLECTION = "office_scope_edges" as const;
+export const OFFICE_SCOPE_CEILINGS_COLLECTION =
+  "office_scope_ceilings" as const;
+export const OFFICE_SCOPE_MATERIALIZATIONS_COLLECTION =
+  "office_scope_materializations" as const;
+export const OFFICE_SCOPE_MATERIALIZATION_JOBS_COLLECTION =
+  "office_scope_materialization_jobs" as const;
 export const USER_ACCESS_COLLECTION = "user_access" as const;
 export const USER_ACCESS_VERSIONS_SUBCOLLECTION = "versions" as const;
 export const USER_ACCESS_FACILITIES_SUBCOLLECTION = "facilities" as const;
+export const USER_ACCESS_REBUILD_LOCKS_COLLECTION =
+  "user_access_rebuild_locks" as const;
+export const USER_ACCESS_REBUILD_REQUESTS_COLLECTION =
+  "user_access_rebuild_requests" as const;
 export const FACILITY_ACCESS_MIGRATIONS_COLLECTION =
   "facility_access_migrations" as const;
 
 export const OFFICE_SCOPE_MODES = ["ALL", "SELECTED"] as const;
 export type OfficeScopeMode = (typeof OFFICE_SCOPE_MODES)[number];
+
+export const OFFICE_SCOPE_MATERIALIZATION_STATUSES = [
+  "PENDING",
+  "COMPLETED",
+  "FAILED",
+] as const;
+export type OfficeScopeMaterializationStatus =
+  (typeof OFFICE_SCOPE_MATERIALIZATION_STATUSES)[number];
 
 /**
  * Distinguishes new direct role assignments from imported legacy assignments.
@@ -44,6 +63,42 @@ export const USER_ACCESS_VERSION_STATUSES = [
 ] as const;
 export type UserAccessVersionStatus =
   (typeof USER_ACCESS_VERSION_STATUSES)[number];
+
+/** Frontend lifecycle for a materialized access snapshot. */
+export const USER_ACCESS_RUNTIME_STATUSES = [
+  "SIGNED_OUT",
+  "VERIFYING",
+  "READY",
+  "OFFLINE_READY",
+  "OFFLINE_UNVERIFIED",
+  "REVOKED",
+  "ERROR",
+] as const;
+export type UserAccessRuntimeStatus =
+  (typeof USER_ACCESS_RUNTIME_STATUSES)[number];
+
+export const USER_ACCESS_REBUILD_STATUSES = [
+  "PENDING",
+  "COMPLETED",
+  "FAILED",
+] as const;
+export type UserAccessRebuildStatus =
+  (typeof USER_ACCESS_REBUILD_STATUSES)[number];
+
+export interface UserAccessRebuildRequest
+  extends SoftDeletable, ISOTimestamped {
+  id: string;
+  user_id: string;
+  status: UserAccessRebuildStatus;
+  reasons: string[];
+  revision: number;
+  attempts: number;
+  requested_by: string;
+  requested_at: Date;
+  completed_at: Date | null;
+  materialized_access_version: number | null;
+  last_error: string | null;
+}
 
 export const FACILITY_ACCESS_MIGRATION_PHASES = [
   "NOT_STARTED",
@@ -93,6 +148,113 @@ export interface OfficeScopeEdge extends SoftDeletable, ISOTimestamped {
   updated_by: string; // FK -> users
 }
 
+/** Stable delegated-management ceiling. Only the ceiling policy may expand it. */
+export interface OfficeScopeCeilingConfig
+  extends SoftDeletable, ISOTimestamped {
+  id: string;
+  office_id: string;
+  scope_mode: OfficeScopeMode;
+  target_facility_ids: string[];
+  revision: number;
+  created_by: string;
+  updated_by: string;
+}
+
+/** Public, user-ID-free status for one scope revision materialization. */
+export interface OfficeScopeMaterialization extends ISOTimestamped {
+  id: string;
+  office_id: string;
+  scope_revision: number;
+  status: OfficeScopeMaterializationStatus;
+  requested_count: number;
+  completed_count: number;
+  failed_count: number;
+  attempts: number;
+  started_at: Date;
+  completed_at: Date | null;
+  requested_by: string;
+  last_error: string | null;
+}
+
+/** Minimal facility directory record exposed to an authorized scope editor. */
+export interface OfficeScopeFacilityOption {
+  id: string;
+  name: string;
+  code: string;
+  type: WarehouseType;
+  status: ActiveStatus;
+}
+
+/** Read model used by the office scope management screen. */
+export interface OfficeScopeSnapshot {
+  config: OfficeScopeConfig | null;
+  ceiling: OfficeScopeCeilingConfig | null;
+  edges: OfficeScopeEdge[];
+  effective_facility_ids: string[];
+  editable_facility_ids: string[];
+  editable_facilities: OfficeScopeFacilityOption[];
+  affected_employee_count: number;
+}
+
+/** Sanitized audit read model for one Office scope revision. */
+export interface OfficeScopeHistoryEntry {
+  id: string;
+  office_id: string;
+  revision: number;
+  action: AuditAction;
+  actor_id: string;
+  actor_name: string | null;
+  action_time: Date;
+  sync_time: Date;
+  previous_mode: OfficeScopeMode | null;
+  next_mode: OfficeScopeMode;
+  previous_selected_facility_ids: string[];
+  next_selected_facility_ids: string[];
+  added_facility_ids: string[];
+  removed_facility_ids: string[];
+  affected_employee_count: number | null;
+  materialization: OfficeScopeMaterialization | null;
+}
+
+/** Mutation contract with optimistic concurrency for Office scope edits. */
+export interface OfficeScopeUpdateRequest {
+  scope_mode: OfficeScopeMode;
+  target_facility_ids: string[];
+  expected_revision: number;
+  valid_from?: string | null;
+  valid_until?: string | null;
+}
+
+/** System-admin-only mutation contract for the delegated management ceiling. */
+export interface OfficeScopeCeilingUpdateRequest {
+  scope_mode: OfficeScopeMode;
+  target_facility_ids: string[];
+  expected_revision: number;
+}
+
+export const OFFICE_SCOPE_OVERVIEW_STATUSES = [
+  "UNCONFIGURED",
+  "INACTIVE",
+  "EMPTY",
+  "ACTIVE",
+] as const;
+export type OfficeScopeOverviewStatus =
+  (typeof OFFICE_SCOPE_OVERVIEW_STATUSES)[number];
+
+/** Compact, permission-filtered read model for the Office scope overview. */
+export interface OfficeScopeOverviewItem {
+  office_id: string;
+  office_name: string;
+  office_code: string;
+  office_status: ActiveStatus;
+  scope_status: OfficeScopeOverviewStatus;
+  scope_mode: OfficeScopeMode | null;
+  revision: number;
+  effective_facility_count: number;
+  affected_employee_count: number;
+  updated_at: Date | null;
+}
+
 /** Describes every assignment that contributes to one effective grant. */
 export interface FacilityAccessGrantSource {
   type: FacilityAccessGrantSourceType;
@@ -111,6 +273,7 @@ export interface UserFacilityAccessGrant extends SoftDeletable, ISOTimestamped {
   id: string;
   user_id: string;
   facility_id: string;
+  facility_type: WarehouseType;
   /** Temporary alias for consumers that still use warehouse terminology. */
   warehouse_id?: string;
   permissions: Record<string, boolean>;
@@ -135,6 +298,7 @@ export interface UserAccessVersion extends SoftDeletable, ISOTimestamped {
   /** Legacy alias retained while workplace data is being migrated. */
   workplace_warehouse_id?: string | null;
   is_global_admin: boolean;
+  system_admin_sources: FacilityAccessGrantSource[];
   facility_grant_count: number;
   computed_at: Date;
   computed_by: string;
@@ -151,6 +315,7 @@ export interface UserAccessMetadata extends SoftDeletable, ISOTimestamped {
   /** Legacy alias retained while workplace data is being migrated. */
   workplace_warehouse_id?: string | null;
   is_global_admin: boolean;
+  system_admin_sources: FacilityAccessGrantSource[];
   active_version_id: string | null;
   access_version: number;
   policy_version: string;
@@ -159,6 +324,12 @@ export interface UserAccessMetadata extends SoftDeletable, ISOTimestamped {
   computed_at: Date;
   computed_by: string;
   migration_version: number | null;
+}
+
+/** Read-only effective access shown in employee and user administration. */
+export interface UserEffectiveAccessSnapshot {
+  metadata: UserAccessMetadata | null;
+  grants: UserFacilityAccessGrant[];
 }
 
 /** Auditable, resumable state for the facility-access migration pipeline. */

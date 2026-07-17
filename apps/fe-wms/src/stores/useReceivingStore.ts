@@ -1,23 +1,12 @@
 "use client";
 
-/**
- * useReceivingStore — Zustand store for Receiving Session (Kiểm đếm)
- *
- * LOCAL-FIRST ARCHITECTURE:
- * - Auto-saves draft to IndexedDB on every change (debounced)
- * - Restores draft on mount if session was interrupted
- * - Only pushes to backend on explicit "Submit Actuals"
- *
- * BARCODE SCANNER:
- * - Listens for rapid keyboard input pattern
- * - Increments actual_quantity for the scanned product
- */
-
 import { create } from "zustand";
-
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
+import {
+  deleteReceivingDraft,
+  loadReceivingDraft,
+  saveReceivingDraft,
+} from "@/lib/receivingDraftStorage";
+import { useUserStore } from "@/stores/useUserStore";
 
 export interface ReceivingItem {
   id: string;
@@ -34,7 +23,6 @@ export interface ReceivingItem {
 }
 
 interface ReceivingState {
-  // Data
   voucherId: string | null;
   voucherNumber: string | null;
   supplierName: string | null;
@@ -43,8 +31,6 @@ interface ReceivingState {
   isDirty: boolean;
   isSubmitting: boolean;
   isConfirmed: boolean;
-
-  // Actions
   initSession: (
     voucherId: string,
     voucherNumber: string,
@@ -55,91 +41,39 @@ interface ReceivingState {
   incrementByBarcode: (sku: string) => boolean;
   updateItemNotes: (itemId: string, notes: string) => void;
   markSaved: () => void;
-  setSubmitting: (v: boolean) => void;
-  setConfirmed: (v: boolean) => void;
+  setSubmitting: (value: boolean) => void;
+  setConfirmed: (value: boolean) => void;
   clearSession: () => void;
+  clearSessionMemory: () => void;
 }
 
-// ─────────────────────────────────────────────
-// IndexedDB helpers
-// ─────────────────────────────────────────────
-
-const IDB_NAME = "wms_receiving_drafts";
-const IDB_STORE = "drafts";
-const IDB_VERSION = 1;
-
-function openIDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE, { keyPath: "voucherId" });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function saveDraftToIDB(voucherId: string, items: ReceivingItem[]) {
-  try {
-    const idb = await openIDB();
-    const txn = idb.transaction(IDB_STORE, "readwrite");
-    txn.objectStore(IDB_STORE).put({
-      voucherId,
-      items,
-      savedAt: new Date().toISOString(),
-    });
-    idb.close();
-  } catch (err) {
-    console.error("[useReceivingStore] IDB save failed:", err);
-  }
-}
-
-async function loadDraftFromIDB(
-  voucherId: string,
-): Promise<ReceivingItem[] | null> {
-  try {
-    const idb = await openIDB();
-    return new Promise((resolve) => {
-      const txn = idb.transaction(IDB_STORE, "readonly");
-      const req = txn.objectStore(IDB_STORE).get(voucherId);
-      req.onsuccess = () => {
-        idb.close();
-        resolve(req.result?.items ?? null);
-      };
-      req.onerror = () => {
-        idb.close();
-        resolve(null);
-      };
-    });
-  } catch {
-    return null;
-  }
-}
-
-async function deleteDraftFromIDB(voucherId: string) {
-  try {
-    const idb = await openIDB();
-    const txn = idb.transaction(IDB_STORE, "readwrite");
-    txn.objectStore(IDB_STORE).delete(voucherId);
-    idb.close();
-  } catch (err) {
-    console.error("[useReceivingStore] IDB delete failed:", err);
-  }
-}
-
-// ─────────────────────────────────────────────
-// Debounce helper
-// ─────────────────────────────────────────────
+const createEmptySession = () => ({
+  voucherId: null,
+  voucherNumber: null,
+  supplierName: null,
+  items: [] as ReceivingItem[],
+  lastSavedAt: null,
+  isDirty: false,
+  isSubmitting: false,
+  isConfirmed: false,
+});
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-function debouncedSave(voucherId: string, items: ReceivingItem[]) {
+function activeUserId() {
+  return useUserStore.getState().user?.id ?? null;
+}
+
+function debouncedSave(
+  ownerUserId: string,
+  voucherId: string,
+  items: ReceivingItem[],
+) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    saveDraftToIDB(voucherId, items);
+    void saveReceivingDraft(ownerUserId, voucherId, items).catch((error) =>
+      console.error("[useReceivingStore] draft save failed:", error),
+    );
   }, 500);
 }
 
@@ -148,7 +82,9 @@ function mergeSessionItems(
   persistedItems: ReceivingItem[],
 ) {
   return sourceItems.map((sourceItem) => {
-    const persistedItem = persistedItems.find((item) => item.id === sourceItem.id);
+    const persistedItem = persistedItems.find(
+      (item) => item.id === sourceItem.id,
+    );
     return persistedItem
       ? {
           ...sourceItem,
@@ -159,36 +95,28 @@ function mergeSessionItems(
   });
 }
 
-function hasReceivingProgress(items: ReceivingItem[]) {
-  return items.some(
+function initialItems(items: ReceivingItem[]) {
+  const hasProgress = items.some(
     (item) => item.actual_quantity > 0 || item.notes.trim().length > 0,
   );
+  return hasProgress
+    ? items
+    : items.map((item) => ({
+        ...item,
+        actual_quantity: item.expected_quantity,
+      }));
 }
-
-function prefillActualQuantities(items: ReceivingItem[]) {
-  return items.map((item) => ({
-    ...item,
-    actual_quantity: item.expected_quantity,
-  }));
-}
-
-// ─────────────────────────────────────────────
-// STORE
-// ─────────────────────────────────────────────
 
 export const useReceivingStore = create<ReceivingState>()((set, get) => ({
-  voucherId: null,
-  voucherNumber: null,
-  supplierName: null,
-  items: [],
-  lastSavedAt: null,
-  isDirty: false,
-  isSubmitting: false,
-  isConfirmed: false,
+  ...createEmptySession(),
 
   initSession: async (voucherId, voucherNumber, supplierName, items) => {
+    const ownerUserId = activeUserId();
+    if (!ownerUserId) {
+      set(createEmptySession());
+      return;
+    }
     const currentState = get();
-
     if (currentState.voucherId === voucherId && currentState.items.length > 0) {
       set({
         voucherId,
@@ -199,10 +127,15 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
       return;
     }
 
-    // Try to restore draft from IndexedDB
-    const draft = await loadDraftFromIDB(voucherId);
-
-    if (draft && draft.length > 0) {
+    let draft: ReceivingItem[] | null = null;
+    try {
+      draft = await loadReceivingDraft(ownerUserId, voucherId);
+    } catch (error) {
+      console.error("[useReceivingStore] draft load failed:", error);
+    }
+    // Ignore an async result that belongs to the account that just signed out.
+    if (activeUserId() !== ownerUserId) return;
+    if (draft?.length) {
       set({
         voucherId,
         voucherNumber,
@@ -211,47 +144,46 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
         isDirty: true,
         lastSavedAt: new Date(),
       });
-    } else {
-      const nextItems = hasReceivingProgress(items)
-        ? items
-        : prefillActualQuantities(items);
-
-      set({
-        voucherId,
-        voucherNumber,
-        supplierName,
-        items: nextItems,
-        isDirty: false,
-        lastSavedAt: null,
-      });
+      return;
     }
+    set({
+      voucherId,
+      voucherNumber,
+      supplierName,
+      items: initialItems(items),
+      isDirty: false,
+      lastSavedAt: null,
+    });
   },
 
   updateItemQuantity: (itemId, quantity) => {
     const { voucherId, items } = get();
     const updated = items.map((item) =>
-      item.id === itemId ? { ...item, actual_quantity: Math.max(0, quantity) } : item,
+      item.id === itemId
+        ? { ...item, actual_quantity: Math.max(0, quantity) }
+        : item,
     );
     set({ items: updated, isDirty: true });
-    if (voucherId) debouncedSave(voucherId, updated);
+    const ownerUserId = activeUserId();
+    if (ownerUserId && voucherId) debouncedSave(ownerUserId, voucherId, updated);
   },
 
   incrementByBarcode: (barcode) => {
     const { voucherId, items } = get();
-    const idx = items.findIndex(
+    const index = items.findIndex(
       (item) =>
         item.product_barcode.toUpperCase() === barcode.toUpperCase() ||
         item.product_sku.toUpperCase() === barcode.toUpperCase(),
     );
-    if (idx === -1) return false;
-
+    if (index === -1) return false;
     const updated = [...items];
-    updated[idx] = {
-      ...updated[idx],
-      actual_quantity: updated[idx].actual_quantity + 1,
+    updated[index] = {
+      ...updated[index],
+      actual_quantity: updated[index].actual_quantity + 1,
     };
     set({ items: updated, isDirty: true });
-    if (voucherId) debouncedSave(voucherId, updated);
+    const ownerUserId = activeUserId();
+    if (ownerUserId && voucherId) debouncedSave(ownerUserId, voucherId, updated);
     return true;
   },
 
@@ -261,28 +193,28 @@ export const useReceivingStore = create<ReceivingState>()((set, get) => ({
       item.id === itemId ? { ...item, notes } : item,
     );
     set({ items: updated, isDirty: true });
-    if (voucherId) debouncedSave(voucherId, updated);
+    const ownerUserId = activeUserId();
+    if (ownerUserId && voucherId) debouncedSave(ownerUserId, voucherId, updated);
   },
 
-  markSaved: () => {
-    set({ isDirty: false, lastSavedAt: new Date() });
-  },
-
-  setSubmitting: (v) => set({ isSubmitting: v }),
-  setConfirmed: (v) => set({ isConfirmed: v }),
+  markSaved: () => set({ isDirty: false, lastSavedAt: new Date() }),
+  setSubmitting: (isSubmitting) => set({ isSubmitting }),
+  setConfirmed: (isConfirmed) => set({ isConfirmed }),
 
   clearSession: () => {
+    const ownerUserId = activeUserId();
     const { voucherId } = get();
-    if (voucherId) deleteDraftFromIDB(voucherId);
-    set({
-      voucherId: null,
-      voucherNumber: null,
-      supplierName: null,
-      items: [],
-      lastSavedAt: null,
-      isDirty: false,
-      isSubmitting: false,
-      isConfirmed: false,
-    });
+    if (ownerUserId && voucherId) {
+      void deleteReceivingDraft(ownerUserId, voucherId).catch((error) =>
+        console.error("[useReceivingStore] draft delete failed:", error),
+      );
+    }
+    set(createEmptySession());
+  },
+
+  clearSessionMemory: () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = null;
+    set(createEmptySession());
   },
 }));

@@ -1,27 +1,14 @@
-/**
- * Expense Dashboard Service — Real KPI Metrics
- *
- * ═══════════════════════════════════════════════════════════════
- * PURPOSE:
- * - Aggregate real expense data for dashboard KPI cards.
- * - Calculate revenue from completed SALE_POS export vouchers.
- * - Compute month-over-month trends (6-month window).
- * - Identify over-budget stores for director-level overview.
- *
- * DATA SOURCES:
- * - Firestore: `expenses` collection (expense documents)
- * - Firestore: `export_vouchers` + sub-collection `items`
- * - Firestore: `warehouses` (for store names)
- * ═══════════════════════════════════════════════════════════════
- */
-
 import { db } from "../config/firebase.js";
-import {
-  ExpenseCategory,
-  ExpenseCostCenter,
-} from "@bduck/shared-types";
+import { ExpenseCategory, ExpenseCostCenter } from "@bduck/shared-types";
 import type { ExpenseDocument } from "@bduck/shared-types";
 import * as expenseRepo from "../repositories/expenseRepository.js";
+import {
+  EXPENSE_CATEGORY_COST_CENTER,
+  EXPENSE_COST_CENTER_COLORS,
+  buildExpenseKpi,
+  getExpenseMonthLabel,
+  getPreviousExpensePeriod,
+} from "./expenseDashboardPolicy.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -68,65 +55,24 @@ export interface DashboardMetrics {
 // Helpers
 // ─────────────────────────────────────────────
 
-const CATEGORY_TO_COST_CENTER: Record<ExpenseCategory, ExpenseCostCenter> = {
-  [ExpenseCategory.RENT]: ExpenseCostCenter.OPERATIONS,
-  [ExpenseCategory.ELECTRICITY]: ExpenseCostCenter.OPERATIONS,
-  [ExpenseCategory.WATER]: ExpenseCostCenter.OPERATIONS,
-  [ExpenseCategory.TRASH_COLLECTION]: ExpenseCostCenter.OPERATIONS,
-  [ExpenseCategory.DRINKING_WATER]: ExpenseCostCenter.OPERATIONS,
-  [ExpenseCategory.SOCIAL_INSURANCE]: ExpenseCostCenter.HR,
-  [ExpenseCategory.SALARY_FULLTIME]: ExpenseCostCenter.HR,
-  [ExpenseCategory.SALARY_PARTTIME]: ExpenseCostCenter.HR,
-  [ExpenseCategory.MARKETING]: ExpenseCostCenter.MARKETING,
-  [ExpenseCategory.GIFT_EXPENSE]: ExpenseCostCenter.MERCHANDISE,
-  [ExpenseCategory.COGS]: ExpenseCostCenter.MERCHANDISE,
-  [ExpenseCategory.CONSUMABLE_SUPPLIES]: ExpenseCostCenter.OTHERS,
-  [ExpenseCategory.OTHERS]: ExpenseCostCenter.OTHERS,
-};
-
-const COST_CENTER_COLORS: Record<ExpenseCostCenter, string> = {
-  [ExpenseCostCenter.OPERATIONS]: "var(--color-brand-primary)",
-  [ExpenseCostCenter.HR]: "var(--color-accent-warning)",
-  [ExpenseCostCenter.MARKETING]: "var(--color-accent-success)",
-  [ExpenseCostCenter.MERCHANDISE]: "#257a3e",
-  [ExpenseCostCenter.OTHERS]: "var(--color-text-muted)",
-};
-
-function getPreviousPeriod(period: string): string {
-  const [year, month] = period.split("-").map(Number);
-  if (month === 1) return `${year - 1}-12`;
-  return `${year}-${String(month - 1).padStart(2, "0")}`;
-}
-
-function getMonthLabel(period: string): string {
-  const [year, month] = period.split("-");
-  return `${month}/${year}`;
-}
-
-function buildKPI(value: number, prevValue: number): KPIMetric {
-  const trend =
-    prevValue > 0
-      ? parseFloat((((value - prevValue) / prevValue) * 100).toFixed(1))
-      : 0;
-  return { value, prevValue, trend };
-}
-
 // ─────────────────────────────────────────────
 // Revenue Calculation (from revenue_sync collection — JoyWorld API)
 // ─────────────────────────────────────────────
 
 async function calculateRevenue(
-  _warehouseId: string | null,
+  warehouseIds: readonly string[],
   period: string,
 ): Promise<number> {
-  // Revenue comes from JoyWorld system (global, not per-warehouse)
-  const docRef = db.collection("revenue_sync").doc(period);
-  const snap = await docRef.get();
-
-  if (!snap.exists) return 0;
-
-  const data = snap.data();
-  return Number(data?.total_revenue ?? 0);
+  if (warehouseIds.length === 0) return 0;
+  const snapshots = await db.getAll(
+    ...warehouseIds.map((warehouseId) =>
+      db.collection("revenue_sync").doc(`${warehouseId}_${period}`),
+    ),
+  );
+  return snapshots.reduce(
+    (total, snapshot) => total + Number(snapshot.data()?.total_revenue ?? 0),
+    0,
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -164,7 +110,7 @@ function buildCostCenterBreakdown(
     for (const cat of Object.values(ExpenseCategory)) {
       const item = doc.items[cat];
       if (item) {
-        const cc = CATEGORY_TO_COST_CENTER[cat];
+        const cc = EXPENSE_CATEGORY_COST_CENTER[cat];
         totals[cc] += item.actual_amount ?? 0;
       }
     }
@@ -177,7 +123,7 @@ function buildCostCenterBreakdown(
     amount: totals[cc],
     percentage:
       grandTotal > 0 ? Math.round((totals[cc] / grandTotal) * 100) : 0,
-    color: COST_CENTER_COLORS[cc],
+    color: EXPENSE_COST_CENTER_COLORS[cc],
   }));
 }
 
@@ -187,18 +133,21 @@ function buildCostCenterBreakdown(
 
 async function getOverBudgetStores(
   period: string,
+  warehouseIds: readonly string[],
 ): Promise<OverBudgetStoreItem[]> {
-  const docs = await expenseRepo.findByPeriod(period);
+  const docs = await expenseRepo.findByPeriod(period, warehouseIds);
   if (docs.length === 0) return [];
 
-  // Fetch warehouse names
-  const whSnap = await db
-    .collection("warehouses")
-    .where("is_deleted", "==", false)
-    .get();
+  const warehouseSnapshots = await db.getAll(
+    ...warehouseIds.map((warehouseId) =>
+      db.collection("warehouses").doc(warehouseId),
+    ),
+  );
   const whNames: Record<string, string> = {};
-  for (const d of whSnap.docs) {
-    whNames[d.id] = (d.data().name as string) || d.id;
+  for (const snapshot of warehouseSnapshots) {
+    if (snapshot.exists && snapshot.data()?.is_deleted === false) {
+      whNames[snapshot.id] = (snapshot.data()?.name as string) || snapshot.id;
+    }
   }
 
   const results: OverBudgetStoreItem[] = [];
@@ -239,31 +188,32 @@ async function getOverBudgetStores(
 async function getTrendData(
   warehouseId: string,
   currentPeriod: string,
+  warehouseIds: readonly string[],
 ): Promise<TrendPoint[]> {
   const periods: string[] = [];
   let period = currentPeriod;
   for (let i = 0; i < 6; i++) {
     periods.unshift(period);
-    period = getPreviousPeriod(period);
+    period = getPreviousExpensePeriod(period);
   }
 
   const results = await Promise.all(
     periods.map(async (p) => {
       const isAll = warehouseId === "ALL";
       const docs = isAll
-        ? await expenseRepo.findByPeriod(p)
+        ? await expenseRepo.findByPeriod(p, warehouseIds)
         : await expenseRepo
             .getById(`${warehouseId}_${p}`)
             .then((d) => (d ? [d] : []));
 
       const expenses = sumExpenseItems(docs, "actual_amount");
       const revenue = await calculateRevenue(
-        isAll ? null : warehouseId,
+        isAll ? warehouseIds : [warehouseId],
         p,
       );
 
       return {
-        month: getMonthLabel(p),
+        month: getExpenseMonthLabel(p),
         revenue,
         expenses,
       };
@@ -280,28 +230,29 @@ async function getTrendData(
 export async function getDashboardMetrics(
   warehouseId: string,
   period: string,
+  warehouseIds: readonly string[],
 ): Promise<DashboardMetrics> {
   const isAll = warehouseId === "ALL";
-  const prevPeriod = getPreviousPeriod(period);
+  const prevPeriod = getPreviousExpensePeriod(period);
 
   // Current period data
   const currentDocs = isAll
-    ? await expenseRepo.findByPeriod(period)
+    ? await expenseRepo.findByPeriod(period, warehouseIds)
     : await expenseRepo
         .getById(`${warehouseId}_${period}`)
         .then((d) => (d ? [d] : []));
 
   // Previous period data (for MoM comparison)
   const prevDocs = isAll
-    ? await expenseRepo.findByPeriod(prevPeriod)
+    ? await expenseRepo.findByPeriod(prevPeriod, warehouseIds)
     : await expenseRepo
         .getById(`${warehouseId}_${prevPeriod}`)
         .then((d) => (d ? [d] : []));
 
   // Revenue
   const [currentRevenue, prevRevenue] = await Promise.all([
-    calculateRevenue(isAll ? null : warehouseId, period),
-    calculateRevenue(isAll ? null : warehouseId, prevPeriod),
+    calculateRevenue(isAll ? warehouseIds : [warehouseId], period),
+    calculateRevenue(isAll ? warehouseIds : [warehouseId], prevPeriod),
   ]);
 
   // Expense totals
@@ -319,17 +270,17 @@ export async function getDashboardMetrics(
 
   // Parallel: trend data + over-budget + cost center
   const [trendData, overBudgetStores] = await Promise.all([
-    getTrendData(warehouseId, period),
-    isAll ? getOverBudgetStores(period) : Promise.resolve([]),
+    getTrendData(warehouseId, period, warehouseIds),
+    isAll ? getOverBudgetStores(period, warehouseIds) : Promise.resolve([]),
   ]);
 
   const costCenterBreakdown = buildCostCenterBreakdown(currentDocs);
 
   return {
-    grossRevenue: buildKPI(currentRevenue, prevRevenue),
-    totalExpenses: buildKPI(currentExpenses, prevExpenses),
-    netProfit: buildKPI(currentNet, prevNet),
-    profitMargin: buildKPI(
+    grossRevenue: buildExpenseKpi(currentRevenue, prevRevenue),
+    totalExpenses: buildExpenseKpi(currentExpenses, prevExpenses),
+    netProfit: buildExpenseKpi(currentNet, prevNet),
+    profitMargin: buildExpenseKpi(
       parseFloat(currentMargin.toFixed(1)),
       parseFloat(prevMargin.toFixed(1)),
     ),

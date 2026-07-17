@@ -123,9 +123,7 @@ describe("requestAccessContext", () => {
       user.roleAssignments.map((assignment) => assignment.id),
       ["assignment-reader"],
     );
-    assert.deepEqual(user.permissions, {
-      "store-d": { "inventory.read": true },
-    });
+    assert.equal(Object.hasOwn(user, "permissions"), false);
   });
 
   it("attaches only factory-issued context for middleware consumption", () => {
@@ -219,7 +217,7 @@ describe("requestAccessContext", () => {
       legacyAdminUser,
     );
 
-    assert.deepEqual(user.permissions, { global: { "*": true } });
+    assert.equal(Object.hasOwn(user, "permissions"), false);
     assert.deepEqual(user.roleIds, ["role-admin"]);
   });
 });

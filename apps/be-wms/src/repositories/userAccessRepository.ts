@@ -47,6 +47,7 @@ const GRANTS_PER_BATCH = 400;
 
 export {
   findUserFacilityAccessGrants,
+  findUserAccessVersionsByNumber,
   getActiveUserAccessVersion,
   getUserAccessMetadata,
   getUserAccessMetadataRef,
@@ -184,4 +185,49 @@ export const stageUserAccessSnapshot = async (
     stagedSnapshot.docs.map(mapUserFacilityAccessGrant),
     expectedGrants,
   );
+};
+
+export const markUserAccessSnapshotFailed = async (
+  plan: UserAccessSnapshotWritePlan,
+  failedAt = new Date(),
+): Promise<void> => {
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(plan.versionRef);
+    if (!snapshot.exists) return;
+    const version = mapUserAccessVersion(snapshot);
+    if (version.status === "FAILED") return;
+    if (version.status !== "BUILDING") {
+      throw new Error("USER_ACCESS_VERSION_IMMUTABLE");
+    }
+    transaction.update(plan.versionRef, {
+      status: "FAILED",
+      updated_at: failedAt,
+      sync_time: failedAt,
+    });
+  });
+};
+
+export const markBuildingUserAccessVersionsFailed = async (
+  userId: string,
+  versionIds: readonly string[],
+  failedAt = new Date(),
+): Promise<void> => {
+  const refs = Array.from(new Set(versionIds)).map((versionId) =>
+    getUserAccessVersionRef(userId, versionId),
+  );
+  if (refs.length === 0) return;
+  await db.runTransaction(async (transaction) => {
+    const snapshots = await transaction.getAll(...refs);
+    snapshots.forEach((snapshot, index) => {
+      if (!snapshot.exists) return;
+      const version = mapUserAccessVersion(snapshot);
+      if (version.status === "BUILDING") {
+        transaction.update(refs[index], {
+          status: "FAILED",
+          updated_at: failedAt,
+          sync_time: failedAt,
+        });
+      }
+    });
+  });
 };

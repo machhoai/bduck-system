@@ -11,26 +11,38 @@ import {
   assertPersistedOfficeScopeEdgeOwner,
   collectAllModeSoftDeleteEdgeIds,
   type OfficeScopeFacilityState,
-  type PersistedOfficeScopeEdgeState,
 } from "../utils/officeScopePolicy.js";
-import { mapFirestoreDocument } from "./facilityAccessRepositoryUtils.js";
+import { enqueueUserAccessRebuildsInTransaction } from "./userAccessRebuildTransactionRepository.js";
+import {
+  isOfficeScopeEffectiveAt,
+  mapOfficeScopeConfig as mapConfig,
+  mapOfficeScopeEdge as mapEdge,
+  mapOfficeScopeFacilityState as mapFacilityState,
+  mapPersistedOfficeScopeEdgeState as mapPersistedEdgeState,
+} from "./officeScopeRepositoryMappers.js";
 
-type Snapshot = FirebaseFirestore.DocumentSnapshot;
+export { isOfficeScopeEffectiveAt } from "./officeScopeRepositoryMappers.js";
+
 type DocumentWrite<T> = {
   ref: FirebaseFirestore.DocumentReference;
   data: T;
 };
 
 export interface OfficeScopeWritePlan {
+  expectedRevision: number;
   config: DocumentWrite<OfficeScopeConfig>;
   edges: Array<DocumentWrite<OfficeScopeEdge>>;
   edgeSoftDeletes: Array<DocumentWrite<Record<string, unknown>>>;
   edgeSoftDeleteTemplate: Record<string, unknown>;
 }
 
-export type AppliedOfficeScopeWritePlan = { softDeletedEdgeIds: string[] };
+export type AppliedOfficeScopeWritePlan = {
+  softDeletedEdgeIds: string[];
+  affectedUserIds: string[];
+};
 
 export interface CreateOfficeScopeWritePlanInput {
+  expectedRevision: number;
   config: OfficeScopeConfig;
   edges: OfficeScopeEdge[];
   softDeleteEdgeIds?: string[];
@@ -38,65 +50,6 @@ export interface CreateOfficeScopeWritePlanInput {
   actionTime: Date;
   syncTime: Date;
 }
-
-const mapFacilityState = (
-  snapshot: Snapshot,
-): OfficeScopeFacilityState | null => {
-  if (!snapshot.exists) return null;
-  return {
-    id: snapshot.id,
-    type: snapshot.get("type"),
-    status: snapshot.get("status"),
-    is_deleted: snapshot.get("is_deleted"),
-  } as OfficeScopeFacilityState;
-};
-
-const mapPersistedEdgeState = (
-  snapshot: Snapshot,
-): PersistedOfficeScopeEdgeState => ({
-  id: snapshot.id,
-  office_id: snapshot.get("office_id"),
-  is_active: snapshot.get("is_active"),
-  is_deleted: snapshot.get("is_deleted"),
-});
-
-const REQUIRED_DATE_FIELDS = [
-  "created_at",
-  "updated_at",
-  "action_time",
-  "sync_time",
-];
-const VALIDITY_DATE_FIELDS = ["valid_from", "valid_until"];
-
-const mapConfig = (snapshot: Snapshot) =>
-  mapFirestoreDocument<OfficeScopeConfig>(
-    snapshot,
-    REQUIRED_DATE_FIELDS,
-    VALIDITY_DATE_FIELDS,
-  );
-const mapEdge = (snapshot: Snapshot) =>
-  mapFirestoreDocument<OfficeScopeEdge>(
-    snapshot,
-    REQUIRED_DATE_FIELDS,
-    VALIDITY_DATE_FIELDS,
-  );
-
-/** valid_until is inclusive: a record remains effective at the same instant. */
-export const isOfficeScopeEffectiveAt = (
-  record: Pick<
-    OfficeScopeConfig | OfficeScopeEdge,
-    "is_active" | "is_deleted" | "valid_from" | "valid_until"
-  >,
-  at: Date,
-): boolean => {
-  const atTime = at.getTime();
-  return (
-    record.is_active &&
-    !record.is_deleted &&
-    (record.valid_from === null || record.valid_from.getTime() <= atTime) &&
-    (record.valid_until === null || atTime <= record.valid_until.getTime())
-  );
-};
 
 export const getOfficeScopeConfigRef = (officeId: string) =>
   db.collection(OFFICE_SCOPE_CONFIGS_COLLECTION).doc(officeId);
@@ -151,6 +104,17 @@ export const findActiveOfficeScopeEdges = async (
   return edges.filter((edge) => isOfficeScopeEffectiveAt(edge, at));
 };
 
+export const countActiveEmployeesAtOffice = async (
+  officeId: string,
+): Promise<number> => {
+  const snapshot = await db
+    .collection("employee_profiles")
+    .where("workplace_warehouse_id", "==", officeId)
+    .where("is_deleted", "==", false)
+    .get();
+  return snapshot.size;
+};
+
 export const getActiveOfficeScopeEdge = async (
   officeId: string,
   targetFacilityId: string,
@@ -163,6 +127,7 @@ export const getActiveOfficeScopeEdge = async (
 };
 
 export const createOfficeScopeWritePlan = ({
+  expectedRevision,
   config,
   edges,
   softDeleteEdgeIds = [],
@@ -171,6 +136,9 @@ export const createOfficeScopeWritePlan = ({
   syncTime,
 }: CreateOfficeScopeWritePlanInput): OfficeScopeWritePlan => {
   assertOfficeScopeWriteStructure(config, edges, softDeleteEdgeIds);
+  if (config.revision !== expectedRevision + 1) {
+    throw new Error("OFFICE_SCOPE_REVISION_SEQUENCE_INVALID");
+  }
 
   const edgeSoftDeleteTemplate = {
     is_deleted: true,
@@ -182,6 +150,7 @@ export const createOfficeScopeWritePlan = ({
   };
 
   return {
+    expectedRevision,
     config: {
       ref: getOfficeScopeConfigRef(config.office_id),
       data: config,
@@ -282,6 +251,24 @@ export const applyOfficeScopeWritePlanInTransaction = async (
     }
   });
 
+  const affectedUsersSnapshot = await transaction.get(
+    db
+      .collection("users")
+      .where("workplace_facility_id", "==", officeId)
+      .where("is_deleted", "==", false),
+  );
+  const affectedUserIds = affectedUsersSnapshot.docs
+    .map((document) => document.id)
+    .sort();
+  await enqueueUserAccessRebuildsInTransaction(
+    transaction,
+    affectedUserIds,
+    "OFFICE_SCOPE_CHANGED",
+    plan.config.data.updated_by,
+    plan.config.data.action_time,
+    plan.config.data.sync_time,
+  );
+
   transaction.set(plan.config.ref, plan.config.data, { merge: true });
   plan.edges.forEach(({ ref, data }) => {
     transaction.set(ref, data, { merge: true });
@@ -289,6 +276,8 @@ export const applyOfficeScopeWritePlanInTransaction = async (
   softDeletesById.forEach(({ ref, data }) => {
     transaction.update(ref, data);
   });
-
-  return { softDeletedEdgeIds: Array.from(softDeletesById.keys()).sort() };
+  return {
+    softDeletedEdgeIds: Array.from(softDeletesById.keys()).sort(),
+    affectedUserIds,
+  };
 };

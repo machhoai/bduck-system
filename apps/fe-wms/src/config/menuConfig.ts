@@ -74,7 +74,7 @@ export const menuItems: MenuItem[] = [
     labelKey: "warehouses",
     icon: Warehouse,
     href: "/warehouses",
-    permission: "warehouses.read",
+    permissionsAny: ["warehouses.read", "office_scopes.read"],
     showInBottomNav: true,
   },
   {

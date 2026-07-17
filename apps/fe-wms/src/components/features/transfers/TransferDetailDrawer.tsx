@@ -41,6 +41,7 @@ import type { TransferOrder } from "@bduck/shared-types";
 import { TransferOrderStatus, TransferType } from "@bduck/shared-types";
 import { db } from "../../../lib/firebase";
 import { useWarehouses } from "../../../hooks/useWarehouses";
+import { useEntityApprovers } from "../../../hooks/useEntityApprovers";
 import { useTranslation } from "../../../lib/i18n";
 import ReceiveTransferPanel from "./ReceiveTransferPanel";
 import { getStatusStyle } from "@/components/ui/StatusBadge";
@@ -234,9 +235,7 @@ export default function TransferDetailDrawer({
   const [legacyApproverName, setLegacyApproverName] = useState("");
   const [receivedByName, setReceivedByName] = useState("");
   const [reauthByName, setReauthByName] = useState("");
-  const [approvers, setApprovers] = useState<
-    { id: string; name: string; approved_at: unknown }[]
-  >([]);
+  const approvers = useEntityApprovers(orderId);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
   const [otpAction, setOtpAction] = useState<"cancel" | "forceCancel" | null>(
@@ -298,34 +297,6 @@ export default function TransferDetailDrawer({
 
     void resolveUserName(order.reauth_confirmed_by).then(setReauthByName);
   }, [order?.reauth_confirmed_by]);
-
-  useEffect(() => {
-    const approvalsQuery = query(
-      collection(db, "pending_approvals"),
-      where("entity_id", "==", orderId),
-      where("status", "==", "APPROVED"),
-    );
-
-    const unsub = onSnapshot(approvalsQuery, async (snap) => {
-      const records = snap.docs.map((approvalDoc) => approvalDoc.data());
-      records.sort((a, b) => asNumber(a.level) - asNumber(b.level));
-
-      const approverData = await Promise.all(
-        records.map(async (record) => {
-          const approverId = asString(record.approver_id);
-          return {
-            id: approverId,
-            name: approverId ? await resolveUserName(approverId) : "—",
-            approved_at: record.approved_at,
-          };
-        }),
-      );
-
-      setApprovers(approverData);
-    });
-
-    return () => unsub();
-  }, [orderId]);
 
   useEffect(() => {
     setLoadingItems(true);

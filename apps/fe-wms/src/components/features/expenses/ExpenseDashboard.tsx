@@ -835,7 +835,7 @@ export default function ExpenseDashboard({
 }) {
     const { t } = useTranslation();
     const { metrics, loading, error } = useExpenseDashboardMetrics(warehouseId, period);
-    const { revenue: revenueSync, syncing, syncTime } = useRevenueSync(period);
+    const { revenue: revenueSync, syncing, syncTime } = useRevenueSync(period, warehouseId);
     const [selectedCostCenter, setSelectedCostCenter] = useState<ExpenseCostCenter | null>(null);
 
     // Override KPIs with JoyWorld real-time revenue when available

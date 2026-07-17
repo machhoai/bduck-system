@@ -77,3 +77,15 @@ export const requireAnyScopedPermission = (action: string | string[]) => {
     return hasPermission ? next() : sendPermissionDenied(res);
   };
 };
+
+/** Explicit admission gate for global configuration and facility creation. */
+export const requireSystemAdmin = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authorization = getRequestAuthorization(req);
+  return authorization?.context.isSystemAdmin
+    ? next()
+    : sendPermissionDenied(res);
+};

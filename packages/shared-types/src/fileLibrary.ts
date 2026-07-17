@@ -35,3 +35,24 @@ export interface FileTemplate extends SoftDeletable {
   version: number;
   version_history: FileTemplateVersionEntry[];
 }
+
+/** A named, downloadable collection of existing file templates. */
+export interface FileTemplateBundle extends SoftDeletable {
+  id: string;
+  name: string;
+  description: string | null;
+  template_ids: string[];
+  created_by: string;
+}
+
+/** A PDF-only operating process document shown in the file library. */
+export interface ProcessDocument extends SoftDeletable {
+  id: string;
+  title: string;
+  description: string | null;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  file_format: "pdf";
+  uploaded_by: string;
+}

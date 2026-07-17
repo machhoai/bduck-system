@@ -24,6 +24,7 @@ const API_BASE_URL =
 
 export interface RevenueSyncData {
   period: string;
+  warehouse_id: string;
   total_revenue: number;
   shop_real_money: number;
   refund_money: number;
@@ -43,7 +44,10 @@ interface UseRevenueSyncReturn {
 // Hook
 // ─────────────────────────────────────────────
 
-export function useRevenueSync(period: string): UseRevenueSyncReturn {
+export function useRevenueSync(
+  period: string,
+  warehouseId: string,
+): UseRevenueSyncReturn {
   const [revenue, setRevenue] = useState<RevenueSyncData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -53,11 +57,12 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
 
   // Trigger BE sync API (only once per mount/period change)
   const triggerSync = useCallback(async () => {
-    if (!period || syncingRef.current) return;
+    if (!period || !warehouseId || syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
     try {
-      await fetch(`${API_BASE_URL}/api/revenue/sync/${period}`, {
+      const query = new URLSearchParams({ warehouseId });
+      await fetch(`${API_BASE_URL}/api/revenue/sync/${period}?${query}`, {
         method: "GET",
         credentials: "include",
       });
@@ -67,10 +72,10 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
       syncingRef.current = false;
       setSyncing(false);
     }
-  }, [period]);
+  }, [period, warehouseId]);
 
   useEffect(() => {
-    if (!period) {
+    if (!period || !warehouseId) {
       setRevenue(null);
       setLoading(false);
       return;
@@ -92,8 +97,7 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
         return;
       }
 
-      // Listen to revenue_sync/{period}
-      const docRef = doc(db, "revenue_sync", period);
+      const docRef = doc(db, "revenue_sync", `${warehouseId}_${period}`);
 
       unsubscribeSnapshot = onSnapshot(
         docRef,
@@ -106,6 +110,7 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
 
             setRevenue({
               period: String(data.period || period),
+              warehouse_id: String(data.warehouse_id || warehouseId),
               total_revenue: Number(data.total_revenue ?? 0),
               shop_real_money: Number(data.shop_real_money ?? 0),
               refund_money: Number(data.refund_money ?? 0),
@@ -138,7 +143,7 @@ export function useRevenueSync(period: string): UseRevenueSyncReturn {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [period, triggerSync]);
+  }, [period, triggerSync, warehouseId]);
 
   return {
     revenue,

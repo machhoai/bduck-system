@@ -1,8 +1,8 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { where } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   InventoryStockPolicy,
   StockPolicyScope,
@@ -12,7 +12,16 @@ import {
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  buildFacilityScopedQueries,
+  subscribeToMergedQueries,
+} from "@/lib/scopedFirestore";
+import { useUserStore } from "@/stores/useUserStore";
 import { createDetailedApiError } from "@/utils/apiError";
+import {
+  getFacilityPermissionScope,
+  scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -60,7 +69,11 @@ async function fetchPolicies(
     .catch(() => null)) as ApiCollectionResponse<InventoryStockPolicy> | null;
 
   if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the tai chinh sach ton kho.");
+    throw createDetailedApiError(
+      response,
+      body,
+      "Khong the tai chinh sach ton kho.",
+    );
   }
 
   return body.data || [];
@@ -80,13 +93,31 @@ async function callStockPolicyApi(
   const body = await response.json().catch(() => null);
 
   if (!response.ok || !body?.success) {
-    throw createDetailedApiError(response, body, "Khong the luu chinh sach ton kho.");
+    throw createDetailedApiError(
+      response,
+      body,
+      "Khong the luu chinh sach ton kho.",
+    );
   }
 
   return body;
 }
 
 export function useStockPolicies(filters: UseStockPoliciesFilters) {
+  const permissions = useUserStore((state) => state.permissions);
+  const facilityScope = useMemo(
+    () => getFacilityPermissionScope(permissions, ["inventory.read"]),
+    [permissions],
+  );
+  const queryScope = useMemo(() => {
+    if (!filters.warehouseId) return facilityScope;
+    return {
+      isSystemAdmin: false,
+      facilityIds: scopeContainsFacility(facilityScope, filters.warehouseId)
+        ? [filters.warehouseId]
+        : [],
+    };
+  }, [facilityScope, filters.warehouseId]);
   const [policies, setPolicies] = useState<InventoryStockPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,59 +166,48 @@ export function useStockPolicies(filters: UseStockPoliciesFilters) {
         return;
       }
 
-      let policiesQuery = query(
-        collection(db, "inventory_stock_policies"),
-        where("is_deleted", "==", false),
-      );
-      if (filters.warehouseId) {
-        policiesQuery = query(
-          policiesQuery,
-          where("warehouse_id", "==", filters.warehouseId),
-        );
-      }
+      const constraints = [where("is_deleted", "==", false)];
       if (filters.locationId) {
-        policiesQuery = query(
-          policiesQuery,
+        constraints.push(
           where("warehouse_location_id", "==", filters.locationId),
         );
       }
       if (filters.slotId) {
-        policiesQuery = query(
-          policiesQuery,
+        constraints.push(
           where("warehouse_location_slot_id", "==", filters.slotId),
         );
       }
       if (filters.productId) {
-        policiesQuery = query(
-          policiesQuery,
-          where("product_id", "==", filters.productId),
-        );
+        constraints.push(where("product_id", "==", filters.productId));
       }
       if (filters.scope) {
-        policiesQuery = query(
-          policiesQuery,
-          where("scope", "==", filters.scope),
-        );
+        constraints.push(where("scope", "==", filters.scope));
       }
 
-      unsubscribeSnapshot = onSnapshot(
-        policiesQuery,
-        (snapshot) => {
+      unsubscribeSnapshot = subscribeToMergedQueries<InventoryStockPolicy>({
+        queries: buildFacilityScopedQueries({
+          db,
+          collectionName: "inventory_stock_policies",
+          facilityField: "warehouse_id",
+          scope: queryScope,
+          constraints,
+        }),
+        mapDocument: (document) =>
+          ({
+            ...document.data(),
+            id: document.id,
+          }) as InventoryStockPolicy,
+        onData: (data) => {
           if (isDisposed) return;
-          setPolicies(
-            snapshot.docs.map((doc) => ({
-              ...doc.data(),
-              id: doc.id,
-            })) as InventoryStockPolicy[],
-          );
+          setPolicies(data);
           setLoading(false);
           setError(null);
         },
-        (snapshotError) => {
+        onError: (snapshotError) => {
           console.warn("[useStockPolicies] snapshot error:", snapshotError);
           void loadApiFallback();
         },
-      );
+      });
     });
 
     return () => {
@@ -203,6 +223,7 @@ export function useStockPolicies(filters: UseStockPoliciesFilters) {
     filters.scope,
     filters.slotId,
     filters.warehouseId,
+    queryScope,
   ]);
 
   const upsertPolicy = useCallback(async (payload: unknown) => {

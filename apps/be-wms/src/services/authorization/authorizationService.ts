@@ -20,7 +20,8 @@ const isActionAllowedForFacilityType = (
     action.startsWith("locations.") ||
     action.startsWith("vouchers.") ||
     action.startsWith("stock_counts.") ||
-    action.startsWith("external_count.")
+    action.startsWith("external_count.") ||
+    action.startsWith("external_scan.")
   ) {
     return (
       facilityType === WarehouseType.MAIN ||
@@ -63,6 +64,30 @@ export class AuthorizationService {
     return Object.keys(this.context.grants)
       .filter((facilityId) => this.can(action, facilityId))
       .sort();
+  }
+
+  hasFacilityAccess(facilityId: string): boolean {
+    return (
+      typeof facilityId === "string" &&
+      facilityId.trim() === facilityId &&
+      facilityId.length > 0 &&
+      this.context.grants[facilityId] !== undefined
+    );
+  }
+
+  hasRoleAtFacility(roleId: string, facilityId: string): boolean {
+    const grant = this.context.grants[facilityId];
+    return Boolean(
+      grant &&
+      roleId.length > 0 &&
+      grant.sources.some((source) => source.role_id === roleId),
+    );
+  }
+
+  assertFacilityAccess(facilityId: string): void {
+    if (!this.hasFacilityAccess(facilityId)) {
+      throw authorizationError("AUTHORIZATION_DENIED");
+    }
   }
 
   canReadTransfer(

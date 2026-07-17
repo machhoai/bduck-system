@@ -1,7 +1,12 @@
-import { AuditAction } from "@bduck/shared-types";
+import {
+  AuditAction,
+  OFFICE_SCOPE_CONFIGS_COLLECTION,
+  WarehouseType,
+  type Warehouse,
+} from "@bduck/shared-types";
 import { randomUUID } from "crypto";
-import type { Warehouse } from "@bduck/shared-types";
 import type { z } from "zod";
+import { db } from "../config/firebase.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import { locationRepository } from "../repositories/locationRepository.js";
 import { createWarehouseSchema } from "../utils/zodSchemas.js";
@@ -11,6 +16,8 @@ import {
   authorizationError,
   type AuthorizationService,
 } from "./authorization/index.js";
+import { rebuildAllActiveUserAccess } from "./userAccessRebuildService.js";
+import { createInitialOfficeScopeConfig } from "./officeScopeAdministrationPolicy.js";
 
 type CreateWarehouseInput = z.infer<typeof createWarehouseSchema>;
 type UpdateWarehouseInput = Partial<CreateWarehouseInput>;
@@ -21,6 +28,53 @@ const notFoundError = {
     vi: "Kho không tồn tại hoặc đã bị xóa.",
     zh: "仓库不存在或已被删除。",
   },
+};
+
+const initializeOfficeScope = async (
+  office: Warehouse,
+  actorId: string,
+  auditMetadata?: AuditMetadata,
+): Promise<void> => {
+  const actionTime = auditMetadata?.action_time ?? new Date();
+  const syncTime = new Date();
+  const config = createInitialOfficeScopeConfig({
+    officeId: office.id,
+    actorId,
+    actionTime,
+    syncTime,
+  });
+  const configRef = db
+    .collection(OFFICE_SCOPE_CONFIGS_COLLECTION)
+    .doc(office.id);
+  const auditId = `${office.id}_scope_revision_1`;
+
+  await db.runTransaction(async (transaction) => {
+    const existing = await transaction.get(configRef);
+    if (existing.exists) return;
+    transaction.create(configRef, config);
+    transaction.create(db.collection("audit_logs").doc(auditId), {
+      id: auditId,
+      entity_type: OFFICE_SCOPE_CONFIGS_COLLECTION,
+      entity_id: office.id,
+      warehouse_id: office.id,
+      action: AuditAction.CREATE,
+      user_id: actorId,
+      user_name: null,
+      entity_name: office.name,
+      action_time: actionTime,
+      sync_time: syncTime,
+      old_value: null,
+      new_value: {
+        config,
+        target_facility_ids: [],
+        affected_employee_count: 0,
+      },
+      ip_address: auditMetadata?.ip_address ?? null,
+      device_id: auditMetadata?.device_id ?? null,
+      session_token: auditMetadata?.session_token ?? null,
+      notes: "Initialize new office with an empty selected facility scope",
+    });
+  });
 };
 
 export const createWarehouse = async (
@@ -60,6 +114,10 @@ export const createWarehouse = async (
     coordinate: input.coordinate || null,
   } as any);
 
+  if (warehouse.type === WarehouseType.OFFICE) {
+    await initializeOfficeScope(warehouse, userId, auditMetadata);
+  }
+
   await logAudit({
     entity_type: "warehouses",
     entity_id: id,
@@ -70,6 +128,7 @@ export const createWarehouse = async (
     new_value: warehouse as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  await rebuildAllActiveUserAccess("FACILITY_CREATED", userId);
 
   return warehouse;
 };
@@ -143,6 +202,7 @@ export const updateWarehouse = async (
     new_value: input as unknown as Record<string, unknown>,
     ...auditMetadata,
   });
+  await rebuildAllActiveUserAccess("FACILITY_UPDATED", userId);
 };
 
 export const deleteWarehouse = async (
@@ -189,4 +249,5 @@ export const deleteWarehouse = async (
     new_value: { is_deleted: true },
     ...auditMetadata,
   });
+  await rebuildAllActiveUserAccess("FACILITY_SOFT_DELETED", userId);
 };

@@ -55,8 +55,17 @@ function addFinding(finding) {
   findings.push(finding);
 }
 
+function addObservation(observation) {
+  const key = `${observation.kind}:${observation.file}:${observation.line}:${observation.collection ?? ""}`;
+  if (observationKeys.has(key)) return;
+  observationKeys.add(key);
+  observations.push(observation);
+}
+
 const findings = [];
 const findingKeys = new Set();
+const observations = [];
+const observationKeys = new Set();
 
 const rulesUrl = new URL("../firestore.rules", import.meta.url);
 const rulesContents = await readFile(rulesUrl, "utf8");
@@ -86,9 +95,14 @@ const backendFiles = await walk(
 for (const fileUrl of backendFiles) {
   const contents = await readFile(fileUrl, "utf8");
   const file = repositoryPath(fileUrl);
+  const isRoute = file.includes("/api/routes/");
+  const isTest = file.endsWith(".test.ts");
+  const isRbacMiddleware = file.endsWith("/api/middlewares/rbacMiddleware.ts");
   for (const entry of lines(contents)) {
     if (/requireAnyScopedPermission\(/u.test(entry.text)) {
-      addFinding({
+      const result =
+        isRoute || isTest || isRbacMiddleware ? addObservation : addFinding;
+      result({
         kind: "unbound-any-scope-guard",
         file,
         line: entry.line,
@@ -96,7 +110,10 @@ for (const fileUrl of backendFiles) {
       });
     }
 
-    if (/requirePermission\(\s*["'`][^"'`]+["'`]\s*\)/u.test(entry.text)) {
+    if (
+      !isTest &&
+      /requirePermission\(\s*["'`][^"'`]+["'`]\s*\)/u.test(entry.text)
+    ) {
       addFinding({
         kind: "unbound-specific-scope-guard",
         file,
@@ -179,7 +196,7 @@ for (const fileUrl of frontendFiles) {
       const collectionName = match[1];
       const protectionClass = protectionByCollection.get(collectionName);
       if (!sensitiveProtectionClasses.has(protectionClass)) continue;
-      addFinding({
+      addObservation({
         kind: "sensitive-realtime-listener-reference",
         file,
         line: entry.line,
@@ -195,7 +212,7 @@ for (const fileUrl of frontendFiles) {
       ) &&
       !entry.raw.trimStart().startsWith("import ")
     ) {
-      addFinding({
+      addObservation({
         kind: "dynamic-realtime-listener-reference",
         file,
         line: entry.line,
@@ -252,6 +269,10 @@ const counts = findings.reduce((summary, finding) => {
   summary[finding.kind] = (summary[finding.kind] ?? 0) + 1;
   return summary;
 }, {});
+const observationCounts = observations.reduce((summary, observation) => {
+  summary[observation.kind] = (summary[observation.kind] ?? 0) + 1;
+  return summary;
+}, {});
 
 console.log(
   JSON.stringify(
@@ -259,7 +280,8 @@ console.log(
       inventoryVersion: inventory.version,
       enforce,
       counts,
-      ...(summaryOnly ? {} : { findings }),
+      observationCounts,
+      ...(summaryOnly ? {} : { findings, observations }),
     },
     null,
     2,

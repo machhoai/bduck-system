@@ -97,7 +97,7 @@ export const sessionLogin = async (req: Request, res: Response) => {
 
     const { idToken } = parseResult.data;
 
-    // Create session and get user + permissions
+    // Create the session; effective permissions arrive through user_access.
     const sessionResult = await createSessionLogin(idToken);
 
     // Set HttpOnly cookie
@@ -114,7 +114,6 @@ export const sessionLogin = async (req: Request, res: Response) => {
       success: true,
       data: {
         user: sessionResult.user,
-        permissions: sessionResult.permissions,
         roles: sessionResult.roles,
       },
       messages: {
@@ -129,6 +128,18 @@ export const sessionLogin = async (req: Request, res: Response) => {
         success: false,
         data: null,
         messages: firebaseMapped.messages,
+      });
+    }
+
+    const apiError = error as {
+      statusCode?: number;
+      messages?: { vi: string; zh: string };
+    };
+    if (apiError.statusCode && apiError.messages) {
+      return res.status(apiError.statusCode).json({
+        success: false,
+        data: null,
+        messages: apiError.messages,
       });
     }
 
