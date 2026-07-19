@@ -105,6 +105,7 @@ const vi = {
             "Dashboard doanh thu JoyWorld cho cửa hàng B.Duck Cityfuns Landmark 81.",
         generatedAt: "Cập nhật lúc",
         syncing: "Đang cập nhật...",
+        refreshCountdown: "Tự động cập nhật sau {seconds} giây",
         tabs: {
             revenue: {
                 label: "Doanh thu",

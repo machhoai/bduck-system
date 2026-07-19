@@ -7,7 +7,8 @@ import { createDetailedApiError, getDetailedErrorMessage } from "@/utils/apiErro
 import { auth, db } from "@/lib/firebase";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+const REVENUE_REFRESH_INTERVAL_SECONDS = 60;
+const REVENUE_REFRESH_INTERVAL_MS = REVENUE_REFRESH_INTERVAL_SECONDS * 1000;
 
 export type RevenueDateMode = "today" | "date" | "month" | "year" | "custom";
 export type RevenueCompareMode = "none" | "previous" | "date" | "month" | "year" | "custom";
@@ -284,6 +285,8 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(REVENUE_REFRESH_INTERVAL_SECONDS);
   const latestDataRef = useRef<RevenueDashboardData | null>(null);
   const syncingRef = useRef(false);
   const cacheKey = useMemo(() => getRevenueDashboardCacheKey(filter, warehouseId), [filter, warehouseId]);
@@ -312,6 +315,42 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
   }, [enabled, filter, warehouseId]);
 
   useEffect(() => {
+    if (!enabled || nextRefreshAt === null) {
+      setSecondsUntilRefresh(REVENUE_REFRESH_INTERVAL_SECONDS);
+      return;
+    }
+
+    const controller = new AbortController();
+    let refreshTriggered = false;
+
+    const updateCountdown = () => {
+      const remainingSeconds = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+      setSecondsUntilRefresh(remainingSeconds);
+
+      if (remainingSeconds > 0 || refreshTriggered) return;
+
+      refreshTriggered = true;
+      void loadData(controller.signal).finally(() => {
+        if (controller.signal.aborted) return;
+
+        setNextRefreshAt((currentNextRefreshAt) =>
+          currentNextRefreshAt === nextRefreshAt
+            ? Date.now() + REVENUE_REFRESH_INTERVAL_MS
+            : currentNextRefreshAt,
+        );
+      });
+    };
+
+    updateCountdown();
+    const countdownTimer = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(countdownTimer);
+    };
+  }, [enabled, loadData, nextRefreshAt]);
+
+  useEffect(() => {
     if (!enabled) {
       latestDataRef.current = null;
       setDashboard(null);
@@ -320,8 +359,12 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
       setLoading(false);
       setSyncing(false);
       setError(null);
+      setNextRefreshAt(null);
       return;
     }
+
+    setNextRefreshAt(null);
+    setSecondsUntilRefresh(REVENUE_REFRESH_INTERVAL_SECONDS);
 
     const hasPreviousData = Boolean(latestDataRef.current);
     if (!keepPreviousData || !hasPreviousData) {
@@ -363,6 +406,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
         setSoldItems([]);
         setLoading(false);
         setSyncing(false);
+        setNextRefreshAt(null);
         return;
       }
 
@@ -373,6 +417,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
           if (isDisposed) return;
 
           if (!snapshot.exists()) {
+            setNextRefreshAt(null);
             void loadData(controller.signal);
             return;
           }
@@ -385,6 +430,11 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
           setDashboard(dashboard);
           setLoading(false);
           setSyncing(false);
+          setNextRefreshAt(
+            syncTime
+              ? syncTime.getTime() + REVENUE_REFRESH_INTERVAL_MS
+              : Date.now(),
+          );
 
           if (!unsubscribeOrders) {
             unsubscribeOrders = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "orders"), (ordersSnapshot) => {
@@ -406,9 +456,6 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
             });
           }
 
-          if (isStale(syncTime)) {
-            void loadData(controller.signal);
-          }
         },
         (snapshotError) => {
           console.warn("[useRevenueDashboard] onSnapshot error:", snapshotError);
@@ -429,7 +476,7 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
     };
   }, [cacheKey, enabled, keepPreviousData, loadData]);
 
-  return { data, loading, syncing, error, cacheKey };
+  return { data, loading, syncing, error, cacheKey, secondsUntilRefresh };
 }
 
 export function useRevenueDashboardComparisons(filters: RevenueDashboardFilter[], warehouseId = DEFAULT_WAREHOUSE_ID) {
@@ -633,11 +680,6 @@ function getPreviousComparisonRange(filter: RevenueDashboardFilter): { startDate
     startDate: addDays(range.startDate, -days),
     endDate: addDays(range.startDate, -1),
   };
-}
-
-function isStale(syncTime: Date | null): boolean {
-  if (!syncTime) return true;
-  return Date.now() - syncTime.getTime() > STALE_THRESHOLD_MS;
 }
 
 function normalizeDate(value: string): string {

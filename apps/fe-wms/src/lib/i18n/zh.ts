@@ -105,6 +105,7 @@ const zh: Dictionary = {
     subtitle: "B.Duck Cityfuns Landmark 81 门店的 JoyWorld 营收仪表板。",
     generatedAt: "更新时间",
     syncing: "正在更新...",
+    refreshCountdown: "{seconds} 秒后自动更新",
     tabs: {
       revenue: {
         label: "营收",

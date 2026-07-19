@@ -1,0 +1,377 @@
+## Kết luận đề xuất
+
+Nên xây dựng một module riêng tại `/invoice-management`, nhưng nút “Phát hành” không gọi meInvoice trực tiếp. Một lần bấm sẽ tạo job nền, phân nhóm theo tài khoản MISA và ký hiệu hóa đơn, sau đó xử lý tuần tự, chống trùng và cập nhật tiến độ realtime.
+
+Kiến trúc này bám sát [rules.md](F:/Github/joywrold/bduck-system/.agent/rules/rules.md), đồng thời tận dụng được nền tảng hiện có: cấu hình API theo cửa hàng, mã hóa credential, Firestore realtime, RBAC facility và audit log.
+
+Điểm cần xử lý trước tiên là chuẩn hóa lớp dữ liệu đơn hàng. Hiện tại đơn hàng chi tiết chủ yếu đi qua JoyWorld legacy trong [joyworldService.ts](F:/Github/joywrold/bduck-system/apps/be-wms/src/services/joyworldService.ts), trong khi OpenAPI theo cửa hàng mới chỉ được dùng chủ yếu cho doanh thu. Module hóa đơn không nên phụ thuộc trực tiếp vào một trong hai nguồn này.
+
+## Các ràng buộc quan trọng từ meInvoice
+
+Theo [tài liệu meInvoice OpenAPI chính thức](https://developer.misa.vn/products-openapi/MEINVOICE):
+
+- Xác thực bằng `POST /invoice/token`, sử dụng `ClientID`, `ClientSecret`, mã số thuế, tài khoản và mật khẩu. Token được tài liệu khuyến nghị lưu và tái sử dụng, thời hạn được ghi là 14 ngày.
+- Lấy mẫu/ký hiệu qua `GET /invoice/templates`.
+- Xem trước qua `POST /invoice/unpublishview`; link xem trước chỉ tồn tại khoảng 5 phút.
+- Phát hành qua `POST /invoice/publishing`.
+- `RefID` phải duy nhất và nên gắn với đơn hàng.
+- Tối đa 30 hóa đơn mỗi request và 400 dòng mỗi hóa đơn.
+- Request phải xử lý tuần tự theo từng ký hiệu hóa đơn.
+- Sau phát hành phải lưu `TransactionID`, rồi gọi `/invoice/status`. Tài liệu khuyến nghị poll cách nhau 3–5 giây, tối đa ba lần trong luồng đồng bộ ban đầu.
+- `/invoice/paging` dùng lấy danh sách hóa đơn đã phát hành từ MISA; `/invoice/publishview` để xem và `/invoice/Download` để tải PDF/XML.
+- Các lỗi `InvoiceDuplicated` và `InvoiceNumberNotCotinuous` có thể cần retry, nhưng phải tra cứu trạng thái trước để tránh phát hành trùng.
+- Việc làm tròn phải thực hiện từng thành phần rồi mới cộng tổng, theo cấu hình `OptionUserDefined`.
+
+## Kiến trúc nghiệp vụ
+
+```mermaid
+flowchart LR
+    A["HKAPI / nguồn đơn hàng"] --> B["Order Source Adapter"]
+    B --> C["Đơn hàng chuẩn hóa theo cửa hàng"]
+    C --> D["Tạo bản nháp và tính thuế"]
+    D --> E{"Kiểm tra hợp lệ"}
+    E -->|"Thiếu dữ liệu"| F["Cần xử lý"]
+    E -->|"Hợp lệ"| G["Chờ xác nhận"]
+    G --> H{"Có chỉnh số liệu?"}
+    H -->|"Không"| I["Sẵn sàng phát hành"]
+    H -->|"Có"| J["Chờ người thứ hai duyệt"]
+    J --> I
+    I --> K["Một nút: tạo Issue Job"]
+    K --> L["Queue theo MISA Account + InvSeries"]
+    L --> M["meInvoice Publishing"]
+    M --> N["Status polling / reconciliation"]
+    N -->|"Thành công"| O["Đã phát hành"]
+    N -->|"Lỗi"| P["Lỗi có thể retry"]
+    O --> Q["Paging / đối soát định kỳ với MISA"]
+```
+
+Nên chia thành bốn lớp:
+
+1. `OrderSourceAdapter`: lấy và chuẩn hóa đơn hàng từ HKAPI/JoyWorld.
+2. `InvoicePreparation`: tính tiền hàng, chiết khấu, tiền trước thuế, thuế và tổng thanh toán.
+3. `MeInvoiceClient`: token, template, preview, publish, status, paging và download.
+4. `InvoiceOrchestrator`: idempotency, queue tuần tự, retry, audit và reconciliation.
+
+## Thiết kế trang `/invoice-management`
+
+Trang sử dụng một route chính, lưu trạng thái tab/bộ lọc trên query string để có thể bookmark hoặc chia sẻ.
+
+### 1. Thanh tổng quan
+
+Hiển thị:
+
+- Cửa hàng đang chọn; hỗ trợ chọn một hoặc nhiều cửa hàng trong phạm vi người dùng được cấp quyền.
+- Chờ kiểm tra.
+- Sẵn sàng phát hành.
+- Đang xử lý.
+- Đã phát hành.
+- Lỗi/cần đối soát.
+- Tổng tiền và tổng VAT của tập dữ liệu đang lọc.
+
+### 2. Tab “Chờ phát hành”
+
+Bộ lọc:
+
+- Một hoặc nhiều cửa hàng.
+- Khoảng ngày thanh toán/hoàn tất đơn.
+- Trạng thái chuẩn bị hóa đơn.
+- Trạng thái đơn hàng HKAPI.
+- Có/không có mã số thuế người mua.
+- Thuế suất.
+- Phương thức thanh toán.
+- Mã đơn hàng, số điện thoại, email hoặc mã số thuế.
+- Có sai lệch số liệu hay không.
+
+Bảng desktop:
+
+- Checkbox.
+- Cửa hàng.
+- Mã đơn hàng.
+- Thời gian thanh toán.
+- Người mua.
+- Tiền hàng.
+- Chiết khấu.
+- Giá trị chưa thuế.
+- Tiền thuế.
+- Tổng thanh toán.
+- Trạng thái kiểm tra.
+- Thao tác xem chi tiết.
+
+Mobile nên dùng card native-style, tránh ép bảng desktop thành responsive table.
+
+Khi mở chi tiết:
+
+- Thông tin nguồn HKAPI.
+- Thông tin người mua.
+- Danh sách hàng hóa.
+- Thuế suất từng dòng.
+- Tổng hợp theo `TaxRateInfo`.
+- So sánh “Nguồn HKAPI” và “Giá trị sẽ gửi MISA”.
+- Các lỗi hoặc cảnh báo.
+- Nút xem trước.
+- Lịch sử chỉnh sửa và người duyệt.
+
+Thanh thao tác sticky:
+
+- Số hóa đơn được chọn.
+- Tổng trước thuế.
+- Tổng VAT.
+- Tổng thanh toán.
+- Nút `Xác nhận & phát hành N hóa đơn`.
+
+### 3. Tab “Đã phát hành”
+
+Dữ liệu lấy từ `/invoice/paging`, không chỉ dựa vào trạng thái nội bộ.
+
+Các cột/bộ lọc:
+
+- Cửa hàng.
+- Mã đơn hàng.
+- `RefID`.
+- `TransactionID`.
+- Ký hiệu và số hóa đơn.
+- Ngày hóa đơn.
+- Người mua/MST.
+- Tổng tiền.
+- Trạng thái phát hành.
+- Trạng thái gửi cơ quan thuế.
+- Hóa đơn gốc/thay thế/điều chỉnh.
+- Khớp hoặc chưa khớp với đơn hàng.
+- Xem hóa đơn.
+- Tải PDF/XML.
+
+### 4. Tab “Lỗi & đối soát”
+
+Phân loại rõ:
+
+- Thiếu thông tin nguồn.
+- Sai công thức tổng tiền.
+- Chưa cấu hình thuế suất.
+- Trùng `RefID`.
+- MISA đang xử lý.
+- MISA từ chối.
+- Có hóa đơn trên MISA nhưng chưa tìm thấy đơn hàng.
+- Đơn hàng được đánh dấu đã xuất nhưng không tìm thấy hóa đơn tương ứng.
+- Đơn hoàn/hủy sau khi đã phát hành, cần điều chỉnh hoặc thay thế.
+
+Không thiết kế nút “Đồng bộ” hoặc “Tải lại”. Việc đồng bộ MISA chạy nền và Firestore `onSnapshot` cập nhật giao diện realtime.
+
+## Mô hình dữ liệu đề xuất
+
+| Collection | Vai trò |
+|---|---|
+| `meinvoice_accounts` | Credential của pháp nhân/tài khoản MISA, mã hóa toàn bộ secret |
+| `meinvoice_store_configs` | Liên kết cửa hàng với account, mẫu, ký hiệu, `SignType`, seller shop và quy tắc thuế |
+| `invoice_source_orders` | Snapshot đơn hàng đã chuẩn hóa từ HKAPI |
+| `invoice_documents` | Bản nháp và hóa đơn đã phát hành |
+| `invoice_issue_jobs` | Một lần người dùng bấm phát hành |
+| `invoice_issue_jobs/{id}/items` | Kết quả từng hóa đơn trong job |
+| `invoice_sync_cursors` | Watermark phân trang/đối soát MISA |
+| `audit_logs` | Toàn bộ lịch sử theo quy định hiện hữu |
+
+Các trường bắt buộc xuyên suốt:
+
+- `warehouse_id`.
+- `source_order_id`, `source_payload_hash`.
+- `action_time`, `sync_time`.
+- `created_by`, `reviewed_by`, `issued_by`.
+- `is_deleted`.
+- `revision` để optimistic concurrency.
+- `calculation_version`.
+- `ref_id`, `transaction_id`, `inv_series`, `inv_no`.
+- `misa_status`, `send_tax_status`, `error_code`.
+- Snapshot dữ liệu được gửi MISA, nhưng không lưu token hoặc secret vào audit.
+
+`RefID` nên được sinh quyết định bằng UUID v5 từ:
+
+```text
+legal_entity_id + warehouse_id + external_order_id + invoice_kind
+```
+
+Retry cùng một đơn sẽ luôn dùng lại `RefID`; hệ thống phải tra cứu trạng thái cũ trước khi phát hành lại.
+
+## Công thức và kiểm tra dữ liệu
+
+Không cho phép người dùng nhập trực tiếp các tổng tiền. Người dùng chỉ chỉnh các đầu vào hợp lệ; hệ thống tự tính lại:
+
+```text
+AmountOC                 = Quantity × UnitPrice
+DiscountAmountOC         = AmountOC × DiscountRate
+AmountWithoutVATOC       = AmountOC − DiscountAmountOC
+VATAmountOC              = AmountWithoutVATOC × VATRate
+TotalAmountOC            = TotalAmountWithoutVATOC + TotalVATAmountOC
+```
+
+Phải round từng dòng theo `OptionUserDefined`, sau đó mới cộng tổng.
+
+Màn hình kiểm tra cần đối chiếu chính xác các trường meInvoice:
+
+- `TotalSaleAmountOC`.
+- `TotalDiscountAmountOC`.
+- `TotalAmountWithoutVATOC`.
+- `TotalVATAmountOC`.
+- `TotalAmountOC`.
+- `OriginalInvoiceDetail`.
+- `TaxRateInfo`.
+
+Nếu HKAPI chỉ có `sysMoney`, `discountMoney`, `realMoney` mà không có thuế suất hoặc không xác định giá đã gồm VAT, đơn phải chuyển sang `NEEDS_TAX_CONFIGURATION`, tuyệt đối không tự đoán.
+
+## Hàng đợi và nút phát hành
+
+Khi người dùng bấm:
+
+1. Backend kiểm tra RBAC cho từng `warehouse_id`.
+2. Kiểm tra `expected_revision` để bảo đảm dữ liệu chưa thay đổi sau khi người dùng xem.
+3. Kiểm tra cấu hình MISA, template, series và tổng tiền.
+4. Trong một Firestore transaction:
+   - Khóa các draft hợp lệ.
+   - Chuyển sang `QUEUED`.
+   - Tạo job và job items.
+   - Ghi audit log.
+5. Worker nhóm theo `meinvoice_account_id + inv_series`.
+6. Mỗi nhóm xử lý tuần tự; tối đa 30 hóa đơn/request.
+7. Lưu kết quả từng hóa đơn ngay khi MISA phản hồi.
+8. Poll status và cập nhật realtime.
+9. Nếu request ban đầu mất kết nối, tra cứu bằng `RefID`/`TransactionID` trước khi retry.
+
+Các series khác nhau có thể chạy song song; cùng một series phải tuần tự kể cả khi hai cửa hàng dùng chung series.
+
+## RBAC và quy tắc SOD
+
+Bổ sung permission vào [permissionRegistry.ts](F:/Github/joywrold/bduck-system/packages/shared-types/src/permissionRegistry.ts):
+
+- `invoices.read`
+- `invoices.prepare`
+- `invoices.review`
+- `invoices.issue`
+- `invoices.retry`
+- `invoices.download`
+- `invoices.reconcile`
+- `invoices.config`
+
+Backend phải gọi `authorization.assert(permission, warehouseId)` trên tài nguyên cụ thể. Không chỉ sử dụng `requireAnyScopedPermission` ở cấp route.
+
+Để tuân thủ self-approval:
+
+- Draft không bị chỉnh số liệu: creator là service account nhập từ HKAPI; người dùng có thể review và phát hành một lần.
+- Nếu người dùng thay đổi thuế suất, dòng tiền hoặc dữ liệu tài chính: draft chuyển sang `NEEDS_SECOND_REVIEW`; người chỉnh không được là người duyệt/phát hành.
+- Thao tác phát hành nên yêu cầu re-authentication/2FA đối với quyền `invoices.issue`.
+
+## Cấu hình theo nhiều cửa hàng
+
+Không nên chỉ thêm credential MISA trực tiếp vào cấu hình OpenAPI hiện tại. Nên có:
+
+- `MeInvoice Account`: pháp nhân, MST, username/password, ClientID/ClientSecret, sandbox/production.
+- `Store Binding`: cửa hàng nào dùng account nào, mẫu số, ký hiệu, `SignType`, `SellerShopCode`, `SellerShopName`, quy tắc thuế và mapping phương thức thanh toán.
+
+Cấu hình phải:
+
+- Mã hóa AES-256-GCM như [openApiConfigService.ts](F:/Github/joywrold/bduck-system/apps/be-wms/src/services/openApiConfigService.ts).
+- Không trả secret về frontend.
+- Base URL production/sandbox phải thuộc allowlist HTTPS.
+- Bắt buộc test token và tải thành công danh sách template trước khi bật.
+- Tự kiểm tra lại mẫu/ký hiệu khi sang năm.
+
+## API nội bộ dự kiến
+
+```text
+GET    /api/invoices/orders
+GET    /api/invoices/orders/:id
+PUT    /api/invoices/drafts/:id
+POST   /api/invoices/drafts/:id/preview
+POST   /api/invoices/issues
+GET    /api/invoices/jobs/:id
+POST   /api/invoices/jobs/:id/retry
+GET    /api/invoices
+GET    /api/invoices/:id/view
+GET    /api/invoices/:id/download
+POST   /api/invoices/reconcile
+GET    /api/meinvoice/accounts
+PUT    /api/meinvoice/store-configs/:warehouseId
+POST   /api/meinvoice/store-configs/:warehouseId/test
+```
+
+`reconcile` là endpoint nội bộ cho scheduler/worker; giao diện không cung cấp nút đồng bộ thủ công.
+
+## Kế hoạch triển khai
+
+### Giai đoạn 0 — Chốt nghiệp vụ và contract, 2–3 ngày
+
+- [ ] Thu thập payload HKAPI thật cho đơn hoàn tất, giảm giá, hoàn tiền và nhiều thuế suất.
+- [ ] Xác nhận môi trường sandbox MISA.
+- [ ] Chốt một đơn hàng tương ứng một hóa đơn hay cho phép gộp.
+- [ ] Chốt giá HKAPI đã gồm VAT hay chưa.
+- [ ] Chốt loại hóa đơn và `SignType`.
+
+### Giai đoạn 1 — Domain và cấu hình, 4–5 ngày
+
+- [ ] Bổ sung shared types/enums cho hóa đơn.
+- [ ] Bổ sung permission registry.
+- [ ] Tạo account và store binding.
+- [ ] Mã hóa credential.
+- [ ] Thêm Firestore rules/indexes và audit.
+- [ ] Viết `MeInvoiceClient` cho token/templates.
+
+### Giai đoạn 2 — Chuẩn hóa đơn hàng và tính thuế, 5–7 ngày
+
+- [ ] Xây `OrderSourceAdapter`.
+- [ ] Snapshot đơn hàng và payload hash.
+- [ ] Mapping SKU/category → VAT/unit/item code.
+- [ ] Calculation engine và rounding.
+- [ ] Validation/preflight.
+- [ ] Unit test bằng fixture HKAPI.
+
+### Giai đoạn 3 — Giao diện review, 5–7 ngày
+
+- [ ] Route `/invoice-management`.
+- [ ] Multi-store filter.
+- [ ] Bảng/card đơn hàng.
+- [ ] Detail drawer.
+- [ ] Preview MISA.
+- [ ] Skeleton, empty/error states.
+- [ ] i18n Việt/Trung.
+- [ ] `gooeyToast.promise`, retry và chống click đúp.
+
+### Giai đoạn 4 — Phát hành một nút, 5–7 ngày
+
+- [ ] Issue job và Firestore transaction.
+- [ ] Queue tuần tự theo account + series.
+- [ ] Chunk tối đa 30 hóa đơn.
+- [ ] Idempotency bằng `RefID`.
+- [ ] Publish/status polling.
+- [ ] Realtime job progress.
+- [ ] Retry classifier.
+
+### Giai đoạn 5 — Quản lý và đối soát, 4–6 ngày
+
+- [ ] Đồng bộ `/invoice/paging`.
+- [ ] Ghép hóa đơn MISA với đơn HKAPI.
+- [ ] Xem và tải PDF/XML.
+- [ ] Lỗi/chưa khớp.
+- [ ] Backfill hóa đơn lịch sử.
+- [ ] Báo cáo đơn đã/chưa xuất theo cửa hàng.
+
+### Giai đoạn 6 — Hardening và rollout, 4–5 ngày
+
+- [ ] Test cross-store data isolation.
+- [ ] Test hai cửa hàng dùng chung series.
+- [ ] Test double-click và request timeout.
+- [ ] Test token hết hạn và MISA trả lỗi.
+- [ ] Test Firestore rules/RBAC/SOD.
+- [ ] Chạy shadow mode: chỉ tính toán, chưa phát hành.
+- [ ] Pilot một cửa hàng, sau đó mở dần.
+
+Ước lượng: khoảng 24–33 engineering days sau khi contract HKAPI và nghiệp vụ thuế được chốt.
+
+## Các điểm phải xác nhận trước khi bắt đầu code
+
+1. Một đơn hàng luôn tạo một hóa đơn, hay cần gộp nhiều đơn thành một hóa đơn tổng hợp?
+2. Giá từ HKAPI là giá đã gồm VAT hay chưa gồm VAT? Thuế suất lấy từ HKAPI, SKU master hay cấu hình theo danh mục?
+3. Các cửa hàng dùng chung một mã số thuế/tài khoản/ký hiệu MISA hay mỗi cửa hàng có cấu hình riêng?
+4. Hệ thống dùng `SignType = 2` HSM hay `SignType = 5` hóa đơn máy tính tiền?
+5. Ngày hóa đơn lấy theo ngày thanh toán, ngày người dùng xác nhận hay ngày MISA phát hành?
+6. Có cần tự động hóa hóa đơn điều chỉnh/thay thế cho đơn hoàn/hủy ngay trong phiên bản đầu không?
+7. Cần backfill hóa đơn và đơn hàng từ ngày nào?
+8. Người mua không cung cấp thông tin xuất hóa đơn sẽ dùng quy tắc buyer mặc định nào?
+
+Chưa nên triển khai phần phát hành cho đến khi tám điểm này được chốt, đặc biệt là cách xác định VAT và quan hệ giữa cửa hàng với ký hiệu MISA.

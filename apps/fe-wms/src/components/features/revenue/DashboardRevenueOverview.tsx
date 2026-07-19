@@ -94,11 +94,12 @@ export default function DashboardRevenueOverview({
         () => getDefaultRevenueComparison(filter),
         [filter],
     );
-    const { data, loading, syncing, error } = useRevenueDashboard(filter, {
-        warehouseId,
-        enabled: Boolean(warehouseId),
-        keepPreviousData: true,
-    });
+    const { data, loading, syncing, error, secondsUntilRefresh } =
+        useRevenueDashboard(filter, {
+            warehouseId,
+            enabled: Boolean(warehouseId),
+            keepPreviousData: true,
+        });
     const {
         data: onlineData,
         loading: onlineLoading,
@@ -142,6 +143,18 @@ export default function DashboardRevenueOverview({
                         }}
                         onClick={() => setDetail({ type: "stat", key: "totalRevenue", title: d.stats.totalRevenue })}
                     />
+
+                    <p
+                        role={syncing || secondsUntilRefresh === 0 ? "status" : undefined}
+                        className="px-1 text-center text-xxs font-medium tabular-nums text-[var(--color-text-muted)]"
+                    >
+                        {syncing || secondsUntilRefresh === 0
+                            ? d.syncing
+                            : d.refreshCountdown.replace(
+                                "{seconds}",
+                                String(secondsUntilRefresh),
+                            )}
+                    </p>
 
                     <RevenueDateFilter
                         filter={filter}

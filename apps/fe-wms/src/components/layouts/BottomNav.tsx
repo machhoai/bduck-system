@@ -54,6 +54,7 @@ export default function BottomNav() {
                         <Link
                             key={item.id}
                             href={item.href}
+                            onClick={closeDrawer}
                             className={`
                 flex flex-col items-center justify-center gap-0.5
                 flex-1 h-full relative
