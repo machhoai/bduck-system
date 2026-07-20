@@ -1,4 +1,8 @@
-import { AuditAction, type ProcessDocument } from "@bduck/shared-types";
+import {
+  AuditAction,
+  type ProcessDocument,
+  type ProcessDocumentType,
+} from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import { processDocumentRepository } from "../repositories/processDocumentRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
@@ -6,6 +10,7 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 export interface CreateProcessDocumentInput {
   title: string;
   description?: string | null;
+  process_type: ProcessDocumentType;
   file_name: string;
   file_url: string;
   file_size: number;
@@ -39,6 +44,7 @@ export const createProcessDocument = async (
     id,
     title: input.title,
     description: input.description || null,
+    process_type: input.process_type,
     file_name: input.file_name,
     file_url: input.file_url,
     file_size: input.file_size,

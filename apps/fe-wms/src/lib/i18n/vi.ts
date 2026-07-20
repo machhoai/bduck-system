@@ -28,6 +28,7 @@ const vi = {
         notification: "Thông báo",
         expenses: "Báo cáo chi phí",
         revenueManagement: "Quản lý doanh thu",
+        invoiceManagement: "Quản lý hóa đơn",
         attendance: "Chấm công",
         employeeAdmin: "Hành chính",
         expenseDashboard: "Báo cáo",
@@ -2262,6 +2263,10 @@ const vi = {
         saveErrorDesc: "Vui lòng kiểm tra quyền và thử lại.",
         save: "Lưu phạm vi",
         preview: "Xem trước phạm vi",
+        draftPreviewHint:
+            "Cập nhật tức thời theo nơi làm việc, role và phân quyền trực tiếp đang chọn; chưa ghi vào hệ thống.",
+        draftAccessUnavailable:
+            "Các lựa chọn hiện tại chưa tạo ra phạm vi quyền nào.",
         sourceInherited: "Kế thừa từ văn phòng",
         sourceDirect: "Gán trực tiếp",
         sourceLegacy: "Gán trực tiếp cũ",

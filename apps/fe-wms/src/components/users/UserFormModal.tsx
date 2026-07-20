@@ -241,7 +241,16 @@ export function UserFormModal({
             </Field>
           </div>
 
-          <EffectiveAccessPreview userId={user?.id} facilities={warehouses} />
+          <EffectiveAccessPreview
+            key={formData.workplace_facility_id}
+            userId={user?.id}
+            facilities={warehouses}
+            draft={{
+              workplaceFacilityId: formData.workplace_facility_id,
+              assignments,
+              roles,
+            }}
+          />
 
           <details className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white p-4">
             <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">

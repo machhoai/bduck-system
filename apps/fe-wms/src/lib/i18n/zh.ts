@@ -30,6 +30,7 @@ const zh: Dictionary = {
     notification: "通知",
     expenses: "费用报告",
     revenueManagement: "营收管理",
+    invoiceManagement: "发票管理",
     attendance: "考勤",
     employeeAdmin: "员工行政",
     expenseDashboard: "报告",
@@ -2173,6 +2174,9 @@ const zh: Dictionary = {
     saveErrorDesc: "请检查权限后重试。",
     save: "保存范围",
     preview: "范围预览",
+    draftPreviewHint:
+      "根据当前选择的工作地点、角色和直接授权即时更新，尚未保存到系统。",
+    draftAccessUnavailable: "当前选择尚未产生任何有效权限范围。",
     sourceInherited: "办公室继承",
     sourceDirect: "直接授权",
     sourceLegacy: "旧直接授权",

@@ -24,6 +24,7 @@ export function toAssignmentDraft(
     valid_from: assignment.valid_from,
     valid_until: assignment.valid_until || "",
     is_active: assignment.is_active,
+    scope_origin: assignment.scope_origin ?? "LEGACY_DIRECT",
   };
 }
 

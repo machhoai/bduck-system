@@ -3,7 +3,11 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import type React from "react";
-import type { Role, Warehouse } from "@bduck/shared-types";
+import type {
+  Role,
+  UserWarehouseRoleScopeOrigin,
+  Warehouse,
+} from "@bduck/shared-types";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 
@@ -14,6 +18,7 @@ export type AssignmentDraft = {
   valid_from: string;
   valid_until: string;
   is_active: boolean;
+  scope_origin?: UserWarehouseRoleScopeOrigin;
 };
 
 interface UserAssignmentEditorProps {
@@ -32,6 +37,7 @@ export const createEmptyAssignment = (facilityId = ""): AssignmentDraft => ({
   valid_from: new Date().toISOString().slice(0, 10),
   valid_until: "",
   is_active: true,
+  scope_origin: "DIRECT",
 });
 
 export function UserAssignmentEditor({

@@ -14,6 +14,7 @@ import {
   createEmptyAssignment,
   type AssignmentDraft,
 } from "@/components/users/UserAssignmentEditor";
+import { toAssignmentDraft } from "@/components/users/userFormSupport";
 import type { UserWithAssignments } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
 import { EmployeeAccountSection } from "./EmployeeAccountSection";
@@ -78,6 +79,13 @@ export function EmployeeProfileFormModal({
       email: current.email || formData.email,
     }));
   }, [createAccount, formData.email]);
+
+  const linkedUser = users.find(
+    (candidate) => candidate.id === (formData.user_id || profile?.user_id),
+  );
+  const previewAssignments = createAccount
+    ? assignments
+    : linkedUser?.assignments.map(toAssignmentDraft);
 
   if (!isOpen) return null;
 
@@ -163,8 +171,18 @@ export function EmployeeProfileFormModal({
               onChange={setFormData}
             />
             <EffectiveAccessPreview
+              key={formData.workplace_warehouse_id}
               userId={formData.user_id || profile?.user_id}
               facilities={warehouses}
+              draft={
+                previewAssignments
+                  ? {
+                      workplaceFacilityId: formData.workplace_warehouse_id,
+                      assignments: previewAssignments,
+                      roles,
+                    }
+                  : undefined
+              }
             />
             {!isEdit && (
               <EmployeeAccountSection
