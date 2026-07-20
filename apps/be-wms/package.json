@@ -17,6 +17,12 @@
     "test:identity-security": "tsx --test src/services/roleAssignmentValidity.test.ts src/services/rolePermissionUtils.test.ts src/services/authAccessBootstrapService.test.ts src/services/authSessionFlow.test.ts src/api/middlewares/authIdentityMiddleware.test.ts src/api/middlewares/localIntegrationBypass.test.ts src/api/middlewares/rateLimitMiddleware.test.ts src/utils/secureSecret.test.ts src/utils/authSessionCookie.test.ts",
     "test:scoped-query": "tsx --test src/repositories/facilityScopedQuery.test.ts",
     "test:security-foundation": "pnpm run test:facility-access-planner && pnpm run test:authorization && pnpm run test:identity-security && pnpm run test:scoped-query",
+    "test:meinvoice-foundation": "tsx --test src/services/meInvoiceFoundation.test.ts src/services/invoiceOrderSyncService.test.ts",
+    "test:meinvoice-phase2": "tsx --test src/services/invoicePreparationService.test.ts",
+    "test:meinvoice-phase3": "tsx --test src/services/invoicePreviewService.test.ts src/services/invoiceDocumentService.test.ts",
+    "test:meinvoice-phase4": "tsx --test src/services/invoiceIssueService.test.ts src/repositories/invoiceIssueRepository.emulator.test.ts",
+    "test:meinvoice-phase5": "tsx --test src/services/invoiceReconciliationService.test.ts",
+    "test:meinvoice-contract": "tsx --test --env-file=../../.env.local src/services/meInvoiceClient.contract.test.ts",
     "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts",
     "rebuild:user-access": "tsx --env-file=../../.env.local src/scripts/rebuildUserAccess.ts"
   },

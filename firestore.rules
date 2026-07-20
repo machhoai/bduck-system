@@ -108,6 +108,18 @@ service cloud.firestore {
       allow read: if isSystemAdmin();
       allow write: if false;
     }
+    match /meinvoice_accounts/{docId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+    }
+    match /meinvoice_tokens/{docId} {
+      allow read, write: if false;
+    }
+    match /meinvoice_store_configs/{docId} {
+      allow read: if isSystemAdmin()
+        || hasResourceFacility('warehouse_id', 'invoices.config');
+      allow write: if false;
+    }
 
     // The current user may observe only their own materialized access pointer/snapshot.
     match /user_access/{userId} {
@@ -328,6 +340,56 @@ service cloud.firestore {
         allow read: if hasFacilityPermission(dashboard().warehouse_id, 'revenue.read');
         allow write: if false;
       }
+    }
+
+    match /invoice_source_orders/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+      allow write: if false;
+    }
+    match /invoice_source_order_payloads/{docId} {
+      allow read, write: if false;
+      match /revisions/{revisionId} {
+        allow read, write: if false;
+      }
+    }
+    match /invoice_order_sync_runs/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+      allow write: if false;
+    }
+    match /invoice_documents/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+      allow write: if false;
+    }
+    match /invoice_issue_jobs/{jobId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+      match /items/{itemId} {
+        allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+        allow write: if false;
+      }
+    }
+    match /invoice_queue_lanes/{docId} {
+      allow read, write: if false;
+    }
+    match /invoice_issue_payloads/{docId} {
+      allow read, write: if false;
+    }
+    match /invoice_ref_registry/{docId} {
+      allow read, write: if false;
+    }
+    match /invoice_sync_cursors/{docId} {
+      allow read, write: if false;
+    }
+    match /invoice_reconciliation_runs/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+      allow write: if false;
+    }
+    match /invoice_reconciliation_cases/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
+      allow write: if false;
+    }
+    match /invoice_reconciliation_snapshots/{docId} {
+      allow read, write: if false;
     }
 
     match /external_scan_queue/{docId} {

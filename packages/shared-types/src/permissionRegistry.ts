@@ -151,22 +151,28 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 15,
   },
   {
+    id: "invoices",
+    label: { vi: "Quản lý hóa đơn", zh: "发票管理" },
+    icon: "ReceiptText",
+    order: 16,
+  },
+  {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
-    order: 16,
+    order: 17,
   },
   {
     id: "attendance",
     label: { vi: "Chấm công", zh: "考勤" },
     icon: "CalendarCheck",
-    order: 17,
+    order: 18,
   },
   {
     id: "external",
     label: { vi: "Tích hợp ngoài", zh: "外部集成" },
     icon: "ScanBarcode",
-    order: 18,
+    order: 19,
   },
 ];
 
@@ -867,6 +873,80 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Đồng bộ dữ liệu doanh thu cho cửa hàng trong phạm vi được phép.",
       zh: "为授权范围内的门店同步营收数据。",
+    },
+  },
+
+  // ── Invoices ──
+  {
+    key: "invoices.read",
+    group: "invoices",
+    label: { vi: "Xem hóa đơn", zh: "查看发票" },
+    description: {
+      vi: "Xem bản nháp, hóa đơn đã phát hành và tiến độ xử lý trong phạm vi cửa hàng được cấp quyền.",
+      zh: "查看授权门店范围内的发票草稿、已开具发票和处理进度。",
+    },
+  },
+  {
+    key: "invoices.prepare",
+    group: "invoices",
+    label: { vi: "Chuẩn bị hóa đơn", zh: "准备发票" },
+    description: {
+      vi: "Chuẩn bị và cập nhật dữ liệu đầu vào của bản nháp hóa đơn.",
+      zh: "准备并更新发票草稿的输入数据。",
+    },
+  },
+  {
+    key: "invoices.review",
+    group: "invoices",
+    label: { vi: "Duyệt hóa đơn", zh: "审核发票" },
+    description: {
+      vi: "Kiểm tra và duyệt bản nháp hóa đơn, gồm duyệt lần hai khi số liệu tài chính bị sửa.",
+      zh: "审核发票草稿，包括财务数据修改后的二次审核。",
+    },
+  },
+  {
+    key: "invoices.issue",
+    group: "invoices",
+    label: { vi: "Phát hành hóa đơn", zh: "开具发票" },
+    description: {
+      vi: "Tạo yêu cầu phát hành hóa đơn điện tử qua MISA meInvoice.",
+      zh: "通过 MISA meInvoice 创建电子发票开具请求。",
+    },
+  },
+  {
+    key: "invoices.retry",
+    group: "invoices",
+    label: { vi: "Thử lại hóa đơn", zh: "重试发票" },
+    description: {
+      vi: "Thử lại hóa đơn lỗi đủ điều kiện sau khi tra cứu trạng thái MISA.",
+      zh: "查询 MISA 状态后重试符合条件的失败发票。",
+    },
+  },
+  {
+    key: "invoices.download",
+    group: "invoices",
+    label: { vi: "Tải hóa đơn", zh: "下载发票" },
+    description: {
+      vi: "Xem và tải tệp PDF/XML của hóa đơn trong phạm vi được cấp quyền.",
+      zh: "查看并下载授权范围内发票的 PDF/XML 文件。",
+    },
+  },
+  {
+    key: "invoices.reconcile",
+    group: "invoices",
+    label: { vi: "Đối soát hóa đơn", zh: "核对发票" },
+    description: {
+      vi: "Xử lý các trường hợp trạng thái nội bộ và MISA chưa khớp.",
+      zh: "处理内部状态与 MISA 状态不一致的情况。",
+    },
+  },
+  {
+    key: "invoices.config",
+    group: "invoices",
+    label: { vi: "Cấu hình hóa đơn", zh: "配置发票" },
+    description: {
+      vi: "Cấu hình tài khoản, ký hiệu và quy tắc hóa đơn theo cửa hàng.",
+      zh: "按门店配置发票账户、发票系列和业务规则。",
     },
   },
 

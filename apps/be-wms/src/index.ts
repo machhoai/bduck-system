@@ -35,6 +35,8 @@ import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
 import fileTemplateRoutes from "./api/routes/fileTemplateRoutes.js";
 import fileTemplateBundleRoutes from "./api/routes/fileTemplateBundleRoutes.js";
 import processDocumentRoutes from "./api/routes/processDocumentRoutes.js";
+import meInvoiceConfigRoutes from "./api/routes/meInvoiceConfigRoutes.js";
+import invoiceOrderRoutes from "./api/routes/invoiceOrderRoutes.js";
 import {
   apiRateLimiter,
   authRateLimiter,
@@ -99,6 +101,8 @@ app.use("/api/employee-profiles", employeeProfileRoutes);
 app.use("/api/file-templates", fileTemplateRoutes);
 app.use("/api/file-template-bundles", fileTemplateBundleRoutes);
 app.use("/api/process-documents", processDocumentRoutes);
+app.use("/api/meinvoice", meInvoiceConfigRoutes);
+app.use("/api/invoices", invoiceOrderRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({

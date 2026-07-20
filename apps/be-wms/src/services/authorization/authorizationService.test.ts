@@ -29,6 +29,7 @@ const context = createAccessContext({
         "transfers.read": true,
         "transfers.write": true,
         "revenue.read": true,
+        "invoices.read": true,
       },
       sources: [directSource("source")],
     },
@@ -39,6 +40,7 @@ const context = createAccessContext({
         "transfers.read": true,
         "transfers.receive": true,
         "revenue.read": true,
+        "invoices.read": true,
       },
       sources: [directSource("destination")],
     },
@@ -69,6 +71,7 @@ const context = createAccessContext({
         "vouchers.write": true,
         "external_scan.view": true,
         "external_scan.manage_queue": true,
+        "invoices.read": true,
       },
       sources: [directSource("office")],
     },
@@ -82,6 +85,13 @@ describe("AuthorizationService", () => {
     assert.equal(service.can("revenue.read", "source"), false);
     assert.equal(service.can("revenue.read", "destination"), true);
     assert.deepEqual(service.facilityIdsFor("revenue.read"), ["destination"]);
+  });
+
+  it("limits invoice actions to STORE facilities", () => {
+    assert.equal(service.can("invoices.read", "source"), false);
+    assert.equal(service.can("invoices.read", "destination"), true);
+    assert.equal(service.can("invoices.read", "office"), false);
+    assert.deepEqual(service.facilityIdsFor("invoices.read"), ["destination"]);
   });
 
   it("enforces the transfer source/destination policy table", () => {

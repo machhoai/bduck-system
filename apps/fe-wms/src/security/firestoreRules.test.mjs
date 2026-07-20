@@ -219,6 +219,86 @@ async function seedDocuments() {
         "revenue_sync/store-d_2026-07",
         { warehouse_id: "store-d", period: "2026-07" },
       ],
+      [
+        "meinvoice_accounts/account-1",
+        { id: "account-1", display_name: "MISA", is_deleted: false },
+      ],
+      [
+        "meinvoice_tokens/account-1",
+        { account_id: "account-1", token: { ciphertext: "encrypted" } },
+      ],
+      [
+        "meinvoice_store_configs/store-d",
+        { warehouse_id: "store-d", meinvoice_account_id: "account-1" },
+      ],
+      [
+        "invoice_documents/invoice-d",
+        { warehouse_id: "store-d", status: "NEEDS_REVIEW", is_deleted: false },
+      ],
+      [
+        "invoice_documents/invoice-c",
+        {
+          warehouse_id: "warehouse-c",
+          status: "NEEDS_REVIEW",
+          is_deleted: false,
+        },
+      ],
+      [
+        "invoice_documents/invoice-d/revisions/1",
+        {
+          revision: 1,
+          status: "NEEDS_REVIEW",
+          buyer: { full_name: "private" },
+        },
+      ],
+      [
+        "invoice_source_orders/source-order-d",
+        {
+          warehouse_id: "store-d",
+          business_date: "2026-07-19",
+          is_deleted: false,
+        },
+      ],
+      [
+        "invoice_source_order_payloads/source-order-d",
+        { warehouse_id: "store-d", latest_payload: { phone: "private" } },
+      ],
+      [
+        "invoice_source_order_payloads/source-order-d/revisions/hash-1",
+        { warehouse_id: "store-d", payload: { phone: "private" } },
+      ],
+      [
+        "invoice_order_sync_runs/run-d",
+        { warehouse_id: "store-d", status: "COMPLETED" },
+      ],
+      [
+        "invoice_issue_jobs/job-1",
+        { warehouse_ids: ["store-d"], status: "QUEUED" },
+      ],
+      [
+        "invoice_issue_jobs/job-1/items/item-d",
+        { warehouse_id: "store-d", status: "QUEUED" },
+      ],
+      [
+        "invoice_issue_payloads/job-1__item-d",
+        { warehouse_id: "store-d", payload: { buyer: "private" } },
+      ],
+      [
+        "invoice_ref_registry/ref-1",
+        { warehouse_id: "store-d", invoice_document_id: "item-d" },
+      ],
+      [
+        "invoice_reconciliation_runs/reconcile-d",
+        { warehouse_id: "store-d", business_date: "2026-07-19", status: "COMPLETED" },
+      ],
+      [
+        "invoice_reconciliation_cases/case-d",
+        { warehouse_id: "store-d", business_date: "2026-07-19", status: "OPEN" },
+      ],
+      [
+        "invoice_reconciliation_snapshots/snapshot-d",
+        { warehouse_id: "store-d", transaction_id: "private" },
+      ],
       ["counters/internal-counter", { value: 1 }],
       [
         "in_app_notifications/notification-a",
@@ -265,6 +345,8 @@ beforeEach(async () => {
       "transfers.read": true,
       "warehouses.read": true,
       "revenue.read": true,
+      "invoices.read": true,
+      "invoices.config": true,
     },
   });
   await seedAccess("system-admin", {}, true);
@@ -518,6 +600,71 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(
       getDoc(doc(storeUser, "revenue_sync", "store-d_2026-07")),
     );
+  });
+
+  it("protects meInvoice credentials and scopes invoice projections by store", async () => {
+    const warehouseUser = environment
+      .authenticatedContext("user-a")
+      .firestore();
+    const storeUser = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_documents", "invoice-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_source_orders", "source-order-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_order_sync_runs", "run-d")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_source_order_payloads", "source-order-d")),
+    );
+    await assertFails(
+      getDoc(
+        doc(
+          storeUser,
+          "invoice_source_order_payloads/source-order-d/revisions",
+          "hash-1",
+        ),
+      ),
+    );
+    await assertFails(getDoc(doc(storeUser, "invoice_documents", "invoice-c")));
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_documents/invoice-d/revisions", "1")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "invoice_documents/invoice-d/revisions", "1")),
+    );
+    await assertFails(
+      getDoc(doc(warehouseUser, "invoice_documents", "invoice-c")),
+    );
+    await assertSucceeds(
+      getDoc(doc(storeUser, "meinvoice_store_configs", "store-d")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "meinvoice_accounts", "account-1")),
+    );
+    await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
+    await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
+    await assertFails(getDoc(doc(storeUser, "invoice_issue_jobs", "job-1")));
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_issue_jobs/job-1/items", "item-d")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_issue_payloads", "job-1__item-d")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "invoice_issue_payloads", "job-1__item-d")),
+    );
+    await assertFails(getDoc(doc(storeUser, "invoice_ref_registry", "ref-1")));
+    await assertFails(getDoc(doc(admin, "invoice_ref_registry", "ref-1")));
+    await assertSucceeds(getDoc(doc(storeUser, "invoice_reconciliation_runs", "reconcile-d")));
+    await assertSucceeds(getDoc(doc(storeUser, "invoice_reconciliation_cases", "case-d")));
+    await assertFails(getDoc(doc(warehouseUser, "invoice_reconciliation_cases", "case-d")));
+    await assertFails(getDoc(doc(storeUser, "invoice_reconciliation_snapshots", "snapshot-d")));
+    await assertFails(getDoc(doc(admin, "invoice_reconciliation_snapshots", "snapshot-d")));
   });
 
   it("keeps access snapshots owner-private and internal collections backend-only", async () => {

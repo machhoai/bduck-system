@@ -22,3 +22,4 @@ export * from './reports.js';
 export * from './attendance.js';
 export * from './employeeProfiles.js';
 export * from './fileLibrary.js';
+export * from './invoices.js';

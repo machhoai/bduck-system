@@ -9,6 +9,9 @@ const isActionAllowedForFacilityType = (
   if (action.startsWith("revenue.")) {
     return facilityType === WarehouseType.STORE;
   }
+  if (action.startsWith("invoices.")) {
+    return facilityType === WarehouseType.STORE;
+  }
   if (action.startsWith("transfers.")) {
     return (
       facilityType === WarehouseType.MAIN ||

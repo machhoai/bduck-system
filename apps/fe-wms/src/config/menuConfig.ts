@@ -27,6 +27,7 @@ import {
   LucideIcon,
   FolderSymlink,
   ScanBarcode,
+  ReceiptText,
 } from "lucide-react";
 import { PERMISSION_REGISTRY } from "@bduck/shared-types";
 
@@ -90,6 +91,13 @@ export const menuItems: MenuItem[] = [
     icon: ChartNoAxesCombined,
     href: "/revenue-management",
     permission: "revenue.read",
+  },
+  {
+    id: "invoiceManagement",
+    labelKey: "invoiceManagement",
+    icon: ReceiptText,
+    href: "/invoice-management",
+    permissionsAny: ["invoices.read", "invoices.prepare", "invoices.reconcile"],
   },
   {
     id: "employeeAdmin",
