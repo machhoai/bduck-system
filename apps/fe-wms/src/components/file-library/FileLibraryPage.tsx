@@ -89,7 +89,6 @@ function MetricCard({
         </div>
     );
 }
-
 function sortTemplates(
     templates: FileTemplate[],
     filters: Pick<FileLibraryFilters, "sortBy" | "sortDirection">,
@@ -473,7 +472,12 @@ export default function FileLibraryPage() {
                 <FileTemplateBundleTab
                     bundles={bundles}
                     templates={templates}
-                    loading={bundlesLoading || templatesLoading}
+                    processDocuments={processDocuments}
+                    loading={
+                        bundlesLoading ||
+                        templatesLoading ||
+                        (canViewProcesses && processDocumentsLoading)
+                    }
                     canManage={canManageTemplateBundles}
                     lang={lang}
                     onCreate={createBundle}

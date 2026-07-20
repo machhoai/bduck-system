@@ -12,6 +12,7 @@ export type CreateProcessDocumentPayload = Pick<
   ProcessDocument,
   | "title"
   | "description"
+  | "process_type"
   | "file_name"
   | "file_url"
   | "file_size"

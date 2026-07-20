@@ -23,7 +23,13 @@ class ProcessDocumentRepository extends BaseRepository<ProcessDocument> {
 
   async findActive(): Promise<ProcessDocument[]> {
     const rows = await this.findAll();
-    return rows.sort((a, b) => toMillis(b.created_at) - toMillis(a.created_at));
+    return rows
+      .map((row) => ({
+        ...row,
+        // Documents created before process classification default to General.
+        process_type: row.process_type || "general",
+      }))
+      .sort((a, b) => toMillis(b.created_at) - toMillis(a.created_at));
   }
 }
 

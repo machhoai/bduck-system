@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { PROCESS_DOCUMENT_TYPES } from "@bduck/shared-types";
 import {
   createProcessDocument,
   deleteProcessDocument,
@@ -11,6 +12,7 @@ import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 const createSchema = z.object({
   title: z.string().trim().min(1).max(180),
   description: z.string().trim().max(1000).nullable().optional(),
+  process_type: z.enum(PROCESS_DOCUMENT_TYPES),
   file_name: z
     .string()
     .trim()

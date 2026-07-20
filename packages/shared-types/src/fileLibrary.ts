@@ -12,6 +12,16 @@ export const FILE_TEMPLATE_CATEGORIES = [
 
 export type FileTemplateCategory = (typeof FILE_TEMPLATE_CATEGORIES)[number];
 
+export const PROCESS_DOCUMENT_TYPES = [
+  "operations",
+  "admin",
+  "finance",
+  "delivery",
+  "general",
+] as const;
+
+export type ProcessDocumentType = (typeof PROCESS_DOCUMENT_TYPES)[number];
+
 export interface FileTemplateVersionEntry {
   version: number;
   file_url: string;
@@ -42,6 +52,7 @@ export interface FileTemplateBundle extends SoftDeletable {
   name: string;
   description: string | null;
   template_ids: string[];
+  process_document_ids: string[];
   created_by: string;
 }
 
@@ -50,6 +61,7 @@ export interface ProcessDocument extends SoftDeletable {
   id: string;
   title: string;
   description: string | null;
+  process_type: ProcessDocumentType;
   file_name: string;
   file_url: string;
   file_size: number;

@@ -13,13 +13,18 @@ const fields = {
   name: z.string().trim().min(1).max(180),
   description: z.string().trim().max(1000).nullable().optional(),
   template_ids: z.array(z.string().uuid()).min(1).max(50),
+  process_document_ids: z.array(z.string().uuid()).max(50),
 };
-const createSchema = z.object(fields);
+const createSchema = z.object({
+  ...fields,
+  process_document_ids: fields.process_document_ids.default([]),
+});
 const updateSchema = z
   .object({
     name: fields.name.optional(),
     description: fields.description,
     template_ids: fields.template_ids.optional(),
+    process_document_ids: fields.process_document_ids.optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
 const idSchema = z.object({ id: z.string().uuid() });

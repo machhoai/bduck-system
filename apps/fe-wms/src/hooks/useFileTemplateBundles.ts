@@ -12,6 +12,7 @@ export interface SaveFileTemplateBundlePayload {
   name: string;
   description?: string | null;
   template_ids: string[];
+  process_document_ids: string[];
 }
 
 async function request(path = "", init?: RequestInit) {

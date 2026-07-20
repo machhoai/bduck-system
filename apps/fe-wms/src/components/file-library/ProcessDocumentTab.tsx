@@ -1,15 +1,30 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
-import { Download, Eye, FileText, Trash2, UploadCloud, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import {
+  Download,
+  Eye,
+  FileText,
+  Search,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { ProcessDocument } from "@bduck/shared-types";
+import type { ProcessDocument, ProcessDocumentType } from "@bduck/shared-types";
 import type { CreateProcessDocumentPayload } from "@/hooks/useProcessDocuments";
 import type { Language } from "@/lib/i18n";
 import { formatFileSize, uploadFile, validateFile } from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
-import { toFileLibraryDate } from "@/utils/fileLibrary";
+import {
+  normalizeFileLibrarySearch,
+  toFileLibraryDate,
+} from "@/utils/fileLibrary";
+import {
+  getProcessDocumentTypeLabel,
+  PROCESS_DOCUMENT_TYPE_OPTIONS,
+} from "@/utils/processDocumentTypes";
 
 const PdfViewer = dynamic(
   () =>
@@ -33,6 +48,10 @@ const text = {
     titlePlaceholder: "VD: Quy trình kiểm kê định kỳ",
     description: "Mô tả",
     descriptionPlaceholder: "Mô tả ngắn về phạm vi áp dụng",
+    processType: "Loại quy trình",
+    allTypes: "Tất cả loại quy trình",
+    search: "Tìm theo tên, mô tả, tên tệp hoặc loại quy trình...",
+    noResults: "Không tìm thấy quy trình phù hợp với bộ lọc.",
     choose: "Chọn tệp PDF",
     change: "Đổi tệp",
     remove: "Bỏ tệp",
@@ -58,6 +77,10 @@ const text = {
     titlePlaceholder: "例如：定期盘点流程",
     description: "描述",
     descriptionPlaceholder: "简要说明适用范围",
+    processType: "流程类型",
+    allTypes: "所有流程类型",
+    search: "按名称、描述、文件名或流程类型搜索...",
+    noResults: "未找到符合筛选条件的流程。",
     choose: "选择 PDF 文件",
     change: "更换文件",
     remove: "移除文件",
@@ -90,6 +113,27 @@ export default function ProcessDocumentTab({
 }: Props) {
   const copy = text[lang];
   const [viewing, setViewing] = useState<ProcessDocument | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<ProcessDocumentType | "ALL">(
+    "ALL",
+  );
+  const filteredDocuments = useMemo(() => {
+    const keyword = normalizeFileLibrarySearch(search);
+    return documents.filter((document) => {
+      const processType = document.process_type || "general";
+      if (typeFilter !== "ALL" && processType !== typeFilter) return false;
+      if (!keyword) return true;
+      return normalizeFileLibrarySearch(
+        [
+          document.title,
+          document.description || "",
+          document.file_name,
+          processType,
+          getProcessDocumentTypeLabel(processType, lang),
+        ].join(" "),
+      ).includes(keyword);
+    });
+  }, [documents, lang, search, typeFilter]);
 
   const remove = async (document: ProcessDocument) => {
     if (!window.confirm(copy.deleteConfirm)) return;
@@ -103,7 +147,40 @@ export default function ProcessDocumentTab({
 
   return (
     <div className="grid gap-3">
-      {canUpload && <ProcessUploadPanel copy={copy} onCreate={onCreate} />}
+      {canUpload && (
+        <ProcessUploadPanel copy={copy} lang={lang} onCreate={onCreate} />
+      )}
+      <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-2 sm:grid-cols-[minmax(0,1fr)_220px]">
+        <label className="relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={copy.search}
+            aria-label={copy.search}
+            className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] pl-9 pr-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+          />
+        </label>
+        <select
+          value={typeFilter}
+          onChange={(event) =>
+            setTypeFilter(event.target.value as ProcessDocumentType | "ALL")
+          }
+          aria-label={copy.processType}
+          className="h-10 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+        >
+          <option value="ALL">{copy.allTypes}</option>
+          {PROCESS_DOCUMENT_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>
+              {getProcessDocumentTypeLabel(type, lang)}
+            </option>
+          ))}
+        </select>
+      </div>
       {loading ? (
         <div className="h-52 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-subtle)]" />
       ) : documents.length === 0 ? (
@@ -116,9 +193,13 @@ export default function ProcessDocumentTab({
             {copy.emptyHint}
           </p>
         </div>
+      ) : filteredDocuments.length === 0 ? (
+        <div className="flex min-h-40 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 text-center text-sm text-[var(--color-text-muted)]">
+          {copy.noResults}
+        </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {documents.map((document) => (
+          {filteredDocuments.map((document) => (
             <article
               key={document.id}
               className="flex min-h-44 flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4"
@@ -134,6 +215,9 @@ export default function ProcessDocumentTab({
                   <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
                     {document.file_name}
                   </p>
+                  <span className="mt-2 inline-flex rounded-full bg-[var(--color-brand-primary-muted)] px-2 py-1 text-xxs font-semibold text-[var(--color-brand-primary)]">
+                    {getProcessDocumentTypeLabel(document.process_type, lang)}
+                  </span>
                 </div>
                 {canDelete && (
                   <button
@@ -190,15 +274,19 @@ export default function ProcessDocumentTab({
 
 function ProcessUploadPanel({
   copy,
+  lang,
   onCreate,
 }: {
   copy: (typeof text)["vi"];
+  lang: Language;
   onCreate: (payload: CreateProcessDocumentPayload) => Promise<unknown>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const userId = useUserStore((state) => state.user?.id);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [processType, setProcessType] =
+    useState<ProcessDocumentType>("operations");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -231,6 +319,7 @@ function ProcessUploadPanel({
           await onCreate({
             title: title.trim(),
             description: description.trim() || null,
+            process_type: processType,
             file_name: file.name,
             file_url: url,
             file_size: file.size,
@@ -238,6 +327,7 @@ function ProcessUploadPanel({
           });
           setTitle("");
           setDescription("");
+          setProcessType("operations");
           setFile(null);
           setProgress(0);
         })(),
@@ -253,7 +343,7 @@ function ProcessUploadPanel({
   };
 
   return (
-    <section className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 lg:grid-cols-[1fr_1fr_1.2fr_auto] lg:items-end">
+    <section className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_180px_1.2fr_auto] xl:items-end">
       <label className="grid gap-1 text-xs font-semibold text-[var(--color-text-secondary)]">
         {copy.title}
         <input
@@ -273,6 +363,22 @@ function ProcessUploadPanel({
           placeholder={copy.descriptionPlaceholder}
           className="h-10 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
         />
+      </label>
+      <label className="grid gap-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+        {copy.processType}
+        <select
+          value={processType}
+          onChange={(event) =>
+            setProcessType(event.target.value as ProcessDocumentType)
+          }
+          className="h-10 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+        >
+          {PROCESS_DOCUMENT_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>
+              {getProcessDocumentTypeLabel(type, lang)}
+            </option>
+          ))}
+        </select>
       </label>
       <div className="grid gap-1 text-xs font-semibold text-[var(--color-text-secondary)]">
         <span>{copy.choose}</span>

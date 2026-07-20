@@ -2,12 +2,14 @@ import { AuditAction, type FileTemplateBundle } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import { fileTemplateBundleRepository } from "../repositories/fileTemplateBundleRepository.js";
 import { fileTemplateRepository } from "../repositories/fileTemplateRepository.js";
+import { processDocumentRepository } from "../repositories/processDocumentRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 
 export interface SaveFileTemplateBundleInput {
   name: string;
   description?: string | null;
   template_ids: string[];
+  process_document_ids: string[];
 }
 
 type ServiceError = Error & {
@@ -30,7 +32,10 @@ const getActiveBundle = async (id: string) => {
       "未找到表单模板包。",
     );
   }
-  return bundle;
+  return {
+    ...bundle,
+    process_document_ids: bundle.process_document_ids || [],
+  };
 };
 
 const validateTemplates = async (templateIds: string[]) => {
@@ -48,6 +53,21 @@ const validateTemplates = async (templateIds: string[]) => {
   return uniqueIds;
 };
 
+const validateProcessDocuments = async (documentIds: string[]) => {
+  const uniqueIds = [...new Set(documentIds)];
+  const documents = await Promise.all(
+    uniqueIds.map((id) => processDocumentRepository.findById(id)),
+  );
+  if (documents.some((document) => !document || document.is_deleted)) {
+    throw serviceError(
+      400,
+      "Bộ biểu mẫu chứa quy trình không tồn tại hoặc đã bị xóa.",
+      "模板包包含不存在或已删除的流程文档。",
+    );
+  }
+  return uniqueIds;
+};
+
 export const fetchFileTemplateBundles = () =>
   fileTemplateBundleRepository.findActive();
 
@@ -57,12 +77,16 @@ export const createFileTemplateBundle = async (
   auditMetadata?: AuditMetadata,
 ) => {
   const templateIds = await validateTemplates(input.template_ids);
+  const processDocumentIds = await validateProcessDocuments(
+    input.process_document_ids,
+  );
   const id = randomUUID();
   const bundle = await fileTemplateBundleRepository.create(id, {
     id,
     name: input.name,
     description: input.description || null,
     template_ids: templateIds,
+    process_document_ids: processDocumentIds,
     created_by: userId,
   });
   await logAudit({
@@ -90,6 +114,11 @@ export const updateFileTemplateBundle = async (
   }
   if (input.template_ids) {
     updateData.template_ids = await validateTemplates(input.template_ids);
+  }
+  if (input.process_document_ids) {
+    updateData.process_document_ids = await validateProcessDocuments(
+      input.process_document_ids,
+    );
   }
   await fileTemplateBundleRepository.update(id, updateData);
   const updated = {

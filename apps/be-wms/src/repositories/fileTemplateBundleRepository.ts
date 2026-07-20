@@ -10,7 +10,12 @@ class FileTemplateBundleRepository extends BaseRepository<FileTemplateBundle> {
 
   async findActive(): Promise<FileTemplateBundle[]> {
     const rows = await this.findAll();
-    return rows.sort((a, b) => a.name.localeCompare(b.name, "vi"));
+    return rows
+      .map((row) => ({
+        ...row,
+        process_document_ids: row.process_document_ids || [],
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   }
 }
 
