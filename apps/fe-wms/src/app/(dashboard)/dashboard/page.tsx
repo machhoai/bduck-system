@@ -17,6 +17,7 @@ import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
 import { useWarehouseLocations } from "../../../hooks/useWarehouses";
 import { useInventoryDashboardSummary } from "../../../hooks/useInventoryDashboardSummary";
+import type { LegacyDashboardState } from "../../../components/inventory/LegacyDashboardDataProvider";
 
 import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
 import StatCardGrid from "../../../components/inventory/StatCardGrid";
@@ -34,6 +35,10 @@ const StockTrendChart = dynamic(
 );
 const DashboardRevenueOverview = dynamic(
   () => import("../../../components/features/revenue/DashboardRevenueOverview"),
+);
+const LegacyDashboardDataProvider = dynamic(
+  () => import("../../../components/inventory/LegacyDashboardDataProvider"),
+  { ssr: false },
 );
 
 const EMPTY_KPIS = {
@@ -60,8 +65,23 @@ export default function DashboardPage() {
   >(undefined);
   const isAllWarehouses = !selectedWarehouseId;
 
-  const { data, loading, refreshing, error, retry } =
-    useInventoryDashboardSummary(selectedWarehouseId);
+  const {
+    data: serverData,
+    loading: serverLoading,
+    refreshing,
+    error: serverError,
+    retry,
+    legacyBackend,
+  } = useInventoryDashboardSummary(selectedWarehouseId);
+  const [legacyState, setLegacyState] = useState<LegacyDashboardState>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+  const data = serverData ?? (legacyBackend ? legacyState.data : null);
+  const loading =
+    serverLoading || (legacyBackend && legacyState.loading && !data);
+  const error = serverError ?? (legacyBackend ? legacyState.error : null);
   const stores = data?.stores ?? [];
 
   // ── Locations for specific warehouse ──
@@ -87,7 +107,7 @@ export default function DashboardPage() {
   const hasRevenueAccess = hasPermission("revenue.read");
   // ── Full skeleton while loading ──
   // ── No access state ──
-  if (data && stores.length === 0 && !loading) {
+  if (data && stores.length === 0 && !loading && !error) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
@@ -109,6 +129,12 @@ export default function DashboardPage() {
 
   return (
     <div className="relative flex flex-col gap-4 pb-3">
+      {legacyBackend && (
+        <LegacyDashboardDataProvider
+          warehouseId={selectedWarehouseId}
+          onChange={setLegacyState}
+        />
+      )}
       <div className="absolute -top-12 -left-2 -right-2 lg:-left-4 lg:-right-2 h-60 rounded-b-3xl bg-[var(--color-brand-primary)] pointer-events-none z-0"></div>
       {/* ── Header ── */}
       <header
@@ -138,7 +164,9 @@ export default function DashboardPage() {
           <span>{error.message}</span>
           <button
             type="button"
-            onClick={() => void retry()}
+            onClick={() =>
+              legacyBackend ? window.location.reload() : void retry()
+            }
             className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700"
           >
             {t.common.retry}

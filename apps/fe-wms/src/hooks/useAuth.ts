@@ -104,19 +104,21 @@ export const useAuth = () => {
       await isolateClientDataForAccount(data.user.id);
       const metadata = data.access?.metadata as UserAccessMetadata | undefined;
       const grants = (data.access?.grants || []) as UserFacilityAccessGrant[];
-      if (!metadata?.active_version_id) {
-        await firebaseSignOut(auth);
-        throw new Error("Phan hoi dang nhap thieu snapshot phan quyen.");
-      }
-      const permissions = buildMaterializedPermissions(metadata, grants);
       setAuthData(data.user, roleIds, activeAssignments);
-      useUserStore
-        .getState()
-        .applyAccessSnapshot(
-          metadata.access_version,
-          metadata.active_version_id,
-          permissions,
+      if (metadata?.active_version_id) {
+        const permissions = buildMaterializedPermissions(metadata, grants);
+        useUserStore
+          .getState()
+          .applyAccessSnapshot(
+            metadata.access_version,
+            metadata.active_version_id,
+            permissions,
+          );
+      } else {
+        console.info(
+          "[useAuth] backend uses legacy session payload; waiting for access listener.",
         );
+      }
 
       // Lock screen on login
       useMfaStore.getState().lockScreen();

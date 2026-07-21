@@ -14,6 +14,7 @@ import type {
 import { auth } from "@/lib/firebase";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
 import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
+import { shouldBootstrapSessionWithFirebase } from "@/lib/apiRolloutCompatibility";
 import { useUserStore } from "@/stores/useUserStore";
 
 const API_BASE_URL =
@@ -70,7 +71,10 @@ export default function AuthSessionProvider() {
           SESSION_RESTORE_TIMEOUT_MS,
         );
 
-        if (response.status === 401) {
+        // During a rolling deployment, the previous backend does not expose
+        // GET /session yet. Recreate the cookie through the established login
+        // endpoint for both an expired session and an older backend version.
+        if (shouldBootstrapSessionWithFirebase(response.status)) {
           const idToken = await firebaseUser.getIdToken(forceTokenRefresh);
           response = await fetchAuth(
             "/api/auth/sessionLogin",
@@ -114,20 +118,23 @@ export default function AuthSessionProvider() {
           | undefined;
         const grants = (payload?.data?.access?.grants ||
           []) as UserFacilityAccessGrant[];
-        if (!metadata?.active_version_id) {
-          throw new Error(
-            "Phan hoi phien dang nhap thieu snapshot phan quyen.",
+        setAuthData(payload.data.user, roleIds, activeAssignments);
+        if (metadata?.active_version_id) {
+          const permissions = buildMaterializedPermissions(metadata, grants);
+          useUserStore
+            .getState()
+            .applyAccessSnapshot(
+              metadata.access_version,
+              metadata.active_version_id,
+              permissions,
+            );
+        } else {
+          // Compatibility with the previous sessionLogin response. The
+          // AccessVersionProvider will load and validate the Firestore snapshot.
+          console.info(
+            "[AuthSessionProvider] backend uses legacy session payload; waiting for access listener.",
           );
         }
-        const permissions = buildMaterializedPermissions(metadata, grants);
-        setAuthData(payload.data.user, roleIds, activeAssignments);
-        useUserStore
-          .getState()
-          .applyAccessSnapshot(
-            metadata.access_version,
-            metadata.active_version_id,
-            permissions,
-          );
         lastSessionSyncAt = Date.now();
         console.info(
           `[AuthSessionProvider] session ready in ${Math.round(performance.now() - startedAt)}ms`,

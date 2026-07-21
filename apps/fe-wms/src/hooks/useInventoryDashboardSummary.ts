@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InventoryDashboardSummary } from "@bduck/shared-types";
 import { subscribeDataMutation } from "@/lib/dataInvalidation";
+import { isMissingApiRoute } from "@/lib/apiRolloutCompatibility";
 import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
@@ -15,6 +16,7 @@ export function useInventoryDashboardSummary(warehouseId?: string) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [legacyBackend, setLegacyBackend] = useState(false);
   const requestGeneration = useRef(0);
   const dataRef = useRef<InventoryDashboardSummary | null>(null);
 
@@ -37,6 +39,11 @@ export function useInventoryDashboardSummary(warehouseId?: string) {
         },
       );
       const body = await response.json().catch(() => null);
+      if (isMissingApiRoute(response.status)) {
+        setLegacyBackend(true);
+        setError(null);
+        return;
+      }
       if (!response.ok || !body?.success) {
         throw createDetailedApiError(
           response,
@@ -48,6 +55,7 @@ export function useInventoryDashboardSummary(warehouseId?: string) {
       const nextData = body.data as InventoryDashboardSummary;
       dataRef.current = nextData;
       setData(nextData);
+      setLegacyBackend(false);
       setError(null);
     } catch (loadError) {
       if (generation !== requestGeneration.current) return;
@@ -89,5 +97,5 @@ export function useInventoryDashboardSummary(warehouseId?: string) {
     };
   }, [load, warehouseId]);
 
-  return { data, loading, refreshing, error, retry: load };
+  return { data, loading, refreshing, error, retry: load, legacyBackend };
 }
