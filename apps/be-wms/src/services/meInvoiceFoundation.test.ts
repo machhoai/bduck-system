@@ -194,6 +194,20 @@ test("MeInvoiceClient normalizes template data returned as JSON text", async () 
   assert.equal(templates[0]?.is_more_vat_rate, true);
 });
 
+test("MeInvoiceClient treats an empty template response as an empty list", async () => {
+  const client = new MeInvoiceClient(
+    "https://developer.misa.vn/apis/itg/meinvoice",
+    "client-id",
+    (async () =>
+      new Response(JSON.stringify({ success: true, data: "" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })) as typeof fetch,
+  );
+
+  assert.deepEqual(await client.listTemplates("token", false), []);
+});
+
 test("MeInvoiceClient rejects unsuccessful MISA envelopes", async () => {
   const client = new MeInvoiceClient(
     "https://developer.misa.vn/apis/itg/meinvoice",
@@ -249,4 +263,31 @@ test("MeInvoiceClient uses the documented paging contract", async () => {
   const headers = new Headers(requestedPagingHeaders);
   assert.equal(headers.get("ClientID"), "client-id");
   assert.equal(headers.get("ClientSecret"), null);
+});
+
+test("MeInvoiceClient normalizes production paging PageData JSON text", async () => {
+  const client = new MeInvoiceClient(
+    "https://developer.misa.vn/apis/itg/meinvoice",
+    "client-id",
+    (async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: JSON.stringify({
+            TotalCount: 1,
+            PageData: JSON.stringify([{ RefID: "ref-production" }]),
+          }),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      )) as typeof fetch,
+  );
+
+  const result = await client.pageInvoices("token", true, {
+    fromDate: "2026-07-19",
+    toDate: "2026-07-19",
+    skip: 0,
+    take: 100,
+  });
+  assert.equal(result.total, 1);
+  assert.equal(result.items[0]?.RefID, "ref-production");
 });

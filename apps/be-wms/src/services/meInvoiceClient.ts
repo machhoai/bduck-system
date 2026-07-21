@@ -315,6 +315,9 @@ export class MeInvoiceClient {
         "Content-Type": "application/json",
       },
     });
+    // MISA returns an empty string when the account has no templates for the
+    // requested invoice type instead of returning an empty JSON array.
+    if (typeof data === "string" && data.trim() === "") return [];
     if (!Array.isArray(data)) {
       throw new MeInvoiceApiError(
         "MISA meInvoice template response is not a list.",
@@ -349,9 +352,14 @@ export class MeInvoiceClient {
       }),
     });
     const record = asRecord(data);
-    const items = record ? field(record, "Items", "items") : null;
-    const total = record ? Number(field(record, "Total", "total")) : Number.NaN;
-    if (!record || !Array.isArray(items) || !Number.isFinite(total)) {
+    const rawItems = record
+      ? field(record, "Items", "items", "PageData", "pageData")
+      : null;
+    const items = Array.isArray(rawItems) ? rawItems : decodeList(rawItems);
+    const total = record
+      ? Number(field(record, "Total", "total", "TotalCount", "totalCount"))
+      : Number.NaN;
+    if (!record || !Number.isFinite(total)) {
       throw new MeInvoiceApiError(
         "MISA meInvoice paging response is invalid.",
         "INVALID_PAGING_RESPONSE",
