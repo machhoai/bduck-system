@@ -5,7 +5,7 @@ import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import { getVisibleMenuItems, menuItems } from "../../config/menuConfig";
-import { useMenuBadges } from "../../hooks/useMenuBadges";
+import { useLayoutMenuBadges } from "../providers/MenuBadgesProvider";
 import SidebarActions from "./SidebarActions";
 import Image from "next/image";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -17,7 +17,7 @@ export default function Sidebar() {
     const isCollapsed = useSidebarStore((s) => s.isCollapsed);
     const hasPermission = useUserStore((s) => s.hasPermission);
     const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
-    const badges = useMenuBadges();
+    const badges = useLayoutMenuBadges();
 
     return (
         <aside

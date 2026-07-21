@@ -17,6 +17,15 @@ import {
   validateInvoiceIssueCandidate,
 } from "./invoiceIssuePolicy.js";
 import { createInvoiceIssueJobSchema } from "./invoiceIssueSchemas.js";
+import {
+  createInvoiceBulkIssueSchema,
+  previewInvoiceBulkIssueSchema,
+} from "./invoiceBulkIssueSchemas.js";
+import {
+  bulkIssueRunId,
+  chunkInvoiceIds,
+  summarizeBulkIssue,
+} from "./invoiceBulkIssuePolicy.js";
 
 const response = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), {
@@ -126,6 +135,36 @@ test("issue policy blocks historical, already matched and self-issued financial 
   );
 });
 
+test("bulk issue bypasses review statuses but keeps segregation of duties", () => {
+  const config = {
+    go_live_at: new Date("2026-07-20T00:00:00+07:00"),
+    sign_type: MeInvoiceSignType.HSM,
+  } as MeInvoiceStoreConfig;
+  const baseDocument = {
+    status: InvoiceDocumentStatus.NEEDS_REVIEW,
+    issue_eligible: true,
+    calculation: {},
+    source_payload_hash: "hash",
+    payment_time: "2026-07-21T12:00:00+07:00",
+  };
+  const source = {
+    source_payload_hash: "hash",
+    match_status: InvoiceOrderMatchStatus.NOT_CHECKED,
+  };
+  assert.deepEqual(
+    validateInvoiceIssueCandidate(baseDocument, source, config, "issuer", {
+      allowReviewBypass: true,
+    }),
+    [],
+  );
+  const issues = validateInvoiceIssueCandidate({
+    ...baseDocument,
+    financially_edited: true,
+    edited_by: "issuer",
+  }, source, config, "issuer", { allowReviewBypass: true });
+  assert.deepEqual(issues.map((issue) => issue.code), ["SEGREGATION_OF_DUTIES"]);
+});
+
 test("job and lane keys are deterministic", () => {
   assert.equal(issueJobId("w1", "u1", "click-1"), issueJobId("w1", "u1", "click-1"));
   assert.equal(invoiceLaneId("a1", "1C26TAA"), invoiceLaneId("a1", "1C26TAA"));
@@ -150,4 +189,66 @@ test("issue API accepts at most 30 unique candidates per request", () => {
     }).success,
     false,
   );
+});
+
+test("bulk issue validates scoped selection, OTP, and partitions MISA jobs", () => {
+  const selection = {
+    warehouse_id: "store-1",
+    business_date: "2026-07-21",
+    selection_mode: "SELECTED",
+    source_order_ids: ["order-1"],
+  };
+  assert.equal(previewInvoiceBulkIssueSchema.safeParse(selection).success, true);
+  assert.equal(previewInvoiceBulkIssueSchema.safeParse({
+    ...selection,
+    selection_mode: "ALL",
+  }).success, false);
+  assert.equal(createInvoiceBulkIssueSchema.safeParse({
+    ...selection,
+    otp: "123456",
+    idempotency_key: "bulk-request-1",
+    action_time: "2026-07-21T10:00:00.000Z",
+  }).success, true);
+  assert.equal(createInvoiceBulkIssueSchema.safeParse({
+    ...selection,
+    otp: "12345$",
+    idempotency_key: "bulk-request-1",
+    action_time: "2026-07-21T10:00:00.000Z",
+  }).success, false);
+  assert.deepEqual(
+    chunkInvoiceIds(Array.from({ length: 61 }, (_, index) => `invoice-${index}`)).map((item) => item.length),
+    [30, 30, 1],
+  );
+  assert.equal(bulkIssueRunId("store-1", "user-1", "key-1"), bulkIssueRunId("store-1", "user-1", "key-1"));
+});
+
+test("bulk summary totals VAT, gross amount, lines and product quantity", () => {
+  const summary = summarizeBulkIssue(2, [
+    {
+      calculation: {
+        total_amount_without_vat: 100,
+        total_vat_amount: 10,
+        total_amount: 110,
+      },
+      items: [{ quantity: 1.5 }, { quantity: 2 }],
+    },
+    {
+      calculation: {
+        total_amount_without_vat: 200,
+        total_vat_amount: 16,
+        total_amount: 216,
+      },
+      items: [{ quantity: 3 }],
+    },
+  ], []);
+  assert.deepEqual(summary, {
+    invoice_count: 2,
+    eligible_count: 2,
+    excluded_count: 0,
+    total_amount_without_vat: 300,
+    total_vat_amount: 26,
+    total_amount: 326,
+    product_line_count: 3,
+    product_quantity: 6.5,
+  });
 });

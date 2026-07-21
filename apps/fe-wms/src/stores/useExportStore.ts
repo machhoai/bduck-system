@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { exportToExcel } from "../utils/exportExcel";
 import type { ExportConfig, ExportRequestOptions } from "../utils/exportExcel";
 
 interface ExportStore {
@@ -24,6 +23,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
       const configToExport = exportConfig.prepare
         ? await exportConfig.prepare(options)
         : exportConfig;
+      const { exportToExcel } = await import("../utils/exportExcel");
       await exportToExcel(configToExport);
     } finally {
       set({ isExporting: false });

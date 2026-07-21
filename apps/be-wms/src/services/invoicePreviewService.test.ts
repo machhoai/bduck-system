@@ -58,6 +58,8 @@ const storeConfig = {
   sku_mapping: {},
   category_vat_mapping: {},
   payment_method_mapping: { "Thanh toán bằng tiền mặt": "Tiền mặt" },
+  default_payment_method_name: "Tiền mặt/Chuyển khoản",
+  default_unit_name: "Cái",
   go_live_at: new Date("2026-07-20T00:00:00.000Z"),
   invoice_date_source: "PAYMENT_TIME",
   issue_scope: "GO_LIVE_FORWARD",

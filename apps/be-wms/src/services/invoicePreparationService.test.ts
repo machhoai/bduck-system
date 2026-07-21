@@ -60,6 +60,7 @@ test("adapter maps the approved JoyWorld sample without binary money arithmetic"
       price_includes_vat: true,
       tax_rate_source: "SOURCE",
       default_vat_rate_name: null,
+      default_unit_name: "Cái",
       sku_mapping: { "sku-duck": { unit_name: "Vé" } },
       category_vat_mapping: {},
       unit_price_decimal_digits: 0,
@@ -76,6 +77,24 @@ test("adapter maps the approved JoyWorld sample without binary money arithmetic"
   assert.equal(result.total_amount_without_vat, 170_000);
   assert.equal(result.total_vat_amount, 17_000);
   assert.equal(result.total_amount, 187_000);
+});
+
+test("adapter fills a missing source unit from the store default", () => {
+  const [line] = adaptJoyworldOrderItems(
+    [{ goodsName: "Vé vào cửa", price: 100_000, qty: 1, taxRate: 10 }],
+    [],
+    {
+      price_includes_vat: false,
+      tax_rate_source: "SOURCE",
+      default_vat_rate_name: "10%",
+      default_unit_name: "Vé",
+      sku_mapping: {},
+      category_vat_mapping: {},
+      unit_price_decimal_digits: 0,
+    },
+  );
+
+  assert.equal(line.unit_name, "Vé");
 });
 
 test("calculation is deterministic and aggregates multiple VAT groups", () => {

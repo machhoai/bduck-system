@@ -878,6 +878,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 
   // ── Invoices ──
   {
+    key: "invoices.access",
+    group: "invoices",
+    label: { vi: "Truy cập quản lý hóa đơn", zh: "访问发票管理" },
+    description: {
+      vi: "Truy cập trang quản lý hóa đơn trong phạm vi cửa hàng được cấp quyền.",
+      zh: "访问授权门店范围内的发票管理页面。",
+    },
+  },
+  {
     key: "invoices.read",
     group: "invoices",
     label: { vi: "Xem hóa đơn", zh: "查看发票" },
@@ -911,6 +920,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Tạo yêu cầu phát hành hóa đơn điện tử qua MISA meInvoice.",
       zh: "通过 MISA meInvoice 创建电子发票开具请求。",
+    },
+  },
+  {
+    key: "invoices.bulk_issue",
+    group: "invoices",
+    label: { vi: "Xuất hóa đơn hàng loạt", zh: "批量开具发票" },
+    description: {
+      vi: "Xuất nhiều hoặc toàn bộ hóa đơn trong ngày bằng OTP và bỏ qua bước duyệt thủ công.",
+      zh: "通过 OTP 批量开具当日多张或全部发票，并跳过人工审核。",
     },
   },
   {

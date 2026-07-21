@@ -10,6 +10,7 @@ import {
 } from "../../services/meInvoiceConfigService.js";
 import {
   getMeInvoiceStoreConfig,
+  listMeInvoiceStoreAccountOptions,
   saveMeInvoiceStoreConfig,
 } from "../../services/meInvoiceStoreConfigService.js";
 import {
@@ -127,6 +128,22 @@ export const getMeInvoiceStoreConfigHandler = async (req: Request, res: Response
     const { warehouseId } = warehouseParamsSchema.parse(req.params);
     const data = await getMeInvoiceStoreConfig(warehouseId, requireRequestAuthorization(req));
     return sendSuccess(res, data, { vi: "Đã tải cấu hình hóa đơn cửa hàng.", zh: "已加载门店发票配置。" });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const listMeInvoiceStoreAccountOptionsHandler = async (req: Request, res: Response) => {
+  try {
+    const { warehouseId } = warehouseParamsSchema.parse(req.params);
+    const data = await listMeInvoiceStoreAccountOptions(
+      warehouseId,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tải danh sách tài khoản meInvoice có thể cấu hình.",
+      zh: "已加载可配置的 meInvoice 账户。",
+    });
   } catch (error) {
     return handleError(res, error);
   }

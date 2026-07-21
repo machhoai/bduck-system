@@ -11,6 +11,11 @@ import { createDetailedApiError } from "@/utils/apiError";
 import { useTranslation } from "@/lib/i18n";
 import { AUTH_TOAST_TEXT } from "@/lib/i18n/componentTranslations";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
+import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
+import type {
+  UserAccessMetadata,
+  UserFacilityAccessGrant,
+} from "@bduck/shared-types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -97,7 +102,21 @@ export const useAuth = () => {
           (id: string, i: number, arr: string[]) => arr.indexOf(id) === i,
         );
       await isolateClientDataForAccount(data.user.id);
+      const metadata = data.access?.metadata as UserAccessMetadata | undefined;
+      const grants = (data.access?.grants || []) as UserFacilityAccessGrant[];
+      if (!metadata?.active_version_id) {
+        await firebaseSignOut(auth);
+        throw new Error("Phan hoi dang nhap thieu snapshot phan quyen.");
+      }
+      const permissions = buildMaterializedPermissions(metadata, grants);
       setAuthData(data.user, roleIds, activeAssignments);
+      useUserStore
+        .getState()
+        .applyAccessSnapshot(
+          metadata.access_version,
+          metadata.active_version_id,
+          permissions,
+        );
 
       // Lock screen on login
       useMfaStore.getState().lockScreen();

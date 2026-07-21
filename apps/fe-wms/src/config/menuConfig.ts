@@ -97,7 +97,7 @@ export const menuItems: MenuItem[] = [
     labelKey: "invoiceManagement",
     icon: ReceiptText,
     href: "/invoice-management",
-    permissionsAny: ["invoices.read", "invoices.prepare", "invoices.reconcile"],
+    permission: "invoices.access",
   },
   {
     id: "employeeAdmin",

@@ -91,7 +91,10 @@ export const buildInitialInvoiceDocument = (
       phone_number: "",
       email: "",
     },
-    payment_method_name: sourceOrder.mapped_payment_method ?? "",
+    payment_method_name:
+      sourceOrder.mapped_payment_method
+      ?? storeConfig.default_payment_method_name
+      ?? "",
     items,
     calculation: sourceOrder.calculation ?? null,
     issue_eligible: preflight.issue_eligible === true,

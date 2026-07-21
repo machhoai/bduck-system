@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, BellRing, Download, HelpCircle } from "lucide-react";
 import { useTranslation } from "../../lib/i18n";
@@ -10,7 +11,6 @@ import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 import { BreadcrumbNav } from "../ui/BreadcrumbNav";
 import { useExportStore } from "../../stores/useExportStore";
-import { WarehouseExportModal } from "./WarehouseExportModal";
 import type { ExportRequestOptions } from "@/utils/exportExcel";
 import { getGuideTourName } from "../../config/tours";
 import { gooeyToast } from "goey-toast";
@@ -18,6 +18,10 @@ import IonIcon from "../ui/IonIcon";
 import { folder } from "ionicons/icons";
 import { useDevicePushNotifications } from "@/hooks/useDevicePushNotifications";
 import { usePwaInstallPrompt } from "@/hooks/usePwaInstallPrompt";
+
+const WarehouseExportModal = dynamic(() =>
+    import("./WarehouseExportModal").then((module) => module.WarehouseExportModal),
+);
 
 const TOPBAR_PWA_TEXT = {
     vi: {

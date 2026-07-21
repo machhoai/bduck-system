@@ -21,7 +21,7 @@ services:
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - BE_WMS_PORT=4000
       - BE_WMS_CORS_ORIGIN=${BE_WMS_CORS_ORIGIN:-http://app.wms.localhost}
     ports:
@@ -46,7 +46,7 @@ services:
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://api.wms.localhost
     ports:

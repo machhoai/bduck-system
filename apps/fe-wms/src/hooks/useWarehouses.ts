@@ -157,7 +157,11 @@ export function useStores() {
   return { ...warehouseState, stores };
 }
 
-export function useWarehouseLocations(warehouseId?: string) {
+export function useWarehouseLocations(
+  warehouseId?: string,
+  options: { enabled?: boolean } = {},
+) {
+  const enabled = options.enabled ?? true;
   const permissions = useUserStore((state) => state.permissions);
   const facilityScope = useMemo(
     () => getAnyFacilityScope(permissions),
@@ -180,6 +184,13 @@ export function useWarehouseLocations(warehouseId?: string) {
     const abortController = new AbortController();
     let unsubscribeSnapshot: (() => void) | undefined;
     let isDisposed = false;
+
+    if (!enabled) {
+      setLocations([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     const loadApiFallback = async () => {
       try {
@@ -273,7 +284,7 @@ export function useWarehouseLocations(warehouseId?: string) {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [facilityScope, queryScope, warehouseId]);
+  }, [enabled, facilityScope, queryScope, warehouseId]);
 
   const { createLocation, updateLocation, deleteLocation } =
     useWarehouseLocationMutations();

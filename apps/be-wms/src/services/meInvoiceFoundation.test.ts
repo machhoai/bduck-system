@@ -79,6 +79,8 @@ test("store config defaults the anonymous retail buyer and payment invoice date"
   });
   assert.equal(value.default_buyer_name, "Khách lẻ (Không lấy hóa đơn)");
   assert.equal(value.default_buyer_tax_code, null);
+  assert.equal(value.default_payment_method_name, "");
+  assert.equal(value.default_unit_name, "");
   assert.equal(value.go_live_at, null);
 });
 

@@ -5,44 +5,28 @@
  * ► Tối ưu re-renders bằng cách tách utility ra khỏi component
  */
 
-import type { Inventory } from "@bduck/shared-types";
-import type { Warehouse } from "@bduck/shared-types";
-import type { Product } from "@bduck/shared-types";
+import type {
+  DashboardKPIs,
+  Inventory,
+  Product,
+  ProductStockInfo,
+  ProductTypeDistribution,
+  Warehouse,
+  WarehouseBreakdown,
+  WarehouseStockComparison,
+} from "@bduck/shared-types";
+
+export type {
+  DashboardKPIs,
+  ProductStockInfo,
+  ProductTypeDistribution,
+  WarehouseBreakdown,
+  WarehouseStockComparison,
+} from "@bduck/shared-types";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface DashboardKPIs {
-  warehouseCount: number;
-  skuCount: number;
-  totalQuantity: number;
-  atpQuantity: number;
-  quarantineQuantity: number;
-  inTransitQuantity: number;
-  onHoldQuantity: number;
-}
-
-export interface WarehouseBreakdown extends DashboardKPIs {
-  warehouseId: string;
-  warehouseName: string;
-}
-
-export interface ProductStockInfo {
-  productId: string;
-  productName: string;
-  productCode: string;
-  totalQuantity: number;
-  atpQuantity: number;
-  unitPrice: number | null;
-  isLowStock: boolean;
-}
-
-export interface ProductTypeDistribution {
-  type: string;
-  quantity: number;
-  percentage: number;
-}
 
 /**
  * Tổng giá trị tồn kho = Σ (atp_quantity × unit_price)
@@ -241,13 +225,6 @@ export function computeProductTypeDistribution(
 // ---------------------------------------------------------------------------
 // Stock Comparison by Warehouse (for Bar chart)
 // ---------------------------------------------------------------------------
-
-export interface WarehouseStockComparison {
-  warehouseName: string;
-  atp: number;
-  quarantine: number;
-  inTransit: number;
-}
 
 export function computeStockComparison(
   inventory: Inventory[],

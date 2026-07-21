@@ -8,6 +8,7 @@ export * from './users.js';
 export * from './facilityAccess.js';
 export * from './authorizationRollout.js';
 export * from './inventory.js';
+export * from './dashboard.js';
 export * from './vouchers.js';
 export * from './sales-operations.js';
 export * from './quality-control.js';

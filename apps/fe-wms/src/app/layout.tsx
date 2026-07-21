@@ -4,6 +4,7 @@ import AuthSessionProvider from "../components/providers/AuthSessionProvider";
 import AccessVersionProvider from "../components/providers/AccessVersionProvider";
 import ToastProvider from "../components/providers/ToastProvider";
 import VersionLogger from "../components/ui/VersionLogger";
+import PwaServiceWorkerRegistrar from "../components/providers/PwaServiceWorkerRegistrar";
 
 export const metadata = {
     title: "Joy World Cityfuns - ERP System",
@@ -35,6 +36,7 @@ export default function RootLayout({
                 <AccessVersionProvider />
                 <ToastProvider />
                 <VersionLogger />
+                <PwaServiceWorkerRegistrar />
             </body>
         </html>
     );

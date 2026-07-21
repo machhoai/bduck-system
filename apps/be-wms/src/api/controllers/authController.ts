@@ -5,6 +5,12 @@ import {
   logoutSession,
   resolveLoginEmail,
 } from "../../services/authService.js";
+import { getUserWarehouseRoles } from "../../repositories/userRepository.js";
+import {
+  findUserFacilityAccessGrants,
+  getUserAccessMetadata,
+} from "../../repositories/userAccessRepository.js";
+import { activeRoleAssignments } from "../../services/scopedRoleAccess.js";
 import {
   completeAccountInvitation,
   sendPasswordResetEmail,
@@ -22,6 +28,18 @@ import {
 const sessionLoginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
 });
+
+const loadClientAccessSnapshot = async (userId: string) => {
+  const metadata = await getUserAccessMetadata(userId);
+  if (!metadata?.active_version_id) {
+    throw new Error("USER_ACCESS_ACTIVE_VERSION_MISSING");
+  }
+  const grants = await findUserFacilityAccessGrants(
+    userId,
+    metadata.active_version_id,
+  );
+  return { metadata, grants };
+};
 
 const loginIdentifierSchema = z.object({
   identifier: z.string().trim().min(1).max(160),
@@ -99,6 +117,7 @@ export const sessionLogin = async (req: Request, res: Response) => {
 
     // Create the session; effective permissions arrive through user_access.
     const sessionResult = await createSessionLogin(idToken);
+    const access = await loadClientAccessSnapshot(sessionResult.user.id);
 
     // Set HttpOnly cookie
     res.cookie(
@@ -115,6 +134,7 @@ export const sessionLogin = async (req: Request, res: Response) => {
       data: {
         user: sessionResult.user,
         roles: sessionResult.roles,
+        access,
       },
       messages: {
         vi: "Đăng nhập thành công.",
@@ -149,6 +169,47 @@ export const sessionLogin = async (req: Request, res: Response) => {
       messages: {
         vi: "Đăng nhập thất bại hoặc tài khoản không tồn tại.",
         zh: "登录失败或账户不存在。",
+      },
+    });
+  }
+};
+
+export const currentSession = async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
+        zh: "登录会话无效或已过期。",
+      },
+    });
+  }
+
+  try {
+    const [roleAssignments, access] = await Promise.all([
+      getUserWarehouseRoles(user.id),
+      loadClientAccessSnapshot(user.id),
+    ]);
+    const roles = activeRoleAssignments(roleAssignments, new Date());
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).json({
+      success: true,
+      data: { user, roles, access },
+      messages: {
+        vi: "Khôi phục phiên đăng nhập thành công.",
+        zh: "登录会话恢复成功。",
+      },
+    });
+  } catch (error) {
+    console.error("[authController] restore session error:", error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      messages: {
+        vi: "Không thể khôi phục phiên đăng nhập.",
+        zh: "无法恢复登录会话。",
       },
     });
   }

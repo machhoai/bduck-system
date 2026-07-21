@@ -73,8 +73,13 @@ export const createInvoiceIssueJob = async (
   actorId: string,
   authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
+  options: {
+    permission?: "invoices.issue" | "invoices.bulk_issue";
+    allowReviewBypass?: boolean;
+    bulkRunId?: string;
+  } = {},
 ) => {
-  authorization.assert("invoices.issue", input.warehouse_id);
+  authorization.assert(options.permission ?? "invoices.issue", input.warehouse_id);
   const documentIds = [...new Set(input.invoice_document_ids)];
   if (documentIds.length !== input.invoice_document_ids.length) {
     throw serviceError(400, "Danh sách draft có phần tử trùng.", "DUPLICATE_DOCUMENT_ID");
@@ -120,7 +125,13 @@ export const createInvoiceIssueJob = async (
     if (!document || !sourceOrder) {
       throw serviceError(404, "Không tìm thấy draft hoặc đơn hàng nguồn.", "INVOICE_DOCUMENT_NOT_FOUND", { document_id: documentId });
     }
-    const issues = validateInvoiceIssueCandidate(document, sourceOrder, config, actorId);
+    const issues = validateInvoiceIssueCandidate(
+      document,
+      sourceOrder,
+      config,
+      actorId,
+      { allowReviewBypass: options.allowReviewBypass },
+    );
     if (issues.length) {
       throw serviceError(422, "Draft chưa đủ điều kiện phát hành.", "INVOICE_NOT_ISSUE_ELIGIBLE", { document_id: documentId, issues });
     }
@@ -146,6 +157,8 @@ export const createInvoiceIssueJob = async (
     idempotencyKey: input.idempotency_key,
     actorId,
     items: prepared,
+    allowReviewBypass: options.allowReviewBypass,
+    bulkRunId: options.bulkRunId,
   });
   if (result.created) {
     await Promise.all(prepared.map((item) => dispatchInvoiceIssueItem({
@@ -165,6 +178,8 @@ export const createInvoiceIssueJob = async (
         item_count: documentIds.length,
         inv_series: config.inv_series,
         meinvoice_account_id: config.meinvoice_account_id,
+        bulk_run_id: options.bulkRunId ?? null,
+        review_bypassed: options.allowReviewBypass === true,
       },
       notes: "MISA meInvoice issue job created",
       ...auditMetadata,

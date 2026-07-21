@@ -1,5 +1,11 @@
 import {
+  type InvoiceBulkIssuePreview,
+  type InvoiceBulkIssueRun,
+  type InvoiceBulkSelectionMode,
   InvoiceOrderSyncPurpose,
+  type InvoiceSkuMapping,
+  type InvoiceTaxRateSource,
+  type InvoiceVatRateName,
   type InvoiceDailyControlSummary,
   type InvoiceLedgerEntry,
   type InvoiceReconciliationCaseStatus,
@@ -12,6 +18,9 @@ import {
   type InvoiceDraftBuyer,
   type InvoiceSourceOrder,
   type InvoiceSourceOrderLine,
+  type MeInvoiceOptionUserDefined,
+  type MeInvoiceSignType,
+  type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
@@ -80,6 +89,57 @@ export interface InvoiceDownloadResult {
   errorCode: string | null;
   isUrl: boolean;
   type: "Pdf" | "Xml";
+}
+
+export type MeInvoiceStoreConfigView = Omit<
+  MeInvoiceStoreConfig,
+  "go_live_at" | "validated_at" | "created_at" | "updated_at"
+> & {
+  go_live_at: string | null;
+  validated_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export interface MeInvoiceStoreConfigPayload {
+  meinvoice_account_id: string;
+  inv_series: string;
+  invoice_with_code: boolean;
+  sign_type: MeInvoiceSignType;
+  seller_shop_code: string;
+  seller_shop_name: string;
+  price_includes_vat: boolean | null;
+  tax_rate_source: InvoiceTaxRateSource;
+  default_vat_rate_name: InvoiceVatRateName | null;
+  sku_mapping: Record<string, InvoiceSkuMapping>;
+  category_vat_mapping: Record<string, InvoiceVatRateName>;
+  payment_method_mapping: Record<string, string>;
+  default_payment_method_name: string;
+  default_unit_name: string;
+  go_live_at: string | null;
+  default_buyer_name: string;
+  default_buyer_address: string;
+  default_buyer_tax_code: null;
+  option_user_defined: MeInvoiceOptionUserDefined;
+  enabled: boolean;
+}
+
+export interface MeInvoiceStoreConfigValidationResult {
+  template: {
+    inv_series: string;
+    inv_template_no: string;
+    inv_template_name: string;
+  };
+  validated_at: string;
+}
+
+export interface MeInvoiceAccountOption {
+  id: string;
+  display_name: string;
+  tax_code: string;
+  environment: string;
+  enabled: boolean;
+  last_test_succeeded: boolean;
 }
 
 export interface MisaInvoiceView {
@@ -179,7 +239,28 @@ export interface InvoiceIssueJobView {
   items: InvoiceIssueJobItemView[];
 }
 
-const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+export type InvoiceBulkIssueRunView = Omit<
+  InvoiceBulkIssueRun,
+  "action_time" | "sync_time" | "created_at" | "updated_at"
+> & {
+  action_time: string;
+  sync_time: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export interface InvoiceBulkIssueSelectionPayload {
+  warehouse_id: string;
+  business_date: string;
+  selection_mode: InvoiceBulkSelectionMode;
+  source_order_ids: string[];
+}
+
+const request = async <T>(
+  path: string,
+  init?: RequestInit,
+  options: { allowNull?: boolean } = {},
+): Promise<T> => {
   const headers = new Headers(init?.headers);
   if (init?.body) headers.set("Content-Type", "application/json");
   const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
@@ -189,7 +270,11 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const envelope = (await response
     .json()
     .catch(() => null)) as ApiEnvelope<T> | null;
-  if (!response.ok || !envelope?.success || envelope.data === null) {
+  if (
+    !response.ok ||
+    !envelope?.success ||
+    (envelope.data === null && !options.allowNull)
+  ) {
     const language = document.documentElement.lang === "zh" ? "zh" : "vi";
     const message =
       envelope?.messages?.[language] ??
@@ -197,10 +282,57 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
       `HTTP ${response.status}`;
     throw new Error(message);
   }
-  return envelope.data;
+  return envelope.data as T;
 };
 
 export const invoiceApi = {
+  previewBulkIssue: (payload: InvoiceBulkIssueSelectionPayload) =>
+    request<InvoiceBulkIssuePreview>("/api/invoices/bulk-issues/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  createBulkIssue: (
+    payload: InvoiceBulkIssueSelectionPayload & {
+      otp: string;
+      idempotency_key: string;
+      action_time: string;
+    },
+  ) => request<InvoiceBulkIssueRunView>("/api/invoices/bulk-issues", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+
+  listStoreAccountOptions: (warehouseId: string) =>
+    request<MeInvoiceAccountOption[]>(
+      `/api/meinvoice/store-configs/${encodeURIComponent(warehouseId)}/account-options`,
+    ),
+
+  getStoreConfig: (warehouseId: string) =>
+    request<MeInvoiceStoreConfigView | null>(
+      `/api/meinvoice/store-configs/${encodeURIComponent(warehouseId)}`,
+      undefined,
+      { allowNull: true },
+    ),
+
+  saveStoreConfig: (
+    warehouseId: string,
+    payload: MeInvoiceStoreConfigPayload,
+  ) =>
+    request<MeInvoiceStoreConfigView>(
+      `/api/meinvoice/store-configs/${encodeURIComponent(warehouseId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  validateStoreConfig: (warehouseId: string) =>
+    request<MeInvoiceStoreConfigValidationResult>(
+      `/api/meinvoice/store-configs/${encodeURIComponent(warehouseId)}/validate`,
+      { method: "POST" },
+    ),
+
   listSourceOrders: (warehouseId: string, businessDate: string) => {
     const query = new URLSearchParams({
       warehouse_id: warehouseId,

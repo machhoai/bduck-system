@@ -7,7 +7,7 @@ import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import { menuItems, getVisibleMenuItems } from "../../config/menuConfig";
-import { useMenuBadges } from "../../hooks/useMenuBadges";
+import { useLayoutMenuBadges } from "../providers/MenuBadgesProvider";
 import { useAuth } from "../../hooks/useAuth";
 import LanguageSwitcher from "./LanguageSwitcher";
 import Link from "next/link";
@@ -26,7 +26,7 @@ export default function MobileDrawer() {
     const { logout, isLoading: isLoggingOut } = useAuth();
 
     const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
-    const badges = useMenuBadges();
+    const badges = useLayoutMenuBadges();
 
     const backdropRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);

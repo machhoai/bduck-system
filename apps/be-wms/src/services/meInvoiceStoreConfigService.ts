@@ -26,6 +26,12 @@ export const toPublicStoreConfig = (
       ? data.default_buyer_address
       : "",
   default_buyer_tax_code: null,
+  default_payment_method_name:
+    typeof data.default_payment_method_name === "string"
+      ? data.default_payment_method_name
+      : "",
+  default_unit_name:
+    typeof data.default_unit_name === "string" ? data.default_unit_name : "",
   sku_mapping:
     data.sku_mapping && typeof data.sku_mapping === "object"
       ? (data.sku_mapping as MeInvoiceStoreConfig["sku_mapping"])
@@ -33,6 +39,10 @@ export const toPublicStoreConfig = (
   category_vat_mapping:
     data.category_vat_mapping && typeof data.category_vat_mapping === "object"
       ? (data.category_vat_mapping as MeInvoiceStoreConfig["category_vat_mapping"])
+      : {},
+  payment_method_mapping:
+    data.payment_method_mapping && typeof data.payment_method_mapping === "object"
+      ? (data.payment_method_mapping as MeInvoiceStoreConfig["payment_method_mapping"])
       : {},
   validated_at: dateFromValue(data.validated_at),
   created_at: dateFromValue(data.created_at) ?? new Date(0),
@@ -48,6 +58,26 @@ export const getMeInvoiceStoreConfig = async (
   return stored && stored.is_deleted !== true ? toPublicStoreConfig(stored) : null;
 };
 
+export const listMeInvoiceStoreAccountOptions = async (
+  warehouseId: string,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("invoices.config", warehouseId);
+  await loadWarehouseById(warehouseId);
+  const accounts = await meInvoiceConfigRepository.listAccounts();
+  return accounts
+    .filter((account) => !account.is_deleted)
+    .map((account) => ({
+      id: account.id,
+      display_name: account.display_name,
+      tax_code: account.tax_code,
+      environment: account.environment,
+      enabled: account.enabled === true,
+      last_test_succeeded: account.last_test_succeeded === true,
+    }))
+    .sort((left, right) => left.display_name.localeCompare(right.display_name));
+};
+
 const validationFields = (input: MeInvoiceStoreConfigInput) => ({
   meinvoice_account_id: input.meinvoice_account_id,
   inv_series: input.inv_series,
@@ -61,6 +91,8 @@ const validationFields = (input: MeInvoiceStoreConfigInput) => ({
   sku_mapping: input.sku_mapping,
   category_vat_mapping: input.category_vat_mapping,
   payment_method_mapping: input.payment_method_mapping,
+  default_payment_method_name: input.default_payment_method_name,
+  default_unit_name: input.default_unit_name,
   go_live_at: input.go_live_at?.toISOString() ?? null,
   default_buyer_name: input.default_buyer_name,
   default_buyer_address: input.default_buyer_address,

@@ -6,14 +6,21 @@ import {
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
-import type { UserWarehouseRole } from "@bduck/shared-types";
+import type {
+  UserAccessMetadata,
+  UserFacilityAccessGrant,
+  UserWarehouseRole,
+} from "@bduck/shared-types";
 import { auth } from "@/lib/firebase";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
+import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
 import { useUserStore } from "@/stores/useUserStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 const SESSION_VALIDATION_DEDUPE_MS = 60_000;
+const SESSION_RESTORE_TIMEOUT_MS = 6_000;
+const SESSION_LOGIN_TIMEOUT_MS = 10_000;
 
 let lastSessionSyncAt = 0;
 const sessionSyncPromises = new Map<string, Promise<void>>();
@@ -26,12 +33,23 @@ function logSessionSyncError(error: unknown) {
   console.warn("[AuthSessionProvider] session sync failed:", error);
 }
 
+async function fetchAuth(path: string, init: RequestInit, timeoutMs: number) {
+  return fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+}
+
 export default function AuthSessionProvider() {
   const setAuthData = useUserStore((state) => state.setAuthData);
   const beginAuthVerification = useUserStore(
     (state) => state.beginAuthVerification,
   );
   const clearAuth = useUserStore((state) => state.clearAuth);
+  const failAuthVerification = useUserStore(
+    (state) => state.failAuthVerification,
+  );
 
   const syncBackendSession = useCallback(
     async (firebaseUser: FirebaseUser, forceTokenRefresh = false) => {
@@ -45,13 +63,25 @@ export default function AuthSessionProvider() {
       if (existingSync) return existingSync;
 
       const sessionSyncPromise = (async () => {
-        const idToken = await firebaseUser.getIdToken(forceTokenRefresh);
-        const response = await fetch(`${API_BASE_URL}/api/auth/sessionLogin`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken }),
-        });
+        const startedAt = performance.now();
+        let response = await fetchAuth(
+          "/api/auth/session",
+          { method: "GET" },
+          SESSION_RESTORE_TIMEOUT_MS,
+        );
+
+        if (response.status === 401) {
+          const idToken = await firebaseUser.getIdToken(forceTokenRefresh);
+          response = await fetchAuth(
+            "/api/auth/sessionLogin",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            },
+            SESSION_LOGIN_TIMEOUT_MS,
+          );
+        }
         const payload = await readJson(response);
         if (!response.ok) {
           if (
@@ -79,8 +109,29 @@ export default function AuthSessionProvider() {
         const roleIds = Array.from(
           new Set(activeAssignments.map((role) => role.role_id)),
         );
+        const metadata = payload?.data?.access?.metadata as
+          | UserAccessMetadata
+          | undefined;
+        const grants = (payload?.data?.access?.grants ||
+          []) as UserFacilityAccessGrant[];
+        if (!metadata?.active_version_id) {
+          throw new Error(
+            "Phan hoi phien dang nhap thieu snapshot phan quyen.",
+          );
+        }
+        const permissions = buildMaterializedPermissions(metadata, grants);
         setAuthData(payload.data.user, roleIds, activeAssignments);
+        useUserStore
+          .getState()
+          .applyAccessSnapshot(
+            metadata.access_version,
+            metadata.active_version_id,
+            permissions,
+          );
         lastSessionSyncAt = Date.now();
+        console.info(
+          `[AuthSessionProvider] session ready in ${Math.round(performance.now() - startedAt)}ms`,
+        );
       })().finally(() => {
         sessionSyncPromises.delete(firebaseUser.uid);
       });
@@ -98,12 +149,24 @@ export default function AuthSessionProvider() {
         void isolateClientDataForAccount(null).catch(logSessionSyncError);
         return;
       }
-      beginAuthVerification(firebaseUser.uid);
+      const current = useUserStore.getState();
+      const isAlreadyAuthenticated =
+        current.authStatus === "AUTHENTICATED" &&
+        current.user?.id === firebaseUser.uid;
+      if (!isAlreadyAuthenticated) beginAuthVerification(firebaseUser.uid);
       void isolateClientDataForAccount(firebaseUser.uid)
-        .then(() => syncBackendSession(firebaseUser, true))
-        .catch(logSessionSyncError);
+        .then(() => syncBackendSession(firebaseUser, false))
+        .catch((error) => {
+          logSessionSyncError(error);
+          if (!isAlreadyAuthenticated) failAuthVerification();
+        });
     });
-  }, [beginAuthVerification, clearAuth, syncBackendSession]);
+  }, [
+    beginAuthVerification,
+    clearAuth,
+    failAuthVerification,
+    syncBackendSession,
+  ]);
 
   useEffect(() => {
     const validateCurrentSession = () => {

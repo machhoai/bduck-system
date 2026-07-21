@@ -174,13 +174,19 @@ const buildSourceOrder = (
   const paymentMethod = nullableString(
     detail.payModeNames ?? order.payModeNames,
   );
+  const defaultPaymentMethod = nullableString(
+    storeConfig?.default_payment_method_name,
+  );
   const mappedPaymentMethod = paymentMethod
-    ? (storeConfig?.payment_method_mapping[paymentMethod] ?? null)
-    : null;
+    ? (storeConfig?.payment_method_mapping[paymentMethod]
+      ?? defaultPaymentMethod
+      ?? null)
+    : defaultPaymentMethod;
   const normalizedItems = adaptJoyworldOrderItems(detailGoods, goods, {
     price_includes_vat: storeConfig?.price_includes_vat ?? null,
     tax_rate_source: storeConfig?.tax_rate_source ?? "SOURCE",
     default_vat_rate_name: storeConfig?.default_vat_rate_name ?? null,
+    default_unit_name: storeConfig?.default_unit_name ?? null,
     sku_mapping: storeConfig?.sku_mapping ?? {},
     category_vat_mapping: storeConfig?.category_vat_mapping ?? {},
     unit_price_decimal_digits:

@@ -16,6 +16,7 @@ export interface InvoiceOrderAdapterOptions {
   price_includes_vat: boolean | null;
   tax_rate_source: InvoiceTaxRateSource;
   default_vat_rate_name: string | null;
+  default_unit_name: string | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   unit_price_decimal_digits: number;
@@ -179,7 +180,8 @@ export const adaptJoyworldOrderItems = (
       ),
       unit_name: mapping?.unit_name
         ?? nullableString(firstValue(row, ["unitName", "unit", "unitCode"]))
-        ?? nullableString(firstValue(fallback, ["unitName", "unit", "unitCode"])),
+        ?? nullableString(firstValue(fallback, ["unitName", "unit", "unitCode"]))
+        ?? nullableString(options.default_unit_name),
       quantity,
       unit_price: unitPrice,
       discount_rate: nullableNumber(firstValue(row, ["discountRate"])),

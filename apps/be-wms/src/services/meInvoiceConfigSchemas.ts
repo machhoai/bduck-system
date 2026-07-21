@@ -76,6 +76,8 @@ export const meInvoiceStoreConfigInputSchema = z
     payment_method_mapping: z
       .record(z.string(), z.string().trim().min(1).max(100))
       .default({}),
+    default_payment_method_name: z.string().trim().max(100).default(""),
+    default_unit_name: z.string().trim().max(100).default(""),
     go_live_at: z.coerce.date().nullable().default(null),
     default_buyer_name: z
       .string()

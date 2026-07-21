@@ -280,6 +280,10 @@ async function seedDocuments() {
         { warehouse_id: "store-d", status: "QUEUED" },
       ],
       [
+        "invoice_bulk_issue_runs/bulk-run-1",
+        { warehouse_id: "store-d", requested_by: "user-b", status: "QUEUED" },
+      ],
+      [
         "invoice_issue_payloads/job-1__item-d",
         { warehouse_id: "store-d", payload: { buyer: "private" } },
       ],
@@ -652,6 +656,8 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(
       getDoc(doc(storeUser, "invoice_issue_jobs/job-1/items", "item-d")),
     );
+    await assertFails(getDoc(doc(storeUser, "invoice_bulk_issue_runs", "bulk-run-1")));
+    await assertFails(getDoc(doc(admin, "invoice_bulk_issue_runs", "bulk-run-1")));
     await assertFails(
       getDoc(doc(storeUser, "invoice_issue_payloads", "job-1__item-d")),
     );

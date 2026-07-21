@@ -7,6 +7,14 @@ import {
   invoiceIssueJobScopeSchema,
 } from "../../services/invoiceIssueSchemas.js";
 import {
+  createInvoiceBulkIssueSchema,
+  previewInvoiceBulkIssueSchema,
+} from "../../services/invoiceBulkIssueSchemas.js";
+import {
+  createInvoiceBulkIssue,
+  previewInvoiceBulkIssue,
+} from "../../services/invoiceBulkIssueService.js";
+import {
   createInvoiceIssueJob,
   getInvoiceIssueJob,
   processInvoiceIssueItem,
@@ -65,6 +73,43 @@ export const createInvoiceIssueJobHandler = async (req: Request, res: Response) 
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, data, { vi: "Đã tạo job phát hành hóa đơn.", zh: "开票任务已创建。" });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const previewInvoiceBulkIssueHandler = async (req: Request, res: Response) => {
+  try {
+    const input = previewInvoiceBulkIssueSchema.parse(req.body);
+    const user = requireAuthenticatedRequestUser(req);
+    const data = await previewInvoiceBulkIssue(
+      input,
+      user.id,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tính tổng đợt xuất hóa đơn.",
+      zh: "已计算批量开票汇总。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const createInvoiceBulkIssueHandler = async (req: Request, res: Response) => {
+  try {
+    const input = createInvoiceBulkIssueSchema.parse(req.body);
+    const user = requireAuthenticatedRequestUser(req);
+    const data = await createInvoiceBulkIssue(
+      input,
+      user.id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã đưa hóa đơn vào hàng đợi phát hành.",
+      zh: "发票已加入开具队列。",
+    });
   } catch (error) {
     return handleError(res, error);
   }

@@ -4,6 +4,7 @@ export const CLIENT_AUTH_RUNTIME_STATUSES = [
   "INITIALIZING",
   "VERIFYING",
   "AUTHENTICATED",
+  "ERROR",
   "SIGNED_OUT",
 ] as const;
 

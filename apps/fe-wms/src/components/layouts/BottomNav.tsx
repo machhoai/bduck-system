@@ -7,7 +7,7 @@ import { useTranslation } from "../../lib/i18n";
 import { useUserStore } from "../../stores/useUserStore";
 import { useSidebarStore } from "../../stores/useSidebarStore";
 import { menuItems, getVisibleMenuItems } from "../../config/menuConfig";
-import { useMenuBadges } from "../../hooks/useMenuBadges";
+import { useLayoutMenuBadges } from "../providers/MenuBadgesProvider";
 
 /**
  * BottomNav — Mobile bottom navigation bar
@@ -24,7 +24,7 @@ export default function BottomNav() {
     const isOpen = useSidebarStore((s) => s.isMobileDrawerOpen);
     const openDrawer = useSidebarStore((s) => s.openDrawer);
     const closeDrawer = useSidebarStore((s) => s.closeDrawer);
-    const badges = useMenuBadges();
+    const badges = useLayoutMenuBadges();
 
     const visibleItems = getVisibleMenuItems(menuItems, hasPermission)
         .filter((item) => item.showInBottomNav)

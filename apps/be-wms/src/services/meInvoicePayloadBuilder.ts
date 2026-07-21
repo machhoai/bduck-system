@@ -105,7 +105,8 @@ export const buildMeInvoicePayload = (
   const buyer = asRecord(sourceOrder.buyer);
   const paymentMethodName =
     nullableString(sourceOrder.payment_method_name) ??
-    nullableString(sourceOrder.mapped_payment_method);
+    nullableString(sourceOrder.mapped_payment_method) ??
+    nullableString(storeConfig.default_payment_method_name);
   const sourceOrderNumber =
     nullableString(sourceOrder.source_order_number) ??
     nullableString(sourceOrder.order_number);
@@ -173,7 +174,7 @@ export const buildMeInvoicePayload = (
       SortOrder: index + 1,
       ItemCode: line.item_code ?? "",
       ItemName: line.item_name,
-      UnitName: line.unit_name ?? "",
+      UnitName: line.unit_name ?? storeConfig.default_unit_name ?? "",
       Quantity: line.quantity,
       UnitPrice: line.unit_price,
       AmountOC: line.amount,

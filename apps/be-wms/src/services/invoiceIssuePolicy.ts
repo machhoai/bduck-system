@@ -47,9 +47,17 @@ export const validateInvoiceIssueCandidate = (
   sourceOrder: Record<string, unknown>,
   config: MeInvoiceStoreConfig,
   actorId: string,
+  options: { allowReviewBypass?: boolean } = {},
 ): InvoiceIssueCandidateIssue[] => {
   const issues: InvoiceIssueCandidateIssue[] = [];
-  if (document.status !== InvoiceDocumentStatus.READY_TO_ISSUE) {
+  const allowedStatuses = options.allowReviewBypass
+    ? [
+        InvoiceDocumentStatus.NEEDS_REVIEW,
+        InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
+        InvoiceDocumentStatus.READY_TO_ISSUE,
+      ]
+    : [InvoiceDocumentStatus.READY_TO_ISSUE];
+  if (!allowedStatuses.includes(document.status as InvoiceDocumentStatus)) {
     issues.push({ code: "DOCUMENT_NOT_READY", message: "Draft is not ready to issue." });
   }
   if (document.issue_eligible !== true || !document.calculation) {

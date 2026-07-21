@@ -2,6 +2,7 @@ import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
   createMeInvoiceAccountHandler,
   getMeInvoiceStoreConfigHandler,
+  listMeInvoiceStoreAccountOptionsHandler,
   listMeInvoiceAccountsHandler,
   saveMeInvoiceStoreConfigHandler,
   testMeInvoiceAccountHandler,
@@ -26,6 +27,11 @@ router.post("/accounts", requireSystemAdmin, createMeInvoiceAccountHandler);
 router.put("/accounts/:id", requireSystemAdmin, updateMeInvoiceAccountHandler);
 router.post("/accounts/:id/test", requireSystemAdmin, testMeInvoiceAccountHandler);
 
+router.get(
+  "/store-configs/:warehouseId/account-options",
+  requirePermission("invoices.config", warehouseId),
+  listMeInvoiceStoreAccountOptionsHandler,
+);
 router.get(
   "/store-configs/:warehouseId",
   requirePermission("invoices.config", warehouseId),

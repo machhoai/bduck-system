@@ -81,6 +81,46 @@ export interface InvoiceIssueJobItem {
   completed_at: Date | null;
 }
 
+export type InvoiceBulkSelectionMode = "SELECTED" | "ALL";
+
+export interface InvoiceBulkIssueSummary {
+  invoice_count: number;
+  eligible_count: number;
+  excluded_count: number;
+  total_amount_without_vat: number;
+  total_vat_amount: number;
+  total_amount: number;
+  product_line_count: number;
+  product_quantity: number;
+}
+
+export interface InvoiceBulkIssueExcludedOrder {
+  source_order_document_id: string;
+  source_order_id: string;
+  order_number: string | null;
+  issue_codes: string[];
+}
+
+export interface InvoiceBulkIssuePreview {
+  warehouse_id: string;
+  business_date: string;
+  selection_mode: InvoiceBulkSelectionMode;
+  summary: InvoiceBulkIssueSummary;
+  eligible_source_order_ids: string[];
+  excluded: InvoiceBulkIssueExcludedOrder[];
+}
+
+export interface InvoiceBulkIssueRun extends InvoiceBulkIssuePreview {
+  id: string;
+  job_ids: string[];
+  requested_by: string;
+  status: "CREATING" | "QUEUED" | "FAILED";
+  action_time: Date;
+  sync_time: Date;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export enum InvoiceKind {
   ORIGINAL = "ORIGINAL",
   REPLACEMENT = "REPLACEMENT",
@@ -290,10 +330,12 @@ export interface MeInvoiceStoreConfig {
   seller_shop_name: string;
   price_includes_vat: boolean | null;
   tax_rate_source: InvoiceTaxRateSource;
-  default_vat_rate_name: string | null;
+  default_vat_rate_name: InvoiceVatRateName | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   payment_method_mapping: Record<string, string>;
+  default_payment_method_name: string;
+  default_unit_name: string;
   go_live_at: Date | null;
   invoice_date_source: "PAYMENT_TIME";
   issue_scope: "GO_LIVE_FORWARD";

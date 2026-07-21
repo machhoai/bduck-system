@@ -73,8 +73,7 @@ RUN chown nextjs:nodejs .next
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/apps/fe-wms/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/fe-wms/.next/static ./apps/fe-wms/.next/static
-# Uncomment if using the public folder:
-# COPY --from=builder --chown=nextjs:nodejs /app/apps/fe-wms/public ./apps/fe-wms/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/fe-wms/public ./apps/fe-wms/public
 
 USER nextjs
 

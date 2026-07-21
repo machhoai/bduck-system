@@ -82,6 +82,8 @@ export const invoiceIssueRepository = {
     idempotencyKey: string;
     actorId: string;
     items: PreparedIssueItem[];
+    allowReviewBypass?: boolean;
+    bulkRunId?: string;
   }) {
     const jobRef = jobs.doc(input.jobId);
     return db.runTransaction(async (transaction) => {
@@ -104,7 +106,13 @@ export const invoiceIssueRepository = {
           !document || !source ||
           document.warehouse_id !== input.warehouseId ||
           source.warehouse_id !== input.warehouseId ||
-          document.status !== InvoiceDocumentStatus.READY_TO_ISSUE ||
+          !(input.allowReviewBypass
+            ? [
+                InvoiceDocumentStatus.NEEDS_REVIEW,
+                InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
+                InvoiceDocumentStatus.READY_TO_ISSUE,
+              ].includes(document.status)
+            : document.status === InvoiceDocumentStatus.READY_TO_ISSUE) ||
           document.issue_eligible !== true ||
           document.revision !== item.revision ||
           document.source_payload_hash !== item.sourcePayloadHash ||
@@ -132,6 +140,8 @@ export const invoiceIssueRepository = {
         status: InvoiceIssueJobStatus.QUEUED,
         idempotency_key: input.idempotencyKey,
         requested_by: input.actorId,
+        bulk_run_id: input.bulkRunId ?? null,
+        review_bypassed: input.allowReviewBypass === true,
         counts: initialCounts(input.items.length),
         created_at: now,
         updated_at: now,
@@ -183,6 +193,13 @@ export const invoiceIssueRepository = {
           prepared_payload_hash: item.payloadHash,
           queued_by: input.actorId,
           queued_at: now,
+          ...(input.allowReviewBypass
+            ? {
+                review_bypassed_by: input.actorId,
+                review_bypassed_at: now,
+                review_bypass_reason: "BULK_ISSUE_PERMISSION_OTP",
+              }
+            : {}),
           updated_by: input.actorId,
           updated_at: now,
         });

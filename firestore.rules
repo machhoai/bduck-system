@@ -368,6 +368,12 @@ service cloud.firestore {
         allow write: if false;
       }
     }
+
+    // Bulk run orchestration contains selection and audit metadata. Progress is
+    // exposed only through scoped invoice_issue_jobs/{jobId}/items listeners.
+    match /invoice_bulk_issue_runs/{runId} {
+      allow read, write: if false;
+    }
     match /invoice_queue_lanes/{docId} {
       allow read, write: if false;
     }

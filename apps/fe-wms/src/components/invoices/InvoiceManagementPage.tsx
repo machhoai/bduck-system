@@ -9,21 +9,18 @@ import {
     RefreshCw,
     ReceiptText,
     Search,
-    Send,
     ShieldCheck,
     X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     InvoiceDocumentStatus,
-    InvoiceIssueJobStatus,
     InvoiceOrderSyncPurpose,
     InvoicePreparationStatus,
 } from "@bduck/shared-types";
 import {
     invoiceApi,
     type InvoiceSourceOrderView,
-    type InvoiceIssueJobView,
     type InvoiceSyncResult,
 } from "@/api/invoiceApi";
 import { useStores } from "@/hooks/useWarehouses";
@@ -31,8 +28,10 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { showToast } from "@/utils/toast";
 import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
+import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
 import { MisaInvoicePanel } from "./MisaInvoicePanel";
+import { InvoiceBulkIssuePanel } from "./bulk-issue/InvoiceBulkIssuePanel";
 
 const copy = {
     vi: {
@@ -200,14 +199,25 @@ const documentStatusLabel = (
     return values[lang][status] ?? status;
 };
 
+const canSelectForBulkIssue = (order: InvoiceSourceOrderView) =>
+    order.preflight.issue_eligible === true &&
+    Boolean(order.invoice_document_id) &&
+    [
+        InvoiceDocumentStatus.NEEDS_REVIEW,
+        InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
+        InvoiceDocumentStatus.READY_TO_ISSUE,
+    ].includes(order.invoice_document_status as InvoiceDocumentStatus);
+
+type InvoiceView = "PENDING" | "ISSUED" | "RECONCILIATION" | "MISA" | "CONFIG";
+
 export default function InvoiceManagementPage() {
     const { lang } = useTranslation();
     const d = copy[lang];
     const { stores, loading: storesLoading } = useStores();
     const hasPermission = useUserStore((state) => state.hasPermission);
-    const [view, setView] = useState<"PENDING" | "ISSUED" | "RECONCILIATION" | "MISA">(() => {
+    const [view, setView] = useState<InvoiceView>(() => {
         const value = initialQueryValue("tab");
-        return value === "ISSUED" || value === "RECONCILIATION" || value === "MISA" ? value : "PENDING";
+        return value === "ISSUED" || value === "RECONCILIATION" || value === "MISA" || value === "CONFIG" ? value : "PENDING";
     });
     const [selectedStoreId, setSelectedStoreId] = useState(() =>
         initialQueryValue("store"),
@@ -231,9 +241,6 @@ export default function InvoiceManagementPage() {
     const [error, setError] = useState<string | null>(null);
     const [syncResult, setSyncResult] = useState<InvoiceSyncResult | null>(null);
     const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
-    const [issuing, setIssuing] = useState(false);
-    const [issueJob, setIssueJob] = useState<InvoiceIssueJobView | null>(null);
-    const issueRequestKey = useRef<string | null>(null);
     const [query, setQuery] = useState(() => initialQueryValue("q"));
     const [statusFilter, setStatusFilter] = useState<
         "ALL" | InvoicePreparationStatus
@@ -249,8 +256,9 @@ export default function InvoiceManagementPage() {
 
     const loadOrders = useCallback(async () => {
         const generation = ++loadGeneration.current;
-        if (!activeStoreId || !businessDate) {
+        if (view === "CONFIG" || !activeStoreId || !businessDate) {
             setOrders([]);
+            setLoading(false);
             return;
         }
         setLoading(true);
@@ -272,7 +280,7 @@ export default function InvoiceManagementPage() {
         } finally {
             if (generation === loadGeneration.current) setLoading(false);
         }
-    }, [activeStoreId, businessDate]);
+    }, [activeStoreId, businessDate, view]);
 
     useEffect(() => {
         void loadOrders();
@@ -283,49 +291,7 @@ export default function InvoiceManagementPage() {
 
     useEffect(() => {
         setSelectedIssueIds([]);
-        setIssueJob(null);
-        issueRequestKey.current = null;
     }, [activeStoreId, businessDate]);
-
-    useEffect(() => {
-        if (!issueJob) return;
-        if (
-            [
-                InvoiceIssueJobStatus.COMPLETED,
-                InvoiceIssueJobStatus.PARTIAL,
-                InvoiceIssueJobStatus.FAILED,
-                InvoiceIssueJobStatus.CANCELLED,
-            ].includes(issueJob.status)
-        ) return;
-        let cancelled = false;
-        const timer = window.setTimeout(async () => {
-            try {
-                const next = await invoiceApi.getIssueJob(issueJob.id, activeStoreId);
-                if (!cancelled) {
-                    setIssueJob(next);
-                    if (
-                        [
-                            InvoiceIssueJobStatus.COMPLETED,
-                            InvoiceIssueJobStatus.PARTIAL,
-                            InvoiceIssueJobStatus.FAILED,
-                        ].includes(next.status)
-                    ) await loadOrders();
-                }
-            } catch (pollError) {
-                if (!cancelled) {
-                    setError(
-                        pollError instanceof Error
-                            ? pollError.message
-                            : "Unable to refresh issue job.",
-                    );
-                }
-            }
-        }, 2500);
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
-    }, [activeStoreId, issueJob, loadOrders]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -418,63 +384,31 @@ export default function InvoiceManagementPage() {
         purpose === InvoiceOrderSyncPurpose.ISSUE
             ? hasPermission("invoices.prepare", activeStoreId)
             : hasPermission("invoices.reconcile", activeStoreId);
-    const canIssue = hasPermission("invoices.issue", activeStoreId);
-    const issueEligibleIds = filteredOrders
-        .filter(
-            (order) =>
-                order.invoice_document_status ===
-                InvoiceDocumentStatus.READY_TO_ISSUE &&
-                Boolean(order.invoice_document_id),
-        )
-        .map((order) => order.invoice_document_id!);
-    const selectableIssueIds = issueEligibleIds.slice(0, 30);
+    const canBulkIssue = hasPermission("invoices.bulk_issue", activeStoreId);
+    const canConfigure = hasPermission("invoices.config", activeStoreId);
+    const invoiceViews: Array<[InvoiceView, string]> = [
+        ["PENDING", lang === "vi" ? "Chờ phát hành" : "Pending"],
+        ["ISSUED", lang === "vi" ? "Đã phát hành" : "Issued"],
+        ["RECONCILIATION", lang === "vi" ? "Lỗi / Đối chiếu" : "Reconciliation"],
+        ["MISA", lang === "vi" ? "Toàn bộ hóa đơn MISA" : "All MISA invoices"],
+        ...(canConfigure
+            ? ([["CONFIG", lang === "vi" ? "Cấu hình" : "Configuration"]] as Array<[InvoiceView, string]>)
+            : []),
+    ];
+    const selectableIssueIds = filteredOrders
+        .filter(canSelectForBulkIssue)
+        .map((order) => order.id);
     const selectedEligibleIds = selectedIssueIds.filter((id) =>
-        selectableIssueIds.includes(id),
+        orders.some((order) => order.id === id && canSelectForBulkIssue(order)),
     );
+    const dailyEligibleCount = orders.filter(canSelectForBulkIssue).length;
 
     const toggleIssueId = (id: string) => {
-        issueRequestKey.current = null;
         setSelectedIssueIds((current) =>
             current.includes(id)
                 ? current.filter((value) => value !== id)
-                : current.length < 30
-                    ? [...current, id]
-                    : current,
+                : [...current, id],
         );
-    };
-
-    const handleIssue = async () => {
-        if (
-            !activeStoreId ||
-            !canIssue ||
-            selectedEligibleIds.length === 0 ||
-            issuing
-        ) return;
-        const message =
-            lang === "vi"
-                ? `Bạn sắp gửi ${selectedEligibleIds.length} hóa đơn thật sang MISA. Hãy xác nhận các draft đã được đối chiếu và thuộc thời điểm go-live.`
-                : `You are about to send ${selectedEligibleIds.length} real invoices to MISA. Confirm they were reconciled and are after go-live.`;
-        if (!window.confirm(message)) return;
-        setIssuing(true);
-        setError(null);
-        try {
-            issueRequestKey.current ??= crypto.randomUUID();
-            const job = await invoiceApi.createIssueJob(
-                activeStoreId,
-                selectedEligibleIds,
-                issueRequestKey.current,
-            );
-            setIssueJob(job);
-            setSelectedIssueIds([]);
-        } catch (issueError) {
-            setError(
-                issueError instanceof Error
-                    ? issueError.message
-                    : "Unable to create issue job.",
-            );
-        } finally {
-            setIssuing(false);
-        }
     };
 
     if (!storesLoading && stores.length === 0) {
@@ -501,7 +435,7 @@ export default function InvoiceManagementPage() {
                     <h1 className="mt-1 text-2xl font-bold">{d.title}</h1>
                     <p className="mt-1 max-w-[80%] text-sm text-slate-300">{d.subtitle}</p>
                 </div>
-                <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end">
+                <div className={`grid gap-3 p-3 ${view === "CONFIG" ? "sm:grid-cols-[minmax(220px,420px)]" : "sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end"}`}>
                     <Field label={d.store}>
                         <select
                             value={activeStoreId}
@@ -515,15 +449,15 @@ export default function InvoiceManagementPage() {
                             ))}
                         </select>
                     </Field>
-                    <Field label={d.date}>
+                    {view !== "CONFIG" && <Field label={d.date}>
                         <input
                             type="date"
                             value={businessDate}
                             onChange={(event) => setBusinessDate(event.target.value)}
                             className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold outline-none focus:border-[var(--color-brand-primary)]"
                         />
-                    </Field>
-                    <Field label={d.purpose}>
+                    </Field>}
+                    {view !== "CONFIG" && <Field label={d.purpose}>
                         <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-1">
                             {[
                                 [InvoiceOrderSyncPurpose.ISSUE, d.issue],
@@ -539,8 +473,8 @@ export default function InvoiceManagementPage() {
                                 </button>
                             ))}
                         </div>
-                    </Field>
-                    <button
+                    </Field>}
+                    {view !== "CONFIG" && <button
                         type="button"
                         onClick={handleSync}
                         disabled={!canSync || syncing || !activeStoreId}
@@ -552,17 +486,12 @@ export default function InvoiceManagementPage() {
                             <RefreshCw size={16} />
                         )}
                         {syncing ? d.syncing : d.sync}
-                    </button>
+                    </button>}
                 </div>
             </header>
 
-            <nav className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-1" aria-label="Invoice views">
-                {([
-                    ["PENDING", lang === "vi" ? "Chờ phát hành" : "Pending"],
-                    ["ISSUED", lang === "vi" ? "Đã phát hành" : "Issued"],
-                    ["RECONCILIATION", lang === "vi" ? "Lỗi / Đối chiếu" : "Reconciliation"],
-                    ["MISA", lang === "vi" ? "Toàn bộ hóa đơn MISA" : "All MISA invoices"],
-                ] as const).map(([value, label]) => (
+            <nav className="flex gap-1 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-1" aria-label="Invoice views">
+                {invoiceViews.map(([value, label]) => (
                     <button
                         key={value}
                         type="button"
@@ -570,14 +499,14 @@ export default function InvoiceManagementPage() {
                             setView(value);
                             if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                         }}
-                        className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                        className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
                     >
                         {label}
                     </button>
                 ))}
             </nav>
 
-            {error && (
+            {view !== "CONFIG" && error && (
                 <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                     <AlertTriangle size={17} className="shrink-0" />
                     <span className="flex-1">{error}</span>
@@ -591,7 +520,7 @@ export default function InvoiceManagementPage() {
                     </button>
                 </div>
             )}
-            {syncResult && (
+            {view !== "CONFIG" && syncResult && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
                     <CheckCircle2 size={17} />
                     <strong>
@@ -629,44 +558,24 @@ export default function InvoiceManagementPage() {
                 </div>
             )}
 
-            {view === "PENDING" ? <>
-                {(selectedEligibleIds.length > 0 || issueJob) && (
-                    <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                        {issueJob ? (
-                            <>
-                                <strong>
-                                    {lang === "vi" ? "Tiến độ phát hành" : "Issue progress"}: {issueJob.status}
-                                </strong>
-                                <span>{issueJob.counts.issued} {lang === "vi" ? "đã phát hành" : "issued"}</span>
-                                <span>{issueJob.counts.pending_confirmation} {lang === "vi" ? "chờ xác nhận" : "pending"}</span>
-                                <span>
-                                    {issueJob.counts.manual_reconciliation + issueJob.counts.retryable_error}{" "}
-                                    {lang === "vi" ? "cần xử lý" : "need attention"}
-                                </span>
-                            </>
-                        ) : (
-                            <span className="font-semibold">
-                                {selectedEligibleIds.length} {lang === "vi" ? "hóa đơn đã chọn" : "invoices selected"}
-                            </span>
-                        )}
-                        {selectedEligibleIds.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => void handleIssue()}
-                                disabled={!canIssue || issuing}
-                                className="ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-sky-700 px-3 text-xs font-bold text-white disabled:opacity-50"
-                            >
-                                {issuing ? (
-                                    <LoaderCircle className="animate-spin" size={15} />
-                                ) : (
-                                    <Send size={15} />
-                                )}
-                                {issuing
-                                    ? lang === "vi" ? "Đang tạo job…" : "Creating job…"
-                                    : lang === "vi" ? "Phát hành hóa đơn đã chọn" : "Issue selected invoices"}
-                            </button>
-                        )}
-                    </div>
+            {view === "CONFIG" ? (
+                <InvoiceConfigurationPanel
+                    warehouseId={activeStoreId}
+                    canConfigure={canConfigure}
+                    lang={lang}
+                />
+            ) : view === "PENDING" ? <>
+                {canBulkIssue && (
+                    <InvoiceBulkIssuePanel
+                        warehouseId={activeStoreId}
+                        businessDate={businessDate}
+                        selectedIds={selectedEligibleIds}
+                        eligibleCount={dailyEligibleCount}
+                        canIssue={canBulkIssue}
+                        lang={lang}
+                        onIssued={() => setSelectedIssueIds([])}
+                        onCompleted={() => void loadOrders()}
+                    />
                 )}
 
                 <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -747,20 +656,14 @@ export default function InvoiceManagementPage() {
                                         key={order.id}
                                         className="relative rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white shadow-sm"
                                     >
-                                        {order.invoice_document_status ===
-                                            InvoiceDocumentStatus.READY_TO_ISSUE &&
-                                            order.invoice_document_id && (
+                                        {canBulkIssue && canSelectForBulkIssue(order) && (
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedIssueIds.includes(
-                                                        order.invoice_document_id,
+                                                        order.id,
                                                     )}
-                                                    disabled={
-                                                        !selectedIssueIds.includes(order.invoice_document_id) &&
-                                                        selectedIssueIds.length >= 30
-                                                    }
                                                     onChange={() =>
-                                                        toggleIssueId(order.invoice_document_id!)
+                                                        toggleIssueId(order.id)
                                                     }
                                                     aria-label={
                                                         lang === "vi"
@@ -773,7 +676,7 @@ export default function InvoiceManagementPage() {
                                         <button
                                             type="button"
                                             onClick={() => setSelectedOrder(order)}
-                                            className={`w-full p-3 text-left ${order.invoice_document_status === InvoiceDocumentStatus.READY_TO_ISSUE ? "pl-10" : ""}`}
+                                            className={`w-full p-3 text-left ${canBulkIssue && canSelectForBulkIssue(order) ? "pl-10" : ""}`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
@@ -825,7 +728,6 @@ export default function InvoiceManagementPage() {
                                                         )
                                                     }
                                                     onChange={() => {
-                                                        issueRequestKey.current = null;
                                                         setSelectedIssueIds(
                                                             selectableIssueIds.every((id) =>
                                                                 selectedIssueIds.includes(id),
@@ -868,21 +770,14 @@ export default function InvoiceManagementPage() {
                                                 className="transition hover:bg-slate-50/80"
                                             >
                                                 <td className="px-4 py-3">
-                                                    {order.invoice_document_status ===
-                                                        InvoiceDocumentStatus.READY_TO_ISSUE &&
-                                                        order.invoice_document_id && (
+                                                    {canBulkIssue && canSelectForBulkIssue(order) && (
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedIssueIds.includes(
-                                                                    order.invoice_document_id,
+                                                                    order.id,
                                                                 )}
-                                                                disabled={
-                                                                    !selectedIssueIds.includes(
-                                                                        order.invoice_document_id,
-                                                                    ) && selectedIssueIds.length >= 30
-                                                                }
                                                                 onChange={() =>
-                                                                    toggleIssueId(order.invoice_document_id!)
+                                                                    toggleIssueId(order.id)
                                                                 }
                                                                 aria-label={
                                                                     lang === "vi"
