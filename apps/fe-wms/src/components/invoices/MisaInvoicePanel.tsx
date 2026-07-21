@@ -182,74 +182,84 @@ export function MisaInvoicePanel({
             đồng bộ toàn ngày.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px] text-left text-sm">
-              <thead className="bg-slate-50 text-xxs uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-2 py-1.5">Số hóa đơn</th>
-                  <th className="px-2 py-1.5">Ngày hóa đơn</th>
-                  <th className="px-2 py-1.5">Người mua</th>
-                  <th className="px-2 py-1.5">Mã đơn</th>
-                  <th className="px-2 py-1.5">Thanh toán</th>
-                  <th className="px-2 py-1.5 text-right">Tổng tiền</th>
-                  <th className="px-2 py-1.5">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-slate-50/70 text-xs">
-                    <td className="px-2 py-1.5">
-                      <div className="font-semibold text-slate-900 text-xs">
+          <div className="flex flex-col gap-2.5 p-3">
+            {filtered.map((invoice) => (
+              <div
+                key={invoice.id}
+                className="group relative rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-emerald-300 hover:shadow-md transition-all duration-150"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-900">
                         {invoice.invoice_number ?? "—"}
+                      </span>
+                      {invoice.inv_series && (
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                          Ký hiệu: {invoice.inv_series}
+                        </span>
+                      )}
+                      {invoice.invoice_date && (
+                        <span className="text-xs text-slate-500 font-medium">
+                          • {invoice.invoice_date}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                      <div>
+                        <span className="font-semibold text-slate-900" title={invoice.buyer_name || "Khách lẻ"}>
+                          {shortName(invoice.buyer_name) || "Khách lẻ"}
+                        </span>
+                        {invoice.buyer_tax_code && (
+                          <span className="ml-1.5 text-slate-400">
+                            (MST: {invoice.buyer_tax_code})
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xxs text-slate-500">
-                        {invoice.inv_series ?? "—"}
-                      </div>
-                    </td>
-                    <td className="px-2 py-1.5 text-slate-600 text-xxs">
-                      {invoice.invoice_date ?? "—"}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <div className="max-w-64 truncate font-medium text-slate-900 text-xs" title={invoice.buyer_name || "Khách lẻ"}>
-                        {shortName(invoice.buyer_name) || "Khách lẻ"}
-                      </div>
-                      <div className="text-xxs text-slate-500">
-                        {invoice.buyer_tax_code || "Không có MST"}
-                      </div>
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <div className="max-w-52 truncate text-xs">
-                        {invoice.buyer_order_code || "Chưa có mã liên kết"}
-                      </div>
-                      <div
-                        className="max-w-52 truncate text-xxs text-slate-400"
-                        title={invoice.transaction_id ?? undefined}
-                      >
-                        {invoice.transaction_id ?? "—"}
-                      </div>
-                    </td>
-                    <td className="px-2 py-1.5 text-slate-600 text-xxs">
-                      {invoice.payment_method_name ?? "—"}
-                    </td>
-                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-slate-900 text-xs">
-                      {amount.format(invoice.total_amount ?? 0)}
-                    </td>
-                    <td className="px-2 py-1.5">
+                      {invoice.buyer_order_code && (
+                        <div className="text-slate-500">
+                          Đơn: <span className="font-medium text-slate-700">{invoice.buyer_order_code}</span>
+                        </div>
+                      )}
+                      {invoice.payment_method_name && (
+                        <div className="text-slate-400">
+                          {invoice.payment_method_name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <div className="flex flex-col text-right">
+                      <span className="text-[11px] text-emerald-800 uppercase tracking-wider font-bold">Tổng tiền</span>
+                      <span className="text-sm sm:text-base font-bold tabular-nums text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200/80 shadow-2xs">
+                        {amount.format(invoice.total_amount ?? 0)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xxs font-semibold ${invoice.is_deleted ? "bg-rose-50 text-rose-700" : invoice.publish_status === 1 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          invoice.is_deleted
+                            ? "bg-rose-50 text-rose-700 border border-rose-200"
+                            : invoice.publish_status === 1
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
                       >
                         {invoiceStatus(invoice)}
                       </span>
                       {invoice.send_tax_status !== null && (
-                        <div className="mt-0.5 text-micro text-slate-400">
+                        <span className="text-xs text-slate-400">
                           Thuế: {invoice.send_tax_status}
-                        </div>
+                        </span>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>

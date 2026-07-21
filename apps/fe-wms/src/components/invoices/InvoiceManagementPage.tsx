@@ -580,319 +580,270 @@ export default function InvoiceManagementPage() {
                     canConfigure={canConfigure}
                     lang={lang}
                 />
-            ) : view === "PENDING" ? <>
-                {canBulkIssue && (
-                    <InvoiceBulkIssuePanel
-                        warehouseId={activeStoreId}
-                        businessDate={businessDate}
-                        selectedIds={selectedEligibleIds}
-                        eligibleCount={dailyEligibleCount}
-                        canIssue={canBulkIssue}
-                        lang={lang}
-                        onIssued={() => setSelectedIssueIds([])}
-                        onCompleted={() => void loadOrders()}
-                    />
-                )}
+            ) : view === "PENDING" ? (
+                <>
+                    {canBulkIssue && (
+                        <InvoiceBulkIssuePanel
+                            warehouseId={activeStoreId}
+                            businessDate={businessDate}
+                            selectedIds={selectedEligibleIds}
+                            eligibleCount={dailyEligibleCount}
+                            canIssue={canBulkIssue}
+                            lang={lang}
+                            onIssued={() => setSelectedIssueIds([])}
+                            onCompleted={() => void loadOrders()}
+                        />
+                    )}
 
-                <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                    <StatCard
-                        label={d.total}
-                        value={stats.total}
-                        icon={<ReceiptText size={15} />}
-                    />
-                    <StatCard
-                        label={d.ready}
-                        value={stats.ready}
-                        icon={<ShieldCheck size={15} />}
-                        tone="success"
-                    />
-                    <StatCard
-                        label={d.tax}
-                        value={stats.tax}
-                        icon={<FileWarning size={15} />}
-                        tone="warning"
-                    />
-                    <StatCard
-                        label={d.review}
-                        value={stats.review}
-                        icon={<AlertTriangle size={15} />}
-                        tone="danger"
-                    />
-                </section>
+                    <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        <StatCard
+                            label={d.total}
+                            value={stats.total}
+                            icon={<ReceiptText size={15} />}
+                        />
+                        <StatCard
+                            label={d.ready}
+                            value={stats.ready}
+                            icon={<ShieldCheck size={15} />}
+                            tone="success"
+                        />
+                        <StatCard
+                            label={d.tax}
+                            value={stats.tax}
+                            icon={<FileWarning size={15} />}
+                            tone="warning"
+                        />
+                        <StatCard
+                            label={d.review}
+                            value={stats.review}
+                            icon={<AlertTriangle size={15} />}
+                            tone="danger"
+                        />
+                    </section>
 
-                <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-                    <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] p-2.5 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="relative flex-1 sm:max-w-[60%]">
-                            <Search
-                                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                                size={13}
-                            />
-                            <input
-                                value={query}
-                                onChange={(event) => setQuery(event.target.value)}
-                                placeholder={d.search}
-                                className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-8 pr-2.5 text-xs outline-none focus:border-[var(--color-brand-primary)]"
-                            />
+                    <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
+                        <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] p-2.5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="relative flex-1 sm:max-w-[60%]">
+                                <Search
+                                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                    size={13}
+                                />
+                                <input
+                                    value={query}
+                                    onChange={(event) => setQuery(event.target.value)}
+                                    placeholder={d.search}
+                                    className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-8 pr-2.5 text-xs outline-none focus:border-[var(--color-brand-primary)]"
+                                />
+                            </div>
+                            <select
+                                value={statusFilter}
+                                onChange={(event) =>
+                                    setStatusFilter(event.target.value as typeof statusFilter)
+                                }
+                                className="h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none"
+                            >
+                                <option value="ALL">{d.all}</option>
+                                {Object.values(InvoicePreparationStatus).map((status) => (
+                                    <option key={status} value={status}>
+                                        {statusLabel(status, lang)}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                        <select
-                            value={statusFilter}
-                            onChange={(event) =>
-                                setStatusFilter(event.target.value as typeof statusFilter)
-                            }
-                            className="h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none"
-                        >
-                            <option value="ALL">{d.all}</option>
-                            {Object.values(InvoicePreparationStatus).map((status) => (
-                                <option key={status} value={status}>
-                                    {statusLabel(status, lang)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
 
-                    {loading ? (
-                        <div className="p-3 space-y-2 animate-pulse" aria-label={d.loading}>
-                            {[...Array(4)].map((_, i) => (
-                                <div key={i} className="flex h-10 items-center gap-4 rounded-md bg-slate-50 px-3">
-                                    <div className="h-4 w-32 rounded bg-slate-200" />
-                                    <div className="h-4 w-24 rounded bg-slate-200" />
-                                    <div className="h-4 w-16 rounded bg-slate-200" />
-                                    <div className="h-4 w-20 rounded bg-slate-200" />
-                                    <div className="ml-auto h-4 w-16 rounded bg-slate-200" />
-                                </div>
-                            ))}
-                        </div>
-                    ) : filteredOrders.length === 0 ? (
-                        <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
-                            <ReceiptText size={30} className="mb-2.5 text-slate-300" />
-                            <p className="text-xs font-semibold text-[var(--color-text-primary)]">
-                                {d.empty}
-                            </p>
-                            <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
-                                {d.emptyHint}
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid gap-2 p-3 md:hidden">
-                                {filteredOrders.map((order) => (
-                                    <div
-                                        key={order.id}
-                                        className="relative rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white shadow-sm"
-                                    >
-                                        {canBulkIssue && canSelectForBulkIssue(order) && (
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedIssueIds.includes(
-                                                    order.id,
-                                                )}
-                                                onChange={() =>
-                                                    toggleIssueId(order.id)
-                                                }
-                                                aria-label={
-                                                    lang === "vi"
-                                                        ? "Chọn hóa đơn để phát hành"
-                                                        : "Select invoice to issue"
-                                                }
-                                                className="absolute left-3 top-4 z-10 h-4 w-4 accent-sky-700"
-                                            />
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedOrder(order)}
-                                            className={`w-full p-3 text-left ${canBulkIssue && canSelectForBulkIssue(order) ? "pl-10" : ""}`}
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="truncate text-sm font-bold text-slate-900">
-                                                        {order.order_number ?? order.source_order_id}
-                                                    </p>
-                                                    <p className="mt-0.5 truncate text-xs text-slate-500">
-                                                        {order.customer_name || order.source_order_id}
-                                                    </p>
-                                                </div>
-                                                <span
-                                                    className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${statusStyle(order.preflight.status)}`}
-                                                >
-                                                    {order.invoice_document_status
-                                                        ? documentStatusLabel(
-                                                            order.invoice_document_status,
-                                                            lang,
-                                                        )
-                                                        : statusLabel(order.preflight.status, lang)}
-                                                </span>
-                                            </div>
-                                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                                                <MobileMoney
-                                                    label={d.beforeTax}
-                                                    value={order.amount_before_tax ?? 0}
-                                                />
-                                                <MobileMoney label={d.vat} value={order.tax_money ?? 0} />
-                                                <MobileMoney
-                                                    label={d.totalMoney}
-                                                    value={order.real_money ?? 0}
-                                                    strong
-                                                />
-                                            </div>
-                                        </button>
+                        {loading ? (
+                            <div className="p-3 space-y-2 animate-pulse" aria-label={d.loading}>
+                                {[...Array(4)].map((_, i) => (
+                                    <div key={i} className="flex h-12 items-center gap-4 rounded-xl bg-slate-100/70 px-4 border border-slate-200/50">
+                                        <div className="h-4 w-32 rounded bg-slate-200" />
+                                        <div className="h-4 w-24 rounded bg-slate-200" />
+                                        <div className="h-4 w-16 rounded bg-slate-200" />
+                                        <div className="ml-auto h-6 w-20 rounded-full bg-slate-200" />
                                     </div>
                                 ))}
                             </div>
-                            <div className="hidden overflow-x-auto md:block">
-                                <table className="min-w-[960px] w-full text-left text-sm">
-                                    <thead className="bg-slate-50 text-xxs uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                                        <tr>
-                                            <th className="px-2 py-1.5 w-8">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={
-                                                        selectableIssueIds.length > 0 &&
+                        ) : filteredOrders.length === 0 ? (
+                            <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
+                                <ReceiptText size={30} className="mb-2.5 text-slate-300" />
+                                <p className="text-xs font-semibold text-[var(--color-text-primary)]">
+                                    {d.empty}
+                                </p>
+                                <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
+                                    {d.emptyHint}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2.5 p-3">
+                                {canBulkIssue && (
+                                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-semibold text-slate-700">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    selectableIssueIds.length > 0 &&
+                                                    selectableIssueIds.every((id) =>
+                                                        selectedIssueIds.includes(id),
+                                                    )
+                                                }
+                                                onChange={() => {
+                                                    setSelectedIssueIds(
                                                         selectableIssueIds.every((id) =>
                                                             selectedIssueIds.includes(id),
                                                         )
-                                                    }
-                                                    onChange={() => {
-                                                        setSelectedIssueIds(
-                                                            selectableIssueIds.every((id) =>
-                                                                selectedIssueIds.includes(id),
-                                                            )
-                                                                ? []
-                                                                : selectableIssueIds,
-                                                        );
-                                                    }}
-                                                    disabled={selectableIssueIds.length === 0}
-                                                    aria-label={
-                                                        lang === "vi"
-                                                            ? "Chọn tất cả hóa đơn sẵn sàng"
-                                                            : "Select all ready invoices"
-                                                    }
-                                                    className="h-3.5 w-3.5 accent-sky-700"
-                                                />
-                                            </th>
-                                            {[
-                                                d.order,
-                                                d.payment,
-                                                d.beforeTax,
-                                                d.vat,
-                                                d.totalMoney,
-                                                d.status,
-                                                "",
-                                            ].map((label, index) => (
-                                                <th
-                                                    key={`${label}-${index}`}
-                                                    className="px-2 py-1.5 font-semibold"
+                                                            ? []
+                                                            : selectableIssueIds,
+                                                    );
+                                                }}
+                                                disabled={selectableIssueIds.length === 0}
+                                                aria-label={
+                                                    lang === "vi"
+                                                        ? "Chọn tất cả hóa đơn sẵn sàng"
+                                                        : "Select all ready invoices"
+                                                }
+                                                className="h-4 w-4 rounded accent-sky-700 cursor-pointer"
+                                            />
+                                            <span>
+                                                {lang === "vi"
+                                                    ? "Chọn tất cả hóa đơn sẵn sàng phát hành"
+                                                    : "Select all ready invoices"}
+                                            </span>
+                                        </div>
+                                        <span className="text-slate-500 font-medium">
+                                            {selectedIssueIds.length} / {selectableIssueIds.length}{" "}
+                                            {lang === "vi" ? "đã chọn" : "selected"}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {filteredOrders.map((order) => (
+                                    <div
+                                        key={order.id}
+                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${
+                                            selectedIssueIds.includes(order.id)
+                                                ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
+                                                : "border-slate-200/90 hover:border-sky-300"
+                                        }`}
+                                    >
+                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center justify-between">
+                                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                                                {canBulkIssue && canSelectForBulkIssue(order) && (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIssueIds.includes(order.id)}
+                                                        onChange={() => toggleIssueId(order.id)}
+                                                        aria-label={
+                                                            lang === "vi"
+                                                                ? "Chọn hóa đơn để phát hành"
+                                                                : "Select invoice to issue"
+                                                        }
+                                                        className="mt-1 h-4 w-4 shrink-0 rounded accent-sky-700 cursor-pointer"
+                                                    />
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    className="min-w-0 flex-1 text-left"
                                                 >
-                                                    {label}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--color-border-subtle)]">
-                                        {filteredOrders.map((order) => (
-                                            <tr
-                                                key={order.id}
-                                                className="transition hover:bg-slate-50/80 text-xs"
-                                            >
-                                                <td className="px-2 py-1.5">
-                                                    {canBulkIssue && canSelectForBulkIssue(order) && (
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedIssueIds.includes(
-                                                                order.id,
-                                                            )}
-                                                            onChange={() =>
-                                                                toggleIssueId(order.id)
-                                                            }
-                                                            aria-label={
-                                                                lang === "vi"
-                                                                    ? "Chọn hóa đơn để phát hành"
-                                                                    : "Select invoice to issue"
-                                                            }
-                                                            className="h-3.5 w-3.5 accent-sky-700"
-                                                        />
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSelectedOrder(order)}
-                                                        className="text-left"
-                                                    >
-                                                        <span className="block font-semibold text-slate-900 text-xs">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition-colors">
                                                             {order.order_number ?? order.source_order_id}
                                                         </span>
-                                                        <span className="mt-0.5 block max-w-64 truncate text-xxs text-slate-500" title={order.customer_name || order.source_order_id}>
-                                                            {shortName(order.customer_name) || order.source_order_id}
+                                                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-medium">
+                                                            {order.mapped_payment_method ??
+                                                                order.payment_method ??
+                                                                "—"}
                                                         </span>
-                                                    </button>
-                                                </td>
-                                                <td className="px-2 py-1.5 text-slate-600 text-xxs">
-                                                    <span className="block">
-                                                        {order.mapped_payment_method ??
-                                                            order.payment_method ??
-                                                            "—"}
+                                                    </div>
+                                                    <p
+                                                        className="mt-1 text-xs font-medium text-slate-600 truncate"
+                                                        title={order.customer_name || order.source_order_id}
+                                                    >
+                                                        {shortName(order.customer_name) || order.source_order_id}
+                                                    </p>
+                                                    {order.payment_time && (
+                                                        <p className="mt-0.5 text-xs text-slate-400">
+                                                            {order.payment_time}
+                                                        </p>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex flex-col text-right">
+                                                        <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                                                            {d.beforeTax}
+                                                        </span>
+                                                        <span className="text-xs font-semibold tabular-nums text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                                            {money.format(order.amount_before_tax ?? 0)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col text-right">
+                                                        <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                                                            {d.vat}
+                                                        </span>
+                                                        <span className="text-xs font-semibold tabular-nums text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                                            {money.format(order.tax_money ?? 0)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-[11px] text-sky-800 uppercase tracking-wider font-bold">
+                                                        {d.totalMoney}
                                                     </span>
-                                                    <span className="text-slate-400">
-                                                        {order.payment_time ?? "—"}
+                                                    <span className="text-sm sm:text-base font-bold tabular-nums text-sky-700 bg-sky-50 px-3 py-1 rounded-lg border border-sky-200/80 shadow-2xs">
+                                                        {money.format(order.real_money ?? 0)}
                                                     </span>
-                                                </td>
-                                                <td className="px-2 py-1.5 font-medium tabular-nums text-xs">
-                                                    {money.format(order.amount_before_tax ?? 0)}
-                                                </td>
-                                                <td className="px-2 py-1.5 font-medium tabular-nums text-xs">
-                                                    {money.format(order.tax_money ?? 0)}
-                                                </td>
-                                                <td className="px-2 py-1.5 font-bold tabular-nums text-slate-900 text-xs">
-                                                    {money.format(order.real_money ?? 0)}
-                                                </td>
-                                                <td className="px-2 py-1.5">
+                                                </div>
+
+                                                <div className="flex flex-col items-end gap-1">
                                                     <span
-                                                        className={`inline-flex rounded-full border px-2 py-0.5 text-xxs font-semibold ${statusStyle(order.preflight.status)}`}
+                                                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyle(order.preflight.status)}`}
                                                     >
                                                         {statusLabel(order.preflight.status, lang)}
                                                     </span>
                                                     {order.invoice_document_status && (
-                                                        <span className="mt-0.5 block text-micro font-semibold text-slate-500">
+                                                        <span className="text-xs font-semibold text-slate-500">
                                                             {documentStatusLabel(
                                                                 order.invoice_document_status,
                                                                 lang,
                                                             )}
                                                         </span>
                                                     )}
-                                                </td>
-                                                <td className="px-2 py-1.5 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSelectedOrder(order)}
-                                                        aria-label={d.detail}
-                                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                                                    >
-                                                        <ChevronRight size={13} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                    )}
-                </section>
+                                                </div>
 
-                {selectedOrder && (
-                    <OrderReviewDrawer
-                        order={selectedOrder}
-                        lang={lang}
-                        labels={d}
-                        canPrepare={hasPermission(
-                            "invoices.prepare",
-                            selectedOrder.warehouse_id,
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    aria-label={d.detail}
+                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
-                        onChanged={loadOrders}
-                        onClose={() => setSelectedOrder(null)}
-                    />
-                )}
-            </> : view === "MISA" ? (
+                    </section>
+
+                    {selectedOrder && (
+                        <OrderReviewDrawer
+                            order={selectedOrder}
+                            lang={lang}
+                            labels={d}
+                            canPrepare={hasPermission(
+                                "invoices.prepare",
+                                selectedOrder.warehouse_id,
+                            )}
+                            onChanged={loadOrders}
+                            onClose={() => setSelectedOrder(null)}
+                        />
+                    )}
+                </>
+            ) : view === "MISA" ? (
                 <MisaInvoicePanel
                     warehouseId={activeStoreId}
                     businessDate={businessDate}
@@ -902,7 +853,7 @@ export default function InvoiceManagementPage() {
                 <InvoiceLedgerPanel
                     warehouseId={activeStoreId}
                     businessDate={businessDate}
-                    mode={view}
+                    mode={view === "RECONCILIATION" ? "RECONCILIATION" : "ISSUED"}
                     refreshToken={syncResult?.id ?? ""}
                     canDownload={hasPermission("invoices.download", activeStoreId)}
                     canResolve={hasPermission("invoices.reconcile", activeStoreId)}
