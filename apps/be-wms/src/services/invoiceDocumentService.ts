@@ -19,15 +19,11 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 import { calculateInvoice } from "./invoiceCalculationService.js";
 import {
   canEditInvoiceDocument,
-  invoiceReviewPolicyViolation,
   statusAfterInvoiceEdit,
   vatRateValue,
 } from "./invoiceDocumentPolicy.js";
 import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
-import type {
-  InvoiceDocumentReviewInput,
-  InvoiceDocumentUpdateInput,
-} from "./invoiceDocumentSchemas.js";
+import type { InvoiceDocumentUpdateInput } from "./invoiceDocumentSchemas.js";
 import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
 import { dateFromValue } from "./meInvoiceConfigService.js";
@@ -422,11 +418,11 @@ export const updateInvoiceDocument = async (
     nextItems,
   );
   const nextStatus = validation.issueEligible
-    ? editState.status
+    ? InvoiceDocumentStatus.READY_TO_ISSUE
     : validation.preparationStatus ===
         InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION
       ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
-      : InvoiceDocumentStatus.NEEDS_REVIEW;
+      : InvoiceDocumentStatus.NEEDS_CORRECTION;
   const now = new Date();
   const next = await invoiceDocumentRepository.updateDraft(
     id,
@@ -476,111 +472,6 @@ export const updateInvoiceDocument = async (
         (next.calculation as JsonRecord | null)?.calculation_hash ?? null,
     },
     notes: "Updated invoice draft revision",
-    ...auditMetadata,
-  });
-  const revisions = await invoiceDocumentRepository.listRevisions(
-    id,
-    input.warehouse_id,
-  );
-  return publicDocument(next, revisions ?? []);
-};
-
-export const reviewInvoiceDocument = async (
-  id: string,
-  input: InvoiceDocumentReviewInput,
-  actorId: string,
-  authorization: AuthorizationService,
-  auditMetadata?: AuditMetadata,
-) => {
-  authorization.assert("invoices.review", input.warehouse_id);
-  const current = await invoiceDocumentRepository.getDocument(
-    id,
-    input.warehouse_id,
-  );
-  if (!current) {
-    throw serviceError(
-      404,
-      "Không tìm thấy bản nháp hóa đơn.",
-      "找不到发票草稿。",
-      "INVOICE_DOCUMENT_NOT_FOUND",
-    );
-  }
-  const status = current.status as InvoiceDocumentStatus;
-  const policyViolation = invoiceReviewPolicyViolation({
-    status,
-    action: input.action,
-    issueEligible: current.issue_eligible === true,
-    hasCalculation: Boolean(current.calculation),
-    editedBy: typeof current.edited_by === "string" ? current.edited_by : null,
-    actorId,
-  });
-  if (policyViolation === "INVOICE_DOCUMENT_NOT_REVIEWABLE") {
-    throw serviceError(
-      409,
-      "Trạng thái hiện tại không cho phép duyệt bản nháp.",
-      "当前状态不允许审核草稿。",
-      "INVOICE_DOCUMENT_NOT_REVIEWABLE",
-    );
-  }
-  if (policyViolation === "INVOICE_DOCUMENT_NOT_ELIGIBLE") {
-    throw serviceError(
-      422,
-      "Bản nháp còn lỗi validation nên chưa thể duyệt.",
-      "草稿仍有验证错误，无法批准。",
-      policyViolation,
-      { issues: (current.validation_issues as unknown[]) ?? [] },
-    );
-  }
-  if (policyViolation === "INVOICE_REVIEW_SOD_VIOLATION") {
-    throw serviceError(
-      409,
-      "Người sửa bản nháp không được tự duyệt cùng revision.",
-      "草稿编辑者不能审核同一修订版本。",
-      policyViolation,
-    );
-  }
-  const now = new Date();
-  const approved = input.action === "APPROVE";
-  const next = await invoiceDocumentRepository.reviewDraft(
-    id,
-    input.warehouse_id,
-    input.expected_revision,
-    status,
-    approved
-      ? {
-          status: InvoiceDocumentStatus.READY_TO_ISSUE,
-          reviewed_by: actorId,
-          reviewed_at: now,
-          review_note: input.note,
-          rejected_by: null,
-          rejected_at: null,
-          updated_by: actorId,
-          updated_at: now,
-        }
-      : {
-          status: InvoiceDocumentStatus.REJECTED,
-          reviewed_by: null,
-          reviewed_at: null,
-          review_note: input.note,
-          rejected_by: actorId,
-          rejected_at: now,
-          updated_by: actorId,
-          updated_at: now,
-        },
-  );
-  await logAudit({
-    entity_type: "INVOICE_DOCUMENT",
-    entity_id: id,
-    warehouse_id: input.warehouse_id,
-    action: AuditAction.UPDATE,
-    user_id: actorId,
-    old_value: { revision: current.revision, status: current.status },
-    new_value: {
-      revision: next.revision,
-      status: next.status,
-      review_action: input.action,
-    },
-    notes: input.note ?? `Invoice draft ${input.action.toLowerCase()}`,
     ...auditMetadata,
   });
   const revisions = await invoiceDocumentRepository.listRevisions(

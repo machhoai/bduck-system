@@ -96,9 +96,7 @@ const buildPreview = async (
       });
       return null;
     }
-    const issues = validateInvoiceIssueCandidate(document, order, config, actorId, {
-      allowReviewBypass: true,
-    });
+    const issues = validateInvoiceIssueCandidate(document, order, config, actorId);
     if (issues.length > 0) {
       excluded.push({
         source_order_document_id: id,
@@ -184,7 +182,6 @@ export const createInvoiceBulkIssue = async (
         idempotency_key: `${input.idempotency_key}:chunk:${index}`,
       }, actorId, authorization, auditMetadata, {
         permission: "invoices.bulk_issue",
-        allowReviewBypass: true,
         bulkRunId: id,
       });
       jobIds.push(String((job as Record<string, unknown>).id));
@@ -214,7 +211,6 @@ export const createInvoiceBulkIssue = async (
       selection_mode: input.selection_mode,
       summary: preview.summary,
       job_ids: jobIds,
-      review_bypassed: true,
       action_time: input.action_time,
       sync_time: now,
     },

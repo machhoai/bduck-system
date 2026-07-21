@@ -98,32 +98,12 @@ export const invoiceDocumentUpdateSchema = z
     });
   });
 
-export const invoiceDocumentReviewSchema = z
-  .object({
-    warehouse_id: warehouseIdSchema,
-    expected_revision: z.number().int().min(1),
-    action: z.enum(["APPROVE", "REJECT"]),
-    note: z.string().trim().max(1000).nullable().default(null),
-  })
-  .superRefine((value, ctx) => {
-    if (value.action === "REJECT" && !value.note) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["note"],
-        message: "A rejection note is required.",
-      });
-    }
-  });
-
 export type InvoiceDocumentUpdateInput = z.infer<
   typeof invoiceDocumentUpdateSchema
 >;
-export type InvoiceDocumentReviewInput = z.infer<
-  typeof invoiceDocumentReviewSchema
->;
-
 export const editableInvoiceStatuses = new Set<InvoiceDocumentStatus>([
   InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
+  InvoiceDocumentStatus.NEEDS_CORRECTION,
   InvoiceDocumentStatus.NEEDS_REVIEW,
   InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
   InvoiceDocumentStatus.READY_TO_ISSUE,

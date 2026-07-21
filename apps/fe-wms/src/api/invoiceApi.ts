@@ -399,23 +399,6 @@ export const invoiceApi = {
       body: JSON.stringify(payload),
     }),
 
-  reviewDocument: (
-    id: string,
-    warehouseId: string,
-    expectedRevision: number,
-    action: "APPROVE" | "REJECT",
-    note: string | null,
-  ) =>
-    request<InvoiceDocumentView>(`/api/invoices/documents/${id}/review`, {
-      method: "POST",
-      body: JSON.stringify({
-        warehouse_id: warehouseId,
-        expected_revision: expectedRevision,
-        action,
-        note,
-      }),
-    }),
-
   previewDocument: (
     id: string,
     warehouseId: string,

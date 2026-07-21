@@ -107,7 +107,7 @@ test("ambiguous timeout and duplicate RefID never trigger immediate republish", 
   assert.equal(duplicate.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
 });
 
-test("issue policy blocks historical, already matched and self-issued financial edits", () => {
+test("issue policy blocks matched and pre-go-live invoices", () => {
   const config = {
     go_live_at: new Date("2026-07-20T00:00:00+07:00"),
     sign_type: MeInvoiceSignType.HSM,
@@ -131,11 +131,11 @@ test("issue policy blocks historical, already matched and self-issued financial 
   );
   assert.deepEqual(
     new Set(issues.map((issue) => issue.code)),
-    new Set(["SOURCE_ALREADY_INVOICED", "SEGREGATION_OF_DUTIES", "BEFORE_GO_LIVE"]),
+    new Set(["SOURCE_ALREADY_INVOICED", "BEFORE_GO_LIVE"]),
   );
 });
 
-test("bulk issue bypasses review statuses but keeps segregation of duties", () => {
+test("legacy review statuses issue directly without draft approval", () => {
   const config = {
     go_live_at: new Date("2026-07-20T00:00:00+07:00"),
     sign_type: MeInvoiceSignType.HSM,
@@ -152,17 +152,15 @@ test("bulk issue bypasses review statuses but keeps segregation of duties", () =
     match_status: InvoiceOrderMatchStatus.NOT_CHECKED,
   };
   assert.deepEqual(
-    validateInvoiceIssueCandidate(baseDocument, source, config, "issuer", {
-      allowReviewBypass: true,
-    }),
+    validateInvoiceIssueCandidate(baseDocument, source, config, "issuer"),
     [],
   );
   const issues = validateInvoiceIssueCandidate({
     ...baseDocument,
     financially_edited: true,
     edited_by: "issuer",
-  }, source, config, "issuer", { allowReviewBypass: true });
-  assert.deepEqual(issues.map((issue) => issue.code), ["SEGREGATION_OF_DUTIES"]);
+  }, source, config, "issuer");
+  assert.deepEqual(issues, []);
 });
 
 test("job and lane keys are deterministic", () => {

@@ -9,7 +9,6 @@ import {
   getInvoiceDocumentHandler,
   prepareInvoiceDocumentHandler,
   previewInvoiceDocumentHandler,
-  reviewInvoiceDocumentHandler,
   updateInvoiceDocumentHandler,
 } from "../controllers/invoiceDocumentController.js";
 import {
@@ -125,18 +124,13 @@ router.put(
   updateInvoiceDocumentHandler,
 );
 router.post(
-  "/documents/:id/review",
-  requirePermission("invoices.review", bodyWarehouseId),
-  reviewInvoiceDocumentHandler,
-);
-router.post(
   "/documents/:id/preview",
-  requirePermission("invoices.review", bodyWarehouseId),
+  requirePermission("invoices.prepare", bodyWarehouseId),
   previewInvoiceDocumentHandler,
 );
 router.post(
   "/source-orders/:id/preview",
-  requirePermission("invoices.review", bodyWarehouseId),
+  requirePermission("invoices.prepare", bodyWarehouseId),
   previewInvoiceSourceOrderHandler,
 );
 router.get(

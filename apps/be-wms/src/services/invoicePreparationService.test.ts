@@ -153,7 +153,7 @@ test("preflight allows a complete post-go-live order", () => {
     account_enabled: true,
     account_last_test_succeeded: true,
   });
-  assert.equal(result.status, InvoicePreparationStatus.READY_FOR_REVIEW);
+  assert.equal(result.status, InvoicePreparationStatus.READY_TO_ISSUE);
   assert.equal(result.issue_eligible, true);
   assert.deepEqual(result.issues, []);
 });

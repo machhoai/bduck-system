@@ -44,9 +44,7 @@ export const statusAfterInvoiceEdit = (
   const financiallyEdited =
     invoiceFinancialFingerprint(nextItems) !== sourceFinancialFingerprint;
   return {
-    status: financiallyEdited
-      ? InvoiceDocumentStatus.NEEDS_SECOND_REVIEW
-      : InvoiceDocumentStatus.NEEDS_REVIEW,
+    status: InvoiceDocumentStatus.READY_TO_ISSUE,
     financiallyEdited,
   };
 };
@@ -56,42 +54,9 @@ export const canEditInvoiceDocument = (
 ): boolean =>
   [
     InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
+    InvoiceDocumentStatus.NEEDS_CORRECTION,
     InvoiceDocumentStatus.NEEDS_REVIEW,
     InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
     InvoiceDocumentStatus.READY_TO_ISSUE,
     InvoiceDocumentStatus.REJECTED,
   ].includes(status);
-
-export const canReviewInvoiceDocument = (
-  status: InvoiceDocumentStatus,
-): boolean =>
-  [
-    InvoiceDocumentStatus.NEEDS_REVIEW,
-    InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
-  ].includes(status);
-
-export type InvoiceReviewPolicyViolation =
-  | "INVOICE_DOCUMENT_NOT_REVIEWABLE"
-  | "INVOICE_DOCUMENT_NOT_ELIGIBLE"
-  | "INVOICE_REVIEW_SOD_VIOLATION";
-
-export const invoiceReviewPolicyViolation = (input: {
-  status: InvoiceDocumentStatus;
-  action: "APPROVE" | "REJECT";
-  issueEligible: boolean;
-  hasCalculation: boolean;
-  editedBy: string | null;
-  actorId: string;
-}): InvoiceReviewPolicyViolation | null => {
-  if (!canReviewInvoiceDocument(input.status)) {
-    return "INVOICE_DOCUMENT_NOT_REVIEWABLE";
-  }
-  if (input.action === "REJECT") return null;
-  if (!input.issueEligible || !input.hasCalculation) {
-    return "INVOICE_DOCUMENT_NOT_ELIGIBLE";
-  }
-  if (input.editedBy === input.actorId) {
-    return "INVOICE_REVIEW_SOD_VIOLATION";
-  }
-  return null;
-};

@@ -4,14 +4,12 @@ import {
   invoiceDocumentParamsSchema,
   invoiceDocumentPrepareSchema,
   invoiceDocumentPreviewSchema,
-  invoiceDocumentReviewSchema,
   invoiceDocumentScopeSchema,
   invoiceDocumentUpdateSchema,
 } from "../../services/invoiceDocumentSchemas.js";
 import {
   getInvoiceDocument,
   prepareInvoiceDocumentFromSourceOrder,
-  reviewInvoiceDocument,
   updateInvoiceDocument,
 } from "../../services/invoiceDocumentService.js";
 import { previewInvoiceDocument } from "../../services/invoicePreviewService.js";
@@ -128,32 +126,6 @@ export const updateInvoiceDocumentHandler = async (
       vi: "Đã lưu revision bản nháp hóa đơn.",
       zh: "发票草稿修订已保存。",
     });
-  } catch (error) {
-    return handleError(res, error);
-  }
-};
-
-export const reviewInvoiceDocumentHandler = async (
-  req: Request,
-  res: Response,
-) => {
-  try {
-    const { id } = invoiceDocumentParamsSchema.parse(req.params);
-    const input = invoiceDocumentReviewSchema.parse(req.body);
-    const data = await reviewInvoiceDocument(
-      id,
-      input,
-      requireAuthenticatedRequestUser(req).id,
-      requireRequestAuthorization(req),
-      getAuditRequestMetadata(req),
-    );
-    return sendSuccess(
-      res,
-      data,
-      input.action === "APPROVE"
-        ? { vi: "Đã duyệt bản nháp hóa đơn.", zh: "发票草稿已批准。" }
-        : { vi: "Đã từ chối bản nháp hóa đơn.", zh: "发票草稿已拒绝。" },
-    );
   } catch (error) {
     return handleError(res, error);
   }

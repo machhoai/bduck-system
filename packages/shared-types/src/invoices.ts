@@ -1,7 +1,10 @@
 export enum InvoiceDocumentStatus {
   SOURCE_SYNCED = "SOURCE_SYNCED",
   NEEDS_TAX_CONFIGURATION = "NEEDS_TAX_CONFIGURATION",
+  NEEDS_CORRECTION = "NEEDS_CORRECTION",
+  /** Legacy status retained only so historical documents remain readable. */
   NEEDS_REVIEW = "NEEDS_REVIEW",
+  /** Legacy status retained only so historical documents remain readable. */
   NEEDS_SECOND_REVIEW = "NEEDS_SECOND_REVIEW",
   READY_TO_ISSUE = "READY_TO_ISSUE",
   QUEUED = "QUEUED",
@@ -213,7 +216,11 @@ export interface InvoiceLedgerEntry {
 
 export enum InvoicePreparationStatus {
   NEEDS_TAX_CONFIGURATION = "NEEDS_TAX_CONFIGURATION",
+  NEEDS_CORRECTION = "NEEDS_CORRECTION",
+  READY_TO_ISSUE = "READY_TO_ISSUE",
+  /** Legacy projection status retained for historical source orders. */
   NEEDS_REVIEW = "NEEDS_REVIEW",
+  /** Legacy projection status retained for historical source orders. */
   READY_FOR_REVIEW = "READY_FOR_REVIEW",
 }
 
@@ -484,19 +491,21 @@ const INVOICE_TRANSITIONS: Readonly<
 > = {
   [InvoiceDocumentStatus.SOURCE_SYNCED]: [
     InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
-    InvoiceDocumentStatus.NEEDS_REVIEW,
+    InvoiceDocumentStatus.NEEDS_CORRECTION,
+    InvoiceDocumentStatus.READY_TO_ISSUE,
   ],
   [InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION]: [
-    InvoiceDocumentStatus.NEEDS_REVIEW,
+    InvoiceDocumentStatus.NEEDS_CORRECTION,
+    InvoiceDocumentStatus.READY_TO_ISSUE,
+  ],
+  [InvoiceDocumentStatus.NEEDS_CORRECTION]: [
+    InvoiceDocumentStatus.READY_TO_ISSUE,
   ],
   [InvoiceDocumentStatus.NEEDS_REVIEW]: [
-    InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
     InvoiceDocumentStatus.READY_TO_ISSUE,
-    InvoiceDocumentStatus.REJECTED,
   ],
   [InvoiceDocumentStatus.NEEDS_SECOND_REVIEW]: [
     InvoiceDocumentStatus.READY_TO_ISSUE,
-    InvoiceDocumentStatus.REJECTED,
   ],
   [InvoiceDocumentStatus.READY_TO_ISSUE]: [InvoiceDocumentStatus.QUEUED],
   [InvoiceDocumentStatus.QUEUED]: [
@@ -525,7 +534,10 @@ const INVOICE_TRANSITIONS: Readonly<
     InvoiceDocumentStatus.CLOSED,
   ],
   [InvoiceDocumentStatus.POST_ISSUE_REVIEW]: [InvoiceDocumentStatus.CLOSED],
-  [InvoiceDocumentStatus.REJECTED]: [InvoiceDocumentStatus.NEEDS_REVIEW],
+  [InvoiceDocumentStatus.REJECTED]: [
+    InvoiceDocumentStatus.NEEDS_CORRECTION,
+    InvoiceDocumentStatus.READY_TO_ISSUE,
+  ],
   [InvoiceDocumentStatus.CANCELLED]: [InvoiceDocumentStatus.READY_TO_ISSUE],
   [InvoiceDocumentStatus.CLOSED]: [],
 };

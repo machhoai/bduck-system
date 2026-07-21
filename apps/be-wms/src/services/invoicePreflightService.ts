@@ -151,8 +151,8 @@ export const preflightInvoiceSourceOrder = (
     status: taxConfigurationMissing
       ? InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION
       : hasError
-        ? InvoicePreparationStatus.NEEDS_REVIEW
-        : InvoicePreparationStatus.READY_FOR_REVIEW,
+        ? InvoicePreparationStatus.NEEDS_CORRECTION
+        : InvoicePreparationStatus.READY_TO_ISSUE,
     issue_eligible: !hasError,
     issues,
   };

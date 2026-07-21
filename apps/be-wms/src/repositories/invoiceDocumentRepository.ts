@@ -263,62 +263,6 @@ export const invoiceDocumentRepository = {
     });
   },
 
-  async reviewDraft(
-    id: string,
-    warehouseId: string,
-    expectedRevision: number,
-    expectedStatus: string,
-    nextValue: Record<string, unknown>,
-  ) {
-    const documentRef = documents.doc(id);
-    const sourceRef = sourceOrders.doc(id);
-    return db.runTransaction(async (transaction) => {
-      const [documentSnapshot, sourceSnapshot] = await Promise.all([
-        transaction.get(documentRef),
-        transaction.get(sourceRef),
-      ]);
-      const current = documentSnapshot.exists
-        ? (documentSnapshot.data() as Record<string, unknown>)
-        : undefined;
-      assertScopedDocument(current, warehouseId);
-      assertRevision(current!, expectedRevision);
-      if (current!.status !== expectedStatus) {
-        throw serviceError(
-          409,
-          "Trạng thái bản nháp đã thay đổi. Vui lòng tải lại trước khi duyệt.",
-          "草稿状态已更改，请重新加载后再审核。",
-          "INVOICE_STATUS_CONFLICT",
-        );
-      }
-      assertSourceFresh(
-        sourceSnapshot.exists
-          ? (sourceSnapshot.data() as Record<string, unknown>)
-          : undefined,
-        current!,
-        String(current!.source_payload_hash),
-      );
-      const next = { ...current, ...nextValue };
-      transaction.update(documentRef, nextValue);
-      transaction.update(sourceRef, {
-        invoice_document_status: next.status,
-        updated_at: next.updated_at,
-      });
-      transaction.set(
-        documentRef.collection("revisions").doc(String(expectedRevision)),
-        {
-          status: next.status,
-          reviewed_by: next.reviewed_by,
-          reviewed_at: next.reviewed_at,
-          review_note: next.review_note,
-          rejected_by: next.rejected_by,
-          rejected_at: next.rejected_at,
-        },
-        { merge: true },
-      );
-      return next;
-    });
-  },
-
   async recordPreparedPayload(
     id: string,
     warehouseId: string,

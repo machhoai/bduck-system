@@ -905,15 +905,6 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
-    key: "invoices.review",
-    group: "invoices",
-    label: { vi: "Duyệt hóa đơn", zh: "审核发票" },
-    description: {
-      vi: "Kiểm tra và duyệt bản nháp hóa đơn, gồm duyệt lần hai khi số liệu tài chính bị sửa.",
-      zh: "审核发票草稿，包括财务数据修改后的二次审核。",
-    },
-  },
-  {
     key: "invoices.issue",
     group: "invoices",
     label: { vi: "Phát hành hóa đơn", zh: "开具发票" },

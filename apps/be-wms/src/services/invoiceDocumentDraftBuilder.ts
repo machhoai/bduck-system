@@ -38,10 +38,13 @@ const asDate = (value: unknown): Date | null => {
 
 const documentStatusFromPreparation = (
   status: InvoicePreparationStatus | undefined,
+  issueEligible: boolean,
 ): InvoiceDocumentStatus =>
-  status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION
+  issueEligible
+    ? InvoiceDocumentStatus.READY_TO_ISSUE
+    : status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION
     ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
-    : InvoiceDocumentStatus.NEEDS_REVIEW;
+    : InvoiceDocumentStatus.NEEDS_CORRECTION;
 
 export const buildInitialInvoiceDocument = (
   sourceOrder: JsonRecord,
@@ -81,7 +84,10 @@ export const buildInitialInvoiceDocument = (
       asDate(sourceOrder.source_action_time) ?? parseJoyworldDate(paymentTime),
     payment_time: paymentTime,
     invoice_kind: InvoiceKind.ORIGINAL,
-    status: documentStatusFromPreparation(preflight.status),
+    status: documentStatusFromPreparation(
+      preflight.status,
+      preflight.issue_eligible === true,
+    ),
     revision: 1,
     buyer: {
       full_name: storeConfig.default_buyer_name,

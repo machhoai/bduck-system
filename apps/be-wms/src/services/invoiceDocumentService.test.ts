@@ -12,7 +12,6 @@ import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepo
 import { calculateInvoice } from "./invoiceCalculationService.js";
 import {
   invoiceFinancialFingerprint,
-  invoiceReviewPolicyViolation,
   statusAfterInvoiceEdit,
 } from "./invoiceDocumentPolicy.js";
 import { invoiceDocumentUpdateSchema } from "./invoiceDocumentSchemas.js";
@@ -90,7 +89,7 @@ const account = {
   last_test_succeeded: true,
 } as StoredMeInvoiceAccount;
 
-test("financial fingerprint moves amount changes to second review", () => {
+test("draft edits remain ready to issue without an approval state", () => {
   const sourceFingerprint = invoiceFinancialFingerprint([sourceLine]);
   const textOnly = statusAfterInvoiceEdit(sourceFingerprint, [
     {
@@ -106,33 +105,13 @@ test("financial fingerprint moves amount changes to second review", () => {
   ]);
 
   assert.deepEqual(textOnly, {
-    status: InvoiceDocumentStatus.NEEDS_REVIEW,
+    status: InvoiceDocumentStatus.READY_TO_ISSUE,
     financiallyEdited: false,
   });
   assert.deepEqual(financial, {
-    status: InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
+    status: InvoiceDocumentStatus.READY_TO_ISSUE,
     financiallyEdited: true,
   });
-});
-
-test("review policy blocks self-review and invalid drafts", () => {
-  const base = {
-    status: InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
-    action: "APPROVE" as const,
-    issueEligible: true,
-    hasCalculation: true,
-    editedBy: "editor-1",
-    actorId: "reviewer-2",
-  };
-  assert.equal(invoiceReviewPolicyViolation(base), null);
-  assert.equal(
-    invoiceReviewPolicyViolation({ ...base, actorId: "editor-1" }),
-    "INVOICE_REVIEW_SOD_VIOLATION",
-  );
-  assert.equal(
-    invoiceReviewPolicyViolation({ ...base, issueEligible: false }),
-    "INVOICE_DOCUMENT_NOT_ELIGIBLE",
-  );
 });
 
 test("draft update schema rejects duplicate lines and ambiguous discounts", () => {
@@ -175,7 +154,7 @@ test("initial document preserves source data and starts at revision one", () => 
       normalized_items: [sourceLine],
       calculation,
       preflight: {
-        status: InvoicePreparationStatus.READY_FOR_REVIEW,
+        status: InvoicePreparationStatus.READY_TO_ISSUE,
         issue_eligible: true,
         issues: [],
       },
@@ -190,7 +169,7 @@ test("initial document preserves source data and starts at revision one", () => 
 
   assert.ok(document);
   assert.equal(document.revision, 1);
-  assert.equal(document.status, InvoiceDocumentStatus.NEEDS_REVIEW);
+  assert.equal(document.status, InvoiceDocumentStatus.READY_TO_ISSUE);
   assert.equal(document.financially_edited, false);
   assert.deepEqual(document.buyer, {
     full_name: "Khách lẻ (Không lấy hóa đơn)",

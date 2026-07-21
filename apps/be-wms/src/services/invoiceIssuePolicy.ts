@@ -46,17 +46,14 @@ export const validateInvoiceIssueCandidate = (
   document: Record<string, unknown>,
   sourceOrder: Record<string, unknown>,
   config: MeInvoiceStoreConfig,
-  actorId: string,
-  options: { allowReviewBypass?: boolean } = {},
+  _actorId: string,
 ): InvoiceIssueCandidateIssue[] => {
   const issues: InvoiceIssueCandidateIssue[] = [];
-  const allowedStatuses = options.allowReviewBypass
-    ? [
-        InvoiceDocumentStatus.NEEDS_REVIEW,
-        InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
-        InvoiceDocumentStatus.READY_TO_ISSUE,
-      ]
-    : [InvoiceDocumentStatus.READY_TO_ISSUE];
+  const allowedStatuses = [
+    InvoiceDocumentStatus.NEEDS_REVIEW,
+    InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
+    InvoiceDocumentStatus.READY_TO_ISSUE,
+  ];
   if (!allowedStatuses.includes(document.status as InvoiceDocumentStatus)) {
     issues.push({ code: "DOCUMENT_NOT_READY", message: "Draft is not ready to issue." });
   }
@@ -74,9 +71,6 @@ export const validateInvoiceIssueCandidate = (
   }
   if (document.active_issue_job_id) {
     issues.push({ code: "ACTIVE_ISSUE_JOB", message: "Draft already belongs to an active issue job." });
-  }
-  if (document.financially_edited === true && document.edited_by === actorId) {
-    issues.push({ code: "SEGREGATION_OF_DUTIES", message: "Financial editor cannot issue the same draft." });
   }
   const paymentTime = dateValue(document.payment_time);
   if (!config.go_live_at || !paymentTime || paymentTime < config.go_live_at) {

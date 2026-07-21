@@ -48,7 +48,7 @@ const copy = {
         sync: "Đồng bộ toàn ngày",
         syncing: "Đang đồng bộ…",
         total: "Tổng đơn",
-        ready: "Sẵn sàng review",
+        ready: "Sẵn sàng phát hành",
         tax: "Thiếu cấu hình thuế",
         review: "Cần xử lý",
         search: "Tìm mã đơn hoặc khách hàng",
@@ -94,7 +94,7 @@ const copy = {
         sync: "同步全天订单",
         syncing: "同步中…",
         total: "订单总数",
-        ready: "可审核",
+        ready: "可开票",
         tax: "缺少税务配置",
         review: "需要处理",
         search: "搜索订单号或客户",
@@ -149,7 +149,10 @@ const money = new Intl.NumberFormat("vi-VN", {
 });
 
 const statusStyle = (status: InvoicePreparationStatus) => {
-    if (status === InvoicePreparationStatus.READY_FOR_REVIEW) {
+    if (
+        status === InvoicePreparationStatus.READY_TO_ISSUE ||
+        status === InvoicePreparationStatus.READY_FOR_REVIEW
+    ) {
         return "border-emerald-200 bg-emerald-50 text-emerald-700";
     }
     if (status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION) {
@@ -161,14 +164,18 @@ const statusStyle = (status: InvoicePreparationStatus) => {
 const statusLabel = (status: InvoicePreparationStatus, lang: "vi" | "zh") => {
     const values = {
         vi: {
-            [InvoicePreparationStatus.READY_FOR_REVIEW]: "Sẵn sàng review",
+            [InvoicePreparationStatus.READY_FOR_REVIEW]: "Sẵn sàng phát hành",
+            [InvoicePreparationStatus.READY_TO_ISSUE]: "Sẵn sàng phát hành",
             [InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION]: "Thiếu cấu hình thuế",
             [InvoicePreparationStatus.NEEDS_REVIEW]: "Cần xử lý",
+            [InvoicePreparationStatus.NEEDS_CORRECTION]: "Cần chỉnh dữ liệu",
         },
         zh: {
-            [InvoicePreparationStatus.READY_FOR_REVIEW]: "可审核",
+            [InvoicePreparationStatus.READY_FOR_REVIEW]: "可开票",
+            [InvoicePreparationStatus.READY_TO_ISSUE]: "可开票",
             [InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION]: "缺少税务配置",
             [InvoicePreparationStatus.NEEDS_REVIEW]: "需要处理",
+            [InvoicePreparationStatus.NEEDS_CORRECTION]: "需要修正数据",
         },
     };
     return values[lang][status] ?? status;
@@ -184,15 +191,17 @@ const documentStatusLabel = (
     > = {
         vi: {
             NEEDS_TAX_CONFIGURATION: "Draft thiếu cấu hình thuế",
-            NEEDS_REVIEW: "Draft cần duyệt",
-            NEEDS_SECOND_REVIEW: "Draft cần duyệt lần hai",
+            NEEDS_CORRECTION: "Draft cần chỉnh dữ liệu",
+            NEEDS_REVIEW: "Draft cũ — sẵn sàng phát hành",
+            NEEDS_SECOND_REVIEW: "Draft cũ — sẵn sàng phát hành",
             READY_TO_ISSUE: "Draft sẵn sàng phát hành",
             REJECTED: "Draft đã từ chối",
         },
         zh: {
             NEEDS_TAX_CONFIGURATION: "草稿缺少税务配置",
-            NEEDS_REVIEW: "草稿待审核",
-            NEEDS_SECOND_REVIEW: "草稿待二次审核",
+            NEEDS_CORRECTION: "草稿需要修正数据",
+            NEEDS_REVIEW: "旧草稿 — 可开票",
+            NEEDS_SECOND_REVIEW: "旧草稿 — 可开票",
             READY_TO_ISSUE: "草稿可开票",
             REJECTED: "草稿已拒绝",
         },
@@ -352,7 +361,10 @@ export default function InvoiceManagementPage() {
             total: orders.length,
             ready: orders.filter(
                 (order) =>
-                    order.preflight.status === InvoicePreparationStatus.READY_FOR_REVIEW,
+                    [
+                        InvoicePreparationStatus.READY_TO_ISSUE,
+                        InvoicePreparationStatus.READY_FOR_REVIEW,
+                    ].includes(order.preflight.status),
             ).length,
             tax: orders.filter(
                 (order) =>
@@ -361,7 +373,10 @@ export default function InvoiceManagementPage() {
             ).length,
             review: orders.filter(
                 (order) =>
-                    order.preflight.status === InvoicePreparationStatus.NEEDS_REVIEW,
+                    [
+                        InvoicePreparationStatus.NEEDS_CORRECTION,
+                        InvoicePreparationStatus.NEEDS_REVIEW,
+                    ].includes(order.preflight.status),
             ).length,
         }),
         [orders],
@@ -873,10 +888,6 @@ export default function InvoiceManagementPage() {
                             "invoices.prepare",
                             selectedOrder.warehouse_id,
                         )}
-                        canReview={hasPermission(
-                            "invoices.review",
-                            selectedOrder.warehouse_id,
-                        )}
                         onChanged={loadOrders}
                         onClose={() => setSelectedOrder(null)}
                     />
@@ -955,7 +966,6 @@ function OrderReviewDrawer({
     lang,
     labels,
     canPrepare,
-    canReview,
     onChanged,
     onClose,
 }: {
@@ -963,7 +973,6 @@ function OrderReviewDrawer({
     lang: "vi" | "zh";
     labels: typeof copy.vi | typeof copy.zh;
     canPrepare: boolean;
-    canReview: boolean;
     onChanged: () => Promise<void>;
     onClose: () => void;
 }) {
@@ -1108,7 +1117,6 @@ function OrderReviewDrawer({
                         order={order}
                         lang={lang}
                         canPrepare={canPrepare}
-                        canReview={canReview}
                         onChanged={onChanged}
                     />
                 </div>

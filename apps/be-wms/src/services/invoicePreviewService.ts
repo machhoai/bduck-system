@@ -18,7 +18,7 @@ export const previewInvoiceSourceOrder = async (
   authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) => {
-  authorization.assert("invoices.review", warehouseId);
+  authorization.assert("invoices.prepare", warehouseId);
   const sourceOrder = await invoiceOrderRepository.getOrder(
     sourceOrderDocumentId,
     warehouseId,
@@ -127,7 +127,7 @@ export const previewInvoiceDocument = async (
   authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) => {
-  authorization.assert("invoices.review", warehouseId);
+  authorization.assert("invoices.prepare", warehouseId);
   const document = await invoiceDocumentRepository.getDocument(
     documentId,
     warehouseId,

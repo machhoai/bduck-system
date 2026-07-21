@@ -2,7 +2,6 @@
 
 import {
     AlertTriangle,
-    CheckCircle2,
     Eye,
     FileEdit,
     History,
@@ -24,7 +23,6 @@ import {
     type InvoiceDocumentView,
     type InvoiceSourceOrderView,
 } from "@/api/invoiceApi";
-import { useUserStore } from "@/stores/useUserStore";
 import { showToast } from "@/utils/toast";
 
 const copy = {
@@ -62,16 +60,8 @@ const copy = {
         saving: "Đang lưu…",
         saveSuccess: "Đã lưu revision mới",
         saveDescription: "Số liệu đã được tính lại ở backend.",
-        approve: "Duyệt bản nháp",
-        reject: "Từ chối",
-        reviewing: "Đang xử lý…",
-        approveSuccess: "Đã duyệt bản nháp",
-        rejectSuccess: "Đã từ chối bản nháp",
-        reviewNote: "Ghi chú duyệt/từ chối",
-        rejectNoteRequired: "Cần nhập lý do trước khi từ chối.",
-        sod: "Người vừa sửa revision này không thể tự duyệt.",
         financial:
-            "Revision có thay đổi tài chính và bắt buộc người khác duyệt lần hai.",
+            "Revision có thay đổi tài chính. Hệ thống đã ghi audit và draft vẫn có thể phát hành ngay.",
         preview: "Xem trước trên MISA",
         previewing: "Đang tạo preview…",
         previewReady: "Đã tạo bản xem trước",
@@ -80,7 +70,6 @@ const copy = {
         validation: "Lỗi validation",
         history: "Lịch sử revision",
         editedBy: "Người sửa",
-        reviewedBy: "Người duyệt",
     },
     zh: {
         title: "草稿流程",
@@ -115,15 +104,7 @@ const copy = {
         saving: "保存中…",
         saveSuccess: "新修订已保存",
         saveDescription: "金额已由后端重新计算。",
-        approve: "批准草稿",
-        reject: "拒绝",
-        reviewing: "处理中…",
-        approveSuccess: "草稿已批准",
-        rejectSuccess: "草稿已拒绝",
-        reviewNote: "审核/拒绝备注",
-        rejectNoteRequired: "拒绝前必须填写原因。",
-        sod: "本修订的编辑者不能自行审核。",
-        financial: "该修订修改了财务数据，必须由另一人进行二次审核。",
+        financial: "该修订包含财务修改，系统已记录审计日志，草稿仍可直接开票。",
         preview: "在 MISA 中预览",
         previewing: "正在生成预览…",
         previewReady: "预览已生成",
@@ -132,7 +113,6 @@ const copy = {
         validation: "验证错误",
         history: "修订历史",
         editedBy: "编辑者",
-        reviewedBy: "审核者",
     },
 } as const;
 
@@ -149,8 +129,9 @@ const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
     vi: {
         SOURCE_SYNCED: "Đã đồng bộ nguồn",
         NEEDS_TAX_CONFIGURATION: "Thiếu cấu hình thuế",
-        NEEDS_REVIEW: "Cần duyệt",
-        NEEDS_SECOND_REVIEW: "Cần duyệt lần hai",
+        NEEDS_CORRECTION: "Cần chỉnh dữ liệu",
+        NEEDS_REVIEW: "Sẵn sàng phát hành (draft cũ)",
+        NEEDS_SECOND_REVIEW: "Sẵn sàng phát hành (draft cũ)",
         READY_TO_ISSUE: "Sẵn sàng phát hành",
         QUEUED: "Đang chờ",
         SUBMITTING: "Đang gửi",
@@ -166,8 +147,9 @@ const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
     zh: {
         SOURCE_SYNCED: "来源已同步",
         NEEDS_TAX_CONFIGURATION: "缺少税务配置",
-        NEEDS_REVIEW: "待审核",
-        NEEDS_SECOND_REVIEW: "待二次审核",
+        NEEDS_CORRECTION: "需要修正数据",
+        NEEDS_REVIEW: "可开票（旧草稿）",
+        NEEDS_SECOND_REVIEW: "可开票（旧草稿）",
         READY_TO_ISSUE: "可开票",
         QUEUED: "排队中",
         SUBMITTING: "提交中",
@@ -217,26 +199,22 @@ export function InvoiceDraftWorkflow({
     order,
     lang,
     canPrepare,
-    canReview,
     onChanged,
 }: {
     order: InvoiceSourceOrderView;
     lang: "vi" | "zh";
     canPrepare: boolean;
-    canReview: boolean;
     onChanged: () => Promise<void>;
 }) {
     const d = copy[lang];
-    const userId = useUserStore((state) => state.user?.id ?? null);
     const [document, setDocument] = useState<InvoiceDocumentView | null>(null);
     const [draft, setDraft] = useState<EditableDraft | null>(null);
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(Boolean(order.invoice_document_id));
     const [working, setWorking] = useState<
-        "prepare" | "save" | "review" | "preview" | null
+        "prepare" | "save" | "preview" | null
     >(null);
     const [error, setError] = useState<string | null>(null);
-    const [reviewNote, setReviewNote] = useState("");
     const generation = useRef(0);
 
     useEffect(() => {
@@ -336,43 +314,6 @@ export function InvoiceDraftWorkflow({
         }
     };
 
-    const handleReview = async (action: "APPROVE" | "REJECT") => {
-        if (!document) return;
-        if (action === "REJECT" && !reviewNote.trim()) {
-            setError(d.rejectNoteRequired);
-            return;
-        }
-        setWorking("review");
-        setError(null);
-        try {
-            const operation = invoiceApi.reviewDocument(
-                document.id,
-                document.warehouse_id,
-                document.revision,
-                action,
-                reviewNote.trim() || null,
-            );
-            const value = await showToast.promise(operation, {
-                loading: d.reviewing,
-                success: action === "APPROVE" ? d.approveSuccess : d.rejectSuccess,
-                error: d.loadError,
-                successDescription:
-                    action === "APPROVE" ? d.approveSuccess : d.rejectSuccess,
-                errorDescription: (toastError) =>
-                    toastError instanceof Error ? toastError.message : d.loadError,
-            });
-            setReviewNote("");
-            setCurrentDocument(value);
-            await onChanged();
-        } catch (reviewError) {
-            setError(
-                reviewError instanceof Error ? reviewError.message : d.loadError,
-            );
-        } finally {
-            setWorking(null);
-        }
-    };
-
     const handlePreview = async () => {
         if (!document) return;
         const previewWindow = window.open("about:blank", "_blank");
@@ -418,20 +359,12 @@ export function InvoiceDraftWorkflow({
         document &&
         [
             InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
+            InvoiceDocumentStatus.NEEDS_CORRECTION,
             InvoiceDocumentStatus.NEEDS_REVIEW,
             InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
             InvoiceDocumentStatus.READY_TO_ISSUE,
             InvoiceDocumentStatus.REJECTED,
         ].includes(document.status),
-    );
-    const reviewable =
-        document &&
-        [
-            InvoiceDocumentStatus.NEEDS_REVIEW,
-            InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
-        ].includes(document.status);
-    const selfReview = Boolean(
-        document?.edited_by && document.edited_by === userId,
     );
     const sourceStale =
         document?.source_payload_hash !== order.source_payload_hash;
@@ -510,11 +443,6 @@ export function InvoiceDraftWorkflow({
             {document.financially_edited && (
                 <Notice tone="warning" icon={<AlertTriangle size={13} />}>
                     {d.financial}
-                </Notice>
-            )}
-            {selfReview && (
-                <Notice tone="warning" icon={<AlertTriangle size={13} />}>
-                    {d.sod}
                 </Notice>
             )}
             {error && (
@@ -787,7 +715,7 @@ export function InvoiceDraftWorkflow({
                             type="button"
                             onClick={() => void handlePreview()}
                             disabled={
-                                !canReview ||
+                                !canPrepare ||
                                 !document.issue_eligible ||
                                 sourceStale ||
                                 working !== null
@@ -805,47 +733,6 @@ export function InvoiceDraftWorkflow({
                 </>
             )}
 
-            {reviewable && !editing && (
-                <div className="mt-3 border-t border-slate-200 pt-2.5">
-                    <textarea
-                        value={reviewNote}
-                        onChange={(event) => setReviewNote(event.target.value)}
-                        placeholder={d.reviewNote}
-                        rows={2}
-                        className="w-full rounded-md border border-slate-200 bg-white p-1.5 text-xs outline-none focus:border-sky-500"
-                    />
-                    <div className="mt-1.5 flex gap-1.5">
-                        <button
-                            type="button"
-                            onClick={() => void handleReview("APPROVE")}
-                            disabled={
-                                !canReview ||
-                                selfReview ||
-                                !document.issue_eligible ||
-                                sourceStale ||
-                                working !== null
-                            }
-                            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white disabled:opacity-45 hover:brightness-95"
-                        >
-                            {working === "review" ? (
-                                <LoaderCircle className="animate-spin" size={14} />
-                            ) : (
-                                <CheckCircle2 size={14} />
-                            )}
-                            {d.approve}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => void handleReview("REJECT")}
-                            disabled={!canReview || sourceStale || working !== null}
-                            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 text-xs font-bold text-rose-700 disabled:opacity-45 hover:bg-rose-50"
-                        >
-                            <XCircle size={14} /> {d.reject}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {document.revisions.length > 0 && (
                 <details className="mt-4 border-t border-slate-200 pt-3">
                     <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-600">
@@ -861,11 +748,9 @@ export function InvoiceDraftWorkflow({
                                     #{revision.revision} · {statusCopy[lang][revision.status]}
                                 </span>
                                 <span>
-                                    {revision.reviewed_by
-                                        ? `${d.reviewedBy}: ${revision.reviewed_by}`
-                                        : revision.edited_by
-                                            ? `${d.editedBy}: ${revision.edited_by}`
-                                            : "—"}
+                                    {revision.edited_by
+                                        ? `${d.editedBy}: ${revision.edited_by}`
+                                        : "—"}
                                 </span>
                             </div>
                         ))}
