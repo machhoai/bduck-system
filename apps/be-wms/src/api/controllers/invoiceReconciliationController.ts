@@ -11,6 +11,7 @@ import {
 import {
   downloadPublishedInvoice,
   listInvoiceLedger,
+  listMisaInvoices,
   listInvoiceReconciliationCases,
   resolveInvoiceReconciliationCase,
   sweepIssuedInvoiceStatuses,
@@ -41,6 +42,15 @@ export const listInvoiceLedgerHandler = async (req: Request, res: Response) => {
     const input = invoiceLedgerQuerySchema.parse(req.query);
     return sendSuccess(res, await listInvoiceLedger(input.warehouse_id, input.business_date, requireRequestAuthorization(req)), {
       vi: "Đã tải sổ hóa đơn.", zh: "已加载发票台账。",
+    });
+  } catch (error) { return handleError(res, error); }
+};
+
+export const listMisaInvoicesHandler = async (req: Request, res: Response) => {
+  try {
+    const input = invoiceLedgerQuerySchema.parse(req.query);
+    return sendSuccess(res, await listMisaInvoices(input.warehouse_id, input.business_date, requireRequestAuthorization(req)), {
+      vi: "Đã tải toàn bộ hóa đơn MISA của lần đối chiếu gần nhất.", zh: "已加载最近一次核对返回的全部 MISA 发票。",
     });
   } catch (error) { return handleError(res, error); }
 };

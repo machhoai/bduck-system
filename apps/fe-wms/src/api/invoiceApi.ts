@@ -82,6 +82,37 @@ export interface InvoiceDownloadResult {
   type: "Pdf" | "Xml";
 }
 
+export interface MisaInvoiceView {
+  id: string;
+  run_id: string;
+  warehouse_id: string;
+  business_date: string;
+  ref_id: string | null;
+  transaction_id: string | null;
+  inv_series: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  invoice_code: string | null;
+  buyer_name: string | null;
+  buyer_tax_code: string | null;
+  payment_method_name: string | null;
+  buyer_order_code: string | null;
+  seller_shop_code: string | null;
+  total_amount: number | null;
+  publish_status: number | null;
+  send_tax_status: number | null;
+  is_deleted: boolean;
+  created_at: string | null;
+}
+
+export interface MisaInvoiceListResult {
+  run_id: string | null;
+  warehouse_id: string;
+  business_date: string;
+  fetched_at: string | null;
+  invoices: MisaInvoiceView[];
+}
+
 export type InvoiceDocumentView = Omit<
   InvoiceDocument,
   | "source_action_time"
@@ -292,6 +323,11 @@ export const invoiceApi = {
   listLedger: (warehouseId: string, businessDate: string) => {
     const query = new URLSearchParams({ warehouse_id: warehouseId, business_date: businessDate });
     return request<InvoiceLedgerEntryView[]>(`/api/invoices/ledger?${query.toString()}`);
+  },
+
+  listMisaInvoices: (warehouseId: string, businessDate: string) => {
+    const query = new URLSearchParams({ warehouse_id: warehouseId, business_date: businessDate });
+    return request<MisaInvoiceListResult>(`/api/invoices/misa-invoices?${query.toString()}`);
   },
 
   listReconciliationCases: (warehouseId: string, businessDate: string) => {

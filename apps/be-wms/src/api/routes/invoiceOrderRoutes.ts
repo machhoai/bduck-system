@@ -21,6 +21,7 @@ import {
 import {
   downloadPublishedInvoiceHandler,
   listInvoiceLedgerHandler,
+  listMisaInvoicesHandler,
   listInvoiceReconciliationCasesHandler,
   resolveInvoiceReconciliationCaseHandler,
   sweepIssuedInvoiceStatusesHandler,
@@ -60,6 +61,11 @@ router.get(
   "/ledger",
   requirePermission("invoices.read", queryWarehouseId),
   listInvoiceLedgerHandler,
+);
+router.get(
+  "/misa-invoices",
+  requirePermission("invoices.read", queryWarehouseId),
+  listMisaInvoicesHandler,
 );
 router.get(
   "/reconciliation-cases",

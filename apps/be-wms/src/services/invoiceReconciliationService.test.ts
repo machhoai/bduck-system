@@ -8,7 +8,21 @@ import { MeInvoiceClient } from "./meInvoiceClient.js";
 import {
   normalizeMisaInvoice,
   reconcileDailyInvoices,
+  sourceOrderIsInvoiceEligible,
 } from "./invoiceReconciliationPolicy.js";
+
+test("only completed, paid, positive-total orders are invoice eligible", () => {
+  assert.equal(sourceOrderIsInvoiceEligible({
+    source_status: 3, real_money: 117000, payment_time: "2026-07-19T09:30:00+07:00",
+  }), true);
+  assert.equal(sourceOrderIsInvoiceEligible({
+    source_status: 4, real_money: 117000, payment_time: "2026-07-19T09:30:00+07:00",
+  }), false);
+  assert.equal(sourceOrderIsInvoiceEligible({
+    source_status: 3, real_money: 0, payment_time: "2026-07-19T09:30:00+07:00",
+  }), false);
+  assert.equal(sourceOrderIsInvoiceEligible({ source_status: 3, real_money: 117000 }), false);
+});
 
 test("reconciliation matches a historical source order using BuyerOrderCode", () => {
   const misa = normalizeMisaInvoice({

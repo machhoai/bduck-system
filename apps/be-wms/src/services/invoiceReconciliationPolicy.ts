@@ -42,6 +42,9 @@ export interface NormalizedMisaInvoice {
   invoice_number: string | null;
   invoice_date: string | null;
   invoice_code: string | null;
+  buyer_name: string | null;
+  buyer_tax_code: string | null;
+  payment_method_name: string | null;
   buyer_order_code: string | null;
   seller_shop_code: string | null;
   total_amount: number | null;
@@ -60,6 +63,9 @@ export const normalizeMisaInvoice = (value: unknown): NormalizedMisaInvoice => {
     invoice_number: identifier(field(record, "InvNo", "InvoiceNumber", "invNo", "invoiceNumber")),
     invoice_date: identifier(field(record, "InvDate", "InvoiceDate", "invDate", "invoiceDate")),
     invoice_code: text(field(record, "InvoiceCode", "InvCode", "invoiceCode", "invCode")),
+    buyer_name: text(field(record, "BuyerFullName", "BuyerLegalName", "buyerFullName", "buyerLegalName")),
+    buyer_tax_code: text(field(record, "BuyerTaxCode", "buyerTaxCode")),
+    payment_method_name: text(field(record, "PaymentMethodName", "paymentMethodName")),
     buyer_order_code:
       text(field(record, "BuyerOrderCode", "OrderCode", "buyerOrderCode", "orderCode")) ??
       text(field(custom, "BuyerOrderCode", "OrderCode", "buyerOrderCode", "orderCode")),
@@ -71,6 +77,15 @@ export const normalizeMisaInvoice = (value: unknown): NormalizedMisaInvoice => {
     send_tax_status: number(field(record, "SendTaxStatus", "sendTaxStatus")),
     is_deleted: field(record, "IsDelete", "isDelete") === true,
   };
+};
+
+export const sourceOrderIsInvoiceEligible = (
+  value: Record<string, unknown>,
+): boolean => {
+  const sourceStatus = number(field(value, "source_status", "sourceStatus"));
+  const totalAmount = number(field(value, "real_money", "realMoney"));
+  const paymentTime = text(field(value, "payment_time", "paymentTime"));
+  return sourceStatus === 3 && totalAmount !== null && totalAmount > 0 && Boolean(paymentTime);
 };
 
 export interface ReconciliationInputSource {

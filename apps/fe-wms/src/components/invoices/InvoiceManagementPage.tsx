@@ -32,6 +32,7 @@ import { useUserStore } from "@/stores/useUserStore";
 import { showToast } from "@/utils/toast";
 import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
+import { MisaInvoicePanel } from "./MisaInvoicePanel";
 
 const copy = {
     vi: {
@@ -204,9 +205,9 @@ export default function InvoiceManagementPage() {
     const d = copy[lang];
     const { stores, loading: storesLoading } = useStores();
     const hasPermission = useUserStore((state) => state.hasPermission);
-    const [view, setView] = useState<"PENDING" | "ISSUED" | "RECONCILIATION">(() => {
+    const [view, setView] = useState<"PENDING" | "ISSUED" | "RECONCILIATION" | "MISA">(() => {
         const value = initialQueryValue("tab");
-        return value === "ISSUED" || value === "RECONCILIATION" ? value : "PENDING";
+        return value === "ISSUED" || value === "RECONCILIATION" || value === "MISA" ? value : "PENDING";
     });
     const [selectedStoreId, setSelectedStoreId] = useState(() =>
         initialQueryValue("store"),
@@ -560,13 +561,14 @@ export default function InvoiceManagementPage() {
                     ["PENDING", lang === "vi" ? "Chờ phát hành" : "Pending"],
                     ["ISSUED", lang === "vi" ? "Đã phát hành" : "Issued"],
                     ["RECONCILIATION", lang === "vi" ? "Lỗi / Đối chiếu" : "Reconciliation"],
+                    ["MISA", lang === "vi" ? "Toàn bộ hóa đơn MISA" : "All MISA invoices"],
                 ] as const).map(([value, label]) => (
                     <button
                         key={value}
                         type="button"
                         onClick={() => {
                             setView(value);
-                            if (value === "RECONCILIATION") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
+                            if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                         }}
                         className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
                     >
@@ -611,10 +613,16 @@ export default function InvoiceManagementPage() {
                                 {lang === "vi" ? "Khớp MISA" : "Matched"}: {syncResult.reconciliation.summary.matched_count}
                             </span>
                             <span>
+                                {lang === "vi" ? "MISA trả về" : "MISA returned"}: {syncResult.reconciliation.summary.misa_invoice_count}
+                            </span>
+                            <span>
                                 {lang === "vi" ? "Chưa xuất" : "Not issued"}: {syncResult.reconciliation.summary.source_not_in_misa_count}
                             </span>
                             <span>
                                 {lang === "vi" ? "Sai lệch" : "Mismatches"}: {syncResult.reconciliation.summary.mismatch_count + syncResult.reconciliation.summary.misa_not_in_source_count}
+                            </span>
+                            <span>
+                                {lang === "vi" ? "Chưa có mã liên kết" : "Unlinked"}: {syncResult.reconciliation.summary.unscoped_misa_count}
                             </span>
                         </>
                     )}
@@ -969,7 +977,13 @@ export default function InvoiceManagementPage() {
                         onClose={() => setSelectedOrder(null)}
                     />
                 )}
-            </> : (
+            </> : view === "MISA" ? (
+                <MisaInvoicePanel
+                    warehouseId={activeStoreId}
+                    businessDate={businessDate}
+                    refreshToken={syncResult?.id ?? ""}
+                />
+            ) : (
                 <InvoiceLedgerPanel
                     warehouseId={activeStoreId}
                     businessDate={businessDate}

@@ -12,6 +12,7 @@ import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 import {
   normalizeMisaInvoice,
   reconcileDailyInvoices,
+  sourceOrderIsInvoiceEligible,
   taxStatusIsRejected,
   type NormalizedMisaInvoice,
 } from "./invoiceReconciliationPolicy.js";
@@ -37,7 +38,6 @@ const requireStoreConfig = async (warehouseId: string) => {
 const fetchMisaInvoicesForDate = async (
   accountId: string,
   invoiceWithCode: boolean,
-  invSeries: string,
   businessDate: string,
 ): Promise<NormalizedMisaInvoice[]> => executeWithMeInvoiceClient(accountId, async (client, token) => {
   const result: NormalizedMisaInvoice[] = [];
@@ -47,7 +47,6 @@ const fetchMisaInvoicesForDate = async (
       toDate: businessDate,
       skip: page * PAGE_SIZE,
       take: PAGE_SIZE,
-      invSeries: [invSeries],
     });
     result.push(...response.items.map(normalizeMisaInvoice));
     if (response.items.length < PAGE_SIZE || result.length >= response.total) return result;
@@ -89,12 +88,12 @@ export const reconcileInvoiceDay = async (
       fetchMisaInvoicesForDate(
         config.meinvoice_account_id,
         config.invoice_with_code,
-        config.inv_series,
         businessDate,
       ),
     ]);
+    const eligibleSources = sources.filter(sourceOrderIsInvoiceEligible);
     const result = reconcileDailyInvoices({
-      sources: sources.map((source) => ({
+      sources: eligibleSources.map((source) => ({
         id: String(source.id),
         source_order_id: String(source.source_order_id),
         order_number: typeof source.order_number === "string" ? source.order_number : null,
@@ -164,6 +163,28 @@ export const listInvoiceReconciliationCases = async (
   authorization.assert("invoices.read", warehouseId);
   const values = await invoiceReconciliationRepository.listCases(warehouseId, businessDate);
   return values.map((value) => serializeDates(value));
+};
+
+export const listMisaInvoices = async (
+  warehouseId: string,
+  businessDate: string,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("invoices.read", warehouseId);
+  const result = await invoiceReconciliationRepository.listLatestMisaInvoices(
+    warehouseId,
+    businessDate,
+  );
+  return {
+    run_id: result.runId,
+    warehouse_id: warehouseId,
+    business_date: businessDate,
+    fetched_at: toIso(result.fetchedAt),
+    invoices: result.invoices.map((invoice) => ({
+      ...invoice,
+      created_at: toIso(invoice.created_at),
+    })),
+  };
 };
 
 export const resolveInvoiceReconciliationCase = async (

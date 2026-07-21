@@ -9,6 +9,7 @@ import type {
   DailyReconciliationMatch,
   NormalizedMisaInvoice,
 } from "../services/invoiceReconciliationPolicy.js";
+import { sourceOrderIsInvoiceEligible } from "../services/invoiceReconciliationPolicy.js";
 
 const sourceOrders = db.collection("invoice_source_orders");
 const documents = db.collection("invoice_documents");
@@ -37,6 +38,15 @@ const chunks = <T>(values: T[]) => {
     result.push(values.slice(index, index + WRITE_CHUNK_SIZE));
   }
   return result;
+};
+
+const timestampMillis = (value: unknown): number => {
+  if (value instanceof Date) return value.getTime();
+  if (value && typeof value === "object" && "toMillis" in value) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  const parsed = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 export const invoiceReconciliationRepository = {
@@ -211,7 +221,7 @@ export const invoiceReconciliationRepository = {
       const sourceId = typeof item.source_order_document_id === "string" ? item.source_order_document_id : null;
       if (sourceId) openCounts.set(sourceId, (openCounts.get(sourceId) ?? 0) + 1);
     }
-    return sources.map((source) => ({
+    return sources.filter(sourceOrderIsInvoiceEligible).map((source) => ({
       id: source.id,
       warehouse_id: source.warehouse_id,
       business_date: source.business_date,
@@ -232,6 +242,29 @@ export const invoiceReconciliationRepository = {
       last_reconciled_at: source.last_reconciled_at ?? null,
       reconciliation_case_count: openCounts.get(String(source.id)) ?? 0,
     }));
+  },
+
+  async listLatestMisaInvoices(warehouseId: string, businessDate: string) {
+    const runSnapshot = await runs
+      .where("warehouse_id", "==", warehouseId)
+      .get();
+    const latestRun = runSnapshot.docs
+      .map((document) => document.data())
+      .filter((run) => run.business_date === businessDate && run.status === "COMPLETED")
+      .sort((left, right) =>
+        timestampMillis(right.completed_at) - timestampMillis(left.completed_at))[0];
+    if (!latestRun) return { runId: null, fetchedAt: null, invoices: [] };
+    const snapshot = await snapshots.where("run_id", "==", latestRun.id).get();
+    const invoices = snapshot.docs
+      .map((document) => document.data())
+      .sort((left, right) => String(right.invoice_number ?? "").localeCompare(
+        String(left.invoice_number ?? ""), "vi", { numeric: true },
+      ));
+    return {
+      runId: String(latestRun.id),
+      fetchedAt: latestRun.completed_at ?? null,
+      invoices,
+    };
   },
 
   async getLedgerSource(id: string, warehouseId: string) {

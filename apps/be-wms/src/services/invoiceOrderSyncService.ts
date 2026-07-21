@@ -32,6 +32,7 @@ import {
 } from "./joyworldService.js";
 import { loadWarehouseById } from "./warehouseService.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
+import { sourceOrderIsInvoiceEligible } from "./invoiceReconciliationPolicy.js";
 import {
   canonicalJson,
   deriveAmountBeforeTax,
@@ -348,6 +349,7 @@ export const syncInvoiceOrdersForDate = async (
       account
     ) {
       const candidates = writes.filter((write) => {
+        if (!sourceOrderIsInvoiceEligible(write.projection)) return false;
         const preflight = write.projection.preflight as
           | {
               issues?: Array<{ code?: string }>;

@@ -175,7 +175,9 @@ const toTemplate = (value: unknown): MeInvoiceTemplate | null => {
     ip_template_id: String(field(record, "IPTemplateID", "ipTemplateId") ?? ""),
     company_id: typeof companyId === "number" ? companyId : null,
     template_name: String(field(record, "TemplateName", "templateName") ?? ""),
-    inv_template_no: String(field(record, "InvTemplateNo", "invTemplateNo") ?? ""),
+    inv_template_no: String(
+      field(record, "InvTemplateNo", "invTemplateNo") ?? "",
+    ),
     inv_series: series.trim(),
     org_inv_series:
       typeof field(record, "OrgInvSeries", "orgInvSeries") === "string"
@@ -325,7 +327,9 @@ export class MeInvoiceClient {
         502,
       );
     }
-    return data.map(toTemplate).filter((item): item is MeInvoiceTemplate => item !== null);
+    return data
+      .map(toTemplate)
+      .filter((item): item is MeInvoiceTemplate => item !== null);
   }
 
   async pageInvoices(
@@ -368,7 +372,9 @@ export class MeInvoiceClient {
     }
     return {
       total,
-      items: items.map(asRecord).filter((item): item is Record<string, unknown> => item !== null),
+      items: items
+        .map(asRecord)
+        .filter((item): item is Record<string, unknown> => item !== null),
     };
   }
 
@@ -437,7 +443,9 @@ export class MeInvoiceClient {
       }
       return {
         refId,
-        transactionId: nullableText(field(item, "TransactionID", "transactionId")),
+        transactionId: nullableText(
+          field(item, "TransactionID", "transactionId"),
+        ),
         invoiceNumber: nullableText(field(item, "InvNo", "invNo")),
         invoiceCode: nullableText(field(item, "InvCode", "invCode")),
         invoiceDate: nullableText(field(item, "InvDate", "invDate")),
@@ -490,10 +498,14 @@ export class MeInvoiceClient {
           502,
         );
       }
-      const sendTaxStatus = Number(field(item, "SendTaxStatus", "sendTaxStatus"));
+      const sendTaxStatus = Number(
+        field(item, "SendTaxStatus", "sendTaxStatus"),
+      );
       return {
         refId: nullableText(field(item, "RefID", "refId")),
-        transactionId: nullableText(field(item, "TransactionID", "transactionId")),
+        transactionId: nullableText(
+          field(item, "TransactionID", "transactionId"),
+        ),
         publishStatus,
         sendTaxStatus: Number.isInteger(sendTaxStatus) ? sendTaxStatus : null,
         invoiceCode: nullableText(field(item, "InvoiceCode", "invoiceCode")),
@@ -575,9 +587,9 @@ export class MeInvoiceClient {
       );
     }
     return {
-      transactionId: nullableText(
-        field(item, "TransactionID", "transactionId"),
-      ) ?? input.transactionId,
+      transactionId:
+        nullableText(field(item, "TransactionID", "transactionId")) ??
+        input.transactionId,
       data: content,
       errorCode: nullableText(field(item, "ErrorCode", "errorCode")),
       isUrl: false,
