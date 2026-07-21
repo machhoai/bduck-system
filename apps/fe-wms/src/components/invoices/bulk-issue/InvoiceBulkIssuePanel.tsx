@@ -132,79 +132,84 @@ export function InvoiceBulkIssuePanel({
 
   return (
     <>
-      <section className="rounded-[var(--radius-lg)] border border-sky-200 bg-sky-50 p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <section className="rounded-[var(--radius-lg)] border border-sky-200 bg-sky-50 p-2.5">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-sky-950">
+            <p className="text-xs font-bold text-sky-950">
               {lang === "vi" ? "Xuất hóa đơn hàng loạt" : "批量开票"}
             </p>
-            <p className="mt-1 text-xs text-sky-800">
+            <p className="mt-0.5 text-xxs text-sky-800">
               {selectedIds.length} {lang === "vi" ? "đơn đã chọn" : "个已选订单"} · {eligibleCount} {lang === "vi" ? "đơn có thể kiểm tra trong ngày" : "个当日候选订单"}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               disabled={!canIssue || selectedIds.length === 0 || previewing || issuing}
               onClick={() => void startPreview("SELECTED")}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-sky-700 px-4 text-sm font-bold text-white disabled:opacity-40"
+              className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-3 text-xs font-semibold text-white disabled:opacity-40 hover:bg-sky-800"
             >
-              <Send size={16} /> {lang === "vi" ? "Xuất các đơn đã chọn" : "开具已选订单"}
+              <Send size={14} /> {lang === "vi" ? "Xuất các đơn đã chọn" : "开具已选订单"}
             </button>
             <button
               type="button"
               disabled={!canIssue || eligibleCount === 0 || previewing || issuing}
               onClick={() => void startPreview("ALL")}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-sky-300 bg-white px-4 text-sm font-bold text-sky-800 disabled:opacity-40"
+              className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 text-xs font-semibold text-sky-800 disabled:opacity-40 hover:bg-slate-50"
             >
-              {previewing ? <RefreshCw className="animate-spin" size={16} /> : <Send size={16} />}
+              {previewing ? <RefreshCw className="animate-spin" size={14} /> : <Send size={14} />}
               {lang === "vi" ? "Xuất tất cả trong ngày" : "开具当日全部订单"}
             </button>
           </div>
         </div>
 
         {previewing && (
-          <div className="mt-4 grid animate-pulse grid-cols-2 gap-3 sm:grid-cols-4" aria-label={lang === "vi" ? "Đang tính tổng" : "Calculating summary"}>
+          <div className="mt-2.5 grid animate-pulse grid-cols-2 gap-2 sm:grid-cols-4" aria-label={lang === "vi" ? "Đang tính tổng" : "Calculating summary"}>
             {[0, 1, 2, 3].map((item) => (
-              <div key={item} className="h-14 rounded-xl bg-sky-100" />
+              <div key={item} className="h-10 rounded-md bg-sky-100" />
             ))}
           </div>
         )}
 
         {run && (
-          <div className="mt-4 rounded-xl border border-sky-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-slate-900">
+          <div className="mt-2.5 rounded-md border border-sky-200 bg-white p-2.5">
+            <div className="flex items-center justify-between gap-2.5">
+              <p className="text-xs font-bold text-slate-900">
                 {progress.complete
                   ? (lang === "vi" ? "Đã hoàn tất tiến trình MISA" : "MISA 处理已完成")
                   : (lang === "vi" ? "MISA đang xử lý trực tiếp" : "MISA 实时处理中")}
               </p>
-              <span className="text-xs font-semibold text-slate-500">{progress.issued}/{run.summary.eligible_count}</span>
+              <span className="text-xxs font-semibold text-slate-500">{progress.issued}/{run.summary.eligible_count}</span>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
               <div
                 className="h-full rounded-full bg-emerald-500 transition-[width] duration-500"
                 style={{ width: `${run.summary.eligible_count ? (progress.issued / run.summary.eligible_count) * 100 : 0}%` }}
               />
             </div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xxs text-slate-600">
               <span>{progress.issued} {lang === "vi" ? "đã phát hành" : "已开具"}</span>
               <span>{progress.queued + progress.submitting} {lang === "vi" ? "đang gửi" : "正在提交"}</span>
               <span>{progress.pending + progress.retrying} {lang === "vi" ? "chờ MISA xác nhận" : "等待 MISA 确认"}</span>
               <span>{progress.needsAttention} {lang === "vi" ? "cần đối soát" : "需要对账"}</span>
             </div>
             {progress.complete && progress.needsAttention === 0 && (
-              <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700">
-                <CheckCircle2 size={15} /> {lang === "vi" ? "Tất cả hóa đơn đã được xử lý." : "所有发票均已处理。"}
+              <p className="mt-2 flex items-center gap-1.5 text-xxs font-semibold text-emerald-700">
+                <CheckCircle2 size={13} /> {lang === "vi" ? "Tất cả hóa đơn đã được xử lý." : "所有发票均已处理。"}
               </p>
             )}
-            {progress.error && <p className="mt-3 text-xs text-rose-700">{progress.error}</p>}
+            {run.summary.eligible_count === 0 && (
+              <p className="mt-2 text-xxs text-slate-500">
+                {lang === "vi" ? "Không tìm thấy hóa đơn hợp lệ." : "没有找到有效的发票。"}
+              </p>
+            )}
+            {progress.error && <p className="mt-2 text-xxs text-rose-700">{progress.error}</p>}
           </div>
         )}
 
         {lastError && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-            <span className="flex items-center gap-2"><TriangleAlert size={15} /> {lastError}</span>
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xxs text-rose-800">
+            <span className="flex items-center gap-1.5"><TriangleAlert size={13} /> {lastError}</span>
             {selection && (
               <button type="button" onClick={() => void startPreview(selection.selection_mode)} className="font-bold underline">
                 {lang === "vi" ? "Thử lại" : "重试"}

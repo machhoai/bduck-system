@@ -438,28 +438,34 @@ export function InvoiceDraftWorkflow({
 
     if (loading) {
         return (
-            <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-slate-200 p-6 text-sm text-slate-500">
-                <LoaderCircle className="animate-spin" size={17} /> {d.preparing}
+            <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 animate-pulse" aria-label={d.preparing}>
+                <div className="h-4 w-32 rounded bg-slate-200" />
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="h-10 rounded bg-slate-200" />
+                    <div className="h-10 rounded bg-slate-200" />
+                    <div className="h-10 rounded bg-slate-200" />
+                </div>
+                <div className="h-12 rounded bg-slate-200" />
             </div>
         );
     }
 
     if (!document) {
         return (
-            <section className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
-                <FileEdit className="mx-auto text-slate-400" size={28} />
-                <p className="mt-2 text-sm font-semibold text-slate-700">{d.noDraft}</p>
-                {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+            <section className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-center">
+                <FileEdit className="mx-auto text-slate-400" size={20} />
+                <p className="mt-1 text-xs font-bold text-slate-700">{d.noDraft}</p>
+                {error && <p className="mt-1 text-xxs text-rose-600">{error}</p>}
                 <button
                     type="button"
                     onClick={() => void handlePrepare()}
                     disabled={!canPrepare || working !== null}
-                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-bold text-white disabled:opacity-45"
+                    className="mt-2 inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white disabled:opacity-45"
                 >
                     {working === "prepare" ? (
-                        <LoaderCircle className="animate-spin" size={15} />
+                        <LoaderCircle className="animate-spin" size={14} />
                     ) : (
-                        <Plus size={15} />
+                        <Plus size={14} />
                     )}
                     {working === "prepare" ? d.preparing : d.prepare}
                 </button>
@@ -468,59 +474,59 @@ export function InvoiceDraftWorkflow({
     }
 
     return (
-        <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        <section className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div>
-                    <h3 className="text-sm font-bold text-slate-900">{d.title}</h3>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <h3 className="text-xs font-bold text-slate-900">{d.title}</h3>
+                    <p className="mt-0.5 text-xxs text-slate-500">
                         {d.revision} {document.revision}
                     </p>
                 </div>
-                <span className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700">
+                <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xxs font-bold text-slate-700">
                     {statusCopy[lang][document.status]}
                 </span>
             </div>
 
             {sourceStale && (
                 <>
-                    <Notice tone="danger" icon={<AlertTriangle size={15} />}>
+                    <Notice tone="danger" icon={<AlertTriangle size={13} />}>
                         {d.sourceStale}
                     </Notice>
                     <button
                         type="button"
                         onClick={() => void handlePrepare()}
                         disabled={!canPrepare || working !== null}
-                        className="mt-2 inline-flex h-9 items-center gap-2 rounded-lg bg-rose-700 px-3 text-xs font-bold text-white disabled:opacity-45"
+                        className="mt-1.5 inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-rose-700 px-2.5 text-xs font-semibold text-white disabled:opacity-45"
                     >
                         {working === "prepare" ? (
-                            <LoaderCircle className="animate-spin" size={15} />
+                            <LoaderCircle className="animate-spin" size={13} />
                         ) : (
-                            <FileEdit size={15} />
+                            <FileEdit size={13} />
                         )}
                         {d.rebase}
                     </button>
                 </>
             )}
             {document.financially_edited && (
-                <Notice tone="warning" icon={<AlertTriangle size={15} />}>
+                <Notice tone="warning" icon={<AlertTriangle size={13} />}>
                     {d.financial}
                 </Notice>
             )}
             {selfReview && (
-                <Notice tone="warning" icon={<AlertTriangle size={15} />}>
+                <Notice tone="warning" icon={<AlertTriangle size={13} />}>
                     {d.sod}
                 </Notice>
             )}
             {error && (
-                <Notice tone="danger" icon={<XCircle size={15} />}>
+                <Notice tone="danger" icon={<XCircle size={13} />}>
                     {error}
                 </Notice>
             )}
 
             {editing && draft ? (
-                <div className="mt-4 grid gap-4">
-                    <fieldset className="grid gap-2 sm:grid-cols-2">
-                        <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <div className="mt-3 grid gap-3">
+                    <fieldset className="grid gap-1.5 sm:grid-cols-2">
+                        <legend className="mb-1 text-xxs font-semibold uppercase tracking-wide text-slate-500">
                             {d.buyer}
                         </legend>
                         {(
@@ -562,7 +568,7 @@ export function InvoiceDraftWorkflow({
 
                     <div>
                         <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                            <p className="text-xxs font-semibold uppercase tracking-wide text-slate-500">
                                 {d.items}
                             </p>
                             <button
@@ -587,18 +593,18 @@ export function InvoiceDraftWorkflow({
                                             : current,
                                     )
                                 }
-                                className="inline-flex items-center gap-1 text-xs font-bold text-sky-700"
+                                className="inline-flex items-center gap-1 text-xxs font-bold text-sky-700"
                             >
-                                <Plus size={14} /> {d.addLine}
+                                <Plus size={12} /> {d.addLine}
                             </button>
                         </div>
-                        <div className="mt-2 grid gap-3">
+                        <div className="mt-1.5 grid gap-2">
                             {draft.items.map((item, index) => (
                                 <div
                                     key={`draft-line-${item.line_number}`}
-                                    className="rounded-lg border border-slate-200 bg-white p-3"
+                                    className="rounded-md border border-slate-200 bg-white p-2"
                                 >
-                                    <div className="grid gap-2 sm:grid-cols-2">
+                                    <div className="grid gap-1.5 sm:grid-cols-2">
                                         <DraftField
                                             label={d.itemCode}
                                             value={item.item_code ?? ""}
@@ -614,7 +620,7 @@ export function InvoiceDraftWorkflow({
                                             }
                                         />
                                     </div>
-                                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-6">
+                                    <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-6">
                                         <DraftField
                                             label={d.unit}
                                             value={item.unit_name ?? ""}
@@ -652,7 +658,7 @@ export function InvoiceDraftWorkflow({
                                                 updateItem(setDraft, index, "discount_amount", value)
                                             }
                                         />
-                                        <label className="grid gap-1 text-[11px] font-semibold text-slate-500">
+                                        <label className="grid gap-0.5 text-xxs font-semibold text-slate-500">
                                             {d.vat}
                                             <select
                                                 value={item.vat_rate_name ?? "10%"}
@@ -664,7 +670,7 @@ export function InvoiceDraftWorkflow({
                                                         event.target.value as InvoiceVatRateName,
                                                     )
                                                 }
-                                                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900"
+                                                className="h-8 rounded-md border border-slate-200 bg-white px-1.5 text-xs text-slate-900 outline-none"
                                             >
                                                 {vatRates.map((vat) => (
                                                     <option key={vat}>{vat}</option>
@@ -687,9 +693,9 @@ export function InvoiceDraftWorkflow({
                                                         : current,
                                                 )
                                             }
-                                            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-rose-600"
+                                            className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600"
                                         >
-                                            <Trash2 size={13} /> {d.cancel}
+                                            <Trash2 size={12} /> {d.cancel}
                                         </button>
                                     )}
                                 </div>
@@ -701,12 +707,12 @@ export function InvoiceDraftWorkflow({
                             type="button"
                             onClick={() => void handleSave()}
                             disabled={working !== null}
-                            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 text-sm font-bold text-white disabled:opacity-45"
+                            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-45"
                         >
                             {working === "save" ? (
-                                <LoaderCircle className="animate-spin" size={16} />
+                                <LoaderCircle className="animate-spin" size={14} />
                             ) : (
-                                <Save size={16} />
+                                <Save size={14} />
                             )}
                             {working === "save" ? d.saving : d.save}
                         </button>
@@ -717,7 +723,7 @@ export function InvoiceDraftWorkflow({
                                 setEditing(false);
                             }}
                             disabled={working !== null}
-                            className="h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700"
+                            className="h-8 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700"
                         >
                             {d.cancel}
                         </button>
@@ -766,16 +772,16 @@ export function InvoiceDraftWorkflow({
                             </div>
                         </div>
                     )}
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-1.5">
                         <button
                             type="button"
                             onClick={() => setEditing(true)}
                             disabled={
                                 !canPrepare || !editable || sourceStale || working !== null
                             }
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 disabled:opacity-45"
+                            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 disabled:opacity-45 hover:bg-slate-50"
                         >
-                            <FileEdit size={15} /> {d.edit}
+                            <FileEdit size={14} /> {d.edit}
                         </button>
                         <button
                             type="button"
@@ -786,12 +792,12 @@ export function InvoiceDraftWorkflow({
                                 sourceStale ||
                                 working !== null
                             }
-                            className="inline-flex h-9 items-center gap-2 rounded-lg bg-sky-700 px-3 text-xs font-bold text-white disabled:opacity-45"
+                            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-2.5 text-xs font-bold text-white disabled:opacity-45 hover:brightness-95"
                         >
                             {working === "preview" ? (
-                                <LoaderCircle className="animate-spin" size={15} />
+                                <LoaderCircle className="animate-spin" size={14} />
                             ) : (
-                                <Eye size={15} />
+                                <Eye size={14} />
                             )}
                             {d.preview}
                         </button>
@@ -800,15 +806,15 @@ export function InvoiceDraftWorkflow({
             )}
 
             {reviewable && !editing && (
-                <div className="mt-4 border-t border-slate-200 pt-3">
+                <div className="mt-3 border-t border-slate-200 pt-2.5">
                     <textarea
                         value={reviewNote}
                         onChange={(event) => setReviewNote(event.target.value)}
                         placeholder={d.reviewNote}
                         rows={2}
-                        className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm outline-none focus:border-sky-500"
+                        className="w-full rounded-md border border-slate-200 bg-white p-1.5 text-xs outline-none focus:border-sky-500"
                     />
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="mt-1.5 flex gap-1.5">
                         <button
                             type="button"
                             onClick={() => void handleReview("APPROVE")}
@@ -819,12 +825,12 @@ export function InvoiceDraftWorkflow({
                                 sourceStale ||
                                 working !== null
                             }
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-700 text-sm font-bold text-white disabled:opacity-45"
+                            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white disabled:opacity-45 hover:brightness-95"
                         >
                             {working === "review" ? (
-                                <LoaderCircle className="animate-spin" size={16} />
+                                <LoaderCircle className="animate-spin" size={14} />
                             ) : (
-                                <CheckCircle2 size={16} />
+                                <CheckCircle2 size={14} />
                             )}
                             {d.approve}
                         </button>
@@ -832,9 +838,9 @@ export function InvoiceDraftWorkflow({
                             type="button"
                             onClick={() => void handleReview("REJECT")}
                             disabled={!canReview || sourceStale || working !== null}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white text-sm font-bold text-rose-700 disabled:opacity-45"
+                            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 text-xs font-bold text-rose-700 disabled:opacity-45 hover:bg-rose-50"
                         >
-                            <XCircle size={16} /> {d.reject}
+                            <XCircle size={14} /> {d.reject}
                         </button>
                     </div>
                 </div>
@@ -898,12 +904,12 @@ function DraftField({
     onChange: (value: string) => void;
 }) {
     return (
-        <label className="grid gap-1 text-[11px] font-semibold text-slate-500">
+        <label className="grid gap-0.5 text-xxs font-semibold text-slate-500">
             {label}
             <input
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                className="h-8 min-w-0 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none focus:border-sky-500"
             />
         </label>
     );
@@ -921,7 +927,7 @@ function NumberField({
     onChange: (value: number | null) => void;
 }) {
     return (
-        <label className="grid gap-1 text-[11px] font-semibold text-slate-500">
+        <label className="grid gap-0.5 text-xxs font-semibold text-slate-500">
             {label}
             <input
                 type="number"
@@ -935,7 +941,7 @@ function NumberField({
                             : Number(event.target.value),
                     )
                 }
-                className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                className="h-8 min-w-0 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none focus:border-sky-500"
             />
         </label>
     );
@@ -956,7 +962,7 @@ function Notice({
             : "border-amber-200 bg-amber-50 text-amber-800";
     return (
         <div
-            className={`mt-3 flex items-start gap-2 rounded-lg border p-2 text-xs ${style}`}
+            className={`mt-2 flex items-start gap-1.5 rounded-lg border p-1.5 text-xxs ${style}`}
         >
             {icon}
             <span>{children}</span>
@@ -975,10 +981,10 @@ function Metric({
 }) {
     return (
         <div
-            className={`min-w-0 rounded-lg p-2 ${strong ? "bg-slate-900 text-white" : "bg-white text-slate-900"}`}
+            className={`min-w-0 rounded-md p-1.5 ${strong ? "bg-slate-900 text-white" : "bg-white text-slate-900 border border-slate-100"}`}
         >
             <p
-                className={`truncate text-[10px] ${strong ? "text-slate-300" : "text-slate-400"}`}
+                className={`truncate text-micro ${strong ? "text-slate-300" : "text-slate-400"}`}
             >
                 {label}
             </p>

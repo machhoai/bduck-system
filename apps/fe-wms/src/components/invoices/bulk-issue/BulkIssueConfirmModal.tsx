@@ -30,45 +30,45 @@ export function BulkIssueConfirmModal({
     [lang === "vi" ? "Số lượng sản phẩm" : "商品数量", summary.product_quantity],
   ];
   return (
-    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+      <div className="w-[90%] max-w-[500px] rounded-xl bg-white p-3.5 shadow-xl border border-slate-200">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-sky-700">MISA meInvoice</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-950">
+            <p className="text-micro font-bold uppercase tracking-wider text-sky-700">MISA meInvoice</p>
+            <h3 className="mt-0.5 text-sm font-bold text-slate-950">
               {lang === "vi" ? "Xác nhận xuất hóa đơn hàng loạt" : "确认批量开票"}
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-0.5 text-xxs text-slate-500">
               {preview.business_date} · {preview.selection_mode === "ALL"
                 ? (lang === "vi" ? "Tất cả đơn trong ngày" : "当日全部订单")
                 : (lang === "vi" ? "Các đơn đã chọn" : "已选订单")}
             </p>
           </div>
-          <button type="button" onClick={onCancel} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100">
-            <X size={18} />
+          <button type="button" onClick={onCancel} className="rounded p-1 text-slate-400 hover:bg-slate-100">
+            <X size={15} />
           </button>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {stats.map(([label, value]) => (
-            <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">{label}</p>
-              <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
+            <div key={String(label)} className="rounded-md border border-slate-150 bg-slate-50 p-2">
+              <p className="text-xxs text-slate-500">{label}</p>
+              <p className="mt-0.5 text-xs font-bold text-slate-900">{value}</p>
             </div>
           ))}
         </div>
         {summary.excluded_count > 0 && (
-          <div className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 shrink-0" size={17} />
+          <div className="mt-3 flex gap-1.5 rounded-md border border-amber-200 bg-amber-50 p-2 text-xxs text-amber-900">
+            <AlertTriangle className="mt-0.5 shrink-0" size={14} />
             <span>{summary.excluded_count} {lang === "vi"
               ? "đơn không đủ điều kiện sẽ được bỏ qua. Các kiểm tra go-live và chống xuất trùng vẫn được giữ."
               : "个不符合条件的订单将被跳过。启用时间和防重复检查仍然有效。"}</span>
           </div>
         )}
-        <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={onCancel} className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="h-8 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             {lang === "vi" ? "Hủy" : "取消"}
           </button>
-          <button type="button" onClick={onConfirm} className="h-10 rounded-lg bg-sky-700 px-4 text-sm font-bold text-white hover:bg-sky-800">
+          <button type="button" onClick={onConfirm} className="h-8 rounded-md bg-sky-700 px-3 text-xs font-bold text-white hover:bg-sky-800">
             {lang === "vi" ? "Tiếp tục xác thực OTP" : "继续 OTP 验证"}
           </button>
         </div>

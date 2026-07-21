@@ -150,7 +150,7 @@ const goLiveIso = (value: string): string | null => {
 };
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
+  "h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
 
 const copy = {
   vi: {
@@ -350,16 +350,16 @@ export function InvoiceConfigurationPanel({
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
-            <Settings2 size={21} />
+    <section className="space-y-3">
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-50 text-sky-700">
+            <Settings2 size={16} />
           </span>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-950">{d.title}</h2>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h2 className="text-sm font-bold text-slate-950">{d.title}</h2>
+              <span className={`rounded-full px-2 py-0.5 text-xxs font-bold ${
                 status.tone === "emerald"
                   ? "bg-emerald-100 text-emerald-700"
                   : status.tone === "rose"
@@ -371,9 +371,9 @@ export function InvoiceConfigurationPanel({
                 {status.label}
               </span>
             </div>
-            <p className="mt-1 text-sm text-slate-500">{d.subtitle}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{d.subtitle}</p>
             {config?.validated_at && (
-              <p className="mt-1 text-xs text-emerald-700">
+              <p className="mt-0.5 text-xxs text-emerald-700">
                 {lang === "vi" ? "Xác minh MISA gần nhất" : "Last MISA validation"}: {new Date(config.validated_at).toLocaleString(lang === "vi" ? "vi-VN" : "zh-CN")}
               </p>
             )}
@@ -383,40 +383,40 @@ export function InvoiceConfigurationPanel({
           type="button"
           onClick={() => void loadConfig()}
           disabled={saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          <RefreshCw size={16} />
+          <RefreshCw size={14} />
           {lang === "vi" ? "Tải lại" : "Reload"}
         </button>
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          <AlertTriangle className="mt-0.5 shrink-0" size={15} />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-3 xl:grid-cols-2">
         <ConfigCard
-          icon={<UserRound size={19} />}
+          icon={<UserRound size={15} />}
           title={lang === "vi" ? "Giá trị mặc định" : "Default values"}
           description={lang === "vi" ? "Tự điền khi dữ liệu nguồn không có giá trị." : "Used when source data has no value."}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <ConfigField label={lang === "vi" ? "Tên người mua" : "Buyer name"} className="sm:col-span-2">
               <input className={inputClass} value={form.default_buyer_name} onChange={(event) => setField("default_buyer_name", event.target.value)} />
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Địa chỉ người mua" : "Buyer address"} className="sm:col-span-2" optional>
               <input className={inputClass} value={form.default_buyer_address} onChange={(event) => setField("default_buyer_address", event.target.value)} placeholder={lang === "vi" ? "Để trống nếu không bắt buộc" : "Leave blank if optional"} />
             </ConfigField>
-            <ConfigField label={lang === "vi" ? "Phương thức thanh toán" : "Payment method"} icon={<CreditCard size={14} />}>
+            <ConfigField label={lang === "vi" ? "Phương thức thanh toán" : "Payment method"} icon={<CreditCard size={12} />}>
               <input className={inputClass} value={form.default_payment_method_name} onChange={(event) => setField("default_payment_method_name", event.target.value)} placeholder="Tiền mặt/Chuyển khoản" />
             </ConfigField>
-            <ConfigField label={lang === "vi" ? "Đơn vị tính (ĐVT)" : "Unit"} icon={<Ruler size={14} />}>
+            <ConfigField label={lang === "vi" ? "Đơn vị tính (ĐVT)" : "Unit"} icon={<Ruler size={12} />}>
               <input className={inputClass} value={form.default_unit_name} onChange={(event) => setField("default_unit_name", event.target.value)} placeholder="Cái" />
             </ConfigField>
-            <ConfigField label={lang === "vi" ? "Thuế suất VAT" : "Default VAT"} icon={<BadgePercent size={14} />}>
+            <ConfigField label={lang === "vi" ? "Thuế suất VAT" : "Default VAT"} icon={<BadgePercent size={12} />}>
               <select className={inputClass} value={form.default_vat_rate_name} onChange={(event) => setField("default_vat_rate_name", event.target.value as InvoiceVatRateName | "")}>
                 <option value="">{lang === "vi" ? "Chọn thuế suất" : "Select VAT"}</option>
                 {(["0%", "5%", "8%", "10%", "KCT", "KKKNT"] as const).map((value) => <option key={value} value={value}>{value}</option>)}
@@ -433,14 +433,14 @@ export function InvoiceConfigurationPanel({
         </ConfigCard>
 
         <ConfigCard
-          icon={<CalendarClock size={19} />}
+          icon={<CalendarClock size={15} />}
           title={lang === "vi" ? "Phát hành & go-live" : "Issuing & go-live"}
           description={lang === "vi" ? "Chỉ đơn thanh toán từ thời điểm này mới được phát hành." : "Only orders paid after this time can be issued."}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <ConfigField label="Go-live" className="sm:col-span-2">
               <input type="datetime-local" className={inputClass} value={form.go_live_at} onChange={(event) => setField("go_live_at", event.target.value)} />
-              <p className="mt-1 text-xs text-slate-500">{lang === "vi" ? "Múi giờ Việt Nam (UTC+7). Đơn trước mốc này chỉ dùng để đối chiếu." : "Vietnam time (UTC+7). Earlier orders are reconciliation-only."}</p>
+              <p className="mt-0.5 text-xxs text-slate-500">{lang === "vi" ? "Múi giờ Việt Nam (UTC+7). Đơn trước mốc này chỉ dùng để đối chiếu." : "Vietnam time (UTC+7). Earlier orders are reconciliation-only."}</p>
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Ký hiệu hóa đơn" : "Invoice series"}>
               <input className={`${inputClass} uppercase`} value={form.inv_series} onChange={(event) => setField("inv_series", event.target.value.toUpperCase())} placeholder="1C26MAA" />
@@ -469,11 +469,11 @@ export function InvoiceConfigurationPanel({
         </ConfigCard>
 
         <ConfigCard
-          icon={<Store size={19} />}
+          icon={<Store size={15} />}
           title={lang === "vi" ? "Cửa hàng & kết nối" : "Store & connection"}
           description={lang === "vi" ? "Thông tin định danh gửi sang MISA meInvoice." : "Identity sent to MISA meInvoice."}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <ConfigField label={lang === "vi" ? "Mã cửa hàng" : "Shop code"}>
               <input className={inputClass} value={form.seller_shop_code} onChange={(event) => setField("seller_shop_code", event.target.value)} />
             </ConfigField>
@@ -496,52 +496,52 @@ export function InvoiceConfigurationPanel({
               ) : (
                 <input className={inputClass} value={form.meinvoice_account_id} onChange={(event) => setField("meinvoice_account_id", event.target.value)} placeholder={lang === "vi" ? "Chưa có tài khoản kết nối khả dụng" : "No connection account is available"} />
               )}
-              <p className="mt-1 text-xs text-slate-500">{lang === "vi" ? "Tài khoản phải được test kết nối và bật trước khi xác minh cấu hình cửa hàng." : "The account must be tested and enabled before validating the store configuration."}</p>
+              <p className="mt-0.5 text-xxs text-slate-500">{lang === "vi" ? "Tài khoản phải được test kết nối và bật trước khi xác minh cấu hình cửa hàng." : "The account must be tested and enabled before validating the store configuration."}</p>
             </ConfigField>
           </div>
         </ConfigCard>
 
         <ConfigCard
-          icon={<CreditCard size={19} />}
+          icon={<CreditCard size={15} />}
           title={lang === "vi" ? "Ánh xạ thanh toán" : "Payment mapping"}
           description={lang === "vi" ? "Đổi tên phương thức từ hệ thống nguồn trước khi gửi sang MISA." : "Rename source payment methods before sending to MISA."}
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {form.payment_mappings.map((mapping) => (
               <div key={mapping.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <input className={inputClass} value={mapping.source} onChange={(event) => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.map((item) => item.id === mapping.id ? { ...item, source: event.target.value } : item) }))} placeholder={lang === "vi" ? "Tên từ nguồn" : "Source name"} />
                 <input className={inputClass} value={mapping.target} onChange={(event) => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.map((item) => item.id === mapping.id ? { ...item, target: event.target.value } : item) }))} placeholder={lang === "vi" ? "Tên trên hóa đơn" : "Invoice name"} />
-                <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.filter((item) => item.id !== mapping.id) }))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" aria-label={lang === "vi" ? "Xóa ánh xạ" : "Remove mapping"}>
-                  <Trash2 size={16} />
+                <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.filter((item) => item.id !== mapping.id) }))} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" aria-label={lang === "vi" ? "Xóa ánh xạ" : "Remove mapping"}>
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: [...current.payment_mappings, { id: crypto.randomUUID(), source: "", target: "" }] }))} className="inline-flex h-9 items-center gap-2 rounded-lg border border-dashed border-sky-300 px-3 text-xs font-bold text-sky-700 hover:bg-sky-50">
-              <Plus size={15} /> {lang === "vi" ? "Thêm ánh xạ" : "Add mapping"}
+            <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: [...current.payment_mappings, { id: crypto.randomUUID(), source: "", target: "" }] }))} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-dashed border-sky-300 px-2.5 text-xxs font-bold text-sky-700 hover:bg-sky-50">
+              <Plus size={13} /> {lang === "vi" ? "Thêm ánh xạ" : "Add mapping"}
             </button>
           </div>
         </ConfigCard>
       </div>
 
-      <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center">
-        <label className="flex flex-1 cursor-pointer items-center gap-3">
-          <input type="checkbox" checked={form.enabled} onChange={(event) => setField("enabled", event.target.checked)} className="h-5 w-5 rounded accent-sky-700" />
+      <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center">
+        <label className="flex flex-1 cursor-pointer items-center gap-2">
+          <input type="checkbox" checked={form.enabled} onChange={(event) => setField("enabled", event.target.checked)} className="h-4.5 w-4.5 rounded accent-sky-700" />
           <span>
-            <span className="block text-sm font-bold text-slate-900">{lang === "vi" ? "Bật cấu hình sau khi xác minh" : "Enable after validation"}</span>
-            <span className="block text-xs text-slate-500">{lang === "vi" ? "Tắt tùy chọn này nếu chỉ muốn lưu cấu hình để kiểm tra sau." : "Turn this off to save a validated but inactive configuration."}</span>
+            <span className="block text-xs font-bold text-slate-900">{lang === "vi" ? "Bật cấu hình sau khi xác minh" : "Enable after validation"}</span>
+            <span className="block text-xxs text-slate-500">{lang === "vi" ? "Tắt tùy chọn này nếu chỉ muốn lưu cấu hình để kiểm tra sau." : "Turn this off to save a validated but inactive configuration."}</span>
           </span>
         </label>
-        <button type="button" onClick={() => void saveDraft()} disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
-          <Save size={17} /> {lang === "vi" ? "Lưu nháp" : "Save draft"}
+        <button type="button" onClick={() => void saveDraft()} disabled={saving} className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+          <Save size={14} /> {lang === "vi" ? "Lưu nháp" : "Save draft"}
         </button>
-        <button type="button" onClick={() => void saveValidateAndApply()} disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-bold text-white hover:bg-sky-800 disabled:opacity-50">
-          {saving ? <LoaderCircle className="animate-spin" size={17} /> : <BadgeCheck size={17} />}
+        <button type="button" onClick={() => void saveValidateAndApply()} disabled={saving} className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-sky-700 px-3 text-xs font-bold text-white hover:bg-sky-800 disabled:opacity-50">
+          {saving ? <LoaderCircle className="animate-spin" size={14} /> : <BadgeCheck size={14} />}
           {lang === "vi" ? "Lưu & xác minh MISA" : "Save & validate MISA"}
         </button>
       </div>
 
-      <div className="flex items-start gap-2 rounded-xl bg-sky-50 px-4 py-3 text-xs text-sky-800">
-        <CheckCircle2 className="mt-0.5 shrink-0" size={15} />
+      <div className="flex items-start gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xxs text-sky-800">
+        <CheckCircle2 className="mt-0.5 shrink-0" size={13} />
         <span>{lang === "vi" ? "Sau khi đổi ĐVT, VAT hoặc phương thức thanh toán, hãy đồng bộ lại ngày cần phát hành để hệ thống tính lại preflight và draft." : "After changing unit, VAT, or payment defaults, resync the issuing date so preflight and drafts are recalculated."}</span>
       </div>
     </section>
@@ -560,12 +560,12 @@ function ConfigCard({
   children: React.ReactNode;
 }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">{icon}</span>
+    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-3.5 flex items-start gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-700">{icon}</span>
         <div>
-          <h3 className="font-bold text-slate-950">{title}</h3>
-          <p className="mt-0.5 text-xs leading-5 text-slate-500">{description}</p>
+          <h3 className="text-xs font-bold text-slate-950">{title}</h3>
+          <p className="mt-0.5 text-xxs leading-4 text-slate-500">{description}</p>
         </div>
       </div>
       {children}
@@ -587,8 +587,8 @@ function ConfigField({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`grid content-start gap-1.5 ${className}`}>
-      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+    <label className={`grid content-start gap-1 ${className}`}>
+      <span className="flex items-center gap-1.5 text-xxs font-bold text-slate-600">
         {icon}
         {label}
         {optional && <span className="font-normal text-slate-400">(optional)</span>}

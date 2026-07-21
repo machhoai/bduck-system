@@ -27,6 +27,7 @@ import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { showToast } from "@/utils/toast";
+import { shortName } from "@/utils/name";
 import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
 import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
@@ -426,21 +427,21 @@ export default function InvoiceManagementPage() {
     }
 
     return (
-        <div className="flex w-full flex-col gap-4 pb-6">
+        <div className="flex w-full flex-col gap-3 pb-4">
             <header className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-                <div className="border-b border-[var(--color-border-subtle)] bg-[linear-gradient(120deg,#0f172a,#163a5f)] px-4 py-5 text-white sm:px-6">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
+                <div className="border-b border-[var(--color-border-subtle)] bg-[linear-gradient(120deg,#0f172a,#163a5f)] px-3 py-4 text-white sm:px-4">
+                    <p className="text-xxs font-semibold uppercase tracking-[0.18em] text-sky-200">
                         {d.eyebrow}
                     </p>
-                    <h1 className="mt-1 text-2xl font-bold">{d.title}</h1>
-                    <p className="mt-1 max-w-[80%] text-sm text-slate-300">{d.subtitle}</p>
+                    <h1 className="mt-0.5 text-lg font-bold">{d.title}</h1>
+                    <p className="mt-0.5 max-w-[60%] text-xs text-slate-300">{d.subtitle}</p>
                 </div>
-                <div className={`grid gap-3 p-3 ${view === "CONFIG" ? "sm:grid-cols-[minmax(220px,420px)]" : "sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end"}`}>
+                <div className={`grid gap-2 p-2.5 ${view === "CONFIG" ? "sm:grid-cols-[minmax(220px,420px)]" : "sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end"}`}>
                     <Field label={d.store}>
                         <select
                             value={activeStoreId}
                             onChange={(event) => setSelectedStoreId(event.target.value)}
-                            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
                         >
                             {stores.map((store) => (
                                 <option key={store.id} value={store.id}>
@@ -454,11 +455,11 @@ export default function InvoiceManagementPage() {
                             type="date"
                             value={businessDate}
                             onChange={(event) => setBusinessDate(event.target.value)}
-                            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
                         />
                     </Field>}
                     {view !== "CONFIG" && <Field label={d.purpose}>
-                        <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-1">
+                        <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-0.5">
                             {[
                                 [InvoiceOrderSyncPurpose.ISSUE, d.issue],
                                 [InvoiceOrderSyncPurpose.RECONCILIATION, d.reconciliation],
@@ -467,7 +468,7 @@ export default function InvoiceManagementPage() {
                                     key={value}
                                     type="button"
                                     onClick={() => setPurpose(value as InvoiceOrderSyncPurpose)}
-                                    className={`h-8 rounded-md px-2 text-xs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                                    className={`h-7 rounded px-1.5 text-xxs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
                                 >
                                     {label}
                                 </button>
@@ -478,12 +479,12 @@ export default function InvoiceManagementPage() {
                         type="button"
                         onClick={handleSync}
                         disabled={!canSync || syncing || !activeStoreId}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {syncing ? (
-                            <LoaderCircle className="animate-spin" size={16} />
+                            <LoaderCircle className="animate-spin" size={14} />
                         ) : (
-                            <RefreshCw size={16} />
+                            <RefreshCw size={14} />
                         )}
                         {syncing ? d.syncing : d.sync}
                     </button>}
@@ -499,7 +500,7 @@ export default function InvoiceManagementPage() {
                             setView(value);
                             if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                         }}
-                        className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
                     >
                         {label}
                     </button>
@@ -507,8 +508,8 @@ export default function InvoiceManagementPage() {
             </nav>
 
             {view !== "CONFIG" && error && (
-                <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                    <AlertTriangle size={17} className="shrink-0" />
+                <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
+                    <AlertTriangle size={15} className="shrink-0" />
                     <span className="flex-1">{error}</span>
                     <button
                         type="button"
@@ -522,7 +523,7 @@ export default function InvoiceManagementPage() {
             )}
             {view !== "CONFIG" && syncResult && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                    <CheckCircle2 size={17} />
+                    <CheckCircle2 size={15} />
                     <strong>
                         {d.syncDone}: {syncResult.order_count}
                     </strong>
@@ -537,7 +538,7 @@ export default function InvoiceManagementPage() {
                     </span>
                     {syncResult.reconciliation && (
                         <>
-                            <span className="h-4 w-px bg-emerald-300" />
+                            <span className="h-3.5 w-px bg-emerald-300" />
                             <span>
                                 {lang === "vi" ? "Khớp MISA" : "Matched"}: {syncResult.reconciliation.summary.matched_count}
                             </span>
@@ -578,44 +579,44 @@ export default function InvoiceManagementPage() {
                     />
                 )}
 
-                <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                     <StatCard
                         label={d.total}
                         value={stats.total}
-                        icon={<ReceiptText size={18} />}
+                        icon={<ReceiptText size={15} />}
                     />
                     <StatCard
                         label={d.ready}
                         value={stats.ready}
-                        icon={<ShieldCheck size={18} />}
+                        icon={<ShieldCheck size={15} />}
                         tone="success"
                     />
                     <StatCard
                         label={d.tax}
                         value={stats.tax}
-                        icon={<FileWarning size={18} />}
+                        icon={<FileWarning size={15} />}
                         tone="warning"
                     />
                     <StatCard
                         label={d.review}
                         value={stats.review}
-                        icon={<AlertTriangle size={18} />}
+                        icon={<AlertTriangle size={15} />}
                         tone="danger"
                     />
                 </section>
 
                 <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-                    <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="relative flex-1 sm:max-w-[80%]">
+                    <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] p-2.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative flex-1 sm:max-w-[60%]">
                             <Search
-                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                                size={16}
+                                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                size={13}
                             />
                             <input
                                 value={query}
                                 onChange={(event) => setQuery(event.target.value)}
                                 placeholder={d.search}
-                                className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+                                className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-8 pr-2.5 text-xs outline-none focus:border-[var(--color-brand-primary)]"
                             />
                         </div>
                         <select
@@ -623,7 +624,7 @@ export default function InvoiceManagementPage() {
                             onChange={(event) =>
                                 setStatusFilter(event.target.value as typeof statusFilter)
                             }
-                            className="h-10 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold outline-none"
+                            className="h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none"
                         >
                             <option value="ALL">{d.all}</option>
                             {Object.values(InvoicePreparationStatus).map((status) => (
@@ -635,16 +636,24 @@ export default function InvoiceManagementPage() {
                     </div>
 
                     {loading ? (
-                        <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
-                            <LoaderCircle className="animate-spin" size={18} /> {d.loading}
+                        <div className="p-3 space-y-2 animate-pulse" aria-label={d.loading}>
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="flex h-10 items-center gap-4 rounded-md bg-slate-50 px-3">
+                                    <div className="h-4 w-32 rounded bg-slate-200" />
+                                    <div className="h-4 w-24 rounded bg-slate-200" />
+                                    <div className="h-4 w-16 rounded bg-slate-200" />
+                                    <div className="h-4 w-20 rounded bg-slate-200" />
+                                    <div className="ml-auto h-4 w-16 rounded bg-slate-200" />
+                                </div>
+                            ))}
                         </div>
                     ) : filteredOrders.length === 0 ? (
                         <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
-                            <ReceiptText size={36} className="mb-3 text-slate-300" />
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                            <ReceiptText size={30} className="mb-2.5 text-slate-300" />
+                            <p className="text-xs font-semibold text-[var(--color-text-primary)]">
                                 {d.empty}
                             </p>
-                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                            <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
                                 {d.emptyHint}
                             </p>
                         </div>
@@ -657,22 +666,22 @@ export default function InvoiceManagementPage() {
                                         className="relative rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white shadow-sm"
                                     >
                                         {canBulkIssue && canSelectForBulkIssue(order) && (
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedIssueIds.includes(
-                                                        order.id,
-                                                    )}
-                                                    onChange={() =>
-                                                        toggleIssueId(order.id)
-                                                    }
-                                                    aria-label={
-                                                        lang === "vi"
-                                                            ? "Chọn hóa đơn để phát hành"
-                                                            : "Select invoice to issue"
-                                                    }
-                                                    className="absolute left-3 top-4 z-10 h-4 w-4 accent-sky-700"
-                                                />
-                                            )}
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIssueIds.includes(
+                                                    order.id,
+                                                )}
+                                                onChange={() =>
+                                                    toggleIssueId(order.id)
+                                                }
+                                                aria-label={
+                                                    lang === "vi"
+                                                        ? "Chọn hóa đơn để phát hành"
+                                                        : "Select invoice to issue"
+                                                }
+                                                className="absolute left-3 top-4 z-10 h-4 w-4 accent-sky-700"
+                                            />
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => setSelectedOrder(order)}
@@ -716,9 +725,9 @@ export default function InvoiceManagementPage() {
                             </div>
                             <div className="hidden overflow-x-auto md:block">
                                 <table className="min-w-[960px] w-full text-left text-sm">
-                                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <thead className="bg-slate-50 text-xxs uppercase tracking-wider text-slate-500 border-b border-slate-100">
                                         <tr>
-                                            <th className="px-4 py-3">
+                                            <th className="px-2 py-1.5 w-8">
                                                 <input
                                                     type="checkbox"
                                                     checked={
@@ -742,7 +751,7 @@ export default function InvoiceManagementPage() {
                                                             ? "Chọn tất cả hóa đơn sẵn sàng"
                                                             : "Select all ready invoices"
                                                     }
-                                                    className="h-4 w-4 accent-sky-700"
+                                                    className="h-3.5 w-3.5 accent-sky-700"
                                                 />
                                             </th>
                                             {[
@@ -756,7 +765,7 @@ export default function InvoiceManagementPage() {
                                             ].map((label, index) => (
                                                 <th
                                                     key={`${label}-${index}`}
-                                                    className="px-4 py-3 font-semibold"
+                                                    className="px-2 py-1.5 font-semibold"
                                                 >
                                                     {label}
                                                 </th>
@@ -767,68 +776,68 @@ export default function InvoiceManagementPage() {
                                         {filteredOrders.map((order) => (
                                             <tr
                                                 key={order.id}
-                                                className="transition hover:bg-slate-50/80"
+                                                className="transition hover:bg-slate-50/80 text-xs"
                                             >
-                                                <td className="px-4 py-3">
+                                                <td className="px-2 py-1.5">
                                                     {canBulkIssue && canSelectForBulkIssue(order) && (
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedIssueIds.includes(
-                                                                    order.id,
-                                                                )}
-                                                                onChange={() =>
-                                                                    toggleIssueId(order.id)
-                                                                }
-                                                                aria-label={
-                                                                    lang === "vi"
-                                                                        ? "Chọn hóa đơn để phát hành"
-                                                                        : "Select invoice to issue"
-                                                                }
-                                                                className="h-4 w-4 accent-sky-700"
-                                                            />
-                                                        )}
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIssueIds.includes(
+                                                                order.id,
+                                                            )}
+                                                            onChange={() =>
+                                                                toggleIssueId(order.id)
+                                                            }
+                                                            aria-label={
+                                                                lang === "vi"
+                                                                    ? "Chọn hóa đơn để phát hành"
+                                                                    : "Select invoice to issue"
+                                                            }
+                                                            className="h-3.5 w-3.5 accent-sky-700"
+                                                        />
+                                                    )}
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-2 py-1.5">
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedOrder(order)}
                                                         className="text-left"
                                                     >
-                                                        <span className="block font-semibold text-slate-900">
+                                                        <span className="block font-semibold text-slate-900 text-xs">
                                                             {order.order_number ?? order.source_order_id}
                                                         </span>
-                                                        <span className="mt-0.5 block max-w-64 truncate text-xs text-slate-500">
-                                                            {order.customer_name || order.source_order_id}
+                                                        <span className="mt-0.5 block max-w-64 truncate text-xxs text-slate-500" title={order.customer_name || order.source_order_id}>
+                                                            {shortName(order.customer_name) || order.source_order_id}
                                                         </span>
                                                     </button>
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-600">
+                                                <td className="px-2 py-1.5 text-slate-600 text-xxs">
                                                     <span className="block">
                                                         {order.mapped_payment_method ??
                                                             order.payment_method ??
                                                             "—"}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-slate-400">
                                                         {order.payment_time ?? "—"}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 font-medium tabular-nums">
+                                                <td className="px-2 py-1.5 font-medium tabular-nums text-xs">
                                                     {money.format(order.amount_before_tax ?? 0)}
                                                 </td>
-                                                <td className="px-4 py-3 font-medium tabular-nums">
+                                                <td className="px-2 py-1.5 font-medium tabular-nums text-xs">
                                                     {money.format(order.tax_money ?? 0)}
                                                 </td>
-                                                <td className="px-4 py-3 font-bold tabular-nums text-slate-900">
+                                                <td className="px-2 py-1.5 font-bold tabular-nums text-slate-900 text-xs">
                                                     {money.format(order.real_money ?? 0)}
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-2 py-1.5">
                                                     <span
-                                                        className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${statusStyle(order.preflight.status)}`}
+                                                        className={`inline-flex rounded-full border px-2 py-0.5 text-xxs font-semibold ${statusStyle(order.preflight.status)}`}
                                                     >
                                                         {statusLabel(order.preflight.status, lang)}
                                                     </span>
                                                     {order.invoice_document_status && (
-                                                        <span className="mt-1 block text-[11px] font-semibold text-slate-500">
+                                                        <span className="mt-0.5 block text-micro font-semibold text-slate-500">
                                                             {documentStatusLabel(
                                                                 order.invoice_document_status,
                                                                 lang,
@@ -836,14 +845,14 @@ export default function InvoiceManagementPage() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-right">
+                                                <td className="px-2 py-1.5 text-right">
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedOrder(order)}
                                                         aria-label={d.detail}
-                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                                                     >
-                                                        <ChevronRight size={17} />
+                                                        <ChevronRight size={13} />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -970,7 +979,7 @@ function OrderReviewDrawer({
                 onClick={onClose}
                 className="absolute inset-0 cursor-default"
             />
-            <aside className="relative flex h-full w-full max-w-[80%] flex-col bg-white shadow-2xl">
+            <aside className="relative flex h-full w-full max-w-[60%] flex-col bg-white shadow-2xl">
                 <div className="flex items-start justify-between border-b border-slate-200 p-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

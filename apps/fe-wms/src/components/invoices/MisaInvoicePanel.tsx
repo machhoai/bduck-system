@@ -3,6 +3,7 @@
 import { LoaderCircle, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoiceApi, type MisaInvoiceListResult } from "@/api/invoiceApi";
+import { shortName } from "@/utils/name";
 
 const amount = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -85,14 +86,14 @@ export function MisaInvoicePanel({
   }, [invoices, query, series]);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
           {error}
         </div>
       )}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           ["MISA trả về", invoices.length],
           [
@@ -109,41 +110,41 @@ export function MisaInvoicePanel({
         ].map(([label, value]) => (
           <div
             key={String(label)}
-            className="rounded-xl border border-slate-200 bg-white p-3"
+            className="rounded-xl border border-slate-200 bg-white p-2 flex flex-col justify-center"
           >
-            <div className="text-xl font-bold text-slate-900">{value}</div>
-            <div className="text-xs text-slate-500">{label}</div>
+            <div className="text-sm font-bold text-slate-900">{value}</div>
+            <div className="text-xxs text-slate-500">{label}</div>
           </div>
         ))}
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-3 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-2 border-b border-slate-200 p-2.5 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
-            <h2 className="font-bold text-slate-900">Toàn bộ hóa đơn MISA</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-bold text-slate-900">Toàn bộ hóa đơn MISA</h2>
+            <p className="text-xxs text-slate-500">
               {businessDate}
               {result?.fetched_at
                 ? ` · cập nhật ${new Date(result.fetched_at).toLocaleString("vi-VN")}`
                 : " · chưa có lần đối chiếu"}
             </p>
           </div>
-          <div className="relative min-w-0 flex-1 lg:max-w-sm">
+          <div className="relative min-w-0 flex-1 lg:max-w-[100px]">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={15}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={13}
             />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Tìm số hóa đơn, người mua, MST, mã đơn…"
-              className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-sky-500"
+              className="h-8 w-full rounded-md border border-slate-200 pl-8 pr-2.5 text-xs outline-none focus:border-sky-500"
             />
           </div>
           <select
             value={series}
             onChange={(event) => setSeries(event.target.value)}
-            className="h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold outline-none"
+            className="h-8 rounded-md border border-slate-200 px-2.5 text-xs font-semibold outline-none"
           >
             <option value="ALL">Tất cả ký hiệu</option>
             {seriesValues.map((value) => (
@@ -156,84 +157,91 @@ export function MisaInvoicePanel({
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold disabled:opacity-50"
+            className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold disabled:opacity-50"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
             Làm mới
           </button>
         </div>
 
         {loading ? (
-          <div className="flex min-h-52 items-center justify-center gap-2 text-sm text-slate-500">
-            <LoaderCircle className="animate-spin" size={17} /> Đang tải hóa đơn
-            MISA…
+          <div className="p-3 space-y-2 animate-pulse" aria-label="Đang tải hóa đơn MISA…">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex h-10 items-center gap-4 rounded-md bg-slate-50 px-3">
+                <div className="h-4 w-32 rounded bg-slate-200" />
+                <div className="h-4 w-24 rounded bg-slate-200" />
+                <div className="h-4 w-16 rounded bg-slate-200" />
+                <div className="h-4 w-20 rounded bg-slate-200" />
+                <div className="ml-auto h-4 w-16 rounded bg-slate-200" />
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex min-h-52 items-center justify-center px-6 text-center text-sm text-slate-500">
+          <div className="flex min-h-48 items-center justify-center px-6 text-center text-xs text-slate-500">
             Chưa có hóa đơn MISA cho ngày này. Hãy chọn mục đích Đối chiếu và
             đồng bộ toàn ngày.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1050px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <thead className="bg-slate-50 text-xxs uppercase tracking-wider text-slate-500 border-b border-slate-100">
                 <tr>
-                  <th className="px-4 py-3">Số hóa đơn</th>
-                  <th className="px-4 py-3">Ngày hóa đơn</th>
-                  <th className="px-4 py-3">Người mua</th>
-                  <th className="px-4 py-3">Mã đơn</th>
-                  <th className="px-4 py-3">Thanh toán</th>
-                  <th className="px-4 py-3 text-right">Tổng tiền</th>
-                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-2 py-1.5">Số hóa đơn</th>
+                  <th className="px-2 py-1.5">Ngày hóa đơn</th>
+                  <th className="px-2 py-1.5">Người mua</th>
+                  <th className="px-2 py-1.5">Mã đơn</th>
+                  <th className="px-2 py-1.5">Thanh toán</th>
+                  <th className="px-2 py-1.5 text-right">Tổng tiền</th>
+                  <th className="px-2 py-1.5">Trạng thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">
+                  <tr key={invoice.id} className="hover:bg-slate-50/70 text-xs">
+                    <td className="px-2 py-1.5">
+                      <div className="font-semibold text-slate-900 text-xs">
                         {invoice.invoice_number ?? "—"}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xxs text-slate-500">
                         {invoice.inv_series ?? "—"}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-slate-600 text-xxs">
                       {invoice.invoice_date ?? "—"}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="max-w-64 truncate font-medium text-slate-900">
-                        {invoice.buyer_name || "Khách lẻ"}
+                    <td className="px-2 py-1.5">
+                      <div className="max-w-64 truncate font-medium text-slate-900 text-xs" title={invoice.buyer_name || "Khách lẻ"}>
+                        {shortName(invoice.buyer_name) || "Khách lẻ"}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xxs text-slate-500">
                         {invoice.buyer_tax_code || "Không có MST"}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="max-w-52 truncate">
+                    <td className="px-2 py-1.5">
+                      <div className="max-w-52 truncate text-xs">
                         {invoice.buyer_order_code || "Chưa có mã liên kết"}
                       </div>
                       <div
-                        className="max-w-52 truncate text-xs text-slate-400"
+                        className="max-w-52 truncate text-xxs text-slate-400"
                         title={invoice.transaction_id ?? undefined}
                       >
                         {invoice.transaction_id ?? "—"}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-slate-600 text-xxs">
                       {invoice.payment_method_name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">
+                    <td className="px-2 py-1.5 text-right font-bold tabular-nums text-slate-900 text-xs">
                       {amount.format(invoice.total_amount ?? 0)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-1.5">
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${invoice.is_deleted ? "bg-rose-50 text-rose-700" : invoice.publish_status === 1 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
+                        className={`rounded-full px-2 py-0.5 text-xxs font-semibold ${invoice.is_deleted ? "bg-rose-50 text-rose-700" : invoice.publish_status === 1 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
                       >
                         {invoiceStatus(invoice)}
                       </span>
                       {invoice.send_tax_status !== null && (
-                        <div className="mt-1 text-[11px] text-slate-400">
+                        <div className="mt-0.5 text-micro text-slate-400">
                           Thuế: {invoice.send_tax_status}
                         </div>
                       )}
