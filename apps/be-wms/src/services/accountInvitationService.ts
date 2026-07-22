@@ -180,12 +180,12 @@ export const sendInitialPasswordSetupInvitation = async (
     try {
         await sendBrevoEmail({
             to: [user.email],
-            subject: "Kích hoạt tài khoản Joy World Cityfuns ERP",
+            subject: "Kích hoạt tài khoản J-PULSE",
             htmlContent: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-          <h2>Kích hoạt tài khoản Joy World Cityfuns ERP</h2>
+          <h2>Kích hoạt tài khoản J-PULSE</h2>
           <p>Xin chào ${safeName},</p>
-          <p>Tài khoản của bạn đã được tạo trên hệ thống Joy World Cityfuns ERP.</p>
+          <p>Tài khoản của bạn đã được tạo trên hệ thống J-PULSE.</p>
           <p><strong>Email tài khoản:</strong> ${safeEmail}</p>
           <p>Vui lòng tạo tên đăng nhập và mật khẩu để kích hoạt tài khoản.</p>
           <p>
@@ -199,7 +199,7 @@ export const sendInitialPasswordSetupInvitation = async (
       `,
             textContent: [
                 `Xin chào ${user.full_name},`,
-                "Tài khoản của bạn đã được tạo trên hệ thống Joy World Cityfuns ERP.",
+                "Tài khoản của bạn đã được tạo trên hệ thống J-PULSE.",
                 `Email tài khoản: ${user.email}`,
                 "Vui lòng tạo tên đăng nhập và mật khẩu để kích hoạt tài khoản.",
                 `Khởi tạo tài khoản tại: ${setupUrl}`,
@@ -290,12 +290,12 @@ export const sendPasswordResetEmail = async (
     try {
         await sendBrevoEmail({
             to: [user.email],
-            subject: "Yêu cầu khôi phục mật khẩu - Joy World Cityfuns ERP",
+            subject: "Yêu cầu khôi phục mật khẩu - J-PULSE",
             htmlContent: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
           <h2>Yêu cầu khôi phục mật khẩu</h2>
           <p>Xin chào ${safeName},</p>
-          <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Joy World Cityfuns ERP.</p>
+          <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống J-PULSE.</p>
           <p>
             <a href="${setupUrl}" style="display:inline-block;background:#f5a400;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">
               Đặt lại mật khẩu
@@ -307,7 +307,7 @@ export const sendPasswordResetEmail = async (
       `,
             textContent: [
                 `Xin chào ${user.full_name},`,
-                "Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Joy World Cityfuns ERP.",
+                "Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống J-PULSE.",
                 `Đặt lại mật khẩu tại: ${setupUrl}`,
                 "Liên kết này có hiệu lực trong 30 phút.",
                 "Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.",

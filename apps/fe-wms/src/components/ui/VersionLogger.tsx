@@ -27,7 +27,7 @@ export default function VersionLogger() {
         "font-weight:bold;padding:2px 6px;font-size:11px;border-radius:3px";
 
       console.info(
-        "%c B.Duck WMS %c FE v" + feVersion + " %c BE v" + beVersion + " ",
+        "%c J-PULSE %c FE v" + feVersion + " %c BE v" + beVersion + " ",
         `background:#1d4ed8;color:#fff;${tag} border-radius:3px 0 0 3px`,
         `background:#0f172a;color:#7dd3fc;${tag} border-radius:0`,
         `background:#064e3b;color:#6ee7b7;${tag} border-radius:0 3px 3px 0`,

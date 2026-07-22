@@ -16,7 +16,7 @@ interface BrevoEmailResult {
 function getBrevoConfig() {
   const apiKey = process.env.BREVO_API_KEY; // This is used as the SMTP password
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
-  const senderName = process.env.BREVO_SENDER_NAME || "Joy World Cityfuns WMS";
+  const senderName = process.env.BREVO_SENDER_NAME || "J-PULSE";
 
   if (!apiKey || !senderEmail) {
     throw {

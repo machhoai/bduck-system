@@ -202,7 +202,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       description: "Mô tả tùy chọn",
     },
     prompts: {
-      title: "BDuck WMS",
+      title: "J-PULSE",
       invalidTitle: "Giá trị không hợp lệ",
       invalidList: "Vui lòng chọn một giá trị trong danh sách.",
       invalidUnitPrice: "Đơn giá phải là số nguyên không âm.",
@@ -405,7 +405,7 @@ const TEMPLATE_TEXT: Record<TemplateLanguage, TemplateText> = {
       description: "选填描述",
     },
     prompts: {
-      title: "BDuck WMS",
+      title: "J-PULSE",
       invalidTitle: "无效值",
       invalidList: "请从下拉列表中选择一个值。",
       invalidUnitPrice: "单价必须是非负整数。",
@@ -506,7 +506,7 @@ export async function downloadProductImportTemplate(
 ) {
   const text = TEMPLATE_TEXT[language];
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "BDuck WMS";
+  workbook.creator = "J-PULSE";
   workbook.created = new Date();
 
   const productSheet = workbook.addWorksheet(text.sheets.products, {

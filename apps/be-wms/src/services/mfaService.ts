@@ -9,7 +9,7 @@ import { sendBrevoEmail } from "./brevoEmailService.js";
 // Generate OTP and QR Code for setup
 export const generateMfaSetup = async (uid: string, email: string) => {
     const secret = authenticator.generateSecret();
-    const otpauth = authenticator.keyuri(email, "JWC-ERP", secret);
+    const otpauth = authenticator.keyuri(email, "J-PULSE", secret);
     const qrCodeUrl = await qrcode.toDataURL(otpauth);
 
     return { secret, qrCodeUrl };
@@ -43,7 +43,7 @@ export const sendMfaEmailOtp = async (uid: string, email: string) => {
     // Send email using Brevo
     await sendBrevoEmail({
         to: [email],
-        subject: `Mã Xác Thực (OTP) JWC-ERP: ${otp}`,
+        subject: `Mã Xác Thực (OTP) J-PULSE: ${otp}`,
         htmlContent: `
       <h2>Mã xác thực của bạn là: <strong>${otp}</strong></h2>
       <p>Mã này có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ cho bất kỳ ai.</p>

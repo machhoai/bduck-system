@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# Joy World Cityfuns WMS - AI Agent Core Guidelines
+# J-PULSE - AI Agent Core Guidelines
 
 ## 1. QUY TẮC QUY TRÌNH LÀM VIỆC (AI WORKFLOW RULES) - BẮT BUỘC
 * **Suy nghĩ và làm rõ yêu cầu (Brainstorming & Zero Ambiguity):** - Khi nhận một task hoặc tính năng mới, Agent BẮT BUỘC phải gọi skill `@brainstorming` để phân tích sâu vấn đề.

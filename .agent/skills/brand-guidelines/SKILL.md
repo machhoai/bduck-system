@@ -1,8 +1,8 @@
-B.Duck Cityfuns Brand Styling
+J-PULSE Brand Styling
 Overview
-To access B.Duck Cityfuns's official brand identity and style resources tailored for digital interfaces (ERP/POS/Web), use this skill.
+Use this skill for J-PULSE product branding across application, email, document, and PWA surfaces. J-PULSE stands for Joy World - Platform for Unified Leadership, Service & Enterprise. It inherits the playful Joy World/B.Duck Cityfuns visual language while remaining clear and professional for enterprise operations.
 
-Keywords: branding, corporate identity, B.Duck, Cityfuns, visual identity, styling, brand colors, typography, UI formatting, gamified enterprise
+Keywords: J-PULSE, Joy World, branding, product identity, B.Duck, Cityfuns, visual identity, styling, brand colors, typography, UI formatting, gamified enterprise
 
 Brand Guidelines
 Colors

@@ -25,7 +25,7 @@ export async function downloadExpenseImportTemplate(options: {
 }) {
   const { labels, text } = options;
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "BDuck WMS";
+  workbook.creator = "J-PULSE";
   workbook.created = new Date();
 
   const dataSheet = workbook.addWorksheet(text.sheets.data, {

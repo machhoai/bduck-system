@@ -1,7 +1,7 @@
 {
-  "name": "Joy World Cityfuns ERP",
-  "short_name": "JWC ERP",
-  "description": "Joy World Cityfuns warehouse and operations system",
+  "name": "J-PULSE",
+  "short_name": "J-PULSE",
+  "description": "Joy World - Platform for Unified Leadership, Service & Enterprise",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

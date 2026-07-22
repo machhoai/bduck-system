@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../stores/useUserStore';
 import { useRouter } from 'next/navigation';
@@ -135,19 +136,14 @@ export default function LoginForm() {
                     {/* Mobile brand header */}
                     <div className="lg:hidden mb-2 flex items-center gap-3">
                         <div className="relative z-10 max-w-full">
-                            <h1
-                                className="text-[4.75rem] font-bold leading-[1.1] tracking-tight"
-                                style={{
-                                    fontFamily: 'var(--font-display)',
-                                    color: 'var(--color-text-primary)',
-                                }}
-                            >
-                                <span className="text-[var(--color-brand-primary)]">
-                                    Joy World <br /> Cityfuns
-                                </span>
-                                <br />
-                                WMS
-                            </h1>
+                            <Image
+                                src="/logo/jpulse-h.png"
+                                alt="J-PULSE"
+                                width={700}
+                                height={238}
+                                priority
+                                className="h-auto w-full max-w-[420px]"
+                            />
 
                             {/* Status indicators */}
                             <div className="mb-1 flex items-center justify-start gap-3">

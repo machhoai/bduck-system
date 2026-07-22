@@ -1,6 +1,6 @@
-# Hướng dẫn sử dụng hệ thống WMS
+# Hướng dẫn sử dụng J-PULSE - Module Quản lý kho
 
-Tài liệu này mô tả các khu vực hiển thị và thao tác chính trong hệ thống quản lý kho WMS. Nội dung được biên soạn theo giao diện hiện có trong source code frontend, gồm phần hướng dẫn thao tác và ghi chú ảnh cần chụp để hoàn thiện tài liệu bàn giao.
+Tài liệu này mô tả các khu vực hiển thị và thao tác chính trong module Quản lý kho của J-PULSE (Joy World - Platform for Unified Leadership, Service & Enterprise). Nội dung được biên soạn theo giao diện hiện có trong source code frontend, gồm phần hướng dẫn thao tác và ghi chú ảnh cần chụp để hoàn thiện tài liệu bàn giao.
 
 ## 1. Tổng quan giao diện
 

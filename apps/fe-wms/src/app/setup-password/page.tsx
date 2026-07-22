@@ -190,7 +190,7 @@ export default function SetupPasswordPage() {
               {purpose === "reset" ? "Đặt lại mật khẩu" : "Khởi tạo tài khoản"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)]">
-              Joy World Cityfuns WMS
+              J-PULSE
             </p>
           </div>
         </div>

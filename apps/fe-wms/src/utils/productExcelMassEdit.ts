@@ -152,7 +152,7 @@ const TEMPLATE_TEXT = {
       description: { label: "Mô tả", note: "Không bắt buộc.", width: 38 },
     },
     prompts: {
-      title: "BDuck WMS",
+      title: "J-PULSE",
       invalidTitle: "Giá trị không hợp lệ",
       invalidList: "Vui lòng chọn một giá trị trong danh sách.",
       invalidUnitPrice: "Đơn giá phải là số nguyên không âm.",
@@ -255,7 +255,7 @@ const TEMPLATE_TEXT = {
       description: { label: "描述", note: "选填", width: 38 },
     },
     prompts: {
-      title: "BDuck WMS",
+      title: "J-PULSE",
       invalidTitle: "无效值",
       invalidList: "请从下拉列表中选择一个值。",
       invalidUnitPrice: "单价必须是非负整数。",
@@ -324,7 +324,7 @@ export async function downloadProductMassEditTemplate(
 ) {
   const text = TEMPLATE_TEXT[language] || TEMPLATE_TEXT.vi;
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "BDuck WMS";
+  workbook.creator = "J-PULSE";
   workbook.created = new Date();
 
   const productSheet = workbook.addWorksheet(text.sheets.products, {

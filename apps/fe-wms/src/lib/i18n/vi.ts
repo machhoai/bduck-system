@@ -38,7 +38,7 @@ const vi = {
     },
 
     sidebar: {
-        systemName: "Joy World Cityfuns ERP",
+        systemName: "J-PULSE",
         moduleName: "Quản lý kho",
         collapse: "Thu gọn",
         expand: "Mở rộng",
@@ -1112,7 +1112,7 @@ const vi = {
 
     login: {
         title: "Dang nhap",
-        brand: "Joy World Cityfuns ERP",
+        brand: "J-PULSE",
         subtitle: "He thong quan ly kho",
         version: "Phien ban",
         email: "Email",
@@ -1951,7 +1951,7 @@ const vi = {
                     },
                 },
                 prompts: {
-                    title: "Joy World Cityfuns ERP",
+                    title: "J-PULSE",
                     invalidTitle: "Giá trị không hợp lệ",
                     invalidList: "Vui lòng chọn một giá trị trong danh sách.",
                     invalidAmount: "Số tiền phải là số không âm.",

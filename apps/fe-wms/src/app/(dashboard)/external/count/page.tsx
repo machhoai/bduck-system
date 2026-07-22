@@ -2,7 +2,7 @@ import ExternalCountPage from "../../../../components/features/external-count/Ex
 import ExternalNavTabs from "../../../../components/features/external/ExternalNavTabs";
 
 export const metadata = {
-  title: "Kiểm đếm ngoài | B-Duck WMS",
+  title: "Kiểm đếm ngoài | J-PULSE",
 };
 
 export default function Page() {

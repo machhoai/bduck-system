@@ -40,7 +40,7 @@ const zh: Dictionary = {
   },
 
   sidebar: {
-    systemName: "Joy World WMS",
+    systemName: "J-PULSE",
     moduleName: "仓库管理",
     collapse: "收起",
     expand: "展开",
@@ -1079,7 +1079,7 @@ const zh: Dictionary = {
 
   login: {
     title: "登录",
-    brand: "Joy World Cityfuns WMS",
+    brand: "J-PULSE",
     subtitle: "仓库管理系统",
     version: "版本",
     email: "邮箱",
@@ -1885,7 +1885,7 @@ const zh: Dictionary = {
           },
         },
         prompts: {
-          title: "BDuck WMS",
+          title: "J-PULSE",
           invalidTitle: "值无效",
           invalidList: "请从列表中选择一个值。",
           invalidAmount: "金额必须是非负数。",
