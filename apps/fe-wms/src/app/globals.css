@@ -201,6 +201,22 @@
 
     /* Surface subtle — hover state for ghost buttons */
     --color-surface-subtle: #f3f4f6;
+
+    /* Đổi kích thước cho các class max-w-xs, max-w-md, max-w-xl... */
+    --container-xs: 20rem;
+    /* 320px (mặc định) */
+    --container-sm: 24rem;
+    /* 384px */
+    --container-md: 28rem;
+    /* 448px */
+    --container-lg: 32rem;
+    /* 512px */
+    --container-xl: 36rem;
+    /* 576px */
+    --container-2xl: 42rem;
+    /* 672px */
+    --container-3xl: 48rem;
+    /* 768px */
 }
 
 @layer base {

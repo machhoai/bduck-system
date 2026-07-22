@@ -32,6 +32,7 @@ export interface AttendanceCapabilities {
   canView: boolean;
   canConfigure: boolean;
   canExport: boolean;
+  canAccessWorkplace: boolean;
 }
 
 const getVietnamDateKey = (date = new Date()) => {
@@ -164,18 +165,24 @@ export const fetchAttendanceContext = async (
     canView: false,
     canConfigure: false,
     canExport: false,
+    canAccessWorkplace: false,
   },
+  profileInput?: EmployeeProfile | null,
 ): Promise<AttendanceCheckInContext> => {
   const requestIps = normalizeIpCandidates(requestIpInput);
   const currentIpAddress = requestIps[0] ?? null;
-  const profile = await getEmployeeProfileByUserId(user.id);
+  const profile =
+    profileInput === undefined
+      ? await getEmployeeProfileByUserId(user.id)
+      : profileInput;
   const warehouseId = profile?.workplace_warehouse_id ?? null;
   const canViewAttendance = capabilities.canView;
   const hasCheckInPermission = capabilities.canCheckIn;
   const canConfigureAttendance = capabilities.canConfigure;
   const canExportAttendance = capabilities.canExport;
 
-  if (!profile || !warehouseId) {
+  if (!profile || !warehouseId || !capabilities.canAccessWorkplace) {
+    const hasWorkplaceWithoutPermission = Boolean(profile && warehouseId);
     return {
       can_access_page:
         hasCheckInPermission ||
@@ -192,8 +199,12 @@ export const fetchAttendanceContext = async (
       current_ip_address: currentIpAddress,
       is_company_network: null,
       messages: {
-        vi: "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
-        zh: "账号尚未配置唯一的考勤工作地点。",
+        vi: hasWorkplaceWithoutPermission
+          ? "Bạn không có quyền chấm công tại cơ sở làm việc hiện tại."
+          : "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
+        zh: hasWorkplaceWithoutPermission
+          ? "您无权在当前工作地点进行考勤。"
+          : "账号尚未配置唯一的考勤工作地点。",
       },
     };
   }
@@ -233,8 +244,12 @@ export const checkInAttendance = async (
   input: { action_time?: string },
   requestIpInput: string | Array<string | null | undefined> | null | undefined,
   auditMetadata?: AuditMetadata,
+  profileInput?: EmployeeProfile | null,
 ): Promise<AttendanceLog> => {
-  const profile = await getEmployeeProfileByUserId(user.id);
+  const profile =
+    profileInput === undefined
+      ? await getEmployeeProfileByUserId(user.id)
+      : profileInput;
   const warehouseId = profile?.workplace_warehouse_id ?? null;
   const requestIps = normalizeIpCandidates(requestIpInput);
   const ipAddress = requestIps[0] ?? null;
@@ -356,8 +371,12 @@ export const createLateArrivalReport = async (
     action_time?: string;
   },
   auditMetadata?: AuditMetadata,
+  profileInput?: EmployeeProfile | null,
 ): Promise<AttendanceLateReport> => {
-  const profile = await getEmployeeProfileByUserId(user.id);
+  const profile =
+    profileInput === undefined
+      ? await getEmployeeProfileByUserId(user.id)
+      : profileInput;
   const warehouseId = profile?.workplace_warehouse_id ?? null;
   const actionTime = input.action_time
     ? new Date(input.action_time)

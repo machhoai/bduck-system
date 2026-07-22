@@ -156,16 +156,18 @@ export default function DashboardRevenueOverview({
                             )}
                     </p>
 
-                    <RevenueDateFilter
-                        filter={filter}
-                        comparison={comparison}
-                        comparisonLabel=""
-                        onChange={setFilter}
-                        onComparisonChange={() => undefined}
-                        generatedAt={data?.generatedAt}
-                        syncing={syncing}
-                        showComparison={false}
-                    />
+                    <div className="flex justify-end -mt-10 sm:mt-0 sm:mb-2">
+                        <RevenueDateFilter
+                            filter={filter}
+                            comparison={comparison}
+                            comparisonLabel=""
+                            onChange={setFilter}
+                            onComparisonChange={() => undefined}
+                            generatedAt={data?.generatedAt}
+                            syncing={syncing}
+                            showComparison={false}
+                        />
+                    </div>
 
                     <DashboardRevenueStats
                         data={data}

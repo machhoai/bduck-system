@@ -1,6 +1,6 @@
 "use client";
 
-import type { User, UserWarehouseRole, Warehouse } from "@bduck/shared-types";
+import type { User, UserWarehouseRole } from "@bduck/shared-types";
 import { AlertTriangle, CheckCircle2, UsersRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -29,6 +29,10 @@ import { useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
+    getFacilityPermissionScope,
+    scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
+import {
     buildAttendanceDays,
     getCurrentMonthKey,
     getTodayKey,
@@ -38,22 +42,6 @@ import {
 } from "@/utils/attendance";
 
 type UserWithAssignments = User & { assignments?: UserWarehouseRole[] };
-
-function getScopedWarehouseIds(
-    permissions: Record<string, Record<string, unknown>>,
-    action: string,
-) {
-    const globalPerms = permissions.global || {};
-    if (globalPerms["*"] === true || globalPerms[action] === true)
-        return undefined;
-
-    return Object.entries(permissions)
-        .filter(
-            ([scope, scoped]) =>
-                scope !== "global" && (scoped["*"] === true || scoped[action] === true),
-        )
-        .map(([scope]) => scope);
-}
 
 function fallbackLabels(t: ReturnType<typeof useTranslation>["t"]) {
     return (t as any).attendance as Record<string, string>;
@@ -87,6 +75,8 @@ export function TimeAttendanceTab() {
     const [month, setMonth] = useState(getCurrentMonthKey());
     const [weekStart, setWeekStart] = useState(getWeekStartKey());
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("ALL");
+    const [selectedSettingsWarehouseId, setSelectedSettingsWarehouseId] =
+        useState("");
     const [selectedUserId, setSelectedUserId] = useState("ALL");
     const [lateReportOpen, setLateReportOpen] = useState(false);
 
@@ -109,19 +99,16 @@ export function TimeAttendanceTab() {
             days[0]?.key || "",
             days[days.length - 1]?.key || "",
         );
-    const settingsWarehouseId =
-        selectedWarehouseId !== "ALL"
-            ? selectedWarehouseId
-            : context?.warehouse_id || warehouses[0]?.id || null;
-    const { exemptions: settingsExemptions, updateExemptions } =
-        useAttendanceExemptions(settingsWarehouseId);
-
     const canViewAttendance = hasPermission("attendance.view");
     const canConfigureAttendance = hasPermission("attendance.config");
     const canExportAttendance = hasPermission("attendance.export");
 
-    const scopedWarehouseIds = useMemo(
-        () => getScopedWarehouseIds(permissions, "attendance.view"),
+    const viewFacilityScope = useMemo(
+        () => getFacilityPermissionScope(permissions, ["attendance.view"]),
+        [permissions],
+    );
+    const configFacilityScope = useMemo(
+        () => getFacilityPermissionScope(permissions, ["attendance.config"]),
         [permissions],
     );
     const visibleWarehouses = useMemo(() => {
@@ -130,17 +117,37 @@ export function TimeAttendanceTab() {
                 (warehouse) => warehouse.id === context?.warehouse_id,
             );
         }
-        return scopedWarehouseIds
-            ? warehouses.filter((warehouse) =>
-                scopedWarehouseIds.includes(warehouse.id),
-            )
-            : warehouses;
+        return warehouses.filter((warehouse) =>
+            scopeContainsFacility(viewFacilityScope, warehouse.id),
+        );
     }, [
         canViewAttendance,
         context?.warehouse_id,
-        scopedWarehouseIds,
+        viewFacilityScope,
         warehouses,
     ]);
+    const configurableWarehouses = useMemo(
+        () =>
+            canConfigureAttendance
+                ? warehouses.filter((warehouse) =>
+                    scopeContainsFacility(configFacilityScope, warehouse.id),
+                )
+                : [],
+        [canConfigureAttendance, configFacilityScope, warehouses],
+    );
+    useEffect(() => {
+        if (
+            configurableWarehouses.some(
+                (warehouse) => warehouse.id === selectedSettingsWarehouseId,
+            )
+        ) {
+            return;
+        }
+        setSelectedSettingsWarehouseId(configurableWarehouses[0]?.id || "");
+    }, [configurableWarehouses, selectedSettingsWarehouseId]);
+    const settingsWarehouseId = selectedSettingsWarehouseId || null;
+    const { exemptions: settingsExemptions, updateExemptions } =
+        useAttendanceExemptions(settingsWarehouseId);
     const visibleWarehouseIds = useMemo(
         () => new Set(visibleWarehouses.map((warehouse) => warehouse.id)),
         [visibleWarehouses],
@@ -358,17 +365,13 @@ export function TimeAttendanceTab() {
             <TimeAttendanceSettingsPanel
                 labels={labels}
                 canConfigure={canConfigureAttendance}
-                warehouses={
-                    visibleWarehouses.length
-                        ? visibleWarehouses
-                        : (warehouses as Warehouse[])
-                }
+                warehouses={configurableWarehouses}
                 users={users as UserWithAssignments[]}
                 profiles={profiles}
                 selectedWarehouseId={settingsWarehouseId || "ALL"}
                 policies={policyByWarehouse}
                 exemptions={settingsExemptions}
-                onWarehouseChange={setSelectedWarehouseId}
+                onWarehouseChange={setSelectedSettingsWarehouseId}
                 onSavePolicy={updatePolicy}
                 onSaveExemptions={updateExemptions}
             />

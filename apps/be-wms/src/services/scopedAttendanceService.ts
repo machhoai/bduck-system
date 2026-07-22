@@ -1,69 +1,71 @@
 import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import { listActiveAttendancePolicies } from "../repositories/attendanceRepository.js";
+import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
 import type { AuditMetadata } from "./auditService.js";
+import {
+  assertAnyAttendanceAction,
+  assertPersonalAttendanceAction,
+  buildAttendanceCapabilities,
+} from "./attendanceAuthorizationPolicy.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import * as attendanceService from "./attendanceService.js";
 
-const workplaceId = (authorization: AuthorizationService): string => {
-  const facilityId = authorization.context.workplaceFacilityId;
-  if (!facilityId) authorization.assertFacilityAccess("");
-  return facilityId as string;
-};
-
-const assertAnyAttendanceAction = (
-  authorization: AuthorizationService,
-  facilityId: string,
-): void => {
-  const actions = [
-    "attendance.check_in",
-    "attendance.view",
-    "attendance.export",
-    "attendance.config",
-  ];
-  if (!actions.some((action) => authorization.can(action, facilityId))) {
-    authorization.assert(actions[0], facilityId);
-  }
-};
-
-export const fetchAttendanceContext = (
+export const fetchAttendanceContext = async (
   user: AuthenticatedRequestUser,
   requestIps: string | Array<string | null | undefined> | null | undefined,
   authorization: AuthorizationService,
 ) => {
-  const facilityId = workplaceId(authorization);
-  assertAnyAttendanceAction(authorization, facilityId);
-  return attendanceService.fetchAttendanceContext(user, requestIps, {
-    canCheckIn: authorization.can("attendance.check_in", facilityId),
-    canView: authorization.can("attendance.view", facilityId),
-    canConfigure: authorization.can("attendance.config", facilityId),
-    canExport: authorization.can("attendance.export", facilityId),
-  });
+  assertAnyAttendanceAction(authorization);
+  const profile = await getEmployeeProfileByUserId(user.id);
+  const attendanceFacilityId = profile?.workplace_warehouse_id ?? null;
+  return attendanceService.fetchAttendanceContext(
+    user,
+    requestIps,
+    buildAttendanceCapabilities(authorization, attendanceFacilityId),
+    profile,
+  );
 };
 
-export const checkInAttendance = (
+export const checkInAttendance = async (
   user: AuthenticatedRequestUser,
   input: { action_time?: string },
   requestIps: string | Array<string | null | undefined> | null | undefined,
   auditMetadata: AuditMetadata | undefined,
   authorization: AuthorizationService,
 ) => {
-  authorization.assert("attendance.check_in", workplaceId(authorization));
+  const profile = await getEmployeeProfileByUserId(user.id);
+  assertPersonalAttendanceAction(
+    authorization,
+    "attendance.check_in",
+    profile?.workplace_warehouse_id ?? null,
+  );
   return attendanceService.checkInAttendance(
     user,
     input,
     requestIps,
     auditMetadata,
+    profile,
   );
 };
 
-export const createLateArrivalReport = (
+export const createLateArrivalReport = async (
   user: AuthenticatedRequestUser,
   input: Parameters<typeof attendanceService.createLateArrivalReport>[1],
   auditMetadata: AuditMetadata | undefined,
   authorization: AuthorizationService,
 ) => {
-  authorization.assert("attendance.check_in", workplaceId(authorization));
-  return attendanceService.createLateArrivalReport(user, input, auditMetadata);
+  const profile = await getEmployeeProfileByUserId(user.id);
+  assertPersonalAttendanceAction(
+    authorization,
+    "attendance.check_in",
+    profile?.workplace_warehouse_id ?? null,
+  );
+  return attendanceService.createLateArrivalReport(
+    user,
+    input,
+    auditMetadata,
+    profile,
+  );
 };
 
 export const fetchAttendancePolicies = (authorization: AuthorizationService) =>

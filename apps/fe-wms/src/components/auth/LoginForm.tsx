@@ -111,8 +111,10 @@ export default function LoginForm() {
                             Joy World <br /> Cityfuns
                         </span>
                         <br />
-                        WMS
+                        PULSE
                     </h1>
+
+                    <p className='text-right text-sm'>Platform for Unified Leadership, Service & Enterprise</p>
 
                     {/* Status indicators */}
                     <div className="mt-1 flex items-center justify-end gap-3">
@@ -161,7 +163,7 @@ export default function LoginForm() {
                     </div>
 
                     {/* Form header */}
-                    <div className="mb-2">
+                    <div className="mb-4">
                         <h2
                             className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)]"
                             style={{ fontFamily: 'var(--font-display)' }}
@@ -176,7 +178,7 @@ export default function LoginForm() {
                         <div>
                             <label
                                 htmlFor="login-identifier"
-                                className="block text-xs font-medium uppercase tracking-wider mb-1 text-[var(--color-text-muted)]"
+                                className="block text-xs font-medium tracking-wider mb-1 text-[var(--color-text-muted)]"
                             >
                                 {copy.identifier}
                             </label>
@@ -210,7 +212,7 @@ export default function LoginForm() {
                             <div className="flex items-center justify-between mb-1">
                                 <label
                                     htmlFor="login-password"
-                                    className="block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]"
+                                    className="block text-xs font-medium tracking-wider text-[var(--color-text-muted)]"
                                 >
                                     {copy.password}
                                 </label>
