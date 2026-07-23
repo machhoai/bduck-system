@@ -28,6 +28,37 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "employee_employment_transitions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "effective_date", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "employee_employment_transitions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "effective_date", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "employee_employment_transitions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "effective_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "export_vouchers",
       "queryScope": "COLLECTION",
       "fields": [

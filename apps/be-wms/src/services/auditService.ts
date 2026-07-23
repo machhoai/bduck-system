@@ -37,6 +37,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   roles: "roles",
   users: "users",
   employee_profiles: "employee_profiles",
+  employee_employment_transitions: "employee_employment_transitions",
   expenses: "expenses",
   notification_dispatches: "notification_dispatches",
   account_invitations: "account_invitations",

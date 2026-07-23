@@ -12,7 +12,10 @@ import {
   buildMaterializedPermissions,
   parseActiveAccessMetadata,
 } from "../lib/accessSnapshotPolicy";
-import { resolveAuthenticatedDestination } from "../lib/authNavigationPolicy";
+import {
+  resolveAuthenticatedDestination,
+  resolveDashboardRuntimeFailure,
+} from "../lib/authNavigationPolicy";
 import { createReceivingDraftId } from "../lib/receivingDraftStorage";
 import { useUserStore } from "../stores/useUserStore";
 
@@ -215,4 +218,29 @@ test("dashboard auth guard distinguishes verification from signed out", () => {
 
   useUserStore.getState().clearAuth();
   assert.equal(useUserStore.getState().authStatus, "SIGNED_OUT");
+});
+
+test("dashboard failure copy distinguishes offline, auth, and access errors", () => {
+  assert.equal(
+    resolveDashboardRuntimeFailure("ERROR", "OFFLINE_UNVERIFIED")?.kind,
+    "offline",
+  );
+  assert.equal(resolveDashboardRuntimeFailure("ERROR", "ERROR")?.kind, "auth");
+  assert.equal(
+    resolveDashboardRuntimeFailure("AUTHENTICATED", "ERROR")?.kind,
+    "access",
+  );
+  assert.equal(resolveDashboardRuntimeFailure("AUTHENTICATED", "READY"), null);
+});
+
+test("failed auth verification records a real offline state separately", () => {
+  useUserStore.getState().clearAuth();
+  useUserStore.getState().beginAuthVerification("office-b-user");
+  useUserStore.getState().failAuthVerification(true);
+  assert.equal(useUserStore.getState().authStatus, "ERROR");
+  assert.equal(useUserStore.getState().accessStatus, "OFFLINE_UNVERIFIED");
+
+  useUserStore.getState().beginAuthVerification("office-b-user");
+  useUserStore.getState().failAuthVerification(false);
+  assert.equal(useUserStore.getState().accessStatus, "ERROR");
 });

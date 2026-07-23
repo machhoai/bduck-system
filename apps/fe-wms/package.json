@@ -55,6 +55,7 @@
     "@bduck/eslint-config": "workspace:*",
     "@bduck/tsconfig": "workspace:*",
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@next/env": "15.5.18",
     "@types/mapbox-gl": "^3.5.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

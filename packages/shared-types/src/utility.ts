@@ -15,6 +15,20 @@ export interface ISOTimestamped {
   sync_time: Date; // Server-side timestamp
 }
 
+/** Localized copy required for every user-facing business message. */
+export interface LocalizedText {
+  vi: string;
+  zh: string;
+}
+
+/**
+ * Calendar-only date in YYYY-MM-DD format.
+ *
+ * HR policies use Vietnam calendar dates and must not shift when serialized
+ * between clients, Firestore, and the backend.
+ */
+export type LocalDate = string;
+
 /** Common approval fields */
 export interface Approvable {
   creator_id: string; // FK → users

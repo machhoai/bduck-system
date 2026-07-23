@@ -165,7 +165,9 @@ export default function AuthSessionProvider() {
         .then(() => syncBackendSession(firebaseUser, false))
         .catch((error) => {
           logSessionSyncError(error);
-          if (!isAlreadyAuthenticated) failAuthVerification();
+          if (!isAlreadyAuthenticated) {
+            failAuthVerification(!window.navigator.onLine);
+          }
         });
     });
   }, [

@@ -1,97 +1,196 @@
 /**
- * Firebase Admin SDK — Server-Side Initialization
+ * Firebase Admin runtime.
  *
- * Cấu hình Firebase Admin SDK cho WMS Backend.
- * Sử dụng Service Account JSON được mã hóa Base64 từ biến môi trường
- * `FIREBASE_SERVICE_ACCOUNT_BASE64` để tránh commit file JSON nhạy cảm.
- *
- * ► LÝ DO dùng Base64:
- *   - Service Account JSON chứa private key dài nhiều dòng, dễ bị lỗi
- *     khi truyền qua biến môi trường (đặc biệt trên Docker và CI/CD).
- *   - Base64 encoding gói toàn bộ JSON thành 1 chuỗi liên tục, an toàn
- *     trên mọi nền tảng (GitHub Secrets, Docker ENV, .env file).
- *
- * @see wms-core-rules.md §7 — Bảo mật Biến môi trường
+ * Production exposes only the default Firebase project. In local development,
+ * the request-scoped proxies below can route one request to either configured
+ * project without leaking that choice into concurrent requests.
  */
 
 import {
-  initializeApp,
-  getApps,
   cert,
+  getApps,
+  initializeApp,
+  type App,
   type ServiceAccount,
 } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { getAuth } from "firebase-admin/auth";
-import { getStorage } from "firebase-admin/storage";
-import { getMessaging } from "firebase-admin/messaging";
+import { getAuth, type Auth } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getMessaging, type Messaging } from "firebase-admin/messaging";
+import { getStorage, type Storage } from "firebase-admin/storage";
+import {
+  getRequestLocalFirebaseTarget,
+  isLocalFirebaseTargetSelectionEnabled,
+  type LocalFirebaseTarget,
+} from "./firebaseTargetContext.js";
 
-// ---------------------------------------------------------------------------
-// 1. Parse Service Account từ Base64 Environment Variable
-//    Chuỗi Base64 được decode → JSON string → Object.
-//    Nếu biến không tồn tại hoặc JSON không hợp lệ, server PHẢI dừng lại
-//    ngay lập tức (fail-fast) để tránh chạy mà không có xác thực DB.
-// ---------------------------------------------------------------------------
-function parseServiceAccount(): ServiceAccount {
-  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+interface FirebaseAdminServices {
+  db: Firestore;
+  auth: Auth;
+  storage: Storage;
+  messaging: Messaging;
+}
 
+function projectIdOf(serviceAccount: ServiceAccount): string {
+  const projectId =
+    serviceAccount.projectId ??
+    (serviceAccount as Record<string, unknown>)["project_id"];
+  if (typeof projectId !== "string" || !projectId) {
+    throw new Error('Service Account JSON is missing "project_id" field.');
+  }
+  return projectId;
+}
+
+function parseServiceAccount(
+  environmentVariable: string,
+  required: boolean,
+): ServiceAccount | null {
+  const base64 = process.env[environmentVariable];
   if (!base64) {
+    if (!required) return null;
     throw new Error(
-      "[be-wms] FATAL: Missing FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable. " +
-        "Server cannot start without Firebase credentials.",
+      `[be-wms] FATAL: Missing ${environmentVariable} environment variable.`,
     );
   }
 
   try {
-    const jsonString = Buffer.from(base64, "base64").toString("utf-8");
-    const parsed = JSON.parse(jsonString) as ServiceAccount;
-
-    // Kiểm tra tối thiểu: JSON phải chứa project_id
-    if (
-      !parsed.projectId &&
-      !(parsed as Record<string, unknown>)["project_id"]
-    ) {
-      throw new Error('Service Account JSON is missing "project_id" field.');
-    }
-
+    const parsed = JSON.parse(
+      Buffer.from(base64, "base64").toString("utf-8"),
+    ) as ServiceAccount;
+    projectIdOf(parsed);
     return parsed;
   } catch (error) {
     throw new Error(
-      "[be-wms] FATAL: Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64. " +
-        "Ensure the value is a valid Base64-encoded JSON string. " +
+      `[be-wms] FATAL: Failed to parse ${environmentVariable}. ` +
         `Detail: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// 2. Initialize Firebase Admin App (Singleton pattern)
-//    Kiểm tra getApps() để tránh khởi tạo trùng khi hot-reload (nodemon/tsx).
-// ---------------------------------------------------------------------------
-if (!getApps().length) {
-  const serviceAccount = parseServiceAccount();
+function initializeAdminApp(
+  appName: string,
+  serviceAccount: ServiceAccount,
+  storageBucket?: string,
+): App {
+  const existingApp = getApps().find((candidate) => candidate.name === appName);
+  if (existingApp) return existingApp;
 
-  initializeApp({
+  const options = {
     credential: cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  });
-
-  // Log xác nhận kết nối thành công — hiển thị Project ID để dễ debug
-  const projectId =
-    serviceAccount.projectId ||
-    (serviceAccount as Record<string, unknown>)["project_id"];
-  console.log(
-    `[be-wms] ✅ Firebase Admin initialized for Project: ${projectId}`,
-  );
+    storageBucket,
+  };
+  return appName === "[DEFAULT]"
+    ? initializeApp(options)
+    : initializeApp(options, appName);
 }
 
-// ---------------------------------------------------------------------------
-// 3. Export các instance để sử dụng trong toàn bộ Backend App
-//    - `db`: Firestore Admin instance (dùng cho mọi CRUD + Transaction).
-//    - `auth`: Firebase Auth Admin (dùng để verify JWT, quản lý user).
-// ---------------------------------------------------------------------------
-const db = getFirestore();
-const auth = getAuth();
-const storage = getStorage();
-const messaging = getMessaging();
+function servicesFor(app: App): FirebaseAdminServices {
+  return {
+    db: getFirestore(app),
+    auth: getAuth(app),
+    storage: getStorage(app),
+    messaging: getMessaging(app),
+  };
+}
+
+const defaultServiceAccount = parseServiceAccount(
+  "FIREBASE_SERVICE_ACCOUNT_BASE64",
+  true,
+)!;
+const defaultApp = initializeAdminApp(
+  "[DEFAULT]",
+  defaultServiceAccount,
+  process.env.FIREBASE_STORAGE_BUCKET ??
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+);
+const defaultServices = servicesFor(defaultApp);
+const defaultProjectId = projectIdOf(defaultServiceAccount);
+
+export const defaultLocalFirebaseTarget: LocalFirebaseTarget =
+  defaultProjectId === "jw-system-f2104" ? "jw-system-f2104" : "test-jw-system";
+
+const localServices = new Map<LocalFirebaseTarget, FirebaseAdminServices>();
+localServices.set(defaultLocalFirebaseTarget, defaultServices);
+
+if (isLocalFirebaseTargetSelectionEnabled()) {
+  const localConfigurations: Array<{
+    target: LocalFirebaseTarget;
+    credentialVariable: string;
+    storageBucket?: string;
+  }> = [
+    {
+      target: "test-jw-system",
+      credentialVariable: "TEST_FIREBASE_SERVICE_ACCOUNT_BASE64",
+      storageBucket: process.env.TEST_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    },
+    {
+      target: "jw-system-f2104",
+      credentialVariable: "PROD_FIREBASE_SERVICE_ACCOUNT_BASE64",
+      storageBucket: process.env.PROD_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    },
+  ];
+
+  for (const configuration of localConfigurations) {
+    if (localServices.has(configuration.target)) continue;
+    const serviceAccount = parseServiceAccount(
+      configuration.credentialVariable,
+      false,
+    );
+    if (!serviceAccount) {
+      console.warn(
+        `[be-wms] Local Firebase target ${configuration.target} is not configured.`,
+      );
+      continue;
+    }
+    const projectId = projectIdOf(serviceAccount);
+    if (projectId !== configuration.target) {
+      throw new Error(
+        `[be-wms] ${configuration.credentialVariable} belongs to ${projectId}, ` +
+          `expected ${configuration.target}.`,
+      );
+    }
+    const app = initializeAdminApp(
+      `local-${configuration.target}`,
+      serviceAccount,
+      configuration.storageBucket,
+    );
+    localServices.set(configuration.target, servicesFor(app));
+  }
+}
+
+console.info(
+  `[be-wms] Firebase Admin initialized. Default project: ${defaultProjectId}`,
+);
+
+export function isLocalFirebaseTargetConfigured(
+  target: LocalFirebaseTarget,
+): boolean {
+  return localServices.has(target);
+}
+
+function currentServices(): FirebaseAdminServices {
+  const target = getRequestLocalFirebaseTarget(defaultLocalFirebaseTarget);
+  const services = localServices.get(target);
+  if (!services) {
+    throw new Error(`[be-wms] Firebase target ${target} is not configured.`);
+  }
+  return services;
+}
+
+function serviceProxy<K extends keyof FirebaseAdminServices>(
+  key: K,
+): FirebaseAdminServices[K] {
+  return new Proxy({} as FirebaseAdminServices[K], {
+    get(_target, property) {
+      const service = currentServices()[key];
+      const value = Reflect.get(service, property, service);
+      return typeof value === "function" ? value.bind(service) : value;
+    },
+  });
+}
+
+const db = serviceProxy("db");
+const auth = serviceProxy("auth");
+const storage = serviceProxy("storage");
+const messaging = serviceProxy("messaging");
 
 export { db, auth, storage, messaging };

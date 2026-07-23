@@ -189,6 +189,19 @@ service cloud.firestore {
           || hasFacilityGrant(resource.data.workplace_warehouse_id));
       allow write: if false;
     }
+    match /employee_employment_transitions/{docId} {
+      allow read: if signedIn()
+        && (resource.data.employee_user_id == request.auth.uid
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'employees.read'
+          ));
+      allow write: if false;
+    }
+    match /employee_employment_transition_locks/{docId} {
+      allow read, write: if false;
+    }
     match /user_warehouse_roles/{docId} {
       allow read: if signedIn()
         && (resource.data.user_id == request.auth.uid

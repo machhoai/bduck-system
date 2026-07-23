@@ -12,6 +12,11 @@ type EmployeeProfileInput = Partial<
     | "department"
     | "workplace_warehouse_id"
     | "status"
+    | "employment_status"
+    | "probation_start_date"
+    | "probation_end_date"
+    | "official_start_date"
+    | "resignation_date"
     | "notes"
   >
 >;
@@ -35,6 +40,21 @@ export const buildEmployeeProfilePayload = (
     payload.workplace_warehouse_id = input.workplace_warehouse_id;
   }
   if ("status" in input) payload.status = input.status;
+  if ("employment_status" in input) {
+    payload.employment_status = input.employment_status;
+  }
+  if ("probation_start_date" in input) {
+    payload.probation_start_date = input.probation_start_date ?? null;
+  }
+  if ("probation_end_date" in input) {
+    payload.probation_end_date = input.probation_end_date ?? null;
+  }
+  if ("official_start_date" in input) {
+    payload.official_start_date = input.official_start_date ?? null;
+  }
+  if ("resignation_date" in input) {
+    payload.resignation_date = input.resignation_date ?? null;
+  }
   if ("notes" in input) payload.notes = cleanNullable(input.notes);
   return payload;
 };

@@ -39,6 +39,37 @@ export const getCurrentMonthKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
 
+export const getPrevMonthKey = (monthKey: string) => {
+  if (!monthKey) return getCurrentMonthKey();
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+export const getNextMonthKey = (monthKey: string) => {
+  if (!monthKey) return getCurrentMonthKey();
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+export const getPrevWeekKey = (weekStartKey: string) => {
+  const start = new Date(`${weekStartKey}T00:00:00`);
+  return formatDateKey(new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000));
+};
+
+export const getNextWeekKey = (weekStartKey: string) => {
+  const start = new Date(`${weekStartKey}T00:00:00`);
+  return formatDateKey(new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000));
+};
+
+export const formatMonthLabel = (monthKey: string, isVi: boolean) => {
+  if (!monthKey) return "";
+  const [year, month] = monthKey.split("-");
+  if (isVi) return `Tháng ${month}/${year}`;
+  return `${year}年${month}月`;
+};
+
 export const getTodayKey = () => formatDateKey(new Date());
 
 export const getWeekStartKey = (date = new Date()) => {

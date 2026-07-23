@@ -231,6 +231,9 @@ importers:
       '@firebase/rules-unit-testing':
         specifier: ^5.0.1
         version: 5.0.1(firebase@12.13.0)
+      '@next/env':
+        specifier: 15.5.18
+        version: 15.5.18
       '@types/mapbox-gl':
         specifier: ^3.5.0
         version: 3.5.0

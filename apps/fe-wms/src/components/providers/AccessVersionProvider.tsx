@@ -36,6 +36,15 @@ export default function AccessVersionProvider() {
     let requestGeneration = 0;
     let disposed = false;
 
+    const handleAccessFailure = (error: unknown) => {
+      if (window.navigator.onLine) {
+        useUserStore.getState().revokeAccess("ERROR");
+      } else {
+        useUserStore.getState().markAccessOffline();
+      }
+      logAccessError(error);
+    };
+
     const applyServerSnapshot = async (
       snapshot: DocumentSnapshot,
       forceReload = false,
@@ -81,12 +90,7 @@ export default function AccessVersionProvider() {
           );
       } catch (error) {
         if (disposed || generation !== requestGeneration) return;
-        if (window.navigator.onLine) {
-          useUserStore.getState().revokeAccess("ERROR");
-        } else {
-          useUserStore.getState().markAccessOffline();
-        }
-        logAccessError(error);
+        handleAccessFailure(error);
       }
     };
 
@@ -96,8 +100,7 @@ export default function AccessVersionProvider() {
       (snapshot) => void applyServerSnapshot(snapshot),
       (error) => {
         requestGeneration += 1;
-        useUserStore.getState().revokeAccess("ERROR");
-        logAccessError(error);
+        handleAccessFailure(error);
       },
     );
 
@@ -115,8 +118,7 @@ export default function AccessVersionProvider() {
         await applyServerSnapshot(snapshot, true);
       } catch (error) {
         if (disposed || reconnectGeneration !== requestGeneration) return;
-        useUserStore.getState().revokeAccess("ERROR");
-        logAccessError(error);
+        handleAccessFailure(error);
       }
     };
 

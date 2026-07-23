@@ -1,19 +1,19 @@
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
 };
 const buildVersion = process.env.NEXT_PUBLIC_BUILD_VERSION || "dev";
 
 function escapeScriptJson(value: unknown) {
-    return JSON.stringify(value).replace(/</g, "\\u003c");
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
 export function GET() {
-    const script = `
+  const script = `
 importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js");
 
@@ -68,10 +68,8 @@ async function staleWhileRevalidate(request) {
 }
 
 async function navigationWithOfflineFallback(request) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
   try {
-    return await fetch(request, { signal: controller.signal });
+    return await fetch(request);
   } catch {
     return (
       (await caches.match("/offline")) ||
@@ -80,8 +78,6 @@ async function navigationWithOfflineFallback(request) {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       })
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -146,11 +142,11 @@ self.addEventListener("notificationclick", (event) => {
 });
 `;
 
-    return new Response(script, {
-        headers: {
-            "Content-Type": "application/javascript; charset=utf-8",
-            "Cache-Control": "no-store",
-            "Service-Worker-Allowed": "/",
-        },
-    });
+  return new Response(script, {
+    headers: {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Service-Worker-Allowed": "/",
+    },
+  });
 }

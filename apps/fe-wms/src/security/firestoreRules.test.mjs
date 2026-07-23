@@ -12,6 +12,7 @@ import {
   documentId,
   getDoc,
   getDocs,
+  orderBy,
   query,
   updateDoc,
   where,
@@ -176,6 +177,36 @@ async function seedDocuments() {
         },
       ],
       [
+        "employee_employment_transitions/transition-a",
+        {
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          effective_date: "2026-07-23",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_employment_transitions/transition-b",
+        {
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          effective_date: "2026-07-23",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_employment_transitions/transition-c",
+        {
+          employee_profile_id: "profile-c",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "warehouse-c",
+          effective_date: "2026-07-23",
+          is_deleted: false,
+        },
+      ],
+      [
         "import_vouchers/import-c",
         { warehouse_id: "warehouse-c", is_deleted: false },
       ],
@@ -293,11 +324,19 @@ async function seedDocuments() {
       ],
       [
         "invoice_reconciliation_runs/reconcile-d",
-        { warehouse_id: "store-d", business_date: "2026-07-19", status: "COMPLETED" },
+        {
+          warehouse_id: "store-d",
+          business_date: "2026-07-19",
+          status: "COMPLETED",
+        },
       ],
       [
         "invoice_reconciliation_cases/case-d",
-        { warehouse_id: "store-d", business_date: "2026-07-19", status: "OPEN" },
+        {
+          warehouse_id: "store-d",
+          business_date: "2026-07-19",
+          status: "OPEN",
+        },
       ],
       [
         "invoice_reconciliation_snapshots/snapshot-d",
@@ -340,6 +379,7 @@ beforeEach(async () => {
       "warehouses.read": true,
       "attendance.view": true,
       "expenses.read": true,
+      "employees.read": true,
     },
   });
   await seedAccess("user-b", {
@@ -549,6 +589,30 @@ describe("grant-aware Firestore rules", () => {
     await assertFails(getDoc(doc(user, "users", "user-b")));
     await assertSucceeds(getDoc(doc(user, "employee_profiles", "profile-a")));
     await assertFails(getDoc(doc(user, "employee_profiles", "profile-b")));
+    await assertSucceeds(
+      getDoc(doc(user, "employee_employment_transitions", "transition-a")),
+    );
+    await assertSucceeds(
+      getDoc(doc(user, "employee_employment_transitions", "transition-c")),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "employee_employment_transitions"),
+          where("employee_profile_id", "==", "profile-c"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+          orderBy("effective_date", "desc"),
+        ),
+      ),
+    );
+    await assertFails(
+      getDoc(doc(user, "employee_employment_transitions", "transition-b")),
+    );
+    const employee = environment.authenticatedContext("user-b").firestore();
+    await assertSucceeds(
+      getDoc(doc(employee, "employee_employment_transitions", "transition-b")),
+    );
   });
 
   it("inherits voucher and transfer scope into child documents", async () => {
@@ -656,8 +720,12 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(
       getDoc(doc(storeUser, "invoice_issue_jobs/job-1/items", "item-d")),
     );
-    await assertFails(getDoc(doc(storeUser, "invoice_bulk_issue_runs", "bulk-run-1")));
-    await assertFails(getDoc(doc(admin, "invoice_bulk_issue_runs", "bulk-run-1")));
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_bulk_issue_runs", "bulk-run-1")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "invoice_bulk_issue_runs", "bulk-run-1")),
+    );
     await assertFails(
       getDoc(doc(storeUser, "invoice_issue_payloads", "job-1__item-d")),
     );
@@ -666,11 +734,21 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertFails(getDoc(doc(storeUser, "invoice_ref_registry", "ref-1")));
     await assertFails(getDoc(doc(admin, "invoice_ref_registry", "ref-1")));
-    await assertSucceeds(getDoc(doc(storeUser, "invoice_reconciliation_runs", "reconcile-d")));
-    await assertSucceeds(getDoc(doc(storeUser, "invoice_reconciliation_cases", "case-d")));
-    await assertFails(getDoc(doc(warehouseUser, "invoice_reconciliation_cases", "case-d")));
-    await assertFails(getDoc(doc(storeUser, "invoice_reconciliation_snapshots", "snapshot-d")));
-    await assertFails(getDoc(doc(admin, "invoice_reconciliation_snapshots", "snapshot-d")));
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_reconciliation_runs", "reconcile-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(storeUser, "invoice_reconciliation_cases", "case-d")),
+    );
+    await assertFails(
+      getDoc(doc(warehouseUser, "invoice_reconciliation_cases", "case-d")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_reconciliation_snapshots", "snapshot-d")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "invoice_reconciliation_snapshots", "snapshot-d")),
+    );
   });
 
   it("keeps access snapshots owner-private and internal collections backend-only", async () => {

@@ -62,8 +62,9 @@ export function TimeAttendanceFilters({
                     <input
                         type="month"
                         value={month}
+                        onClick={(e) => typeof e.currentTarget.showPicker === "function" && e.currentTarget.showPicker()}
                         onChange={(event) => onMonthChange(event.target.value)}
-                        className="h-11 w-full min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                        className="h-11 w-full min-w-0 rounded-2xl border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
                     />
                 </div>
 
@@ -72,15 +73,17 @@ export function TimeAttendanceFilters({
                         <input
                             type="month"
                             value={month}
+                            onClick={(e) => typeof e.currentTarget.showPicker === "function" && e.currentTarget.showPicker()}
                             onChange={(event) => onMonthChange(event.target.value)}
-                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
                         />
                     ) : (
                         <input
                             type="date"
                             value={weekStart}
+                            onClick={(e) => typeof e.currentTarget.showPicker === "function" && e.currentTarget.showPicker()}
                             onChange={(event) => onWeekStartChange(event.target.value)}
-                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
                         />
                     )}
                 </div>

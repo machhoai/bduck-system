@@ -8,6 +8,12 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from '../../lib/i18n';
 import { LOGIN_FORM_TEXT } from '../../lib/i18n/componentTranslations';
 import { resolveAuthenticatedDestination } from '../../lib/authNavigationPolicy';
+import {
+    getSelectedLocalFirebaseTarget,
+    isLocalFirebaseTargetSelectorEnabled,
+    type LocalFirebaseTarget,
+} from '../../lib/localFirebaseTarget';
+import { switchLocalFirebaseTarget } from '../../lib/firebase';
 
 /**
  * LoginForm — Clean Enterprise Light Theme
@@ -21,6 +27,10 @@ export default function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [hasWrongPasswordError, setHasWrongPasswordError] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [localFirebaseTarget, setLocalFirebaseTarget] =
+        useState<LocalFirebaseTarget>(getSelectedLocalFirebaseTarget);
+    const [isSwitchingDatabase, setIsSwitchingDatabase] = useState(false);
+    const [databaseSwitchError, setDatabaseSwitchError] = useState('');
     const { login, resetPassword, isLoading } = useAuth();
     const { lang } = useTranslation();
     const copy = LOGIN_FORM_TEXT[lang === 'zh' ? 'zh' : 'vi'];
@@ -30,6 +40,10 @@ export default function LoginForm() {
     const accessStatus = useUserStore((state) => state.accessStatus);
     const permissions = useUserStore((state) => state.permissions);
     const router = useRouter();
+    const canSelectLocalDatabase =
+        isLocalFirebaseTargetSelectorEnabled &&
+        authStatus === 'SIGNED_OUT' &&
+        !isAuthenticated;
 
     useEffect(() => {
         setMounted(true);
@@ -68,6 +82,28 @@ export default function LoginForm() {
             return;
         }
         await resetPassword(email);
+    };
+
+    const handleDatabaseChange = async (
+        event: React.ChangeEvent<HTMLSelectElement>,
+    ) => {
+        const target = event.target.value as LocalFirebaseTarget;
+        const previousTarget = localFirebaseTarget;
+        if (target === previousTarget) return;
+        setLocalFirebaseTarget(target);
+        setDatabaseSwitchError('');
+        setIsSwitchingDatabase(true);
+        try {
+            await switchLocalFirebaseTarget(target);
+            setIsSwitchingDatabase(false);
+        } catch (error) {
+            console.error('[LoginForm] database switch failed:', error);
+            setLocalFirebaseTarget(previousTarget);
+            setDatabaseSwitchError(
+                'Không thể đổi nguồn dữ liệu. Hãy kiểm tra cấu hình local và thử lại.',
+            );
+            setIsSwitchingDatabase(false);
+        }
     };
 
     return (
@@ -139,7 +175,7 @@ export default function LoginForm() {
                     <div className="lg:hidden mb-2 flex items-center gap-3">
                         <div className="relative z-10 max-w-full">
                             <Image
-                                src="/logo/jpulse-h.png"
+                                src="/logo/jwc-h.png"
                                 alt="J-PULSE"
                                 width={700}
                                 height={238}
@@ -172,6 +208,51 @@ export default function LoginForm() {
                         </h2>
                     </div>
 
+                    {canSelectLocalDatabase && (
+                        <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--color-brand-primary)]/30 bg-[var(--color-brand-primary)]/5 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                                <label
+                                    htmlFor="local-firebase-target"
+                                    className="text-xs font-semibold tracking-wide text-[var(--color-text-secondary)]"
+                                >
+                                    Nguồn dữ liệu local
+                                </label>
+                                <span className="rounded-full bg-[var(--color-brand-primary)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-brand-primary)]">
+                                    Chỉ local
+                                </span>
+                            </div>
+                            <select
+                                id="local-firebase-target"
+                                value={localFirebaseTarget}
+                                onChange={handleDatabaseChange}
+                                disabled={isLoading || isSwitchingDatabase}
+                                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                            >
+                                <option value="test-jw-system">
+                                    test-jw-system — Dữ liệu kiểm thử
+                                </option>
+                                <option value="jw-system-f2104">
+                                    jw-system-f2104 — Dữ liệu thật
+                                </option>
+                            </select>
+                            <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
+                                {isSwitchingDatabase
+                                    ? 'Đang chuyển nguồn dữ liệu...'
+                                    : localFirebaseTarget === 'jw-system-f2104'
+                                        ? 'Bạn đang đăng nhập vào dữ liệu thật. Mọi thay đổi sẽ tác động trực tiếp lên hệ thống thật.'
+                                        : 'Bạn đang đăng nhập vào môi trường dữ liệu kiểm thử.'}
+                            </p>
+                            {databaseSwitchError && (
+                                <p
+                                    role="alert"
+                                    className="mt-1 text-xs text-[var(--color-accent-error)]"
+                                >
+                                    {databaseSwitchError}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         {/* Login identifier field */}
@@ -188,7 +269,7 @@ export default function LoginForm() {
                                 type="text"
                                 autoComplete="username"
                                 required
-                                disabled={isLoading}
+                                disabled={isLoading || isSwitchingDatabase}
                                 value={identifier}
                                 onChange={(e) => {
                                     setIdentifier(e.target.value);
@@ -219,7 +300,7 @@ export default function LoginForm() {
                                 <button
                                     type="button"
                                     onClick={handleForgotPassword}
-                                    disabled={isLoading}
+                                    disabled={isLoading || isSwitchingDatabase}
                                     className="text-xs font-medium text-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary-hover)] transition-colors"
                                 >
                                     {copy.forgotPassword}
@@ -232,7 +313,7 @@ export default function LoginForm() {
                                     type={showPassword ? 'text' : 'password'}
                                     autoComplete="current-password"
                                     required
-                                    disabled={isLoading}
+                                    disabled={isLoading || isSwitchingDatabase}
                                     aria-invalid={hasWrongPasswordError}
                                     aria-describedby={
                                         hasWrongPasswordError
@@ -326,7 +407,7 @@ export default function LoginForm() {
                         {/* Submit button */}
                         <button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isLoading || isSwitchingDatabase}
                             className="
                 w-full h-12 rounded-[var(--radius-md)] text-sm font-semibold tracking-wide
                 bg-[var(--color-brand-primary)] text-white

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  EmployeeEmploymentStatus,
   EmployeeProfileStatus,
   IssueType,
   NonconformitySourceType,
@@ -262,6 +263,13 @@ const employeeProfileCoreSchema = z.object({
   status: z
     .nativeEnum(EmployeeProfileStatus)
     .default(EmployeeProfileStatus.ACTIVE),
+  employment_status: z
+    .nativeEnum(EmployeeEmploymentStatus)
+    .default(EmployeeEmploymentStatus.UNSPECIFIED),
+  probation_start_date: z.string().date().nullable().optional(),
+  probation_end_date: z.string().date().nullable().optional(),
+  official_start_date: z.string().date().nullable().optional(),
+  resignation_date: z.string().date().nullable().optional(),
   notes: z.string().trim().max(1000).nullable().optional(),
 });
 

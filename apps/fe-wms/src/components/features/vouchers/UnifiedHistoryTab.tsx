@@ -12,6 +12,8 @@ import {
   ClipboardSignature,
   Filter,
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   FilterX,
   Store,
 } from "lucide-react";
@@ -77,6 +79,8 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
     text: "text-[var(--color-status-pending-text)]",
   },
 };
+
+const PAGE_SIZE_OPTIONS = [12, 24, 48];
 
 function parseVoucherDate(value: unknown): Date | null {
   if (!value) return null;
@@ -153,6 +157,8 @@ export default function UnifiedHistoryTab({
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
     null,
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
 
   const warehouseById = useMemo(
     () => new Map(warehouses.map((w) => [w.id, w])),
@@ -172,10 +178,41 @@ export default function UnifiedHistoryTab({
     return filterUnifiedVouchers(vouchers, filters);
   }, [filters, vouchers]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredVouchers.length / pageSize));
+  const paginatedVouchers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredVouchers.slice(start, start + pageSize);
+  }, [currentPage, filteredVouchers, pageSize]);
   const groupedVouchers = useMemo(
-    () => groupVouchersByDate(filteredVouchers),
-    [filteredVouchers],
+    () => groupVouchersByDate(paginatedVouchers),
+    [paginatedVouchers],
   );
+  const pageNumbers = useMemo(() => {
+    const pages = new Set([
+      1,
+      totalPages,
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+    ]);
+    return Array.from(pages)
+      .filter((page) => page >= 1 && page <= totalPages)
+      .sort((a, b) => a - b);
+  }, [currentPage, totalPages]);
+  const visibleStart =
+    filteredVouchers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const visibleEnd = Math.min(currentPage * pageSize, filteredVouchers.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const exportConfig = useMemo(
     () =>
       buildVoucherExportConfig({
@@ -428,108 +465,204 @@ export default function UnifiedHistoryTab({
             "Không tìm thấy lệnh phù hợp"}
         </p>
       ) : (
-        <div className="flex flex-col gap-5">
-          {groupedVouchers.map((group) => (
-            <section key={group.key} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-semibold uppercase text-[var(--color-text-secondary)]">
-                  {group.label}
-                </h3>
-                <span className="rounded-full bg-[var(--color-surface-subtle)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-text-muted)]">
-                  {group.items.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {group.items.map((voucher) => {
-                  const typeCfg = TYPE_CONFIG[voucher.type];
-                  const statusCfg = STATUS_CONFIG[voucher.status] || {
-                    bg: "bg-gray-100",
-                    text: "text-gray-600",
-                  };
-                  const TypeIcon = typeCfg.icon;
-                  const warehouse = warehouseById.get(voucher.warehouse_id);
-                  const creator = userById.get(voucher.creator_id);
+        <>
+          <div className="flex flex-col gap-5">
+            {groupedVouchers.map((group) => (
+              <section key={group.key} className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-semibold uppercase text-[var(--color-text-secondary)]">
+                    {group.label}
+                  </h3>
+                  <span className="rounded-full bg-[var(--color-surface-subtle)] px-2 py-0.5 text-xxs font-semibold text-[var(--color-text-muted)]">
+                    {group.items.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {group.items.map((voucher) => {
+                    const typeCfg = TYPE_CONFIG[voucher.type];
+                    const statusCfg = STATUS_CONFIG[voucher.status] || {
+                      bg: "bg-gray-100",
+                      text: "text-gray-600",
+                    };
+                    const TypeIcon = typeCfg.icon;
+                    const warehouse = warehouseById.get(voucher.warehouse_id);
+                    const creator = userById.get(voucher.creator_id);
 
-                  return (
-                    <div
-                      key={voucher.id}
-                      onClick={() => {
-                        if (voucher.type === "TRANSFER")
-                          setSelectedTransferId(voucher.id);
-                        else setSelectedVoucher(voucher);
-                      }}
-                      className="flex cursor-pointer flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 shadow-sm transition-all hover:border-[var(--color-border-focus)] hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${typeCfg.bg} ${typeCfg.text}`}
-                          >
-                            <TypeIcon size={16} />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-[var(--color-text-primary)]">
-                              {voucher.voucher_number}
-                            </h3>
-                            <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] mt-0.5">
-                              <span>
-                                {warehouse?.name ||
-                                  (t as any).vouchers?.inProgressTab
-                                    ?.unknownWarehouse ||
-                                  "Kho không xác định"}
-                              </span>
+                    return (
+                      <div
+                        key={voucher.id}
+                        onClick={() => {
+                          if (voucher.type === "TRANSFER")
+                            setSelectedTransferId(voucher.id);
+                          else setSelectedVoucher(voucher);
+                        }}
+                        className="flex cursor-pointer flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-3 shadow-sm transition-all hover:border-[var(--color-border-focus)] hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${typeCfg.bg} ${typeCfg.text}`}
+                            >
+                              <TypeIcon size={16} />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">
+                                {voucher.voucher_number}
+                              </h3>
+                              <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] mt-0.5">
+                                <span>
+                                  {warehouse?.name ||
+                                    (t as any).vouchers?.inProgressTab
+                                      ?.unknownWarehouse ||
+                                    "Kho không xác định"}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}
+                          >
+                            {(t as any).importVoucher?.status?.[
+                              voucher.status
+                            ] || voucher.status}
+                          </span>
                         </div>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-xxs font-semibold ${statusCfg.bg} ${statusCfg.text}`}
-                        >
-                          {(t as any).importVoucher?.status?.[voucher.status] ||
-                            voucher.status}
-                        </span>
-                      </div>
 
-                      <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] p-2">
-                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                          <User
-                            size={12}
-                            className="shrink-0 text-[var(--color-text-muted)]"
-                          />
-                          <span className="truncate">
-                            {creator?.full_name || voucher.creator_id}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                          <Calendar
-                            size={12}
-                            className="shrink-0 text-[var(--color-text-muted)]"
-                          />
-                          <span>
-                            {formatVoucherDateTime(voucher.created_at)}
-                          </span>
-                        </div>
-                        {voucher.approver_id && (
-                          <div className="flex items-center gap-2 text-xs text-[var(--color-status-approved-text)]">
-                            <ClipboardSignature
+                        <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] p-2">
+                          <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                            <User
                               size={12}
-                              className="shrink-0"
+                              className="shrink-0 text-[var(--color-text-muted)]"
                             />
                             <span className="truncate">
-                              {(t as any).vouchers?.inProgressTab?.approver ||
-                                "Người duyệt: "}
-                              {userById.get(voucher.approver_id)?.full_name ||
-                                voucher.approver_id}
+                              {creator?.full_name || voucher.creator_id}
                             </span>
                           </div>
-                        )}
+                          <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                            <Calendar
+                              size={12}
+                              className="shrink-0 text-[var(--color-text-muted)]"
+                            />
+                            <span>
+                              {formatVoucherDateTime(voucher.created_at)}
+                            </span>
+                          </div>
+                          {voucher.approver_id && (
+                            <div className="flex items-center gap-2 text-xs text-[var(--color-status-approved-text)]">
+                              <ClipboardSignature
+                                size={12}
+                                className="shrink-0"
+                              />
+                              <span className="truncate">
+                                {(t as any).vouchers?.inProgressTab?.approver ||
+                                  "Người duyệt: "}
+                                {userById.get(voucher.approver_id)?.full_name ||
+                                  voucher.approver_id}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <section className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-4 py-3 text-sm text-[var(--color-text-secondary)] md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>
+                {(t as any).auditLog?.showing || "Hiển thị"} {visibleStart}-
+                {visibleEnd} / {filteredVouchers.length}
+              </span>
+              <label className="flex items-center gap-2">
+                <span>
+                  {(t as any).auditLog?.rowsPerPage || "Số phiếu mỗi trang"}
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-9 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand-primary)]"
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <nav
+              className="flex flex-wrap items-center gap-2"
+              aria-label={(t as any).auditLog?.pagination || "Phân trang"}
+            >
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                aria-label={(t as any).auditLog?.previousPage || "Trang trước"}
+                title={(t as any).auditLog?.previousPage || "Trang trước"}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-card)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              {pageNumbers.map((page, index) => {
+                const previousPage = pageNumbers[index - 1];
+                const showGap =
+                  previousPage !== undefined && page - previousPage > 1;
+                return (
+                  <span key={page} className="flex items-center gap-2">
+                    {showGap && (
+                      <span
+                        aria-hidden="true"
+                        className="px-1 text-[var(--color-text-muted)]"
+                      >
+                        ...
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      aria-current={currentPage === page ? "page" : undefined}
+                      aria-label={`Trang ${page}`}
+                      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-[var(--radius-md)] border px-3 text-sm font-semibold transition ${
+                        currentPage === page
+                          ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white"
+                          : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)]"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </span>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+                disabled={currentPage === totalPages}
+                aria-label={(t as any).auditLog?.nextPage || "Trang sau"}
+                title={(t as any).auditLog?.nextPage || "Trang sau"}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface-card)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronRight size={16} />
+              </button>
+
+              <span className="ml-1 whitespace-nowrap">
+                {(t as any).auditLog?.page || "Trang"} {currentPage}{" "}
+                {(t as any).auditLog?.of || "/"} {totalPages}
+              </span>
+            </nav>
+          </section>
+        </>
       )}
 
       {selectedVoucher && (

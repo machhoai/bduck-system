@@ -43,6 +43,7 @@ import {
   authRateLimiter,
   resolveTrustProxySetting,
 } from "./api/middlewares/rateLimitMiddleware.js";
+import { selectLocalFirebaseTarget } from "./api/middlewares/localFirebaseTargetMiddleware.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -63,6 +64,7 @@ app.use(
 );
 app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
+app.use(selectLocalFirebaseTarget);
 app.use("/api", apiRateLimiter);
 app.use("/api/auth", authRateLimiter);
 

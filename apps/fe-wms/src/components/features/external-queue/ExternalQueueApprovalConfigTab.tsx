@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   Clock3,
@@ -21,10 +21,7 @@ import { useRoles } from "../../../hooks/useRoles";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
 
-const SCOPE_OPTIONS: ApprovalScopeMode[] = [
-  "ENTITY_WAREHOUSE",
-  "GLOBAL",
-];
+const SCOPE_OPTIONS: ApprovalScopeMode[] = ["ENTITY_WAREHOUSE", "GLOBAL"];
 
 const emptyLevel = (level: 1 | 2): ApprovalLevel => ({
   level,
@@ -50,18 +47,11 @@ function getScopeLabel(scope: ApprovalScopeMode) {
   return labels[scope];
 }
 
-function getRoleName(roles: Pick<Role, "id" | "name">[], roleId?: string) {
-  return roles.find((role) => role.id === roleId)?.name || "-";
-}
-
-function resolveFixedLevel(
-  config: ProcessConfig | null,
-  roles: Pick<Role, "id" | "name">[],
-): ApprovalLevel {
+function resolveBaseLevel(config: ProcessConfig | null): ApprovalLevel {
   const existing = config?.approval_chain.find((level) => level.level === 0);
   return {
     level: 0,
-    role_id: existing?.role_id || roles[0]?.id || "",
+    role_id: existing?.role_id || "",
     label: existing?.label || {
       vi: "Duyệt hàng chờ cấp 1",
       zh: "队列一级审批",
@@ -76,7 +66,9 @@ function resolveFixedLevel(
 
 function resolveConfigLevels(config: ProcessConfig | null): ApprovalLevel[] {
   return [1, 2].map((level) => {
-    const existing = config?.approval_chain.find((item) => item.level === level);
+    const existing = config?.approval_chain.find(
+      (item) => item.level === level,
+    );
     return existing || emptyLevel(level as 1 | 2);
   });
 }
@@ -249,7 +241,9 @@ export default function ExternalQueueApprovalConfigTab() {
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const { roles, isLoading: rolesLoading } = useRoles();
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-  const [config, setConfig] = useState<ProcessConfig | null>(null);
+  const [baseLevel, setBaseLevel] = useState<ApprovalLevel>(() =>
+    resolveBaseLevel(null),
+  );
   const [configLevels, setConfigLevels] = useState<ApprovalLevel[]>([
     emptyLevel(1),
     emptyLevel(2),
@@ -275,7 +269,7 @@ export default function ExternalQueueApprovalConfigTab() {
       const response = await externalQueueApi.getApprovalConfig({
         warehouse_id: selectedWarehouseId,
       });
-      setConfig(response.data);
+      setBaseLevel(resolveBaseLevel(response.data));
       setAutoApprove(response.data.auto_approve);
       setConfigLevels(resolveConfigLevels(response.data));
     } catch (error) {
@@ -293,10 +287,6 @@ export default function ExternalQueueApprovalConfigTab() {
     void loadConfig();
   }, [loadConfig]);
 
-  const fixedLevel = useMemo(
-    () => resolveFixedLevel(config, roles),
-    [config, roles],
-  );
   const activeAdditionalLevels = configLevels.filter(
     (level) => level.required || level.enabled,
   );
@@ -311,9 +301,9 @@ export default function ExternalQueueApprovalConfigTab() {
   };
 
   const validate = () => {
-    if (!fixedLevel.role_id) {
+    if (!baseLevel.role_id) {
       gooeyToast.error(
-        approvalText.missingBaseRole || "Không tìm thấy role mặc định cấp 1.",
+        approvalText.missingBaseRole || "Hãy chọn role duyệt cho cấp 1.",
         { preset: "snappy" },
       );
       return false;
@@ -330,7 +320,9 @@ export default function ExternalQueueApprovalConfigTab() {
 
     if (
       !autoApprove &&
-      configLevels.some((level) => (level.required || level.enabled) && !level.role_id)
+      configLevels.some(
+        (level) => (level.required || level.enabled) && !level.role_id,
+      )
     ) {
       gooeyToast.error(
         approvalText.missingRole || "Hãy chọn role cho cấp duyệt đang bật.",
@@ -360,7 +352,13 @@ export default function ExternalQueueApprovalConfigTab() {
     if (!selectedWarehouseId || saving || !validate()) return;
 
     const payloadLevels = [
-      fixedLevel,
+      {
+        ...baseLevel,
+        role_id: baseLevel.role_id.trim(),
+        min_approvers: Math.max(baseLevel.min_approvers || 1, 1),
+        approval_scope: baseLevel.approval_scope ?? "ENTITY_WAREHOUSE",
+        allow_global_fallback: baseLevel.allow_global_fallback === true,
+      },
       ...configLevels.map((level) => ({
         ...level,
         required: false,
@@ -379,7 +377,7 @@ export default function ExternalQueueApprovalConfigTab() {
         auto_approve: autoApprove,
         approval_chain: payloadLevels,
       });
-      setConfig(response.data);
+      setBaseLevel(resolveBaseLevel(response.data));
       setAutoApprove(response.data.auto_approve);
       setConfigLevels(resolveConfigLevels(response.data));
     };
@@ -516,9 +514,29 @@ export default function ExternalQueueApprovalConfigTab() {
                 Người có quyền duyệt hàng chờ tạo phiếu xuất và chuyển sang
                 luồng duyệt phiếu xuất.
               </p>
-              <p className="mt-2 text-xs font-semibold text-[var(--color-text-secondary)]">
-                Role cấu hình nền: {getRoleName(roles, fixedLevel.role_id)}
-              </p>
+              <label className="mt-3 block max-w-sm">
+                <span className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
+                  Role duyệt
+                </span>
+                <select
+                  value={baseLevel.role_id}
+                  disabled={saving}
+                  onChange={(event) =>
+                    setBaseLevel((current) => ({
+                      ...current,
+                      role_id: event.target.value,
+                    }))
+                  }
+                  className="mt-1 h-9 w-full rounded-md border border-[var(--color-border-subtle)] bg-white px-3 text-sm outline-none transition focus:border-[var(--color-brand-primary)] disabled:bg-[var(--color-surface-subtle)]"
+                >
+                  <option value="">Chọn role</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
 

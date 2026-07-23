@@ -9,8 +9,10 @@ import { useRoles } from "@/hooks/useRoles";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useUserStore } from "@/stores/useUserStore";
+import { useTranslation } from "@/lib/i18n";
 import { EmployeeManagementView } from "./EmployeeManagementView";
 import { EmployeeProfileFormModal } from "./EmployeeProfileFormModal";
+import { EmployeeEmploymentModal } from "./EmployeeEmploymentModal";
 import {
   ensureWarehouseIncluded,
   filterWarehousesByScope,
@@ -18,6 +20,11 @@ import {
 } from "./employeeManagementScope";
 
 export function EmployeeManagementPage() {
+  const { t } = useTranslation();
+  const toasts = t.employeeManagement.toasts;
+  const noAccess = t.employeeManagement.noAccess;
+  const actions = t.employeeManagement.actions;
+
   const permissions = useUserStore((state) => state.permissions);
   const hasPermission = useUserStore((state) => state.hasPermission);
   const profileState = useEmployeeProfiles();
@@ -28,6 +35,13 @@ export function EmployeeManagementPage() {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [employmentProfileId, setEmploymentProfileId] = useState<string | null>(
+    null,
+  );
+  const employmentProfile =
+    profileState.profiles.find(
+      (profile) => profile.id === employmentProfileId,
+    ) ?? null;
   const readScope = useMemo(
     () => getPermissionScope(permissions, "employees.read"),
     [permissions],
@@ -58,28 +72,31 @@ export function EmployeeManagementPage() {
       ? profileState.updateProfile(editingProfile.id, payload)
       : profileState.createProfile(payload);
     await gooeyToast.promise(action, {
-      loading: "Đang lưu hồ sơ nhân viên...",
-      success: "Đã lưu hồ sơ nhân viên.",
+      loading: toasts.savingLoading,
+      success: toasts.savingSuccess,
       error: (error: unknown) =>
-        error instanceof Error
-          ? error.message
-          : "Không thể lưu hồ sơ nhân viên.",
+        error instanceof Error ? error.message : toasts.savingError,
       action: {
-        error: { label: "Thử lại", onClick: () => void handleSave(payload) },
+        error: { label: toasts.retry, onClick: () => void handleSave(payload) },
       },
     });
   };
   const handleDelete = async (profile: EmployeeProfile) => {
-    if (!confirm(`Xóa mềm hồ sơ nhân viên?\n${profile.full_name}`)) return;
+    const confirmText = actions.confirmDelete.replace(
+      "{name}",
+      profile.full_name,
+    );
+    if (!confirm(confirmText)) return;
     await gooeyToast.promise(profileState.deleteProfile(profile.id), {
-      loading: "Đang xóa hồ sơ nhân viên...",
-      success: "Đã xóa hồ sơ nhân viên.",
+      loading: toasts.deletingLoading,
+      success: toasts.deletingSuccess,
       error: (error: unknown) =>
-        error instanceof Error
-          ? error.message
-          : "Không thể xóa hồ sơ nhân viên.",
+        error instanceof Error ? error.message : toasts.deletingError,
       action: {
-        error: { label: "Thử lại", onClick: () => void handleDelete(profile) },
+        error: {
+          label: toasts.retry,
+          onClick: () => void handleDelete(profile),
+        },
       },
     });
   };
@@ -92,18 +109,19 @@ export function EmployeeManagementPage() {
             size={42}
             className="mx-auto text-[var(--color-text-muted)]"
           />
-          <h1 className="mt-3 text-base font-semibold">
-            Không có quyền truy cập hồ sơ nhân viên
+          <h1 className="mt-3 text-base font-semibold text-[var(--color-text-primary)]">
+            {noAccess.title}
           </h1>
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            Tài khoản cần quyền employees.read để mở trang này.
+            {noAccess.hint}
           </p>
         </div>
       </div>
     );
   }
+
   return (
-    <>
+    <div className="flex-1 pb-2">
       <EmployeeManagementView
         profiles={profileState.profiles}
         users={users}
@@ -118,6 +136,13 @@ export function EmployeeManagementPage() {
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={handleDelete}
+        canManageEmployment={(profile) =>
+          hasPermission(
+            "employees.employment.manage",
+            profile.workplace_warehouse_id,
+          )
+        }
+        onManageEmployment={(profile) => setEmploymentProfileId(profile.id)}
       />
       <EmployeeProfileFormModal
         isOpen={isModalOpen}
@@ -134,7 +159,18 @@ export function EmployeeManagementPage() {
         }
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
+        canManageEmploymentAt={(workplaceId) =>
+          Boolean(
+            workplaceId &&
+            hasPermission("employees.employment.manage", workplaceId),
+          )
+        }
       />
-    </>
+      <EmployeeEmploymentModal
+        isOpen={Boolean(employmentProfile)}
+        profile={employmentProfile}
+        onClose={() => setEmploymentProfileId(null)}
+      />
+    </div>
   );
 }

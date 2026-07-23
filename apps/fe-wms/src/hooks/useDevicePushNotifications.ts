@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { app } from "@/lib/firebase";
+import {
+  shouldEnableWmsServiceWorker,
+  WMS_SERVICE_WORKER_PATH,
+} from "@/lib/pwaServiceWorkerPolicy";
 import { createDetailedApiError } from "@/utils/apiError";
 
 const API_BASE_URL =
@@ -9,16 +13,25 @@ const API_BASE_URL =
 
 const PUSH_TOKEN_STORAGE_KEY = "wms:fcm-push-token";
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || "";
+const SERVICE_WORKER_ENABLED = shouldEnableWmsServiceWorker(
+  process.env.NODE_ENV,
+);
 
 type PushPermissionState = NotificationPermission | "unsupported";
 
 function getPlatform() {
   if (typeof navigator === "undefined") return null;
-  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const nav = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
   return nav.userAgentData?.platform || navigator.platform || null;
 }
 
-async function postPushToken(path: string, token: string, method: "POST" | "DELETE") {
+async function postPushToken(
+  path: string,
+  token: string,
+  method: "POST" | "DELETE",
+) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     credentials: "include",
@@ -41,6 +54,8 @@ async function postPushToken(path: string, token: string, method: "POST" | "DELE
 }
 
 async function getMessagingToken() {
+  if (!SERVICE_WORKER_ENABLED) return null;
+
   const messagingModule = await import("firebase/messaging");
   const messagingSupported = await messagingModule.isSupported();
 
@@ -49,8 +64,8 @@ async function getMessagingToken() {
   }
 
   const registration = await navigator.serviceWorker.register(
-    "/firebase-messaging-sw.js",
-    { scope: "/" },
+    WMS_SERVICE_WORKER_PATH,
+    { scope: "/", updateViaCache: "none" },
   );
   const messaging = messagingModule.getMessaging(app);
 
@@ -66,7 +81,7 @@ export function useDevicePushNotifications() {
   const [hasToken, setHasToken] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
 
-  const isConfigured = VAPID_KEY.length > 0;
+  const isConfigured = SERVICE_WORKER_ENABLED && VAPID_KEY.length > 0;
 
   useEffect(() => {
     let disposed = false;
@@ -86,7 +101,8 @@ export function useDevicePushNotifications() {
         return;
       }
 
-      const { isSupported: messagingIsSupported } = await import("firebase/messaging");
+      const { isSupported: messagingIsSupported } =
+        await import("firebase/messaging");
       const supported = await messagingIsSupported();
       if (disposed) return;
 
@@ -117,7 +133,10 @@ export function useDevicePushNotifications() {
   useEffect(() => {
     if (!isSupported || permission !== "granted" || hasToken) return;
     void registerCurrentDevice().catch((error) => {
-      console.error("[useDevicePushNotifications] auto-register failed:", error);
+      console.error(
+        "[useDevicePushNotifications] auto-register failed:",
+        error,
+      );
     });
   }, [hasToken, isSupported, permission, registerCurrentDevice]);
 
@@ -130,7 +149,10 @@ export function useDevicePushNotifications() {
         const messaging = getMessaging(app);
         unsubscribe = onMessage(messaging, (payload) => {
           if (payload.data?.title) {
-            console.info("[useDevicePushNotifications] foreground message:", payload);
+            console.info(
+              "[useDevicePushNotifications] foreground message:",
+              payload,
+            );
           }
         });
       })

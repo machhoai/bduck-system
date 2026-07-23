@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import type { AttendanceLateReport, AttendanceLog } from "@bduck/shared-types";
 import { motion } from "framer-motion";
-import { AlertTriangle, CalendarCheck, Inbox } from "lucide-react";
+import { AlertTriangle, CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import {
     buildLatestLateReportMap,
     buildSuccessLogMap,
     formatCheckInTime,
+    formatMonthLabel,
+    getCurrentMonthKey,
+    getNextMonthKey,
+    getNextWeekKey,
+    getPrevMonthKey,
+    getPrevWeekKey,
     getTodayKey,
+    getWeekStartKey,
     type AttendanceDay,
     type AttendanceEmployeeRow,
+    type AttendanceRangeMode,
 } from "@/utils/attendance";
 
 interface TimeAttendanceCalendarProps {
@@ -20,6 +28,11 @@ interface TimeAttendanceCalendarProps {
     logs: AttendanceLog[];
     lateReports?: AttendanceLateReport[];
     loading: boolean;
+    mode?: AttendanceRangeMode;
+    month?: string;
+    weekStart?: string;
+    onMonthChange?: (value: string) => void;
+    onWeekStartChange?: (value: string) => void;
 }
 
 const getInitials = (name: string) => {
@@ -59,6 +72,11 @@ export function TimeAttendanceCalendar({
     logs,
     lateReports = [],
     loading,
+    mode = "month",
+    month,
+    weekStart,
+    onMonthChange,
+    onWeekStartChange,
 }: TimeAttendanceCalendarProps) {
     const successMap = buildSuccessLogMap(logs);
     const lateReportMap = buildLatestLateReportMap(lateReports);
@@ -66,10 +84,16 @@ export function TimeAttendanceCalendar({
 
     const [selectedDateKey, setSelectedDateKey] = useState<string>("");
 
-    const isVi = labels.allEmployees?.toLowerCase().includes("nhân viên") || labels.calendar?.toLowerCase().includes("lịch");
-    const txtCheckedIn = isVi ? "Đã check-in" : "已打卡";
-    const txtWaiting = isVi ? "Chờ check-in" : "等待打卡";
-    const txtNoLog = isVi ? "Vắng / Không log" : "无记录";
+    const isVi = labels.allEmployees?.toLowerCase().includes("Nhân viên") || labels.calendar?.toLowerCase().includes("lịch");
+    const txtCheckedIn = labels.checkedInStatus || (isVi ? "Đã check-in" : "已打卡");
+    const txtWaiting = labels.waitingStatus || (isVi ? "Chờ check-in" : "等待打卡");
+    const txtNoLog = labels.noLogStatus || (isVi ? "Vắng" : "缺卡");
+
+    const mobileContainerRef = useRef<HTMLDivElement>(null);
+    const desktopContainerRef = useRef<HTMLDivElement>(null);
+    const todayMobileRef = useRef<HTMLButtonElement>(null);
+    const todayDesktopRef = useRef<HTMLTableCellElement>(null);
+    const stickyHeaderRef = useRef<HTMLTableCellElement>(null);
 
     const activeSelectedKey = useMemo(() => {
         const keys = days.map((d) => d.key);
@@ -77,6 +101,49 @@ export function TimeAttendanceCalendar({
         if (keys.includes(todayKey)) return todayKey;
         return keys[0] || "";
     }, [days, selectedDateKey, todayKey]);
+
+    const targetKey = useMemo(() => {
+        return days.some((d) => d.key === todayKey) ? todayKey : activeSelectedKey;
+    }, [days, todayKey, activeSelectedKey]);
+
+    useEffect(() => {
+        if (loading || days.length === 0) return;
+
+        const timer = setTimeout(() => {
+            if (mobileContainerRef.current && todayMobileRef.current) {
+                const container = mobileContainerRef.current;
+                const target = todayMobileRef.current;
+                const containerRect = container.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                const targetCenter = targetRect.left + targetRect.width / 2;
+                const containerCenter = containerRect.left + container.clientWidth / 2;
+                const delta = targetCenter - containerCenter;
+                container.scrollTo({
+                    left: Math.max(0, container.scrollLeft + delta),
+                    behavior: "smooth",
+                });
+            }
+
+            if (desktopContainerRef.current && todayDesktopRef.current) {
+                const container = desktopContainerRef.current;
+                const target = todayDesktopRef.current;
+                const stickyWidth = stickyHeaderRef.current?.offsetWidth || 240;
+                const containerRect = container.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                const targetCenter = targetRect.left + targetRect.width / 2;
+                const visibleAreaLeft = containerRect.left + stickyWidth;
+                const visibleAreaWidth = container.clientWidth - stickyWidth;
+                const visibleAreaCenter = visibleAreaLeft + visibleAreaWidth / 2;
+                const delta = targetCenter - visibleAreaCenter;
+                container.scrollTo({
+                    left: Math.max(0, container.scrollLeft + delta),
+                    behavior: "smooth",
+                });
+            }
+        }, 120);
+
+        return () => clearTimeout(timer);
+    }, [days, loading, targetKey]);
 
     const activeSelectedDay = useMemo(() => {
         return days.find((d) => d.key === activeSelectedKey) || null;
@@ -95,7 +162,7 @@ export function TimeAttendanceCalendar({
             className="overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none"
         >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-white p-4 lg:bg-[var(--color-surface-card)]">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#257a3e10] text-[#257a3e]">
                         <CalendarCheck size={17} />
                     </div>
@@ -107,6 +174,72 @@ export function TimeAttendanceCalendar({
                             {labels.blankMeansNoCheckIn}
                         </p>
                     </div>
+
+                    {/* Month / Period Navigator Toolbar */}
+                    {onMonthChange && (
+                        <div className="flex items-center justify-between w-full gap-2">
+                            <div className="flex h-9 flex-1 items-center gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] p-1 shadow-xs sm:ml-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (mode === "month" && month) {
+                                            onMonthChange(getPrevMonthKey(month));
+                                        } else if (mode === "week" && weekStart && onWeekStartChange) {
+                                            onWeekStartChange(getPrevWeekKey(weekStart));
+                                        }
+                                    }}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
+                                    title={labels.prevMonth || (isVi ? "Tháng trước" : "Previous Month")}
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+
+                                <div className="relative flex flex-1 justify-center items-center px-1">
+                                    <span className="text-xs font-bold text-[var(--color-text-primary)] cursor-pointer select-none">
+                                        {mode === "month"
+                                            ? formatMonthLabel(month || getCurrentMonthKey(), isVi)
+                                            : `${days[0]?.label || ""}/${(days[0]?.date.getMonth() || 0) + 1} - ${days[days.length - 1]?.label || ""}/${(days[days.length - 1]?.date.getMonth() || 0) + 1}`}
+                                    </span>
+                                    {mode === "month" && (
+                                        <input
+                                            type="month"
+                                            value={month || getCurrentMonthKey()}
+                                            onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        />
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (mode === "month" && month) {
+                                            onMonthChange(getNextMonthKey(month));
+                                        } else if (mode === "week" && weekStart && onWeekStartChange) {
+                                            onWeekStartChange(getNextWeekKey(weekStart));
+                                        }
+                                    }}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
+                                    title={labels.nextMonth || (isVi ? "Tháng sau" : "Next Month")}
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (mode === "month") {
+                                        onMonthChange(getCurrentMonthKey());
+                                    } else if (onWeekStartChange) {
+                                        onWeekStartChange(getWeekStartKey());
+                                    }
+                                }}
+                                className="h-9 inline-flex items-center justify-center shrink-0 rounded-full bg-white px-4 text-xs font-semibold text-[var(--color-brand-primary)] border border-[var(--color-border-subtle)] hover:bg-[var(--color-brand-primary-muted)] transition-colors cursor-pointer"
+                            >
+                                {labels.today || (isVi ? "Hôm nay" : "Today")}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -125,10 +258,6 @@ export function TimeAttendanceCalendar({
                             <span>{txtNoLog}</span>
                         </div>
                     </div>
-
-                    <span className="rounded-full bg-white border border-[var(--color-border-subtle)] px-2.5 py-0.5 text-xxs font-semibold text-[var(--color-text-secondary)] shadow-sm">
-                        {rows.length} {labels.employees}
-                    </span>
                 </div>
             </div>
 
@@ -144,186 +273,187 @@ export function TimeAttendanceCalendar({
                 </div>
             ) : (
                 <>
-                <div className="space-y-3 bg-[#f8fafc] p-3 md:hidden">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-2xl bg-white p-3 shadow-sm">
-                            <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
-                                {txtCheckedIn}
-                            </p>
-                            <p className="mt-1 text-2xl font-semibold tabular-nums text-[#257a3e]">
-                                {checkedCount}
-                            </p>
+                    <div className="space-y-3 bg-[#f8fafc] p-3 md:hidden">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-2xl bg-white p-3 shadow-sm">
+                                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                    {txtCheckedIn}
+                                </p>
+                                <p className="mt-1 text-2xl font-semibold tabular-nums text-[#257a3e]">
+                                    {checkedCount}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl bg-white p-3 shadow-sm">
+                                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                    {labels.employees}
+                                </p>
+                                <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">
+                                    {rows.length}
+                                </p>
+                            </div>
                         </div>
-                        <div className="rounded-2xl bg-white p-3 shadow-sm">
-                            <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)]">
-                                {labels.employees}
-                            </p>
-                            <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                {rows.length}
-                            </p>
-                        </div>
-                    </div>
 
-                    <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-thin">
-                        {days.map((day) => {
-                            const isToday = day.key === todayKey;
-                            const isSelected = day.key === activeSelectedKey;
-                            return (
-                                <button
-                                    key={day.key}
-                                    type="button"
-                                    onClick={() => setSelectedDateKey(day.key)}
-                                    className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${
-                                        isSelected
+                        <div ref={mobileContainerRef} className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-thin">
+                            {days.map((day) => {
+                                const isToday = day.key === todayKey;
+                                const isSelected = day.key === activeSelectedKey;
+                                const isTargetDay = day.key === targetKey;
+                                return (
+                                    <button
+                                        key={day.key}
+                                        ref={isTargetDay ? todayMobileRef : null}
+                                        type="button"
+                                        onClick={() => setSelectedDateKey(day.key)}
+                                        className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${isSelected
                                             ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white shadow-sm"
                                             : isToday
                                                 ? "border-[var(--color-brand-primary-hover)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
                                                 : day.isSunday
                                                     ? "border-[#b4231815] bg-[#b4231808] text-[#b42318]"
                                                     : "border-white bg-white text-[var(--color-text-secondary)] shadow-sm"
-                                    }`}
-                                >
-                                    <span className={`text-[10px] font-semibold uppercase ${isSelected ? "text-white/80" : "opacity-80"}`}>
-                                        {day.weekday}
-                                    </span>
-                                    <span className="text-base font-semibold tabular-nums">
-                                        {day.label}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                                            }`}
+                                    >
+                                        <span className={`text-[10px] font-semibold ${isSelected ? "text-white/80" : "opacity-80"}`}>
+                                            {day.weekday}
+                                        </span>
+                                        <span className="text-base font-semibold tabular-nums">
+                                            {day.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
 
-                    <div className="space-y-2">
-                        {rows.map((row) => {
-                            const dayLog = successMap.get(`${row.user.id}:${activeSelectedKey}`);
-                            const lateReport = lateReportMap.get(`${row.user.id}:${activeSelectedKey}`);
-                            const isFuture = activeSelectedDay?.isFuture || false;
-                            const isToday = activeSelectedKey === todayKey;
+                        <div className="space-y-2">
+                            {rows.map((row) => {
+                                const dayLog = successMap.get(`${row.user.id}:${activeSelectedKey}`);
+                                const lateReport = lateReportMap.get(`${row.user.id}:${activeSelectedKey}`);
+                                const isFuture = activeSelectedDay?.isFuture || false;
+                                const isToday = activeSelectedKey === todayKey;
 
-                            return (
-                                <article
-                                    key={row.profile.id}
-                                    className="overflow-hidden rounded-2xl border border-white/80 bg-white p-3 shadow-sm transition-all hover:bg-slate-50/50"
-                                >
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex min-w-0 items-center gap-3">
-                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarBg(row.profile.full_name)}`}>
-                                                {getInitials(row.profile.full_name)}
+                                return (
+                                    <article
+                                        key={row.profile.id}
+                                        className="overflow-hidden rounded-2xl border border-white/80 bg-white p-3 shadow-sm transition-all hover:bg-slate-50/50"
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarBg(row.profile.full_name)}`}>
+                                                    {getInitials(row.profile.full_name)}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                                                        {row.profile.full_name}
+                                                    </p>
+                                                    <p className="truncate text-[10px] text-[var(--color-text-muted)]">
+                                                        {row.profile.employee_code} ·{" "}
+                                                        {row.warehouse?.name || labels.unknownWarehouse}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                                                    {row.profile.full_name}
-                                                </p>
-                                                <p className="truncate text-[10px] text-[var(--color-text-muted)]">
-                                                    {row.profile.employee_code} ·{" "}
-                                                    {row.warehouse?.name || labels.unknownWarehouse}
-                                                </p>
+                                            <div className="shrink-0">
+                                                {dayLog ? (
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="rounded-full bg-[#257a3e10] border border-[#257a3e20] px-2.5 py-0.5 text-xs font-semibold tabular-nums text-[#257a3e]">
+                                                            {formatCheckInTime(dayLog.check_in_at)}
+                                                        </span>
+                                                        <span className="mt-0.5 text-[9px] font-semibold text-[#257a3e] uppercase">
+                                                            {txtCheckedIn}
+                                                        </span>
+                                                    </div>
+                                                ) : isFuture ? (
+                                                    <span className="text-xs font-medium text-[var(--color-text-muted)] opacity-60">
+                                                        —
+                                                    </span>
+                                                ) : isToday ? (
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="rounded-full bg-[var(--color-brand-primary-muted)] border border-dashed border-[var(--color-brand-primary)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-brand-primary)] animate-pulse">
+                                                            {txtWaiting}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="rounded-full bg-red-50 border border-[#b4231820] px-2.5 py-0.5 text-xs font-semibold text-[#b42318]">
+                                                            {txtNoLog}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="shrink-0">
-                                            {dayLog ? (
-                                                <div className="flex flex-col items-end">
-                                                    <span className="rounded-full bg-[#257a3e10] border border-[#257a3e20] px-2.5 py-0.5 text-xs font-semibold tabular-nums text-[#257a3e]">
-                                                        {formatCheckInTime(dayLog.check_in_at)}
-                                                    </span>
-                                                    <span className="mt-0.5 text-[9px] font-semibold text-[#257a3e] uppercase">
-                                                        {txtCheckedIn}
-                                                    </span>
-                                                </div>
-                                            ) : isFuture ? (
-                                                <span className="text-xs font-medium text-[var(--color-text-muted)] opacity-60">
-                                                    —
-                                                </span>
-                                            ) : isToday ? (
-                                                <div className="flex flex-col items-end">
-                                                    <span className="rounded-full bg-[var(--color-brand-primary-muted)] border border-dashed border-[var(--color-brand-primary)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-brand-primary)] animate-pulse">
-                                                        {txtWaiting}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col items-end">
-                                                    <span className="rounded-full bg-red-50 border border-[#b4231820] px-2.5 py-0.5 text-xs font-semibold text-[#b42318]">
-                                                        {txtNoLog}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {lateReport ? (
-                                        <LateReportHint
-                                            label={labels.reportLate || "Late"}
-                                            reason={lateReport.reason}
-                                        />
-                                    ) : null}
-                                </article>
-                            );
-                        })}
+                                        {lateReport ? (
+                                            <LateReportHint
+                                                label={labels.reportLate || "Late"}
+                                                reason={lateReport.reason}
+                                            />
+                                        ) : null}
+                                    </article>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
 
-                <div className="hidden max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin md:block">
-                    <table className="min-w-full border-separate border-spacing-0 text-sm">
-                        <thead className="sticky top-0 z-10">
-                            <tr>
-                                <th className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-left text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                    {labels.employee}
-                                </th>
-                                {days.map((day) => {
-                                    const isToday = day.key === todayKey;
-                                    return (
-                                        <th
-                                            key={day.key}
-                                            className={`min-w-16 border-b border-r border-[var(--color-border-soft)] px-2 py-2 text-center text-xs font-semibold ${
-                                                isToday
+                    <div ref={desktopContainerRef} className="hidden max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin md:block">
+                        <table className="min-w-full border-separate border-spacing-0 text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr>
+                                    <th ref={stickyHeaderRef} className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-left text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                        {labels.employee}
+                                    </th>
+                                    {days.map((day) => {
+                                        const isToday = day.key === todayKey;
+                                        const isTargetDay = day.key === targetKey;
+                                        return (
+                                            <th
+                                                key={day.key}
+                                                ref={isTargetDay ? todayDesktopRef : null}
+                                                className={`min-w-16 border-b border-r border-[var(--color-border-soft)] px-2 py-2 text-center text-xs font-semibold ${isToday
                                                     ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
                                                     : day.isSunday
                                                         ? "bg-[#b4231805] text-[#b42318]"
                                                         : day.isSaturday
                                                             ? "bg-[#f59e0b0d] text-[#9a5b00]"
                                                             : "bg-white text-[var(--color-text-secondary)]"
-                                            }`}
-                                        >
-                                            <span className="block text-[9px] uppercase tracking-wider opacity-85">{day.weekday}</span>
-                                            <span className={`inline-block mt-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-[var(--color-brand-primary)] text-white" : ""}`}>
-                                                {day.label}
-                                            </span>
-                                        </th>
-                                    );
-                                })}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, index) => (
-                                <tr
-                                    key={row.profile.id}
-                                    className={`${loading ? "opacity-60" : ""} hover:bg-slate-50/50 transition-colors`}
-                                >
-                                    <td className="sticky left-0 z-[5] border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(row.profile.full_name)}`}>
-                                                {getInitials(row.profile.full_name)}
+                                                    }`}
+                                            >
+                                                <span className="block text-[9px] uppercase tracking-wider opacity-85">{day.weekday}</span>
+                                                <span className={`inline-block mt-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-[var(--color-brand-primary)] text-white" : ""}`}>
+                                                    {day.label}
+                                                </span>
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, index) => (
+                                    <tr
+                                        key={row.profile.id}
+                                        className={`${loading ? "opacity-60" : ""} hover:bg-slate-50/50 transition-colors`}
+                                    >
+                                        <td className="sticky left-0 z-[5] border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(row.profile.full_name)}`}>
+                                                    {getInitials(row.profile.full_name)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                                                        {row.profile.full_name}
+                                                    </p>
+                                                    <p className="truncate text-micro text-[var(--color-text-muted)]">
+                                                        {row.profile.employee_code} ·{" "}
+                                                        {row.warehouse?.name || labels.unknownWarehouse}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                                                    {row.profile.full_name}
-                                                </p>
-                                                <p className="truncate text-micro text-[var(--color-text-muted)]">
-                                                    {row.profile.employee_code} ·{" "}
-                                                    {row.warehouse?.name || labels.unknownWarehouse}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    {days.map((day) => {
-                                        const log = successMap.get(`${row.user.id}:${day.key}`);
-                                        const lateReport = lateReportMap.get(`${row.user.id}:${day.key}`);
-                                        const isToday = day.key === todayKey;
-                                        return (
-                                            <td
-                                                key={`${row.profile.id}-${day.key}`}
-                                                className={`h-11 border-b border-r border-[var(--color-border-soft)] px-1.5 text-center tabular-nums transition-colors ${
-                                                    isToday
+                                        </td>
+                                        {days.map((day) => {
+                                            const log = successMap.get(`${row.user.id}:${day.key}`);
+                                            const lateReport = lateReportMap.get(`${row.user.id}:${day.key}`);
+                                            const isToday = day.key === todayKey;
+                                            return (
+                                                <td
+                                                    key={`${row.profile.id}-${day.key}`}
+                                                    className={`h-11 border-b border-r border-[var(--color-border-soft)] px-1.5 text-center tabular-nums transition-colors ${isToday
                                                         ? "bg-[#0066cc05]"
                                                         : day.isSunday
                                                             ? "bg-[#b4231802]"
@@ -332,52 +462,52 @@ export function TimeAttendanceCalendar({
                                                                 : index % 2 === 0
                                                                     ? "bg-white"
                                                                     : "bg-[var(--color-surface-card)]"
-                                                } ${day.isFuture ? "opacity-45" : ""}`}
-                                            >
-                                                {log ? (
-                                                    <div className="flex flex-col items-center justify-center gap-1">
-                                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-micro font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-[#257a3e]" />
-                                                            {formatCheckInTime(log.check_in_at)}
-                                                        </span>
-                                                        {lateReport ? (
+                                                        } ${day.isFuture ? "opacity-45" : ""}`}
+                                                >
+                                                    {log ? (
+                                                        <div className="flex flex-col items-center justify-center gap-1">
+                                                            <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-micro font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-[#257a3e]" />
+                                                                {formatCheckInTime(log.check_in_at)}
+                                                            </span>
+                                                            {lateReport ? (
+                                                                <LateReportChip
+                                                                    label={labels.reportLate || "Late"}
+                                                                    reason={lateReport.reason}
+                                                                />
+                                                            ) : null}
+                                                        </div>
+                                                    ) : isToday ? (
+                                                        <div className="flex flex-col items-center justify-center gap-1">
+                                                            <span className="inline-flex items-center justify-center rounded-md border border-dashed border-[var(--color-brand-primary)] px-2 py-0.5 text-micro font-medium text-[var(--color-brand-primary)] animate-pulse">
+                                                                {labels.waitingShort || (isVi ? "Chờ..." : "等待...")}
+                                                            </span>
+                                                            {lateReport ? (
+                                                                <LateReportChip
+                                                                    label={labels.reportLate || "Late"}
+                                                                    reason={lateReport.reason}
+                                                                />
+                                                            ) : null}
+                                                        </div>
+                                                    ) : !day.isFuture ? (
+                                                        <span className="text-slate-300 font-bold select-none text-xs">•</span>
+                                                    ) : null}
+                                                    {!log && !isToday && !day.isFuture && lateReport ? (
+                                                        <div className="mt-1 flex justify-center">
                                                             <LateReportChip
                                                                 label={labels.reportLate || "Late"}
                                                                 reason={lateReport.reason}
                                                             />
-                                                        ) : null}
-                                                    </div>
-                                                ) : isToday ? (
-                                                    <div className="flex flex-col items-center justify-center gap-1">
-                                                        <span className="inline-flex items-center justify-center rounded-md border border-dashed border-[var(--color-brand-primary)] px-2 py-0.5 text-micro font-medium text-[var(--color-brand-primary)] animate-pulse">
-                                                            {isVi ? "Chờ..." : "等待..."}
-                                                        </span>
-                                                        {lateReport ? (
-                                                            <LateReportChip
-                                                                label={labels.reportLate || "Late"}
-                                                                reason={lateReport.reason}
-                                                            />
-                                                        ) : null}
-                                                    </div>
-                                                ) : !day.isFuture ? (
-                                                    <span className="text-slate-300 font-bold select-none text-xs">•</span>
-                                                ) : null}
-                                                {!log && !isToday && !day.isFuture && lateReport ? (
-                                                    <div className="mt-1 flex justify-center">
-                                                        <LateReportChip
-                                                            label={labels.reportLate || "Late"}
-                                                            reason={lateReport.reason}
-                                                        />
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                                        </div>
+                                                    ) : null}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </>
             )}
         </motion.section>

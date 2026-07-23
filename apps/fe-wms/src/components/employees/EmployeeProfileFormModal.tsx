@@ -5,6 +5,7 @@ import type React from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import {
+  EmployeeEmploymentStatus,
   type EmployeeProfile,
   type Role,
   type Warehouse,
@@ -30,6 +31,7 @@ interface EmployeeProfileFormModalProps {
   warehouses: Warehouse[];
   onClose: () => void;
   onSave: (payload: unknown) => Promise<unknown>;
+  canManageEmploymentAt: (workplaceId: string) => boolean;
 }
 
 export function EmployeeProfileFormModal({
@@ -40,14 +42,19 @@ export function EmployeeProfileFormModal({
   warehouses,
   onClose,
   onSave,
+  canManageEmploymentAt,
 }: EmployeeProfileFormModalProps) {
   const { t } = useTranslation();
+  const labels = t.employeeManagement;
   const isEdit = Boolean(profile);
   const [formData, setFormData] = useState(emptyProfileForm());
   const [createAccount, setCreateAccount] = useState(false);
   const [accountData, setAccountData] = useState(emptyAccountForm());
   const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const canManageEmployment = canManageEmploymentAt(
+    formData.workplace_warehouse_id,
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,6 +69,12 @@ export function EmployeeProfileFormModal({
         department: profile.department || "",
         workplace_warehouse_id: profile.workplace_warehouse_id,
         status: profile.status,
+        employment_status:
+          profile.employment_status ?? EmployeeEmploymentStatus.UNSPECIFIED,
+        probation_start_date: profile.probation_start_date || "",
+        probation_end_date: profile.probation_end_date || "",
+        official_start_date: profile.official_start_date || "",
+        resignation_date: profile.resignation_date || "",
         notes: profile.notes || "",
       });
     } else {
@@ -93,8 +106,25 @@ export function EmployeeProfileFormModal({
     event.preventDefault();
     setIsSubmitting(true);
     try {
+      const {
+        employment_status,
+        probation_start_date,
+        probation_end_date,
+        official_start_date,
+        resignation_date,
+        ...profileFields
+      } = formData;
       const corePayload = {
-        ...formData,
+        ...profileFields,
+        ...(canManageEmployment
+          ? {
+              employment_status: isEdit ? undefined : employment_status,
+              probation_start_date: probation_start_date || null,
+              probation_end_date: probation_end_date || null,
+              official_start_date: official_start_date || null,
+              resignation_date: resignation_date || null,
+            }
+          : {}),
         user_id: createAccount ? null : formData.user_id || null,
         email: formData.email || null,
         phone: formData.phone || null,
@@ -141,7 +171,7 @@ export function EmployeeProfileFormModal({
         <header className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-              {isEdit ? "Sửa hồ sơ nhân viên" : "Tạo hồ sơ nhân viên"}
+              {isEdit ? labels.editProfile : labels.createProfileTitle}
             </h2>
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               {t.officeScope.inheritedHint}
@@ -152,7 +182,7 @@ export function EmployeeProfileFormModal({
             onClick={onClose}
             disabled={isSubmitting}
             className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)]"
-            aria-label="Đóng"
+            aria-label={labels.actions.close}
           >
             <X size={18} />
           </button>
@@ -168,6 +198,8 @@ export function EmployeeProfileFormModal({
               users={users}
               warehouses={warehouses}
               disableUserLink={createAccount}
+              isEdit={isEdit}
+              canManageEmployment={canManageEmployment}
               onChange={setFormData}
             />
             <EffectiveAccessPreview

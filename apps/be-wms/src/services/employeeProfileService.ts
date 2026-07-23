@@ -1,4 +1,8 @@
-import { AuditAction, UserStatus } from "@bduck/shared-types";
+import {
+  AuditAction,
+  EmployeeEmploymentStatus,
+  UserStatus,
+} from "@bduck/shared-types";
 import type { EmployeeProfile } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
 import type { z } from "zod";
@@ -25,6 +29,7 @@ import { AuthorizationService } from "./authorization/index.js";
 import { assertCanAccessTargetUser } from "./userTargetPolicy.js";
 import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
 import { buildEmployeeProfilePayload as buildProfilePayload } from "./employeeProfilePayload.js";
+import { validateEmployeeEmploymentProfile } from "./employeeEmploymentPolicy.js";
 
 type CreateEmployeeProfileInput = z.infer<typeof createEmployeeProfileSchema>;
 type UpdateEmployeeProfileInput = z.infer<typeof updateEmployeeProfileSchema>;
@@ -49,6 +54,35 @@ const conflictError = (messageVi: string, messageZh: string) => ({
     zh: messageZh,
   },
 });
+
+const employmentDateFields = [
+  "probation_start_date",
+  "probation_end_date",
+  "official_start_date",
+  "resignation_date",
+] as const;
+
+const hasEmploymentDateInput = (input: object): boolean =>
+  employmentDateFields.some((field) => field in input);
+
+const assertEmploymentProfileIsValid = (
+  profile: Pick<
+    EmployeeProfile,
+    | "employment_status"
+    | "probation_start_date"
+    | "probation_end_date"
+    | "official_start_date"
+    | "resignation_date"
+  >,
+) => {
+  const validationIssue = validateEmployeeEmploymentProfile(profile)[0];
+  if (!validationIssue) return;
+  throw {
+    statusCode: 400,
+    messages: validationIssue.messages,
+    field: validationIssue.field,
+  };
+};
 
 const assertUniqueProfileFields = async (
   input: Partial<Pick<EmployeeProfile, "employee_code" | "user_id">>,
@@ -118,6 +152,21 @@ export const createEmployeeProfile = async (
   auditMetadata?: AuditMetadata,
 ): Promise<CreateEmployeeProfileResult> => {
   authorization.assert("employees.write", input.workplace_warehouse_id);
+  if (
+    input.employment_status !== undefined &&
+    input.employment_status !== EmployeeEmploymentStatus.UNSPECIFIED
+  ) {
+    authorization.assert(
+      "employees.employment.manage",
+      input.workplace_warehouse_id,
+    );
+  } else if (hasEmploymentDateInput(input)) {
+    authorization.assert(
+      "employees.employment.manage",
+      input.workplace_warehouse_id,
+    );
+  }
+  assertEmploymentProfileIsValid(input);
   await assertUniqueProfileFields({
     employee_code: input.employee_code,
     user_id: input.user_id ?? undefined,
@@ -200,6 +249,23 @@ export const updateEmployeeProfile = async (
   if (input.workplace_warehouse_id) {
     authorization.assert("employees.write", input.workplace_warehouse_id);
   }
+  if (
+    input.employment_status !== undefined &&
+    input.employment_status !==
+      (existing.employment_status ?? EmployeeEmploymentStatus.UNSPECIFIED)
+  ) {
+    throw conflictError(
+      "Hãy dùng chức năng chuyển trạng thái lao động để giữ đầy đủ lịch sử.",
+      "请使用劳动状态转换功能，以保留完整历史记录。",
+    );
+  }
+  if (hasEmploymentDateInput(input)) {
+    authorization.assert(
+      "employees.employment.manage",
+      input.workplace_warehouse_id ?? existing.workplace_warehouse_id,
+    );
+  }
+  assertEmploymentProfileIsValid({ ...existing, ...input });
   await assertUniqueProfileFields(
     {
       employee_code: input.employee_code,

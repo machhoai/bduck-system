@@ -360,6 +360,11 @@ export function TimeAttendanceTab() {
                 logs={filteredLogs}
                 lateReports={lateReports}
                 loading={logsLoading || lateReportsLoading}
+                mode={mode}
+                month={month}
+                weekStart={weekStart}
+                onMonthChange={setMonth}
+                onWeekStartChange={setWeekStart}
             />
 
             <TimeAttendanceSettingsPanel

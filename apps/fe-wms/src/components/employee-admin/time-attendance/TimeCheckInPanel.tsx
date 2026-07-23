@@ -78,15 +78,8 @@ export function TimeCheckInPanel({
         >
             <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-[var(--color-text-muted)]">
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)]">
                         {labels.companyNetworkRequired}
-                    </p>
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                        {networkVerified
-                            ? labels.checkInNow || "Check-in ngay"
-                            : checkedIn
-                                ? labels.checkInSuccess || "Check-in thanh cong"
-                                : labels.networkChecking || "Dang kiem tra"}
                     </p>
                 </div>
                 <div

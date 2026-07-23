@@ -139,40 +139,46 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 13,
   },
   {
+    id: "leave",
+    label: { vi: "Nghỉ phép", zh: "休假管理" },
+    icon: "CalendarDays",
+    order: 14,
+  },
+  {
     id: "expenses",
     label: { vi: "Quản lý chi phí", zh: "费用管理" },
     icon: "Receipt",
-    order: 14,
+    order: 15,
   },
   {
     id: "revenue",
     label: { vi: "Quản lý doanh thu", zh: "营收管理" },
     icon: "ChartNoAxesCombined",
-    order: 15,
+    order: 16,
   },
   {
     id: "invoices",
     label: { vi: "Quản lý hóa đơn", zh: "发票管理" },
     icon: "ReceiptText",
-    order: 16,
+    order: 17,
   },
   {
     id: "audit",
     label: { vi: "Nhật ký hệ thống", zh: "审计日志" },
     icon: "FileClock",
-    order: 17,
+    order: 18,
   },
   {
     id: "attendance",
     label: { vi: "Chấm công", zh: "考勤" },
     icon: "CalendarCheck",
-    order: 18,
+    order: 19,
   },
   {
     id: "external",
     label: { vi: "Tích hợp ngoài", zh: "外部集成" },
     icon: "ScanBarcode",
-    order: 19,
+    order: 20,
   },
 ];
 
@@ -700,6 +706,98 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Tạo, cập nhật, xóa mềm hồ sơ nhân viên và liên kết tài khoản người dùng.",
       zh: "创建、更新、软删除员工档案并关联用户账户。",
+    },
+  },
+  {
+    key: "employees.employment.manage",
+    group: "employees",
+    label: { vi: "Quản lý trạng thái lao động", zh: "管理员工雇佣状态" },
+    description: {
+      vi: "Chuyển trạng thái thử việc, chính thức hoặc nghỉ việc theo ngày hiệu lực và lưu đầy đủ lịch sử.",
+      zh: "按生效日期变更试用、正式或离职状态，并保留完整历史记录。",
+    },
+  },
+
+  // ── Leave ──
+  {
+    key: "leave.self.read",
+    group: "leave",
+    label: { vi: "Xem ngày phép cá nhân", zh: "查看个人假期" },
+    description: {
+      vi: "Xem số dư, sổ cái và lịch sử yêu cầu nghỉ phép của chính mình.",
+      zh: "查看本人的假期余额、台账和休假申请历史。",
+    },
+  },
+  {
+    key: "leave.request.create",
+    group: "leave",
+    label: { vi: "Tạo yêu cầu nghỉ phép", zh: "创建休假申请" },
+    description: {
+      vi: "Tạo và hủy yêu cầu nghỉ phép của chính mình theo chính sách công ty.",
+      zh: "根据公司政策创建和取消本人的休假申请。",
+    },
+  },
+  {
+    key: "leave.requests.read_all",
+    group: "leave",
+    label: { vi: "Xem yêu cầu nghỉ phép toàn công ty", zh: "查看全公司休假申请" },
+    description: {
+      vi: "Xem lịch sử và trạng thái yêu cầu nghỉ phép của toàn bộ nhân viên.",
+      zh: "查看全体员工休假申请的历史和状态。",
+    },
+  },
+  {
+    key: "leave.approve",
+    group: "leave",
+    label: { vi: "Duyệt yêu cầu nghỉ phép", zh: "审批休假申请" },
+    description: {
+      vi: "Phê duyệt hoặc từ chối yêu cầu được giao, đồng thời tuân thủ quy tắc không tự duyệt.",
+      zh: "审批或拒绝分配的休假申请，并遵守禁止自我审批规则。",
+    },
+  },
+  {
+    key: "leave.config.manage",
+    group: "leave",
+    label: { vi: "Cấu hình chính sách nghỉ phép", zh: "配置休假政策" },
+    description: {
+      vi: "Quản lý chính sách tích lũy, hết hạn và tối đa ba cấp duyệt áp dụng toàn công ty.",
+      zh: "管理适用于全公司的假期累积、过期及最多三级审批政策。",
+    },
+  },
+  {
+    key: "leave.holidays.manage",
+    group: "leave",
+    label: { vi: "Quản lý ngày lễ", zh: "管理节假日" },
+    description: {
+      vi: "Tạo, cập nhật và xóa mềm lịch ngày lễ dùng để kiểm tra ngày nghỉ hợp lệ.",
+      zh: "创建、更新和软删除用于校验休假日期的节假日日历。",
+    },
+  },
+  {
+    key: "leave.approver.reassign",
+    group: "leave",
+    label: { vi: "Phân công lại người duyệt", zh: "重新分配审批人" },
+    description: {
+      vi: "Phân công lại cấp duyệt không còn khả dụng với lý do và nhật ký kiểm toán bắt buộc.",
+      zh: "在必须填写原因并记录审计日志的情况下重新分配不可用的审批步骤。",
+    },
+  },
+  {
+    key: "leave.history.import",
+    group: "leave",
+    label: { vi: "Nhập lịch sử nghỉ phép", zh: "导入历史休假数据" },
+    description: {
+      vi: "Xem trước và nhập dữ liệu nghỉ phép lịch sử bằng tệp Excel mẫu có phiên bản.",
+      zh: "使用带版本的 Excel 模板预览并导入历史休假数据。",
+    },
+  },
+  {
+    key: "leave.balance.adjust",
+    group: "leave",
+    label: { vi: "Điều chỉnh số dư ngày phép", zh: "调整假期余额" },
+    description: {
+      vi: "Tạo bút toán điều chỉnh số dư có lý do, không sửa hoặc xóa giao dịch lịch sử.",
+      zh: "创建带原因的余额调整分录，不修改或删除历史交易。",
     },
   },
 

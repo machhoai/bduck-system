@@ -6,6 +6,7 @@ export type DataInvalidationKey =
   | "attendance_late_reports"
   | "attendance_logs"
   | "employee_profiles"
+  | "employee_employment_transitions"
   | "file_templates"
   | "import_vouchers"
   | "inventory"

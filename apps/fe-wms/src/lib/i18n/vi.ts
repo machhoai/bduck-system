@@ -2443,6 +2443,160 @@ const vi = {
             },
         },
     },
+    employeeManagement: {
+      badge: "Hồ sơ nhân viên",
+      title: "Quản lý nhân viên",
+      subtitle:
+        "Quản lý hồ sơ nhân sự, nơi làm việc chính theo cơ sở và tài khoản đăng nhập.",
+      createProfile: "Tạo hồ sơ",
+      editProfile: "Sửa hồ sơ nhân viên",
+      createProfileTitle: "Tạo hồ sơ nhân viên",
+      detailTitle: "Chi tiết hồ sơ nhân viên",
+
+      metrics: {
+        total: "Hồ sơ hiển thị",
+        active: "Đang làm việc",
+        linked: "Đã liên kết tài khoản",
+      },
+
+      filters: {
+        searchPlaceholder: "Tìm tên, mã nhân viên, email, cơ sở...",
+        allWarehouses: "Tất cả cơ sở",
+        allStatuses: "Tất cả trạng thái",
+      },
+
+      statusLabels: {
+        ACTIVE: "Đang làm việc",
+        ON_LEAVE: "Tạm nghỉ",
+        INACTIVE: "Ngừng làm việc",
+      },
+
+      employmentStatusLabels: {
+        UNSPECIFIED: "Chưa xác định",
+        PROBATION: "Thử việc",
+        OFFICIAL: "Chính thức",
+        RESIGNED: "Đã nghỉ việc",
+      },
+
+      tableHeaders: {
+        employee: "Nhân viên",
+        jobTitleDept: "Chức danh / Phòng ban",
+        contact: "Liên hệ",
+        workplace: "Nơi làm việc",
+        account: "Tài khoản WMS",
+        status: "Trạng thái",
+        actions: "Thao tác",
+      },
+
+      emptyState: {
+        title: "Chưa có hồ sơ nhân viên phù hợp",
+        hint: "Thử thay đổi từ khóa tìm kiếm hoặc chọn cơ sở khác.",
+      },
+
+      actions: {
+        edit: "Chỉnh sửa hồ sơ",
+        delete: "Xóa hồ sơ",
+        manageEmployment: "Cập nhật trạng thái lao động",
+        close: "Đóng",
+        confirmDelete: "Xóa mềm hồ sơ nhân viên?\n{name}",
+      },
+
+      toasts: {
+        savingLoading: "Đang lưu hồ sơ nhân viên...",
+        savingSuccess: "Đã lưu hồ sơ nhân viên.",
+        savingError: "Không thể lưu hồ sơ nhân viên.",
+        deletingLoading: "Đang xóa hồ sơ nhân viên...",
+        deletingSuccess: "Đã xóa hồ sơ nhân viên.",
+        deletingError: "Không thể xóa hồ sơ nhân viên.",
+        retry: "Thử lại",
+      },
+
+      noAccess: {
+        title: "Không có quyền truy cập hồ sơ nhân viên",
+        hint: "Tài khoản cần quyền employees.read để mở trang này.",
+      },
+
+      fields: {
+        employeeCode: "Mã nhân viên",
+        fullName: "Họ và tên",
+        email: "Email",
+        phone: "Số điện thoại",
+        jobTitle: "Chức danh",
+        department: "Bộ phận",
+        workplace: "Nơi làm việc chính",
+        status: "Trạng thái",
+        notes: "Ghi chú",
+        linkAccount: "Liên kết tài khoản có sẵn",
+        unlinked: "Chưa liên kết",
+        createAccountWithProfile: "Tạo tài khoản đăng nhập đi kèm hồ sơ này",
+        accountEmail: "Email tài khoản",
+        accountStatus: "Trạng thái tài khoản",
+        employmentTimeline: "Mốc thời gian lao động",
+        employmentStatus: "Trạng thái lao động",
+        probationStartDate: "Ngày đầu tại công ty",
+        probationEndDate: "Ngày kết thúc thử việc",
+        officialStartDate: "Ngày bắt đầu chính thức",
+        resignationDate: "Ngày nghỉ việc",
+        employmentStatusChangeHint:
+          "Trạng thái chỉ được đổi qua chức năng chuyển trạng thái để giữ lịch sử.",
+        employmentCreateHint:
+          "Chọn trạng thái ban đầu và nhập các mốc ngày tương ứng.",
+      },
+
+      detailSections: {
+        jobInfo: "Thông tin công việc",
+        contactInfo: "Thông tin liên hệ",
+        systemAccount: "Tài khoản hệ thống",
+        notesAudit: "Ghi chú & Thời gian",
+        notUpdated: "Chưa cập nhật",
+        notAssigned: "Chưa bổ nhiệm",
+        unassignedFacility: "Chưa phân kho",
+        noEmail: "Chưa có email",
+        noPhone: "Chưa có SĐT",
+        linkedStatus: "Đã liên kết",
+        unlinkedStatus: "Chưa liên kết",
+        unlinkedAccountDesc:
+          "Hồ sơ nhân viên này chưa được gán tài khoản đăng nhập hệ thống WMS.",
+        username: "Tên đăng nhập",
+        systemEmail: "Email hệ thống",
+        noNotes: "Không có ghi chú",
+        createdAt: "Ngày tạo hồ sơ",
+        updatedAt: "Cập nhật lần cuối",
+        code: "Mã hồ sơ: {code}",
+        employmentInfo: "Thông tin lao động",
+      },
+
+      employment: {
+        title: "Trạng thái lao động",
+        createTitle: "Tạo lệnh chuyển trạng thái",
+        currentStatus: "Trạng thái hiện tại",
+        targetStatus: "Trạng thái mới",
+        selectTarget: "Chọn trạng thái",
+        effectiveDate: "Ngày hiệu lực",
+        probationEndDate: "Ngày kết thúc thử việc",
+        reason: "Lý do",
+        submit: "Ghi nhận chuyển trạng thái",
+        historyTitle: "Lịch sử chuyển trạng thái",
+        emptyHistory: "Chưa có lịch sử chuyển trạng thái.",
+        noAvailableTransition: "Trạng thái này không còn bước chuyển tiếp.",
+        cancelScheduled: "Hủy lệnh đang chờ",
+        cancelReasonPrompt: "Nhập lý do hủy lệnh chuyển trạng thái:",
+        loadError: "Không thể tải lịch sử trạng thái lao động.",
+        transitionStatus: {
+          SCHEDULED: "Chờ hiệu lực",
+          APPLIED: "Đã áp dụng",
+          CANCELLED: "Đã hủy",
+        },
+        toasts: {
+          creating: "Đang ghi nhận chuyển trạng thái...",
+          created: "Đã ghi nhận chuyển trạng thái.",
+          createError: "Không thể tạo lệnh chuyển trạng thái.",
+          cancelling: "Đang hủy lệnh...",
+          cancelled: "Đã hủy lệnh chuyển trạng thái.",
+          cancelError: "Không thể hủy lệnh chuyển trạng thái.",
+        },
+      },
+    }
 };
 
 Object.assign(vi.importVoucher, {

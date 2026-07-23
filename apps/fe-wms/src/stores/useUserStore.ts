@@ -26,7 +26,7 @@ interface UserState {
     roleAssignments?: UserWarehouseRole[],
   ) => void;
   beginAuthVerification: (firebaseUserId: string) => void;
-  failAuthVerification: () => void;
+  failAuthVerification: (isOffline?: boolean) => void;
   setRoleAssignments: (roleAssignments: UserWarehouseRole[]) => void;
   beginAccessRefresh: (
     accessVersion: number | null,
@@ -96,14 +96,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
       };
     }),
 
-  failAuthVerification: () =>
+  failAuthVerification: (isOffline = false) =>
     set((state) => ({
       user: null,
       roleIds: [],
       roleAssignments: [],
       isAuthenticated: false,
       authStatus: "ERROR",
-      accessStatus: "ERROR",
+      accessStatus: isOffline ? "OFFLINE_UNVERIFIED" : "ERROR",
       accessEpoch: state.accessEpoch + 1,
       ...emptyAccessState,
     })),

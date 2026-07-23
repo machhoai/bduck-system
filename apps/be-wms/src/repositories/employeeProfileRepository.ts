@@ -153,6 +153,11 @@ export const updateEmployeeProfileRecord = async (
       | "department"
       | "workplace_warehouse_id"
       | "status"
+      | "employment_status"
+      | "probation_start_date"
+      | "probation_end_date"
+      | "official_start_date"
+      | "resignation_date"
       | "notes"
     >
   >,
