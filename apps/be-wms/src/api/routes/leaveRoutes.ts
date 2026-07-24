@@ -28,6 +28,7 @@ import {
 import {
   commitLeaveImportHandler,
   getLeaveImportHandler,
+  listLeaveImportEmployeeOptionsHandler,
   listLeaveImportsHandler,
   previewLeaveImportHandler,
 } from "../controllers/leaveImportController.js";
@@ -81,6 +82,11 @@ router.post(
   "/balances/:profileId/adjustments",
   requireAnyScopedPermission("leave.balance.adjust"),
   postLeaveBalanceAdjustmentHandler,
+);
+router.get(
+  "/import-profiles",
+  requireAnyScopedPermission("leave.history.import"),
+  listLeaveImportEmployeeOptionsHandler,
 );
 router.get(
   "/imports",

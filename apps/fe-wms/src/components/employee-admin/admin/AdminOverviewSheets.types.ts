@@ -11,6 +11,7 @@ import type {
   LeaveImportBatch,
   LeaveImportBatchView,
   LeaveImportCommitResult,
+  LeaveImportEmployeeOption,
   LeavePolicy,
   LeaveRequest,
   LeaveRequestAdminView,
@@ -67,6 +68,7 @@ export interface AdminOverviewSheetsProps {
   approvalsLoading: boolean;
   approvalsError: string | null;
   importBatches: LeaveImportBatch[];
+  importProfiles: LeaveImportEmployeeOption[];
   importPreview: LeaveImportBatchView | null;
   importsLoading: boolean;
   importsError: string | null;
@@ -101,9 +103,7 @@ export interface AdminOverviewSheetsProps {
     input: { action_time: Date },
   ) => Promise<LeaveImportCommitResult>;
   onSavePolicy: (input: UpsertLeavePolicyInput) => Promise<unknown>;
-  onLoadEmployeeBalance: (
-    profileId: string,
-  ) => Promise<LeaveBalanceSummary>;
+  onLoadEmployeeBalance: (profileId: string) => Promise<LeaveBalanceSummary>;
   onAdjustBalance: (
     profileId: string,
     input: ManualLeaveBalanceAdjustmentInput,

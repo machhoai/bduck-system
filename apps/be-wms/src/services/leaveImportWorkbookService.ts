@@ -9,9 +9,15 @@ import {
 } from "@bduck/shared-types";
 import { createHash } from "node:crypto";
 import ExcelJS from "exceljs";
+import {
+  buildLeaveImportReferenceMaps,
+  resolveLeaveImportReference,
+  type LeaveImportReferenceMaps,
+} from "./leaveImportWorkbookReferences.js";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const DATA_SHEET = "Leave_history";
+const REFS_SHEET = "_refs";
 const META_SHEET = "_meta";
 const HEADERS = [
   "record_type",
@@ -25,6 +31,7 @@ const HEADERS = [
   "day_portion",
   "reason",
 ] as const;
+type HeaderKey = (typeof HEADERS)[number];
 
 export interface ParsedLeaveImportRow {
   row_number: number;
@@ -47,7 +54,10 @@ const cellText = (cell: ExcelJS.Cell): string => {
     if ("text" in value) return String(value.text ?? "").trim();
     if ("result" in value) return String(value.result ?? "").trim();
     if ("richText" in value && Array.isArray(value.richText)) {
-      return value.richText.map((part) => part.text).join("").trim();
+      return value.richText
+        .map((part) => part.text)
+        .join("")
+        .trim();
     }
   }
   return String(value).trim();
@@ -70,23 +80,34 @@ const parseUnits = (value: string): number | null => {
 const parseRow = (
   row: ExcelJS.Row,
   rowNumber: number,
-  columns: Map<(typeof HEADERS)[number], number>,
+  columns: Map<HeaderKey, number>,
+  references: LeaveImportReferenceMaps,
 ): ParsedLeaveImportRow | null => {
-  const read = (key: (typeof HEADERS)[number]) =>
-    cellText(row.getCell(columns.get(key) ?? 0));
+  const read = (key: HeaderKey) => cellText(row.getCell(columns.get(key) ?? 0));
   const values = Object.fromEntries(
     HEADERS.map((key) => [key, read(key)]),
-  ) as Record<(typeof HEADERS)[number], string>;
+  ) as Record<HeaderKey, string>;
   if (!Object.values(values).some(Boolean)) return null;
 
-  const recordType = values.record_type.trim().toUpperCase();
-  const dayPortion = enumValue(values.day_portion, Object.values(LeaveDayPortion));
+  const recordType = resolveLeaveImportReference(
+    values.record_type,
+    references.record_type,
+  )
+    .trim()
+    .toUpperCase();
+  const dayPortion = enumValue(
+    resolveLeaveImportReference(values.day_portion, references.day_portion),
+    Object.values(LeaveDayPortion),
+  );
   const requestType = enumValue(
-    values.request_type,
+    resolveLeaveImportReference(values.request_type, references.request_type),
     Object.values(LeaveRequestType),
   );
   const requestStatus = enumValue(
-    values.request_status,
+    resolveLeaveImportReference(
+      values.request_status,
+      references.request_status,
+    ),
     [
       LeaveRequestStatus.APPROVED,
       LeaveRequestStatus.REJECTED,
@@ -104,10 +125,17 @@ const parseRow = (
     row_number: rowNumber,
     record_type: recordType,
     source_reference: values.source_reference.trim(),
-    employee_code: values.employee_code.trim().toUpperCase(),
+    employee_code: resolveLeaveImportReference(
+      values.employee_code,
+      references.employee,
+    )
+      .trim()
+      .toUpperCase(),
     normalized_payload: {
       posting_date: values.posting_date.trim(),
-      leave_year: Number(values.leave_year),
+      leave_year: Number(
+        resolveLeaveImportReference(values.leave_year, references.leave_year),
+      ),
       units,
       request_type: requestType,
       request_status: requestStatus,
@@ -115,6 +143,34 @@ const parseRow = (
       reason: values.reason.trim(),
     },
   };
+};
+
+const readMetadata = (sheet: ExcelJS.Worksheet) => {
+  const metadata = new Map<string, string>();
+  sheet.eachRow((row) => {
+    const key = cellText(row.getCell(1));
+    const value = cellText(row.getCell(2));
+    if (key) metadata.set(key, value);
+  });
+  return metadata;
+};
+
+const findHeaderColumns = (sheet: ExcelJS.Worksheet) => {
+  for (
+    let rowNumber = 1;
+    rowNumber <= Math.min(5, sheet.rowCount);
+    rowNumber += 1
+  ) {
+    const columns = new Map<HeaderKey, number>();
+    sheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+      const header = cellText(cell) as HeaderKey;
+      if (HEADERS.includes(header)) columns.set(header, columnNumber);
+    });
+    if (HEADERS.every((header) => columns.has(header))) {
+      return { columns, rowNumber };
+    }
+  }
+  return null;
 };
 
 const assertSafeSourceUrl = async (sourceUrl: string) => {
@@ -170,10 +226,7 @@ const downloadWorkbook = async (
   }
   const checksum = createHash("sha256").update(buffer).digest("hex");
   if (checksum !== expectedChecksum.toLowerCase()) {
-    throw workbookError(
-      "Checksum của tệp không khớp.",
-      "文件校验值不匹配。",
-    );
+    throw workbookError("Checksum của tệp không khớp.", "文件校验值不匹配。");
   }
   return buffer.buffer.slice(
     buffer.byteOffset,
@@ -187,38 +240,36 @@ export const parseLeaveImportWorkbookBuffer = async (
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const metaSheet = workbook.getWorksheet(META_SHEET);
+  const metadata = metaSheet ? readMetadata(metaSheet) : null;
   if (
-    !metaSheet ||
-    cellText(metaSheet.getCell("B1")) !==
-    LEAVE_IMPORT_TEMPLATE_VERSION
+    !metadata ||
+    metadata.get("template_version") !== LEAVE_IMPORT_TEMPLATE_VERSION
   ) {
     throw workbookError(
       "Phiên bản tệp mẫu không được hỗ trợ.",
       "不支持该模板版本。",
     );
   }
-  const sheet = workbook.getWorksheet(DATA_SHEET);
+  const dataSheetName = metadata.get("data_sheet_name") || DATA_SHEET;
+  const sheet = workbook.getWorksheet(dataSheetName);
   if (!sheet) {
     throw workbookError(
-      `Không tìm thấy sheet ${DATA_SHEET}.`,
-      `找不到工作表 ${DATA_SHEET}。`,
+      `Không tìm thấy sheet ${dataSheetName}.`,
+      `找不到工作表 ${dataSheetName}。`,
     );
   }
-  const columns = new Map<(typeof HEADERS)[number], number>();
-  sheet.getRow(1).eachCell((cell, columnNumber) => {
-    const header = cellText(cell) as (typeof HEADERS)[number];
-    if (HEADERS.includes(header)) columns.set(header, columnNumber);
-  });
-  if (HEADERS.some((header) => !columns.has(header))) {
-    throw workbookError(
-      "Tệp mẫu thiếu cột bắt buộc.",
-      "模板缺少必填列。",
-    );
+  const header = findHeaderColumns(sheet);
+  if (!header) {
+    throw workbookError("Tệp mẫu thiếu cột bắt buộc.", "模板缺少必填列。");
   }
+  const references = buildLeaveImportReferenceMaps(
+    workbook.getWorksheet(REFS_SHEET),
+    cellText,
+  );
   const rows: ParsedLeaveImportRow[] = [];
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const parsed = parseRow(row, rowNumber, columns);
+    if (rowNumber <= header.rowNumber) return;
+    const parsed = parseRow(row, rowNumber, header.columns, references);
     if (parsed) rows.push(parsed);
   });
   if (rows.length === 0 || rows.length > LEAVE_IMPORT_MAX_ROWS) {
@@ -235,8 +286,5 @@ export const parseLeaveImportWorkbook = async (input: {
   source_file_checksum: string;
 }): Promise<ParsedLeaveImportRow[]> =>
   parseLeaveImportWorkbookBuffer(
-    await downloadWorkbook(
-      input.source_file_url,
-      input.source_file_checksum,
-    ),
+    await downloadWorkbook(input.source_file_url, input.source_file_checksum),
   );

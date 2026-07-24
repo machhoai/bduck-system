@@ -5,14 +5,11 @@ import {
   type LeaveImportBatch,
   type LeaveImportBatchView,
   type LeaveImportCommitResult,
+  type LeaveImportEmployeeOption,
   type PreviewLeaveImportInput,
 } from "@bduck/shared-types";
 import { gooeyToast } from "goey-toast";
-import {
-  Download,
-  FileSpreadsheet,
-  UploadCloud,
-} from "lucide-react";
+import { Download, FileSpreadsheet, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { uploadFile } from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
@@ -27,6 +24,7 @@ import { LeaveImportBatchHistory } from "./LeaveImportBatchHistory";
 interface LeaveHistoryImportManagerProps {
   labels: Record<string, string>;
   batches: LeaveImportBatch[];
+  employeeOptions: LeaveImportEmployeeOption[];
   preview: LeaveImportBatchView | null;
   loading: boolean;
   error: string | null;
@@ -41,7 +39,7 @@ interface LeaveHistoryImportManagerProps {
 export function LeaveHistoryImportManager(
   props: LeaveHistoryImportManagerProps,
 ) {
-  const { labels, batches, preview, loading, error } = props;
+  const { labels, batches, employeeOptions, preview, loading, error } = props;
   const inputRef = useRef<HTMLInputElement>(null);
   const userId = useUserStore((state) => state.user?.id);
   const [file, setFile] = useState<File | null>(null);
@@ -63,7 +61,14 @@ export function LeaveHistoryImportManager(
   };
 
   const downloadTemplate = async () => {
-    const action = () => downloadLeaveImportTemplate(labels);
+    if (employeeOptions.length === 0) {
+      gooeyToast.error(labels.leaveImportTemplateError, {
+        description: labels.leaveImportNoEmployees,
+        preset: "snappy",
+      });
+      return;
+    }
+    const action = () => downloadLeaveImportTemplate(labels, employeeOptions);
     try {
       await gooeyToast.promise(action(), {
         loading: labels.leaveImportTemplateGenerating,
@@ -81,7 +86,10 @@ export function LeaveHistoryImportManager(
         },
       });
     } catch (downloadError) {
-      console.error("[LeaveHistoryImportManager] template error:", downloadError);
+      console.error(
+        "[LeaveHistoryImportManager] template error:",
+        downloadError,
+      );
     }
   };
 
@@ -91,11 +99,7 @@ export function LeaveHistoryImportManager(
       setIsBusy(true);
       setProgress(0);
       const [sourceFileUrl, checksum] = await Promise.all([
-        uploadFile(
-          file,
-          `leave-imports/${userId || "unknown"}`,
-          setProgress,
-        ),
+        uploadFile(file, `leave-imports/${userId || "unknown"}`, setProgress),
         calculateLeaveImportChecksum(file),
       ]);
       return props.onPreview({
@@ -212,7 +216,7 @@ export function LeaveHistoryImportManager(
           <button
             type="button"
             onClick={() => void downloadTemplate()}
-            disabled={isBusy}
+            disabled={isBusy || loading}
             className="inline-flex h-9 items-center gap-2 rounded-xl border border-blue-200 px-3 text-xs font-semibold text-blue-700 disabled:opacity-50"
           >
             <Download size={15} />

@@ -5,6 +5,7 @@ import {
   fetchLeaveImportBatches,
   fetchLeaveImportBatchView,
 } from "../../services/leaveImportService.js";
+import { fetchLeaveImportEmployeeOptions } from "../../services/leaveImportProfileService.js";
 import { previewLeaveHistoryImport } from "../../services/leaveImportPreviewService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
@@ -63,6 +64,24 @@ const handleError = (res: Response, error: unknown) => {
   );
 };
 
+export const listLeaveImportEmployeeOptionsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    return sendSuccess(
+      res,
+      await fetchLeaveImportEmployeeOptions(requireRequestAuthorization(req)),
+      {
+        vi: "Đã tải danh sách nhân viên có thể nhập lịch sử nghỉ phép.",
+        zh: "已加载可导入历史休假的员工列表。",
+      },
+    );
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
 export const previewLeaveImportHandler = async (
   req: Request,
   res: Response,
@@ -87,18 +106,12 @@ export const previewLeaveImportHandler = async (
   }
 };
 
-export const listLeaveImportsHandler = async (
-  req: Request,
-  res: Response,
-) => {
+export const listLeaveImportsHandler = async (req: Request, res: Response) => {
   try {
     const actor = requireAuthenticatedRequestUser(req);
     return sendSuccess(
       res,
-      await fetchLeaveImportBatches(
-        actor.id,
-        requireRequestAuthorization(req),
-      ),
+      await fetchLeaveImportBatches(actor.id, requireRequestAuthorization(req)),
       { vi: "Đã tải lịch sử nhập dữ liệu.", zh: "导入历史已加载。" },
     );
   } catch (error) {
@@ -106,10 +119,7 @@ export const listLeaveImportsHandler = async (
   }
 };
 
-export const getLeaveImportHandler = async (
-  req: Request,
-  res: Response,
-) => {
+export const getLeaveImportHandler = async (req: Request, res: Response) => {
   try {
     const actor = requireAuthenticatedRequestUser(req);
     return sendSuccess(
@@ -126,10 +136,7 @@ export const getLeaveImportHandler = async (
   }
 };
 
-export const commitLeaveImportHandler = async (
-  req: Request,
-  res: Response,
-) => {
+export const commitLeaveImportHandler = async (req: Request, res: Response) => {
   try {
     const actor = requireAuthenticatedRequestUser(req);
     return sendSuccess(

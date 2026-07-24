@@ -2990,24 +2990,65 @@ Object.assign(vi, {
         leaveImportTemplateError: "Không thể tạo tệp mẫu",
         leaveImportRetryHint: "Vui lòng kiểm tra tệp hoặc thử lại.",
         leaveImportTemplateFileName: "mau-nhap-lich-su-nghi-phep-v1.0.xlsx",
+        leaveImportNoEmployees:
+            "Không có nhân viên nào trong phạm vi được phân quyền để đưa vào tệp mẫu.",
+        leaveImportDataSheetName: "Lich_su_nghi_phep",
+        leaveImportGuideSheetName: "Huong_dan",
+        leaveImportColumnRecordType: "Loại dữ liệu",
+        leaveImportColumnSourceReference: "Mã tham chiếu nguồn",
+        leaveImportColumnEmployee: "Nhân viên",
+        leaveImportColumnPostingDate: "Ngày ghi nhận",
+        leaveImportColumnLeaveYear: "Năm phép",
+        leaveImportColumnUnits: "Số ngày",
+        leaveImportColumnRequestType: "Loại nghỉ",
+        leaveImportColumnRequestStatus: "Trạng thái đơn",
+        leaveImportColumnDayPortion: "Thời lượng nghỉ",
+        leaveImportColumnReason: "Lý do",
+        leaveImportChooseFromList: "Chọn từ danh sách",
+        leaveImportChooseFromListHint:
+            "Bấm mũi tên trong ô và chọn một giá trị có sẵn.",
+        leaveImportInvalidSelection: "Lựa chọn không hợp lệ",
+        leaveImportInvalidSelectionHint:
+            "Vui lòng chọn một giá trị trong danh sách.",
+        leaveImportInvalidValue: "Giá trị không hợp lệ",
+        leaveImportInvalidReferenceHint:
+            "Nhập mã tham chiếu duy nhất, tối đa 100 ký tự.",
+        leaveImportInvalidDateHint:
+            "Nhập ngày trong khoảng 01/01/2000 đến 31/12/2100.",
+        leaveImportInvalidUnitsHint:
+            "Số ngày phải theo bước 0,5 và nằm trong khoảng -365 đến 365.",
         leaveImportGuideTitle: "Hướng dẫn nhập lịch sử nghỉ phép",
         leaveImportGuideVersion:
-            "Phiên bản mẫu: 1.0. Không đổi tên sheet hoặc tiêu đề cột.",
+            "Phiên bản mẫu: 1.0. Chỉ nhập dữ liệu trong sheet Lich_su_nghi_phep; không sửa hoặc xóa các sheet ẩn.",
+        leaveImportGuideEmployee:
+            "Tại cột Nhân viên, chọn tên nhân viên trong danh sách; hệ thống sẽ tự ánh xạ đúng mã nhân viên.",
+        leaveImportGuideSelections:
+            "Các cột nền xanh có danh sách lựa chọn. Không tự nhập mã kỹ thuật nếu đã có lựa chọn.",
         leaveImportGuideReference:
-            "source_reference phải duy nhất cho từng nhân viên và chỉ gồm chữ, số, . _ : -",
+            "Mã tham chiếu nguồn phải duy nhất cho từng nhân viên và chỉ gồm chữ, số, . _ : -",
         leaveImportGuideOrdering:
             "Dữ liệu được xử lý từ trên xuống; hãy đặt dòng cộng phép trước dòng sử dụng/hết hạn.",
         leaveImportGuideHistorical:
-            "HISTORICAL_REQUEST: điền loại nghỉ, trạng thái và thời lượng; units được tự tính.",
+            "Đơn nghỉ phép lịch sử: chọn loại nghỉ, trạng thái và thời lượng; số ngày được tự tính.",
         leaveImportGuideLedger:
-            "Các loại còn lại: điền units theo bước 0,5. ADJUSTMENT cho phép số âm.",
+            "Các loại còn lại: điền số ngày theo bước 0,5. Điều chỉnh số dư cho phép số âm.",
         leaveImportGuideCode: "Mã",
         leaveImportGuideMeaning: "Ý nghĩa",
+        leaveImportGuideDescription: "Cách sử dụng",
         leaveImportTypeHistorical: "Đơn nghỉ phép lịch sử",
         leaveImportTypeAccrual: "Cộng ngày phép lịch sử",
         leaveImportTypeUsed: "Ngày phép đã sử dụng",
         leaveImportTypeAdjustment: "Điều chỉnh số dư",
         leaveImportTypeExpired: "Ngày phép đã hết hạn",
+        leaveImportDescriptionHISTORICAL_REQUEST:
+            "Tạo đơn nghỉ phép trong quá khứ; chọn loại nghỉ, trạng thái và thời lượng.",
+        leaveImportDescriptionACCRUAL:
+            "Ghi nhận số ngày phép đã được cộng trước khi chức năng này xuất hiện.",
+        leaveImportDescriptionUSED:
+            "Ghi nhận số ngày phép đã sử dụng trước đây.",
+        leaveImportDescriptionADJUSTMENT:
+            "Điều chỉnh tăng hoặc giảm số dư; số âm chỉ dùng khi có quyền điều chỉnh.",
+        leaveImportDescriptionEXPIRED: "Ghi nhận số ngày phép đã hết hạn.",
         leaveImportPreview: "Tải lên và xem trước",
         leaveImportPreviewing: "Đang tải và kiểm tra tệp...",
         leaveImportPreviewReady: "Đã tạo bản xem trước",

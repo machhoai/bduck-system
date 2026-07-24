@@ -40,7 +40,7 @@
         "test:hr-phase3": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveRequestPolicy.test.ts ../fe-wms/src/components/employee-admin/admin/leaveSelection.test.ts",
         "test:hr-phase4": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveApprovalPolicy.test.ts",
         "test:hr-phase5": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveAdministrationPolicy.test.ts",
-        "test:hr-phase6": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveImportPolicy.test.ts src/services/leaveImportWorkbookService.test.ts",
+        "test:hr-phase6": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveImportPolicy.test.ts src/services/leaveImportWorkbookService.test.ts ../fe-wms/src/utils/leaveImportTemplateWorkbook.test.ts",
         "test:hr-phase7": "pnpm --filter @bduck/be-wms exec tsx --test src/services/leaveReconciliationPolicy.test.ts src/services/leaveRolloutPolicy.test.ts",
         "test:scoped-query": "pnpm --filter @bduck/be-wms test:scoped-query",
         "test:security-foundation": "pnpm --filter @bduck/be-wms test:security-foundation",

@@ -93,6 +93,7 @@ export function AdminOverviewSheets(props: AdminOverviewSheetsProps) {
         <LeaveHistoryImportManager
           labels={labels}
           batches={props.importBatches}
+          employeeOptions={props.importProfiles}
           preview={props.importPreview}
           loading={props.importsLoading}
           error={props.importsError}

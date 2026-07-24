@@ -11,6 +11,7 @@ import type {
   LeaveImportBatch,
   LeaveImportBatchView,
   LeaveImportCommitResult,
+  LeaveImportEmployeeOption,
   LeaveRequest,
   LeaveRequestAdminView,
   LeavePolicy,
@@ -84,6 +85,7 @@ export interface AdminOverviewTabProps {
     input: ReassignLeaveApprovalTaskInput,
   ) => Promise<unknown>;
   leaveImportBatches: LeaveImportBatch[];
+  leaveImportProfiles: LeaveImportEmployeeOption[];
   leaveImportPreview: LeaveImportBatchView | null;
   leaveImportsLoading: boolean;
   leaveImportsError: string | null;

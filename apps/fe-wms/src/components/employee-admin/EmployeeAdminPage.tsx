@@ -258,6 +258,7 @@ export function EmployeeAdminPage() {
                     onDecideLeaveApproval={leaveApprovals.decide}
                     onReassignLeaveApproval={leaveApprovals.reassign}
                     leaveImportBatches={leaveImports.batches}
+                    leaveImportProfiles={leaveImports.profiles}
                     leaveImportPreview={leaveImports.preview}
                     leaveImportsLoading={leaveImports.isLoading}
                     leaveImportsError={leaveImports.error}

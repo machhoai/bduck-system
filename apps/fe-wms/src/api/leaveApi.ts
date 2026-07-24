@@ -16,6 +16,7 @@ import type {
   LeaveImportBatch,
   LeaveImportBatchView,
   LeaveImportCommitResult,
+  LeaveImportEmployeeOption,
   PreviewLeaveImportInput,
   CommitLeaveImportInput,
   ManualLeaveBalanceAdjustmentInput,
@@ -126,14 +127,8 @@ export const cancelMyLeaveRequest = (
     { method: "POST", body: JSON.stringify(input) },
   );
 
-export const fetchCompanyHolidays = (
-  year: number,
-  fallbackMessage: string,
-) =>
-  leaveFetch<CompanyHoliday[]>(
-    `/holidays?year=${year}`,
-    fallbackMessage,
-  );
+export const fetchCompanyHolidays = (year: number, fallbackMessage: string) =>
+  leaveFetch<CompanyHoliday[]>(`/holidays?year=${year}`, fallbackMessage);
 
 export const createCompanyHoliday = (
   input: UpsertCompanyHolidayInput,
@@ -159,10 +154,7 @@ export const deleteCompanyHoliday = (
   );
 
 export const fetchLeaveApprovalConfig = (fallbackMessage: string) =>
-  leaveFetch<LeaveApprovalConfig | null>(
-    "/approval-config",
-    fallbackMessage,
-  );
+  leaveFetch<LeaveApprovalConfig | null>("/approval-config", fallbackMessage);
 
 export const fetchLeaveApprovalConfigOptions = (fallbackMessage: string) =>
   leaveFetch<LeaveApprovalConfigOptions>(
@@ -180,10 +172,7 @@ export const saveLeaveApprovalConfig = (
   });
 
 export const fetchMyLeaveApprovalTasks = (fallbackMessage: string) =>
-  leaveFetch<LeaveApprovalTaskView[]>(
-    "/approval-tasks/me",
-    fallbackMessage,
-  );
+  leaveFetch<LeaveApprovalTaskView[]>("/approval-tasks/me", fallbackMessage);
 
 export const fetchUnavailableLeaveApprovalTasks = (fallbackMessage: string) =>
   leaveFetch<LeaveApprovalTaskView[]>(
@@ -215,6 +204,9 @@ export const reassignLeaveApprovalTask = (
 
 export const fetchLeaveImportBatches = (fallbackMessage: string) =>
   leaveFetch<LeaveImportBatch[]>("/imports", fallbackMessage);
+
+export const fetchLeaveImportEmployeeOptions = (fallbackMessage: string) =>
+  leaveFetch<LeaveImportEmployeeOption[]>("/import-profiles", fallbackMessage);
 
 export const fetchLeaveImportBatch = (
   batchId: string,

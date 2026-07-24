@@ -20,11 +20,27 @@ function Set-HttpSchedulerJob {
         [Parameter(Mandatory = $true)][string]$Region
     )
     $headers = "Content-Type=application/json,x-cron-secret=$Secret"
-    & gcloud scheduler jobs describe $JobName `
-        --project $ProjectId `
-        --location $Region `
-        --format "value(name)" *> $null
-    $operation = if ($LASTEXITCODE -eq 0) { "update" } else { "create" }
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Listing succeeds with an empty result when the job does not exist.
+        # This avoids PowerShell 5.1 promoting gcloud describe's expected
+        # NOT_FOUND stderr output to a terminating NativeCommandError.
+        $ErrorActionPreference = "Continue"
+        $existingJobs = @(& gcloud scheduler jobs list `
+            --project $ProjectId `
+            --location $Region `
+            --format "value(name)")
+        $listExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($listExitCode -ne 0) {
+        throw "Failed to list Cloud Scheduler jobs before configuring '$JobName'."
+    }
+    $operation = if ($existingJobs -contains $JobName) { "update" } else { "create" }
+
     & gcloud scheduler jobs $operation http $JobName `
         --project $ProjectId `
         --location $Region `

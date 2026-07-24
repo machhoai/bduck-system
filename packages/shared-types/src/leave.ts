@@ -287,6 +287,13 @@ export interface LeaveImportNormalizedPayload {
   reason: string;
 }
 
+export interface LeaveImportEmployeeOption {
+  id: string;
+  employee_code: string;
+  full_name: string;
+  workplace_warehouse_id: string;
+}
+
 export interface LeaveImportRowView extends Omit<
   LeaveImportRow,
   "normalized_payload"

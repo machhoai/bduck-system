@@ -56,6 +56,7 @@ export function AdminOverviewTab({
     onDecideLeaveApproval,
     onReassignLeaveApproval,
     leaveImportBatches,
+    leaveImportProfiles,
     leaveImportPreview,
     leaveImportsLoading,
     leaveImportsError,
@@ -269,6 +270,7 @@ export function AdminOverviewTab({
                     approvalsLoading={leaveApprovalsLoading}
                     approvalsError={leaveApprovalsError}
                     importBatches={leaveImportBatches}
+                    importProfiles={leaveImportProfiles}
                     importPreview={leaveImportPreview}
                     importsLoading={leaveImportsLoading}
                     importsError={leaveImportsError}
