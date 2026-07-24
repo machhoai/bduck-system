@@ -41,7 +41,6 @@ import invoiceOrderRoutes from "./api/routes/invoiceOrderRoutes.js";
 import dashboardRoutes from "./api/routes/dashboardRoutes.js";
 import {
   apiRateLimiter,
-  authRateLimiter,
   resolveTrustProxySetting,
 } from "./api/middlewares/rateLimitMiddleware.js";
 import { selectLocalFirebaseTarget } from "./api/middlewares/localFirebaseTargetMiddleware.js";
@@ -67,7 +66,6 @@ app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
 app.use(selectLocalFirebaseTarget);
 app.use("/api", apiRateLimiter);
-app.use("/api/auth", authRateLimiter);
 
 // ---------------------------------------------------------------------------
 // Routes

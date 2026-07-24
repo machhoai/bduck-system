@@ -12,16 +12,7 @@ router.post(
 );
 
 // /api/external-queue/pending
-router.get(
-  "/pending",
-  requireAuth,
-  requireAnyScopedPermission([
-    "external_scan.view",
-    "external_scan.approve",
-    "external_scan.manage_queue",
-  ]),
-  externalQueueController.getPendingBatches,
-);
+router.get("/pending", requireAuth, externalQueueController.getPendingBatches);
 
 // /api/external-queue/history
 router.get(

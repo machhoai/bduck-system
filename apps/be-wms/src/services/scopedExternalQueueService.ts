@@ -4,10 +4,12 @@ import {
 } from "@bduck/shared-types";
 import * as externalScanRepo from "../repositories/externalScanRepository.js";
 import { findExternalScansByStatusesAndFacilities } from "../repositories/scopedExternalScanRepository.js";
+import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import {
   authorizationError,
   type AuthorizationService,
 } from "./authorization/index.js";
+import * as scopedApprovalService from "./scopedApprovalService.js";
 
 const facilityIdsForAny = (
   authorization: AuthorizationService,
@@ -38,10 +40,12 @@ const assertSingleFacility = (
   return facilityId;
 };
 
-export const findPendingQueueRecords = (
+export const findPendingQueueRecords = async (
   authorization: AuthorizationService,
-): Promise<ExternalScanQueue[]> =>
-  findExternalScansByStatusesAndFacilities(
+  user?: AuthenticatedRequestUser,
+): Promise<ExternalScanQueue[]> => {
+  const recordsById = new Map<string, ExternalScanQueue>();
+  const permissionRecords = await findExternalScansByStatusesAndFacilities(
     [
       ExternalScanQueueStatus.QUEUED,
       ExternalScanQueueStatus.SUBMITTED,
@@ -54,6 +58,31 @@ export const findPendingQueueRecords = (
       "external_scan.manage_queue",
     ]),
   );
+  permissionRecords.forEach((record) => recordsById.set(record.id, record));
+
+  if (user) {
+    const actionableApprovals =
+      await scopedApprovalService.getPendingTasksForUser(user, authorization);
+    const externalQueueVoucherIds = actionableApprovals
+      .filter(
+        (record) =>
+          record.entity_type === "EXPORT_VOUCHER" &&
+          record.config_entity_type === "EXTERNAL_QUEUE_EXPORT",
+      )
+      .map((record) => record.entity_id);
+    const approvalRecords = await externalScanRepo.findByExportVoucherIds(
+      externalQueueVoucherIds,
+    );
+    approvalRecords
+      .filter(
+        (record) =>
+          record.status === ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL,
+      )
+      .forEach((record) => recordsById.set(record.id, record));
+  }
+
+  return Array.from(recordsById.values());
+};
 
 export const findQueueHistoryRecords = (
   authorization: AuthorizationService,

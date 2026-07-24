@@ -1,5 +1,8 @@
 import { db } from "../config/firebase.js";
-import type { ExternalScanQueue, ExternalScanQueueStatus } from "@bduck/shared-types";
+import type {
+  ExternalScanQueue,
+  ExternalScanQueueStatus,
+} from "@bduck/shared-types";
 
 const COLLECTION = "external_scan_queue";
 
@@ -31,13 +34,37 @@ export async function findById(id: string): Promise<ExternalScanQueue | null> {
   return data.is_deleted ? null : data;
 }
 
-export async function findByBatchId(batchId: string): Promise<ExternalScanQueue[]> {
+export async function findByBatchId(
+  batchId: string,
+): Promise<ExternalScanQueue[]> {
   const snap = await db
     .collection(COLLECTION)
     .where("batch_id", "==", batchId)
     .where("is_deleted", "==", false)
     .get();
   return snap.docs.map((d) => d.data() as ExternalScanQueue);
+}
+
+export async function findByExportVoucherIds(
+  voucherIds: readonly string[],
+): Promise<ExternalScanQueue[]> {
+  const ids = Array.from(new Set(voucherIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+
+  const records = new Map<string, ExternalScanQueue>();
+  for (let index = 0; index < ids.length; index += 30) {
+    const snap = await db
+      .collection(COLLECTION)
+      .where("export_voucher_id", "in", ids.slice(index, index + 30))
+      .get();
+
+    snap.docs.forEach((document) => {
+      const record = document.data() as ExternalScanQueue;
+      if (record.is_deleted === false) records.set(document.id, record);
+    });
+  }
+
+  return Array.from(records.values());
 }
 
 export async function findQueuedByLocationAndDate(
@@ -65,7 +92,7 @@ export async function findQueuedByLocationAndDate(
 
 export async function findQueuedByExternalOperator(
   clientId: string,
-  operatorIdExternal: string
+  operatorIdExternal: string,
 ): Promise<ExternalScanQueue[]> {
   const snap = await db
     .collection(COLLECTION)
@@ -131,7 +158,7 @@ export async function findQueued(params?: {
 
 export async function create(
   data: ExternalScanQueue,
-  txn?: FirebaseFirestore.Transaction
+  txn?: FirebaseFirestore.Transaction,
 ): Promise<ExternalScanQueue> {
   const ref = db.collection(COLLECTION).doc(data.id);
   if (txn) {
@@ -145,7 +172,7 @@ export async function create(
 export async function update(
   id: string,
   data: Partial<ExternalScanQueue>,
-  txn?: FirebaseFirestore.Transaction
+  txn?: FirebaseFirestore.Transaction,
 ): Promise<void> {
   const ref = db.collection(COLLECTION).doc(id);
   if (txn) {
@@ -155,7 +182,10 @@ export async function update(
   }
 }
 
-export async function softDelete(id: string, txn?: FirebaseFirestore.Transaction): Promise<void> {
+export async function softDelete(
+  id: string,
+  txn?: FirebaseFirestore.Transaction,
+): Promise<void> {
   const ref = db.collection(COLLECTION).doc(id);
   if (txn) {
     txn.update(ref, { is_deleted: true });

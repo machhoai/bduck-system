@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ApprovalRecord } from "@bduck/shared-types";
 import { resolveExternalQueueNextApproval } from "./externalQueueApprovalProgress.js";
+import type { ScopedUser } from "./scopedRoleAccess.js";
 
 const approval = (overrides: Partial<ApprovalRecord>): ApprovalRecord => ({
   id: crypto.randomUUID(),
@@ -21,6 +22,23 @@ const approval = (overrides: Partial<ApprovalRecord>): ApprovalRecord => ({
   action_time: new Date(),
   sync_time: new Date(),
   created_at: new Date(),
+  ...overrides,
+});
+
+const scopedUser = (overrides: Partial<ScopedUser> = {}): ScopedUser => ({
+  id: "approver-1",
+  roleAssignments: [
+    {
+      id: "assignment-1",
+      user_id: "approver-1",
+      warehouse_id: "warehouse-1",
+      role_id: "role-level-2",
+      is_active: true,
+      is_deleted: false,
+      valid_from: "2026-01-01",
+      valid_until: null,
+    },
+  ],
   ...overrides,
 });
 
@@ -96,5 +114,89 @@ describe("resolveExternalQueueNextApproval", () => {
 
     assert.equal(result?.level, 3);
     assert.equal(result?.role_id, "latest-role");
+  });
+
+  it("marks the current user's matching scoped role as actionable", () => {
+    const result = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "pending-for-user",
+          approval_warehouse_id: "warehouse-1",
+          approval_scope: "ENTITY_WAREHOUSE",
+        }),
+      ],
+      new Map(),
+      scopedUser(),
+    );
+
+    assert.equal(result?.actionable_record_id, "pending-for-user");
+    assert.equal(result?.can_act, true);
+  });
+
+  it("does not mark self-created or already-approved levels as actionable", () => {
+    const user = scopedUser();
+
+    const selfCreated = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "self-created",
+          approval_warehouse_id: "warehouse-1",
+          creator_id: "approver-1",
+        }),
+      ],
+      new Map(),
+      user,
+    );
+    assert.equal(selfCreated?.actionable_record_id, null);
+    assert.equal(selfCreated?.can_act, false);
+
+    const alreadyApproved = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "already-approved",
+          approval_warehouse_id: "warehouse-1",
+          status: "APPROVED",
+          approver_id: "approver-1",
+        }),
+        approval({
+          id: "remaining-pending",
+          approval_warehouse_id: "warehouse-1",
+        }),
+      ],
+      new Map(),
+      user,
+    );
+    assert.equal(alreadyApproved?.actionable_record_id, null);
+    assert.equal(alreadyApproved?.can_act, false);
+  });
+
+  it("supports global approval role assignments", () => {
+    const result = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "global-pending",
+          approval_warehouse_id: null,
+          approval_scope: "GLOBAL",
+        }),
+      ],
+      new Map(),
+      scopedUser({
+        roleAssignments: [
+          {
+            id: "global-assignment",
+            user_id: "approver-1",
+            warehouse_id: null,
+            role_id: "role-level-2",
+            is_active: true,
+            is_deleted: false,
+            valid_from: "2026-01-01",
+            valid_until: null,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(result?.actionable_record_id, "global-pending");
+    assert.equal(result?.can_act, true);
   });
 });

@@ -1,4 +1,5 @@
 import type { ApprovalRecord } from "@bduck/shared-types";
+import { canActOnApprovalRecord, type ScopedUser } from "./scopedRoleAccess.js";
 
 export interface ExternalQueueNextApproval {
   level: number;
@@ -6,6 +7,8 @@ export interface ExternalQueueNextApproval {
   role_name: string | null;
   approved_count: number;
   required_count: number;
+  actionable_record_id?: string | null;
+  can_act?: boolean;
 }
 
 /**
@@ -17,6 +20,7 @@ export interface ExternalQueueNextApproval {
 export function resolveExternalQueueNextApproval(
   records: readonly ApprovalRecord[],
   roleNamesById: ReadonlyMap<string, string>,
+  user?: ScopedUser,
 ): ExternalQueueNextApproval | null {
   if (records.length === 0) return null;
 
@@ -41,6 +45,22 @@ export function resolveExternalQueueNextApproval(
   );
   if (!pendingRecord) return null;
 
+  const alreadyApprovedByUser = user
+    ? levelRecords.some(
+        (record) =>
+          record.status === "APPROVED" && record.approver_id === user.id,
+      )
+    : false;
+  const actionableRecord = user
+    ? levelRecords.find(
+        (record) =>
+          record.status === "PENDING" &&
+          record.creator_id !== user.id &&
+          !alreadyApprovedByUser &&
+          canActOnApprovalRecord(user, record),
+      )
+    : null;
+
   return {
     level: internalLevel + 1,
     role_id: pendingRecord.role_id,
@@ -49,5 +69,11 @@ export function resolveExternalQueueNextApproval(
       (record) => record.status === "APPROVED",
     ).length,
     required_count: levelRecords.length,
+    ...(user
+      ? {
+          actionable_record_id: actionableRecord?.id ?? null,
+          can_act: Boolean(actionableRecord),
+        }
+      : {}),
   };
 }

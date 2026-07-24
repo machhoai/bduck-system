@@ -25,6 +25,7 @@ import { gooeyToast } from "goey-toast";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
 import { externalQueueApi } from "../../../api/externalQueueApi";
+import { approveRecord, rejectRecord } from "../../../hooks/useApprovalApi";
 
 interface BatchDetailDrawerProps {
   batchId: string;
@@ -110,6 +111,8 @@ export default function BatchDetailDrawer({
   const isWaitingExportApproval =
     batchData?.status === "PENDING_EXPORT_APPROVAL";
   const nextApproval = batchData?.next_approval;
+  const nextApprovalRecordId = nextApproval?.actionable_record_id || null;
+  const canActOnNextApproval = nextApproval?.can_act === true;
   const nextApprovalRole =
     nextApproval?.role_name || nextApproval?.role_id || null;
   const canEditBatchQuantity = [
@@ -302,17 +305,17 @@ export default function BatchDetailDrawer({
     if (isSubmitting || hasUnsavedChanges) return;
     setIsSubmitting(true);
     setActionType("approve");
-
-    const itemsToApprove = items.map((item: any) => ({
-      scan_id: item.scan_id,
-      quantity: savedQuantities[item.scan_id] ?? item.quantity,
-    }));
-
-    const promise = externalQueueApi.approveBatch({
-      batch_id: batchId,
-      approved_items: itemsToApprove,
-      notes: notes || null,
-    });
+    const promise =
+      isWaitingExportApproval && nextApprovalRecordId
+        ? approveRecord(nextApprovalRecordId, notes || undefined)
+        : externalQueueApi.approveBatch({
+            batch_id: batchId,
+            approved_items: items.map((item: any) => ({
+              scan_id: item.scan_id,
+              quantity: savedQuantities[item.scan_id] ?? item.quantity,
+            })),
+            notes: notes || null,
+          });
 
     gooeyToast.promise(promise, {
       loading: drawerText?.messages?.approving || "Đang duyệt đợt quét...",
@@ -362,11 +365,13 @@ export default function BatchDetailDrawer({
 
     setIsSubmitting(true);
     setActionType("reject");
-
-    const promise = externalQueueApi.rejectBatch({
-      batch_id: batchId,
-      reason: rejectReason,
-    });
+    const promise =
+      isWaitingExportApproval && nextApprovalRecordId
+        ? rejectRecord(nextApprovalRecordId, rejectReason)
+        : externalQueueApi.rejectBatch({
+            batch_id: batchId,
+            reason: rejectReason,
+          });
 
     gooeyToast.promise(promise, {
       loading: drawerText?.messages?.rejecting || "Đang từ chối đợt quét...",
@@ -834,60 +839,62 @@ export default function BatchDetailDrawer({
           </div>
         )}
 
-        {!readonly && !isDraftBatch && (
-          <div className="border-t border-[var(--color-border-soft)] bg-white px-4 py-4 sm:px-5">
-            <div className="grid gap-3 lg:grid-cols-2">
-              <textarea
-                value={rejectReason}
-                onChange={(event) => setRejectReason(event.target.value)}
-                rows={2}
-                placeholder={
-                  drawerText?.hints?.rejectReasonPlaceholder ||
-                  "Lý do từ chối (bắt buộc nếu từ chối)"
-                }
-                className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
-              />
-              <textarea
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                rows={2}
-                placeholder={
-                  drawerText?.hints?.approveNotesPlaceholder ||
-                  "Ghi chú phê duyệt (nếu có)"
-                }
-                className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
-              />
+        {!readonly &&
+          !isDraftBatch &&
+          (!isWaitingExportApproval || canActOnNextApproval) && (
+            <div className="border-t border-[var(--color-border-soft)] bg-white px-4 py-4 sm:px-5">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <textarea
+                  value={rejectReason}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                  rows={2}
+                  placeholder={
+                    drawerText?.hints?.rejectReasonPlaceholder ||
+                    "Lý do từ chối (bắt buộc nếu từ chối)"
+                  }
+                  className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                />
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  rows={2}
+                  placeholder={
+                    drawerText?.hints?.approveNotesPlaceholder ||
+                    "Ghi chú phê duyệt (nếu có)"
+                  }
+                  className="min-h-20 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-3 py-2 text-sm outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
+                />
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  disabled={isSubmitting || !rejectReason.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-error-bg-muted)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition hover:bg-[var(--color-error-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting && actionType === "reject" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                  {drawerText?.reject || "Từ chối"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={isSubmitting || hasUnsavedChanges}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting && actionType === "approve" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  {drawerText?.approve || "Duyệt hàng chờ"}
+                </button>
+              </div>
             </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={handleReject}
-                disabled={isSubmitting || !rejectReason.trim()}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-error-bg-muted)] px-4 py-3 text-sm font-semibold text-[var(--color-error-text)] transition hover:bg-[var(--color-error-bg)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting && actionType === "reject" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-                {drawerText?.reject || "Từ chối"}
-              </button>
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={isSubmitting || hasUnsavedChanges}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-brand-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting && actionType === "approve" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4" />
-                )}
-                {drawerText?.approve || "Duyệt hàng chờ"}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
       </div>
     </>
   );

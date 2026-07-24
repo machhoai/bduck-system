@@ -13,20 +13,41 @@ import {
   verifySetupMfa,
 } from "../controllers/authController.js";
 import { requireIdentityAuth } from "../middlewares/authMiddleware.js";
+import {
+  authRateLimiter,
+  authSessionRateLimiter,
+} from "../middlewares/rateLimitMiddleware.js";
 
 const router: ExpressRouter = Router();
 
-router.post("/sessionLogin", sessionLogin);
+router.post("/sessionLogin", authSessionRateLimiter, sessionLogin);
 router.get("/session", requireIdentityAuth, currentSession);
-router.post("/login/resolve", resolveLoginIdentifier);
+router.post("/login/resolve", authRateLimiter, resolveLoginIdentifier);
 router.post("/logout", logout);
-router.post("/account-invitations/verify", verifyAccountInvitationHandler);
-router.post("/account-invitations/complete", completeAccountInvitationHandler);
-router.post("/password-reset/request", requestPasswordResetHandler);
+router.post(
+  "/account-invitations/verify",
+  authRateLimiter,
+  verifyAccountInvitationHandler,
+);
+router.post(
+  "/account-invitations/complete",
+  authRateLimiter,
+  completeAccountInvitationHandler,
+);
+router.post(
+  "/password-reset/request",
+  authRateLimiter,
+  requestPasswordResetHandler,
+);
 
 router.post("/mfa/setup", requireIdentityAuth, setupMfa);
 router.post("/mfa/verify-setup", requireIdentityAuth, verifySetupMfa);
-router.post("/mfa/send-email", requireIdentityAuth, sendEmailOtp);
-router.post("/mfa/verify", requireIdentityAuth, checkMfa);
+router.post(
+  "/mfa/send-email",
+  authRateLimiter,
+  requireIdentityAuth,
+  sendEmailOtp,
+);
+router.post("/mfa/verify", authRateLimiter, requireIdentityAuth, checkMfa);
 
 export default router;

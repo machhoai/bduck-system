@@ -50,3 +50,14 @@ export const authRateLimiter = createRateLimiter(
   parsePositiveInteger(process.env.BE_WMS_AUTH_RATE_LIMIT_WINDOW_MS, 900_000),
   parsePositiveInteger(process.env.BE_WMS_AUTH_RATE_LIMIT_MAX_REQUESTS, 30),
 );
+
+export const authSessionRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_AUTH_SESSION_RATE_LIMIT_WINDOW_MS,
+    900_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_AUTH_SESSION_RATE_LIMIT_MAX_REQUESTS,
+    120,
+  ),
+);

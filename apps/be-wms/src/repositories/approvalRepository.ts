@@ -70,7 +70,7 @@ export async function findPendingByRolesAndFacilities(
 ): Promise<ApprovalRecord[]> {
   const roles = Array.from(new Set(roleIds.filter(Boolean)));
   const facilities = Array.from(new Set(facilityIds.filter(Boolean)));
-  if (roles.length === 0 || facilities.length === 0) return [];
+  if (roles.length === 0) return [];
 
   const records = new Map<string, ApprovalRecord>();
   for (const facilityId of facilities) {
@@ -92,6 +92,25 @@ export async function findPendingByRolesAndFacilities(
       }
     }
   }
+
+  for (let index = 0; index < roles.length; index += 30) {
+    const roleChunk = roles.slice(index, index + 30);
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where("role_id", "in", roleChunk)
+      .where("status", "==", "PENDING")
+      .get();
+    snapshot.docs.forEach((document) => {
+      const record = {
+        id: document.id,
+        ...document.data(),
+      } as ApprovalRecord;
+      if (record.approval_warehouse_id === null) {
+        records.set(document.id, record);
+      }
+    });
+  }
+
   return [...records.values()];
 }
 

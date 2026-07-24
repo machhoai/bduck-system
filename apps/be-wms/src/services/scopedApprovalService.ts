@@ -1,28 +1,51 @@
 import type { ApprovalRecord, ProcessEntityType } from "@bduck/shared-types";
 import * as approvalRepo from "../repositories/approvalRepository.js";
+import { getUserWarehouseRoles } from "../repositories/userRoleAssignmentRepository.js";
 import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import {
   authorizationError,
   type AuthorizationService,
 } from "./authorization/index.js";
 import * as approvalService from "./approvalService.js";
+import { canActOnApprovalRecord, type ScopedUser } from "./scopedRoleAccess.js";
 
 const approvalFacilityId = (record: ApprovalRecord): string | null =>
   record.approval_warehouse_id === undefined
     ? record.warehouse_id
     : record.approval_warehouse_id;
 
-const scopedUser = (user: AuthenticatedRequestUser) => ({
-  id: user.id,
-  roleIds: user.roleIds,
-  roleAssignments: user.roleAssignments,
-});
+const loadApprovalScopedUser = async (
+  user: AuthenticatedRequestUser,
+): Promise<ScopedUser> => {
+  const roleAssignments = await getUserWarehouseRoles(user.id);
+  return {
+    id: user.id,
+    roleIds: Array.from(
+      new Set([
+        ...user.roleIds,
+        ...roleAssignments.map((assignment) => assignment.role_id),
+      ]),
+    ),
+    roleAssignments,
+  };
+};
 
 const assertApprovalAccess = (
   record: ApprovalRecord,
   authorization: AuthorizationService,
   requireRole: boolean,
+  user?: ScopedUser,
 ): void => {
+  if (requireRole) {
+    if (
+      authorization.context.isSystemAdmin ||
+      (user && canActOnApprovalRecord(user, record))
+    ) {
+      return;
+    }
+    throw authorizationError("AUTHORIZATION_DENIED");
+  }
+
   const facilityId = approvalFacilityId(record);
   if (facilityId === null) {
     if (!authorization.context.isSystemAdmin) {
@@ -31,12 +54,6 @@ const assertApprovalAccess = (
     return;
   }
   authorization.assertFacilityAccess(facilityId);
-  if (
-    requireRole &&
-    !authorization.hasRoleAtFacility(record.role_id, facilityId)
-  ) {
-    throw authorizationError("AUTHORIZATION_DENIED");
-  }
 };
 
 const loadApproval = async (approvalId: string): Promise<ApprovalRecord> => {
@@ -57,15 +74,24 @@ export const getPendingTasksForUser = async (
   user: AuthenticatedRequestUser,
   authorization: AuthorizationService,
 ): Promise<ApprovalRecord[]> => {
+  const approvalUser = await loadApprovalScopedUser(user);
+  const approvalFacilityIds = Array.from(
+    new Set([
+      ...Object.keys(authorization.context.grants),
+      ...(approvalUser.roleAssignments ?? [])
+        .map((assignment) => assignment.warehouse_id)
+        .filter((warehouseId): warehouseId is string => Boolean(warehouseId)),
+    ]),
+  );
   const records = authorization.context.isSystemAdmin
-    ? await approvalRepo.findPendingByRoleIds(user.roleIds)
+    ? await approvalRepo.findPendingByRoleIds(approvalUser.roleIds ?? [])
     : await approvalRepo.findPendingByRolesAndFacilities(
-        user.roleIds,
-        Object.keys(authorization.context.grants),
+        approvalUser.roleIds ?? [],
+        approvalFacilityIds,
       );
   const accessible = records.filter((record) => {
     try {
-      assertApprovalAccess(record, authorization, true);
+      assertApprovalAccess(record, authorization, true, approvalUser);
       return true;
     } catch {
       return false;
@@ -120,13 +146,14 @@ export const approveLevel = async (
   authorization: AuthorizationService,
 ) => {
   const record = await loadApproval(approvalId);
-  assertApprovalAccess(record, authorization, true);
+  const approvalUser = await loadApprovalScopedUser(user);
+  assertApprovalAccess(record, authorization, true, approvalUser);
   return approvalService.approveLevel(
     approvalId,
     user.id,
     comments,
     otp,
-    scopedUser(user),
+    approvalUser,
   );
 };
 
@@ -138,13 +165,14 @@ export const rejectApproval = async (
   authorization: AuthorizationService,
 ): Promise<void> => {
   const record = await loadApproval(approvalId);
-  assertApprovalAccess(record, authorization, true);
+  const approvalUser = await loadApprovalScopedUser(user);
+  assertApprovalAccess(record, authorization, true, approvalUser);
   await approvalService.rejectApproval(
     approvalId,
     user.id,
     reason,
     otp,
-    scopedUser(user),
+    approvalUser,
   );
 };
 

@@ -4,7 +4,10 @@ import { z } from "zod";
 import * as scopedQueueService from "../../services/scopedExternalQueueService.js";
 import { buildExternalQueueBatchViews } from "../../services/externalQueueViewService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
-import { requireRequestAuthorization } from "../middlewares/requestAccessContext.js";
+import {
+  requireAuthenticatedRequestUser,
+  requireRequestAuthorization,
+} from "../middlewares/requestAccessContext.js";
 
 const handleError = (res: Response, error: unknown): void => {
   const apiError = error as {
@@ -27,11 +30,14 @@ export const getPendingBatches = async (
 ): Promise<void> => {
   try {
     const authorization = requireRequestAuthorization(req);
-    const records =
-      await scopedQueueService.findPendingQueueRecords(authorization);
+    const user = requireAuthenticatedRequestUser(req);
+    const records = await scopedQueueService.findPendingQueueRecords(
+      authorization,
+      user,
+    );
     sendSuccess(
       res,
-      await buildExternalQueueBatchViews(records, authorization, false),
+      await buildExternalQueueBatchViews(records, authorization, false, user),
       {
         vi: "Đã tải danh sách chờ xử lý.",
         zh: "待处理列表已加载。",

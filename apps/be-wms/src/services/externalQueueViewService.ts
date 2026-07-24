@@ -5,6 +5,7 @@ import { productRepository } from "../repositories/productRepository.js";
 import { roleRepository } from "../repositories/roleRepository.js";
 import { getUsersByIds } from "../repositories/userRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
+import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { resolveExternalQueueNextApproval } from "./externalQueueApprovalProgress.js";
 
@@ -102,6 +103,7 @@ export const buildExternalQueueBatchViews = async (
   records: readonly ExternalScanQueue[],
   authorization: AuthorizationService,
   includeHistory: boolean,
+  user?: AuthenticatedRequestUser,
 ): Promise<Record<string, unknown>[]> => {
   const lookup = await loadLookups(records);
   const groups = new Map<string, Record<string, any>>();
@@ -200,6 +202,7 @@ export const buildExternalQueueBatchViews = async (
         ? resolveExternalQueueNextApproval(
             lookup.approvalRecordsByEntity.get(group.export_voucher_id) ?? [],
             lookup.roles,
+            user,
           )
         : null;
       delete group.product_ids;
