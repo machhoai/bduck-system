@@ -324,7 +324,14 @@ class NotificationRepository {
         typeof data.warehouse_id === "string" ? data.warehouse_id : null;
 
       if (!userId || !roleId || userId === excludeUserId) continue;
-      if (warehouseId != null && warehouseId !== "" && assignmentWarehouseId !== warehouseId) continue;
+      if (
+        warehouseId != null &&
+        warehouseId !== "" &&
+        assignmentWarehouseId != null &&
+        assignmentWarehouseId !== warehouseId
+      ) {
+        continue;
+      }
 
       let role = roleCache.get(roleId);
       if (role === undefined) {

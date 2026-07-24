@@ -201,8 +201,29 @@ export async function getRevenueDashboardData(
   const cachedSnap = await docRef.get();
 
   if (cachedSnap.exists) {
-    const cached = cachedSnap.data() as { dashboard?: RevenueDashboardData; sync_time?: FirebaseFirestore.Timestamp | null };
+    const cached = cachedSnap.data() as {
+      cacheKey?: string;
+      warehouse_id?: string;
+      mode?: RevenueDateMode;
+      dashboard?: RevenueDashboardData;
+      sync_time?: FirebaseFirestore.Timestamp | null;
+    };
     if (cached.dashboard && !isStale(cached.sync_time ?? null)) {
+      if (
+        cached.cacheKey !== cacheKey ||
+        cached.warehouse_id !== warehouseId ||
+        cached.mode !== params.mode
+      ) {
+        await docRef.set(
+          {
+            cacheKey,
+            warehouse_id: warehouseId,
+            mode: params.mode,
+            range: cached.dashboard.range,
+          },
+          { merge: true },
+        );
+      }
       return hydrateDashboardRows(cached.dashboard, docRef);
     }
   }

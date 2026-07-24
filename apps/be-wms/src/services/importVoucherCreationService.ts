@@ -34,12 +34,12 @@ export const createImportVoucher = async (
     (!input.attachment_urls || input.attachment_urls.length === 0)
   ) {
     const err = new Error(
-      "Báº¯t buá»™c táº£i lÃªn chá»©ng tá»« (evidence) khi táº¡o phiáº¿u nháº­p kho.",
+      "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu nhập kho.",
     ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
     err.messages = {
-      vi: "Báº¯t buá»™c táº£i lÃªn chá»©ng tá»« (evidence) khi táº¡o phiáº¿u nháº­p kho.",
-      zh: "åˆ›å»ºå…¥åº“å•æ—¶å¿…é¡»ä¸Šä¼ å‡­è¯ (evidence)ã€‚",
+      vi: "Bắt buộc tải lên chứng từ (evidence) khi tạo phiếu nhập kho.",
+      zh: "创建入库单时必须上传凭证 (evidence)。",
     };
     throw err;
   }
@@ -47,27 +47,27 @@ export const createImportVoucher = async (
   if (config.require_otp) {
     if (!input.otp) {
       const err = new Error(
-        "MÃ£ xÃ¡c thá»±c (OTP) lÃ  báº¯t buá»™c.",
+        "Mã xác thực (OTP) là bắt buộc.",
       ) as Error & {
         statusCode: number;
         messages: Record<string, string>;
       };
       err.statusCode = 400;
       err.messages = {
-        vi: "MÃ£ xÃ¡c thá»±c (OTP) lÃ  báº¯t buá»™c.",
-        zh: "éªŒè¯ç  (OTP) æ˜¯å¿…éœ€çš„ã€‚",
+        vi: "Mã xác thực (OTP) là bắt buộc.",
+        zh: "验证码 (OTP) 是必需的。",
       };
       throw err;
     }
     const isOtpValid = await verifyMfa(userId, input.otp);
     if (!isOtpValid) {
       const err = new Error(
-        "MÃ£ xÃ¡c thá»±c (OTP) khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.",
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
       ) as Error & { statusCode: number; messages: Record<string, string> };
       err.statusCode = 400;
       err.messages = {
-        vi: "MÃ£ xÃ¡c thá»±c (OTP) khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.",
-        zh: "éªŒè¯ç  (OTP) æ— æ•ˆæˆ–å·²è¿‡æœŸã€‚",
+        vi: "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        zh: "验证码 (OTP) 无效或已过期。",
       };
       throw err;
     }
@@ -78,7 +78,7 @@ export const createImportVoucher = async (
   const voucherId = randomUUID();
   const voucherNumber = generateVoucherNumber();
 
-  // â”€â”€ 1. Build voucher document â”€â”€
+  // ── 1. Build voucher document ──
   const voucher: ImportVoucher = {
     id: voucherId,
     voucher_number: voucherNumber,
@@ -98,7 +98,7 @@ export const createImportVoucher = async (
     updated_at: now,
   };
 
-  // â”€â”€ 2. Build item documents â”€â”€
+  // ── 2. Build item documents ──
   const items: ImportVoucherItem[] = input.items.map((item) => ({
     id: randomUUID(),
     import_voucher_id: voucherId,
@@ -112,7 +112,7 @@ export const createImportVoucher = async (
     is_deleted: false,
   }));
 
-  // â”€â”€ 3. Write to Firestore (batch for atomicity) â”€â”€
+  // ── 3. Write to Firestore (batch for atomicity) ──
   const batch = db.batch();
 
   batch.set(db.collection("import_vouchers").doc(voucherId), voucher);
@@ -130,7 +130,7 @@ export const createImportVoucher = async (
 
   await batch.commit();
 
-  // â”€â”€ 4. Write audit log (ISO 9001) â”€â”€
+  // ── 4. Write audit log (ISO 9001) ──
   await logAudit({
     entity_type: "IMPORT_VOUCHER",
     entity_id: voucherId,
@@ -142,7 +142,7 @@ export const createImportVoucher = async (
     action_time: actionTime,
   });
 
-  // â”€â”€ 5. Create approval records (Fixed Pipeline) â”€â”€
+  // ── 5. Create approval records (Fixed Pipeline) ──
   try {
     // Resolve creator name for denormalization
     let creatorName: string | undefined;
@@ -164,7 +164,7 @@ export const createImportVoucher = async (
       { voucher_number: voucherNumber, creator_name: creatorName },
     );
 
-    // If no approval chain configured â†’ auto-advance to APPROVED
+    // If no approval chain configured → auto-advance to APPROVED
     if (approvals.length === 0) {
       await db.collection("import_vouchers").doc(voucherId).update({
         status: ImportVoucherStatus.APPROVED,
@@ -180,13 +180,13 @@ export const createImportVoucher = async (
   return voucher;
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// STATE MACHINE â€” Callbacks
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
+// STATE MACHINE — Callbacks
+// ─────────────────────────────────────────────
 
 /**
  * Called by approvalController when all approval levels are completed.
- * Advances voucher from PENDING_APPROVAL â†’ APPROVED.
+ * Advances voucher from PENDING_APPROVAL → APPROVED.
  */
 
 function generateVoucherNumber(): string {

@@ -131,19 +131,29 @@ test("Vietnam local date is stable around the UTC day boundary", () => {
   );
 });
 
-test("backfill only targets legacy records without employment_status", () => {
+test("backfill normalizes legacy employment status and missing date fields", () => {
   assert.deepEqual(
     planEmployeeEmploymentStatusBackfill([
       { id: "legacy" },
       {
         id: "official",
         employment_status: EmployeeEmploymentStatus.OFFICIAL,
+        probation_start_date: null,
+        probation_end_date: null,
+        official_start_date: "2026-01-01",
+        resignation_date: null,
       },
     ]),
     [
       {
         id: "legacy",
-        employment_status: EmployeeEmploymentStatus.UNSPECIFIED,
+        patch: {
+          employment_status: EmployeeEmploymentStatus.UNSPECIFIED,
+          probation_start_date: null,
+          probation_end_date: null,
+          official_start_date: null,
+          resignation_date: null,
+        },
       },
     ],
   );

@@ -109,6 +109,7 @@ export const menuItems: MenuItem[] = [
       "attendance.view",
       "attendance.export",
       "attendance.config",
+      "leave.self.read",
     ],
     showInBottomNav: true,
   },

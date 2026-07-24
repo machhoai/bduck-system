@@ -1,6 +1,54 @@
 {
   "indexes": [
     {
+      "collectionGroup": "leave_approval_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_approval_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_approval_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_user_id", "order": "ASCENDING" },
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_approval_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "leave_request_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_approval_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "leave_request_id", "order": "ASCENDING" },
+        { "fieldPath": "approval_attempt", "order": "ASCENDING" },
+        { "fieldPath": "level", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "attendance_late_reports",
       "queryScope": "COLLECTION",
       "fields": [
@@ -22,6 +70,16 @@
       "collectionGroup": "employee_profiles",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "employee_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employment_status", "order": "ASCENDING" },
         { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
         { "fieldPath": "is_deleted", "order": "ASCENDING" }
       ],
@@ -55,6 +113,78 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "is_deleted", "order": "ASCENDING" },
         { "fieldPath": "effective_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_balance_buckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "leave_year", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_balance_buckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "employee_user_id", "order": "ASCENDING" },
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "leave_year", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_ledger_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "posting_date", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "employee_user_id", "order": "ASCENDING" },
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "company_holidays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "holiday_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "leave_ledger_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employee_profile_id", "order": "ASCENDING" },
+        { "fieldPath": "employee_user_id", "order": "ASCENDING" },
+        { "fieldPath": "workplace_warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "posting_date", "order": "DESCENDING" }
       ],
       "density": "SPARSE_ALL"
     },

@@ -288,31 +288,39 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
   const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(REVENUE_REFRESH_INTERVAL_SECONDS);
   const latestDataRef = useRef<RevenueDashboardData | null>(null);
-  const syncingRef = useRef(false);
+  const syncingRef = useRef<string | null>(null);
   const cacheKey = useMemo(() => getRevenueDashboardCacheKey(filter, warehouseId), [filter, warehouseId]);
   const data = useMemo<RevenueDashboardData | null>(() => {
     if (!dashboard) return null;
     return { ...dashboard, orders, soldItems };
   }, [dashboard, orders, soldItems]);
 
-  const loadData = useCallback(async (signal?: AbortSignal) => {
-    if (!enabled) return;
-    if (syncingRef.current) return;
-    syncingRef.current = true;
+  const loadData = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
+    if (!enabled) return false;
+    if (syncingRef.current === cacheKey) return false;
+    syncingRef.current = cacheKey;
     setSyncing(true);
     setError(null);
+    let succeeded = false;
     try {
       const qs = buildDashboardQuery(filter, warehouseId);
       await fetchRevenueDashboard(qs, signal);
+      succeeded = true;
+      return true;
     } catch (err) {
-      if (signal?.aborted || (err as Error).name === "AbortError") return;
+      if (signal?.aborted || (err as Error).name === "AbortError") return false;
       setError(getRevenueDashboardErrorMessage(err));
+      return false;
     } finally {
-      syncingRef.current = false;
-      setSyncing(false);
-      if (!latestDataRef.current && !signal?.aborted) setLoading(false);
+      if (syncingRef.current === cacheKey) {
+        syncingRef.current = null;
+        setSyncing(false);
+        if (!succeeded && !latestDataRef.current && !signal?.aborted) {
+          setLoading(false);
+        }
+      }
     }
-  }, [enabled, filter, warehouseId]);
+  }, [cacheKey, enabled, filter, warehouseId]);
 
   useEffect(() => {
     if (!enabled || nextRefreshAt === null) {
@@ -383,9 +391,11 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
     let unsubscribeOrders: (() => void) | undefined;
     let unsubscribeSoldItems: (() => void) | undefined;
     let isDisposed = false;
+    let authGeneration = 0;
     const controller = new AbortController();
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      const generation = ++authGeneration;
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
         unsubscribeSnapshot = undefined;
@@ -411,63 +421,82 @@ export function useRevenueDashboard(filter: RevenueDashboardFilter, options: Use
       }
 
       const docRef = doc(db, "revenue_dashboards", cacheKey);
-      unsubscribeSnapshot = onSnapshot(
-        docRef,
-        (snapshot) => {
-          if (isDisposed) return;
+      const subscribeToCache = () => {
+        unsubscribeSnapshot = onSnapshot(
+          docRef,
+          (snapshot) => {
+            if (isDisposed || generation !== authGeneration) return;
 
-          if (!snapshot.exists()) {
-            setNextRefreshAt(null);
-            void loadData(controller.signal);
-            return;
-          }
+            if (!snapshot.exists()) {
+              setNextRefreshAt(null);
+              void loadData(controller.signal);
+              return;
+            }
 
-          const snapshotData = snapshot.data() as FirestoreDashboardDoc;
-          const dashboard = snapshotData.dashboard ?? null;
-          const syncTime = snapshotData.sync_time?.toDate?.() ?? null;
+            const snapshotData = snapshot.data() as FirestoreDashboardDoc;
+            const dashboard = snapshotData.dashboard ?? null;
+            const syncTime = snapshotData.sync_time?.toDate?.() ?? null;
 
-          latestDataRef.current = dashboard;
-          setDashboard(dashboard);
-          setLoading(false);
-          setSyncing(false);
-          setNextRefreshAt(
-            syncTime
-              ? syncTime.getTime() + REVENUE_REFRESH_INTERVAL_MS
-              : Date.now(),
-          );
+            latestDataRef.current = dashboard;
+            setDashboard(dashboard);
+            setLoading(false);
+            setSyncing(false);
+            setError(null);
+            setNextRefreshAt(
+              syncTime
+                ? syncTime.getTime() + REVENUE_REFRESH_INTERVAL_MS
+                : Date.now(),
+            );
 
-          if (!unsubscribeOrders) {
-            unsubscribeOrders = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "orders"), (ordersSnapshot) => {
-              if (isDisposed) return;
-              setOrders(ordersSnapshot.docs
-                .map((orderDoc) => orderDoc.data() as RevenueOrderItem & { is_deleted?: boolean })
-                .filter((row) => !row.is_deleted)
-                .sort((a, b) => b.createTime.localeCompare(a.createTime)));
-            });
-          }
+            if (!unsubscribeOrders) {
+              unsubscribeOrders = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "orders"), (ordersSnapshot) => {
+                if (isDisposed || generation !== authGeneration) return;
+                setOrders(ordersSnapshot.docs
+                  .map((orderDoc) => orderDoc.data() as RevenueOrderItem & { is_deleted?: boolean })
+                  .filter((row) => !row.is_deleted)
+                  .sort((a, b) => b.createTime.localeCompare(a.createTime)));
+              });
+            }
 
-          if (!unsubscribeSoldItems) {
-            unsubscribeSoldItems = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "sold_items"), (itemsSnapshot) => {
-              if (isDisposed) return;
-              setSoldItems(itemsSnapshot.docs
-                .map((itemDoc) => itemDoc.data() as SoldOrderGoodsItem & { is_deleted?: boolean })
-                .filter((row) => !row.is_deleted)
-                .sort((a, b) => b.createTime.localeCompare(a.createTime)));
-            });
-          }
+            if (!unsubscribeSoldItems) {
+              unsubscribeSoldItems = onSnapshot(collection(db, "revenue_dashboards", cacheKey, "sold_items"), (itemsSnapshot) => {
+                if (isDisposed || generation !== authGeneration) return;
+                setSoldItems(itemsSnapshot.docs
+                  .map((itemDoc) => itemDoc.data() as SoldOrderGoodsItem & { is_deleted?: boolean })
+                  .filter((row) => !row.is_deleted)
+                  .sort((a, b) => b.createTime.localeCompare(a.createTime)));
+              });
+            }
+          },
+          (snapshotError) => {
+            console.warn("[useRevenueDashboard] onSnapshot error:", snapshotError);
+            setError(snapshotError.message);
+            setLoading(false);
+            setSyncing(false);
+          },
+        );
+      };
 
-        },
-        (snapshotError) => {
-          console.warn("[useRevenueDashboard] onSnapshot error:", snapshotError);
-          setError(snapshotError.message);
-          setLoading(false);
-          setSyncing(false);
-        },
-      );
+      // Firestore rules authorize the cache through resource.data.warehouse_id.
+      // A missing cache document has no resource data and is denied before the
+      // listener can observe non-existence, so let the authorized API create or
+      // repair the cache before attaching real-time listeners.
+      void loadData(controller.signal).then((cacheReady) => {
+        if (
+          !cacheReady ||
+          isDisposed ||
+          controller.signal.aborted ||
+          generation !== authGeneration
+        ) {
+          return;
+        }
+        subscribeToCache();
+      });
     });
 
     return () => {
       isDisposed = true;
+      authGeneration += 1;
       controller.abort();
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();

@@ -14,20 +14,58 @@ service cloud.firestore {
       return get(accessPath()).data;
     }
 
+    function activeAccessRecordIsValid() {
+      let accessData = access();
+      return accessData.is_deleted == false
+        && accessData.active_version_id is string
+        && accessData.active_version_id.size() > 0;
+    }
+
     function hasActiveAccess() {
       return signedIn()
         && exists(accessPath())
-        && access().is_deleted == false
-        && access().active_version_id is string
-        && access().active_version_id.size() > 0;
+        && activeAccessRecordIsValid();
     }
 
     function isSystemAdmin() {
       return hasActiveAccess() && access().is_global_admin == true;
     }
 
+    function accessWorkplaceFacilityId() {
+      let accessData = access();
+      return 'workplace_facility_id' in accessData
+        ? accessData.workplace_facility_id
+        : ('workplace_warehouse_id' in accessData
+          ? accessData.workplace_warehouse_id
+          : null);
+    }
+
     function grantPath(facilityId) {
       return /databases/$(database)/documents/user_access/$(request.auth.uid)/versions/$(access().active_version_id)/facilities/$(facilityId);
+    }
+
+    function facilityGrantMatches(facilityId) {
+      let accessData = access();
+      let grantData = get(grantPath(facilityId)).data;
+      return grantData.is_deleted == false
+        && grantData.user_id == request.auth.uid
+        && grantData.facility_id == facilityId
+        && grantData.access_version_id == accessData.active_version_id
+        && grantData.access_version == accessData.access_version;
+    }
+
+    function facilityGrantAllows(facilityId, action) {
+      let accessData = access();
+      let grantData = get(grantPath(facilityId)).data;
+      return grantData.is_deleted == false
+        && grantData.user_id == request.auth.uid
+        && grantData.facility_id == facilityId
+        && grantData.access_version_id == accessData.active_version_id
+        && grantData.access_version == accessData.access_version
+        && ((action in grantData.permissions
+            && grantData.permissions[action] == true)
+          || ('*' in grantData.permissions
+            && grantData.permissions['*'] == true));
     }
 
     function hasFacilityGrant(facilityId) {
@@ -35,20 +73,16 @@ service cloud.firestore {
         && facilityId is string
         && facilityId.size() > 0
         && exists(grantPath(facilityId))
-        && get(grantPath(facilityId)).data.is_deleted == false
-        && get(grantPath(facilityId)).data.user_id == request.auth.uid
-        && get(grantPath(facilityId)).data.facility_id == facilityId
-        && get(grantPath(facilityId)).data.access_version_id == access().active_version_id
-        && get(grantPath(facilityId)).data.access_version == access().access_version;
+        && facilityGrantMatches(facilityId);
     }
 
     function hasFacilityPermission(facilityId, action) {
-      return isSystemAdmin()
-        || (hasFacilityGrant(facilityId)
-          && ((action in get(grantPath(facilityId)).data.permissions
-              && get(grantPath(facilityId)).data.permissions[action] == true)
-            || ('*' in get(grantPath(facilityId)).data.permissions
-              && get(grantPath(facilityId)).data.permissions['*'] == true)));
+      return hasActiveAccess()
+        && (access().is_global_admin == true
+          || (facilityId is string
+            && facilityId.size() > 0
+            && exists(grantPath(facilityId))
+            && facilityGrantAllows(facilityId, action)));
     }
 
     function readableFacilityDirectory(facilityId) {
@@ -201,6 +235,120 @@ service cloud.firestore {
     }
     match /employee_employment_transition_locks/{docId} {
       allow read, write: if false;
+    }
+    match /leave_balance_buckets/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'leave.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.requests.read_all'
+          ));
+      allow write: if false;
+    }
+    match /leave_ledger_entries/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'leave.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.requests.read_all'
+          ));
+      allow write: if false;
+    }
+    match /leave_policies/{docId} {
+      allow read: if isSystemAdmin()
+        || (hasActiveAccess()
+          && hasFacilityPermission(
+            accessWorkplaceFacilityId(),
+            'leave.config.manage'
+          ));
+      allow write: if false;
+    }
+    match /company_holidays/{docId} {
+      allow read: if hasActiveAccess();
+      allow write: if false;
+    }
+    match /leave_requests/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'leave.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.requests.read_all'
+          ));
+      allow write: if false;
+    }
+    match /leave_day_reservations/{docId} {
+      allow read, write: if false;
+    }
+    match /leave_approval_configs/{docId} {
+      allow read: if hasActiveAccess();
+      allow write: if false;
+    }
+    match /leave_approval_tasks/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'leave.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.approve'
+          )
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.approver.reassign'
+          )
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.requests.read_all'
+          ));
+      allow write: if false;
+    }
+    match /leave_approval_reassignments/{docId} {
+      allow read: if signedIn()
+        && (isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'leave.approver.reassign'
+          )
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'audit.read'
+          ));
+      allow write: if false;
+    }
+    match /leave_import_batches/{docId} {
+      allow read: if signedIn()
+        && (isSystemAdmin() || resource.data.created_by == request.auth.uid);
+      allow write: if false;
+    }
+    match /leave_import_rows/{docId} {
+      allow read: if signedIn()
+        && (isSystemAdmin()
+          || get(
+            /databases/$(database)/documents/leave_import_batches/$(resource.data.batch_id)
+          ).data.created_by == request.auth.uid);
+      allow write: if false;
+    }
+    match /leave_reconciliation_runs/{docId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
     }
     match /user_warehouse_roles/{docId} {
       allow read: if signedIn()

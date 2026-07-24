@@ -31,12 +31,12 @@ export const updateImportVoucher = async (
     (!input.attachment_urls || input.attachment_urls.length === 0)
   ) {
     const err = new Error(
-      "Báº¯t buá»™c táº£i lÃªn chá»©ng tá»« (evidence) khi sá»­a phiáº¿u nháº­p kho.",
+      "Bắt buộc tải lên chứng từ (evidence) khi sửa phiếu nhập kho.",
     ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
     err.messages = {
-      vi: "Báº¯t buá»™c táº£i lÃªn chá»©ng tá»« (evidence) khi sá»­a phiáº¿u nháº­p kho.",
-      zh: "ä¿®æ”¹å…¥åº“å•æ—¶å¿…é¡»ä¸Šä¼ å‡­è¯ (evidence)ã€‚",
+      vi: "Bắt buộc tải lên chứng từ (evidence) khi sửa phiếu nhập kho.",
+      zh: "修改入库单时必须上传凭证 (evidence)。",
     };
     throw err;
   }
@@ -44,27 +44,27 @@ export const updateImportVoucher = async (
   if (config.require_otp) {
     if (!input.otp) {
       const err = new Error(
-        "MÃ£ xÃ¡c thá»±c (OTP) lÃ  báº¯t buá»™c.",
+        "Mã xác thực (OTP) là bắt buộc.",
       ) as Error & {
         statusCode: number;
         messages: Record<string, string>;
       };
       err.statusCode = 400;
       err.messages = {
-        vi: "MÃ£ xÃ¡c thá»±c (OTP) lÃ  báº¯t buá»™c.",
-        zh: "éªŒè¯ç  (OTP) æ˜¯å¿…éœ€çš„ã€‚",
+        vi: "Mã xác thực (OTP) là bắt buộc.",
+        zh: "验证码 (OTP) 是必需的。",
       };
       throw err;
     }
     const isOtpValid = await verifyMfa(userId, input.otp);
     if (!isOtpValid) {
       const err = new Error(
-        "MÃ£ xÃ¡c thá»±c (OTP) khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.",
+        "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
       ) as Error & { statusCode: number; messages: Record<string, string> };
       err.statusCode = 400;
       err.messages = {
-        vi: "MÃ£ xÃ¡c thá»±c (OTP) khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.",
-        zh: "éªŒè¯ç  (OTP) æ— æ•ˆæˆ–å·²è¿‡æœŸã€‚",
+        vi: "Mã xác thực (OTP) không hợp lệ hoặc đã hết hạn.",
+        zh: "验证码 (OTP) 无效或已过期。",
       };
       throw err;
     }
@@ -75,14 +75,14 @@ export const updateImportVoucher = async (
     .doc(voucherId)
     .get();
   if (!voucherDoc.exists) {
-    const err = new Error("KhÃ´ng tÃ¬m tháº¥y phiáº¿u nháº­p kho.") as Error & {
+    const err = new Error("Không tìm thấy phiếu nhập kho.") as Error & {
       statusCode: number;
       messages: Record<string, string>;
     };
     err.statusCode = 404;
     err.messages = {
-      vi: "KhÃ´ng tÃ¬m tháº¥y phiáº¿u nháº­p kho.",
-      zh: "æ‰¾ä¸åˆ°å…¥åº“å•ã€‚",
+      vi: "Không tìm thấy phiếu nhập kho.",
+      zh: "找不到入库单。",
     };
     throw err;
   }
@@ -96,12 +96,12 @@ export const updateImportVoucher = async (
 
   if (oldVoucher.creator_id !== userId) {
     const err = new Error(
-      "Báº¡n khÃ´ng cÃ³ quyá»n sá»­a phiáº¿u nháº­p kho nÃ y.",
+      "Bạn không có quyền sửa phiếu nhập kho này.",
     ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 403;
     err.messages = {
-      vi: "Báº¡n khÃ´ng cÃ³ quyá»n sá»­a phiáº¿u nháº­p kho nÃ y.",
-      zh: "æ‚¨æ²¡æœ‰æƒé™ä¿®æ”¹æ­¤å…¥åº“å•ã€‚",
+      vi: "Bạn không có quyền sửa phiếu nhập kho này.",
+      zh: "您没有权限修改此入库单。",
     };
     throw err;
   }
@@ -113,12 +113,12 @@ export const updateImportVoucher = async (
   ];
   if (!allowedStatuses.includes(oldVoucher.status)) {
     const err = new Error(
-      "Chá»‰ cÃ³ thá»ƒ sá»­a phiáº¿u Ä‘ang chá» duyá»‡t hoáº·c bá»‹ tá»« chá»‘i.",
+      "Chỉ có thể sửa phiếu đang chờ duyệt hoặc bị từ chối.",
     ) as Error & { statusCode: number; messages: Record<string, string> };
     err.statusCode = 400;
     err.messages = {
-      vi: "Chá»‰ cÃ³ thá»ƒ sá»­a phiáº¿u Ä‘ang chá» duyá»‡t hoáº·c bá»‹ tá»« chá»‘i.",
-      zh: "åªèƒ½ä¿®æ”¹å¾…å®¡æ‰¹æˆ–å·²æ‹’ç»çš„å•æ®ã€‚",
+      vi: "Chỉ có thể sửa phiếu đang chờ duyệt hoặc bị từ chối.",
+      zh: "只能修改待审批或已拒绝的单据。",
     };
     throw err;
   }

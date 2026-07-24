@@ -45,10 +45,7 @@ export default function AccessVersionProvider() {
       logAccessError(error);
     };
 
-    const applyServerSnapshot = async (
-      snapshot: DocumentSnapshot,
-      forceReload = false,
-    ) => {
+    const applyServerSnapshot = async (snapshot: DocumentSnapshot) => {
       if (disposed || snapshot.metadata.fromCache) return;
       const metadata = parseActiveAccessMetadata(userId, snapshot.data());
       if (!snapshot.exists() || !metadata) {
@@ -58,7 +55,10 @@ export default function AccessVersionProvider() {
       }
 
       const current = useUserStore.getState();
-      if (!forceReload && !needsGrantReload(current, metadata)) return;
+      if (!needsGrantReload(current, metadata)) {
+        current.markAccessOnline();
+        return;
+      }
       const generation = ++requestGeneration;
       current.beginAccessRefresh(
         metadata.access_version,
@@ -107,15 +107,10 @@ export default function AccessVersionProvider() {
     const handleOffline = () => useUserStore.getState().markAccessOffline();
     const handleOnline = async () => {
       const reconnectGeneration = ++requestGeneration;
-      const current = useUserStore.getState();
-      current.beginAccessRefresh(
-        current.accessVersion,
-        current.activeAccessVersionId,
-      );
       try {
         const snapshot = await getDocFromServer(metadataRef);
         if (disposed || reconnectGeneration !== requestGeneration) return;
-        await applyServerSnapshot(snapshot, true);
+        await applyServerSnapshot(snapshot);
       } catch (error) {
         if (disposed || reconnectGeneration !== requestGeneration) return;
         handleAccessFailure(error);

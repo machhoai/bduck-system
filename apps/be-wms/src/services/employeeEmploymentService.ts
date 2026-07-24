@@ -29,6 +29,7 @@ import {
   getVietnamLocalDate,
   validateEmployeeEmploymentProfile,
 } from "./employeeEmploymentPolicy.js";
+import { releaseProbationLeaveForProfile } from "./leaveBalanceService.js";
 
 type CreateTransitionInput = z.infer<
   typeof createEmployeeEmploymentTransitionSchema
@@ -105,6 +106,23 @@ const writeAppliedAudits = async (
   ]);
 };
 
+const releaseProbationLeaveSafely = async (
+  profile: EmployeeProfile,
+  effectiveDate: string,
+  actorId: string,
+) => {
+  if (profile.employment_status !== EmployeeEmploymentStatus.OFFICIAL) return;
+  try {
+    await releaseProbationLeaveForProfile(profile, effectiveDate, actorId);
+  } catch (error) {
+    console.error(
+      "[employeeEmploymentService] probation leave release deferred",
+      profile.id,
+      error,
+    );
+  }
+};
+
 export const fetchEmployeeEmploymentTransitions = async (
   employeeProfileId: string,
   authorization: AuthorizationService,
@@ -161,6 +179,11 @@ export const createEmployeeEmploymentTransition = async (
   );
 
   if (isImmediate) {
+    await releaseProbationLeaveSafely(
+      result.profile,
+      input.effective_date,
+      actorId,
+    );
     await writeAppliedAudits(result, actorId, auditMetadata);
   } else {
     await logAudit({
@@ -242,6 +265,11 @@ export const applyDueEmployeeEmploymentTransitions = async (
         skipped += 1;
         continue;
       }
+      await releaseProbationLeaveSafely(
+        result.profile,
+        transition.effective_date,
+        actorId,
+      );
       await writeAppliedAudits(result, actorId);
       applied += 1;
     } catch (error) {

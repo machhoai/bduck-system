@@ -1,9 +1,12 @@
-import type { ExternalScanQueue } from "@bduck/shared-types";
+import type { ApprovalRecord, ExternalScanQueue } from "@bduck/shared-types";
+import * as approvalRepository from "../repositories/approvalRepository.js";
 import { locationRepository } from "../repositories/locationRepository.js";
 import { productRepository } from "../repositories/productRepository.js";
+import { roleRepository } from "../repositories/roleRepository.js";
 import { getUsersByIds } from "../repositories/userRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import type { AuthorizationService } from "./authorization/index.js";
+import { resolveExternalQueueNextApproval } from "./externalQueueApprovalProgress.js";
 
 const toDate = (value: unknown): Date => {
   if (value instanceof Date) return value;
@@ -51,25 +54,47 @@ const loadLookups = async (records: readonly ExternalScanQueue[]) => {
       record.final_approved_by ?? null,
     ]),
   );
-  const [products, locations, warehouses, approvers] = await Promise.all([
-    productRepository.findByIds(records.map((record) => record.product_id)),
-    Promise.all(
-      locationIds.map(
-        async (id) => [id, await locationRepository.findById(id)] as const,
+  const exportVoucherIds = unique(
+    records.map((record) => record.export_voucher_id),
+  );
+  const [products, locations, warehouses, approvers, approvalRecords] =
+    await Promise.all([
+      productRepository.findByIds(records.map((record) => record.product_id)),
+      Promise.all(
+        locationIds.map(
+          async (id) => [id, await locationRepository.findById(id)] as const,
+        ),
       ),
-    ),
-    Promise.all(
-      warehouseIds.map(
-        async (id) => [id, await warehouseRepository.findById(id)] as const,
+      Promise.all(
+        warehouseIds.map(
+          async (id) => [id, await warehouseRepository.findById(id)] as const,
+        ),
       ),
-    ),
-    getUsersByIds(approverIds),
-  ]);
+      getUsersByIds(approverIds),
+      approvalRepository.findByEntityIds(exportVoucherIds),
+    ]);
+  const exportApprovalRecords = approvalRecords.filter(
+    (record) =>
+      record.entity_type === "EXPORT_VOUCHER" &&
+      exportVoucherIds.includes(record.entity_id),
+  );
+  const roles = await roleRepository.findByIds(
+    exportApprovalRecords.map((record) => record.role_id),
+  );
+  const approvalRecordsByEntity = new Map<string, ApprovalRecord[]>();
+  for (const record of exportApprovalRecords) {
+    const entityRecords = approvalRecordsByEntity.get(record.entity_id) ?? [];
+    entityRecords.push(record);
+    approvalRecordsByEntity.set(record.entity_id, entityRecords);
+  }
+
   return {
     products: new Map(products.map((product) => [product.id, product])),
     locations: new Map(locations),
     warehouses: new Map(warehouses),
     approvers: new Map(approvers.map((user) => [user.id, user])),
+    roles: new Map(roles.map((role) => [role.id, role.name])),
+    approvalRecordsByEntity,
   };
 };
 
@@ -171,6 +196,12 @@ export const buildExternalQueueBatchViews = async (
   return Array.from(groups.values())
     .map((group) => {
       if (!group.can_view_price) group.total_value = null;
+      group.next_approval = group.export_voucher_id
+        ? resolveExternalQueueNextApproval(
+            lookup.approvalRecordsByEntity.get(group.export_voucher_id) ?? [],
+            lookup.roles,
+          )
+        : null;
       delete group.product_ids;
       return group;
     })

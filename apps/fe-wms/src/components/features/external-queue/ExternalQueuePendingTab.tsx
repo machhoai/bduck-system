@@ -17,6 +17,7 @@ import {
     ScanLine,
     Search,
     Settings,
+    ShieldCheck,
     Sparkles,
     Users,
 } from "lucide-react";
@@ -203,6 +204,8 @@ export default function ExternalQueuePendingTab() {
                 batch.warehouse_name,
                 batch.warehouse_code,
                 operators,
+                batch.next_approval?.role_name,
+                batch.next_approval?.role_id,
             ]
                 .filter(Boolean)
                 .some((value) =>
@@ -440,6 +443,11 @@ export default function ExternalQueuePendingTab() {
                                                   );
                                             const canViewPrice =
                                                 canViewBatchPrice(batch);
+                                            const nextApproval =
+                                                batch.next_approval;
+                                            const nextApprovalRole =
+                                                nextApproval?.role_name ||
+                                                nextApproval?.role_id;
 
                                             return (
                                                 <div
@@ -495,6 +503,30 @@ export default function ExternalQueuePendingTab() {
                                                                     </span>
                                                                 </div>
                                                             </div>
+                                                            {nextApproval && (
+                                                                <div className="mt-2 flex min-w-0 items-center gap-2 rounded-md border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-2.5 py-1.5 text-xs text-[var(--color-status-pending-text)]">
+                                                                    <ShieldCheck className="h-4 w-4 shrink-0" />
+                                                                    <span className="truncate">
+                                                                        {pendingText.nextApproval ||
+                                                                            "Cấp duyệt tiếp theo"}
+                                                                        :{" "}
+                                                                        <strong>
+                                                                            {pendingText.approvalLevel ||
+                                                                                "Cấp"}{" "}
+                                                                            {
+                                                                                nextApproval.level
+                                                                            }
+                                                                        </strong>
+                                                                        {nextApprovalRole
+                                                                            ? ` · ${nextApprovalRole}`
+                                                                            : ""}
+                                                                        {nextApproval.required_count >
+                                                                        1
+                                                                            ? ` · ${nextApproval.approved_count}/${nextApproval.required_count} ${pendingText.approvedProgress || "đã duyệt"}`
+                                                                            : ""}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         <div

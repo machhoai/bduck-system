@@ -25,3 +25,52 @@ export function valueOrEmpty(
 ) {
   return value?.trim() || emptyLabel;
 }
+
+export function buildAdminProfileFields(
+  labels: Record<string, string>,
+  profile: ExtendedEmployeeProfile | null,
+  warehouse: Warehouse | null,
+  emptyLabel: string,
+) {
+  return [
+    {
+      label: labels.employeeCode,
+      value: valueOrEmpty(profile?.employee_code, emptyLabel),
+    },
+    {
+      label: labels.fullName,
+      value: valueOrEmpty(profile?.full_name, emptyLabel),
+    },
+    {
+      label: labels.department,
+      value: valueOrEmpty(profile?.department, emptyLabel),
+    },
+    {
+      label: labels.jobTitle,
+      value: valueOrEmpty(profile?.job_title, emptyLabel),
+    },
+    { label: labels.workplace, value: warehouse?.name || emptyLabel },
+    {
+      label: labels.socialInsuranceCode,
+      value: valueOrEmpty(profile?.social_insurance_code, emptyLabel),
+    },
+    {
+      label: labels.probationStartDate,
+      value: formatMaybeDate(profile?.probation_start_date, emptyLabel),
+    },
+    {
+      label: labels.probationEndDate,
+      value: formatMaybeDate(profile?.probation_end_date, emptyLabel),
+    },
+    {
+      label: labels.officialStartDate,
+      value: formatMaybeDate(profile?.official_start_date, emptyLabel),
+    },
+    {
+      label: labels.resignationDate,
+      value: formatMaybeDate(profile?.resignation_date, emptyLabel),
+    },
+  ];
+}
+import type { Warehouse } from "@bduck/shared-types";
+import type { ExtendedEmployeeProfile } from "./AdminOverviewTab.types";

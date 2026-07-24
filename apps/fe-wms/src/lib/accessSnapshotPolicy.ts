@@ -95,8 +95,12 @@ export function needsGrantReload(
   },
   metadata: UserAccessMetadata,
 ) {
+  const hasVerifiedAccess =
+    current.accessStatus === "READY" ||
+    current.accessStatus === "OFFLINE_READY";
+
   return (
-    current.accessStatus !== "READY" ||
+    !hasVerifiedAccess ||
     current.accessVersion !== metadata.access_version ||
     current.activeAccessVersionId !== metadata.active_version_id
   );

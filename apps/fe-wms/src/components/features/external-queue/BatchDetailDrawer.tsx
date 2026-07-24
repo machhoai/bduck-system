@@ -13,6 +13,7 @@ import {
   Package,
   Pencil,
   Save,
+  ShieldCheck,
   Trash2,
   User,
   X,
@@ -108,6 +109,9 @@ export default function BatchDetailDrawer({
   const isRevisionBatch = batchData?.status === "REVISION_REQUIRED";
   const isWaitingExportApproval =
     batchData?.status === "PENDING_EXPORT_APPROVAL";
+  const nextApproval = batchData?.next_approval;
+  const nextApprovalRole =
+    nextApproval?.role_name || nextApproval?.role_id || null;
   const canEditBatchQuantity = [
     "QUEUED",
     "SUBMITTED",
@@ -502,10 +506,26 @@ export default function BatchDetailDrawer({
           {isWaitingExportApproval && (
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] px-3 py-2 text-sm text-[var(--color-status-pending-text)]">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                {drawerText?.hints?.waitingExportApproval ||
-                  "Phiếu xuất đã được tạo và đang chờ cấp duyệt tiếp theo. Chỉ khi duyệt đủ cấp thì tồn kho mới được ghi nhận xuất."}
-              </span>
+              <div className="min-w-0">
+                <p>
+                  {drawerText?.hints?.waitingExportApproval ||
+                    "Phiếu xuất đã được tạo và đang chờ cấp duyệt tiếp theo. Chỉ khi duyệt đủ cấp thì tồn kho mới được ghi nhận xuất."}
+                </p>
+                {nextApproval && (
+                  <div className="mt-2 flex min-w-0 items-center gap-2 rounded-md bg-white/65 px-2.5 py-2 font-semibold">
+                    <ShieldCheck className="h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {drawerText?.info?.nextApproval || "Cấp duyệt tiếp theo"}:{" "}
+                      {drawerText?.info?.approvalLevel || "Cấp"}{" "}
+                      {nextApproval.level}
+                      {nextApprovalRole ? ` · ${nextApprovalRole}` : ""}
+                      {nextApproval.required_count > 1
+                        ? ` · ${nextApproval.approved_count}/${nextApproval.required_count} ${drawerText?.info?.approvedProgress || "đã duyệt"}`
+                        : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

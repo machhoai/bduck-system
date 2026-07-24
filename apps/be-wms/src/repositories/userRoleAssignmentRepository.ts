@@ -48,7 +48,7 @@ export const findActiveUserIdsByRoleId = async (
     new Set(
       snapshot.docs.flatMap((document) => {
         const assignment = mapAssignment(document);
-        return assignment.is_active && assignment.is_deleted === false
+        return assignment.is_active && assignment.is_deleted !== true
           ? [assignment.user_id]
           : [];
       }),

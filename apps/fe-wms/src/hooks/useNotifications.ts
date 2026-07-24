@@ -28,6 +28,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import type { InAppNotification } from "@bduck/shared-types";
+import { useTranslation } from "@/lib/i18n";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -69,6 +70,8 @@ export function resolveTemplate(
   lang: "vi" | "zh" = "vi",
   params: Record<string, unknown> = {},
 ): string {
+  const localizedTitle = params[`title_${lang}`];
+  if (typeof localizedTitle === "string") return localizedTitle;
   if (templateKey === "notification.manual" && typeof params.title === "string") {
     return params.title;
   }
@@ -97,6 +100,7 @@ export function useNotifications(): UseNotificationsReturn {
   >([]);
   const [loading, setLoading] = useState(true);
   const user = useUserStore((s) => s.user);
+  const { lang } = useTranslation();
 
   useEffect(() => {
     if (!user?.id) {
@@ -126,8 +130,16 @@ export function useNotifications(): UseNotificationsReturn {
             template_key: data.template_key,
             template_params: data.template_params || {},
             channel: data.channel,
-            title: data.title || data.template_params?.title || data.template_key,
-            body: data.body || data.template_params?.body || "",
+            title: resolveTemplate(
+              data.template_key,
+              lang,
+              data.template_params || {},
+            ),
+            body:
+              data.template_params?.[`body_${lang}`] ||
+              data.body ||
+              data.template_params?.body ||
+              "",
             action_url: data.action_url || null,
             priority: data.priority || "NORMAL",
             source_instance_id: data.source_instance_id,
@@ -154,7 +166,7 @@ export function useNotifications(): UseNotificationsReturn {
     );
 
     return () => unsubscribe();
-  }, [user?.id]);
+  }, [lang, user?.id]);
 
   const unreadCount = useMemo(
     () => rawNotifications.filter((n) => !n.is_read).length,

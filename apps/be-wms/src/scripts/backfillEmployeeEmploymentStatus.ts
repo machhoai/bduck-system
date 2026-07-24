@@ -32,7 +32,7 @@ const run = async () => {
       employee_code: record?.employee_code ?? null,
       full_name: record?.full_name ?? null,
       workplace_warehouse_id: record?.workplace_warehouse_id ?? null,
-      target_status: item.employment_status,
+      patch: item.patch,
     };
   });
 
@@ -42,7 +42,7 @@ const run = async () => {
         mode: apply ? "APPLY" : "DRY_RUN",
         scanned: records.length,
         updates: plan.length,
-        target_status: EmployeeEmploymentStatus.UNSPECIFIED,
+        default_status: EmployeeEmploymentStatus.UNSPECIFIED,
         candidates,
       },
       null,
@@ -58,11 +58,11 @@ const run = async () => {
       const oldValue = recordById.get(item.id);
       const newValue = {
         ...oldValue,
-        employment_status: item.employment_status,
+        ...item.patch,
         updated_at: now,
       };
       batch.update(db.collection("employee_profiles").doc(item.id), {
-        employment_status: item.employment_status,
+        ...item.patch,
         updated_at: now,
       });
       const auditRef = db.collection("audit_logs").doc(randomUUID());
@@ -87,7 +87,7 @@ const run = async () => {
         ip_address: null,
         device_id: null,
         session_token: null,
-        notes: "Phase 1 employment status backfill",
+        notes: "Phase 7 employment profile schema backfill",
       });
     }
     await batch.commit();

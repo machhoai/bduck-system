@@ -121,6 +121,38 @@ export async function findByEntity(
 }
 
 /**
+ * Find approval records for multiple entities in as few Firestore reads as
+ * possible. Callers still filter entity_type before presenting the records.
+ */
+export async function findByEntityIds(
+  entityIds: readonly string[],
+): Promise<ApprovalRecord[]> {
+  const ids = Array.from(new Set(entityIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+
+  const records: ApprovalRecord[] = [];
+  for (let index = 0; index < ids.length; index += 30) {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where("entity_id", "in", ids.slice(index, index + 30))
+      .get();
+    records.push(
+      ...snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as ApprovalRecord,
+      ),
+    );
+  }
+
+  return records.sort((left, right) => {
+    const entityDelta = left.entity_id.localeCompare(right.entity_id);
+    if (entityDelta !== 0) return entityDelta;
+    const attemptDelta = getApprovalAttempt(left) - getApprovalAttempt(right);
+    if (attemptDelta !== 0) return attemptDelta;
+    return left.level - right.level;
+  });
+}
+
+/**
  * Find a single approval record by ID.
  */
 export async function findById(id: string): Promise<ApprovalRecord | null> {

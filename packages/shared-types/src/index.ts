@@ -23,5 +23,6 @@ export * from './reports.js';
 export * from './attendance.js';
 export * from './employeeProfiles.js';
 export * from './leave.js';
+export * from './leaveApproval.js';
 export * from './fileLibrary.js';
 export * from './invoices.js';

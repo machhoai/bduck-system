@@ -25,12 +25,18 @@ const rules = await readFile(
 );
 let environment;
 
-const metadata = (userId, versionId, isSystemAdmin = false) => ({
+const metadata = (
+  userId,
+  versionId,
+  isSystemAdmin = false,
+  workplaceFacilityId = null,
+) => ({
   id: userId,
   user_id: userId,
   active_version_id: versionId,
   access_version: 1,
   is_global_admin: isSystemAdmin,
+  workplace_facility_id: workplaceFacilityId,
   is_deleted: false,
 });
 
@@ -41,7 +47,14 @@ async function seedAccess(userId, grants, isSystemAdmin = false) {
     await context
       .firestore()
       .doc(`user_access/${userId}`)
-      .set(metadata(userId, versionId, isSystemAdmin));
+      .set(
+        metadata(
+          userId,
+          versionId,
+          isSystemAdmin,
+          Object.keys(grants)[0] || null,
+        ),
+      );
     await firestore.doc(`user_access/${userId}/versions/${versionId}`).set({
       id: versionId,
       user_id: userId,
@@ -207,6 +220,141 @@ async function seedDocuments() {
         },
       ],
       [
+        "leave_policies/company",
+        {
+          scope: "COMPANY",
+          monthly_accrual_units: 1,
+          annual_cap_units: 12,
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_balance_buckets/profile-a_2026",
+        {
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          leave_year: 2026,
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_balance_buckets/profile-b_2026",
+        {
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          leave_year: 2026,
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_ledger_entries/ledger-a",
+        {
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          posting_date: "2026-07-15",
+        },
+      ],
+      [
+        "leave_ledger_entries/ledger-b",
+        {
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          posting_date: "2026-07-15",
+        },
+      ],
+      [
+        "leave_requests/request-a",
+        {
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          created_at: new Date("2026-07-23T08:00:00Z"),
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_requests/request-b",
+        {
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          created_at: new Date("2026-07-23T08:00:00Z"),
+          is_deleted: false,
+        },
+      ],
+      [
+        "company_holidays/2026-09-02",
+        {
+          holiday_date: "2026-09-02",
+          name: { vi: "Quoc khanh", zh: "Guoqing jie" },
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_approval_configs/company",
+        {
+          scope: "COMPANY",
+          levels: [],
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_approval_tasks/task-a",
+        {
+          leave_request_id: "request-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          status: "PENDING",
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_approval_tasks/task-b",
+        {
+          leave_request_id: "request-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          status: "PENDING",
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_approval_reassignments/reassign-a",
+        {
+          approval_task_id: "task-a",
+          workplace_warehouse_id: "warehouse-c",
+        },
+      ],
+      [
+        "leave_import_batches/import-a",
+        {
+          created_by: "user-a",
+          status: "PREVIEWED",
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_import_rows/import-a_2",
+        {
+          batch_id: "import-a",
+          row_number: 2,
+          is_deleted: false,
+        },
+      ],
+      [
+        "leave_reconciliation_runs/run-1",
+        {
+          mode: "RECORDED",
+          status: "COMPLETED",
+          mismatched_buckets: 0,
+          created_by: "system:migration:leave-reconciliation",
+        },
+      ],
+      [
         "import_vouchers/import-c",
         { warehouse_id: "warehouse-c", is_deleted: false },
       ],
@@ -249,6 +397,24 @@ async function seedDocuments() {
       [
         "revenue_sync/store-d_2026-07",
         { warehouse_id: "store-d", period: "2026-07" },
+      ],
+      [
+        "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
+        {
+          warehouse_id: "store-d",
+          mode: "date",
+          dashboard: {
+            warehouseId: "store-d",
+            range: {
+              startDate: "2026-07-01",
+              endDate: "2026-07-01",
+            },
+          },
+        },
+      ],
+      [
+        "revenue_dashboards/store-d_date_2026-07-01_2026-07-01/orders/order-1",
+        { orderId: "order-1", is_deleted: false },
       ],
       [
         "meinvoice_accounts/account-1",
@@ -371,6 +537,7 @@ beforeEach(async () => {
     "office-a": {
       "office_scopes.read": true,
       "warehouses.read": true,
+      "leave.config.manage": true,
     },
     "warehouse-c": {
       "inventory.read": true,
@@ -380,6 +547,10 @@ beforeEach(async () => {
       "attendance.view": true,
       "expenses.read": true,
       "employees.read": true,
+      "leave.self.read": true,
+      "leave.approve": true,
+      "leave.approver.reassign": true,
+      "leave.config.manage": true,
     },
   });
   await seedAccess("user-b", {
@@ -391,6 +562,7 @@ beforeEach(async () => {
       "revenue.read": true,
       "invoices.read": true,
       "invoices.config": true,
+      "leave.self.read": true,
     },
   });
   await seedAccess("system-admin", {}, true);
@@ -609,10 +781,121 @@ describe("grant-aware Firestore rules", () => {
     await assertFails(
       getDoc(doc(user, "employee_employment_transitions", "transition-b")),
     );
+    await assertSucceeds(
+      getDoc(doc(user, "leave_balance_buckets", "profile-a_2026")),
+    );
+    await assertSucceeds(getDoc(doc(user, "leave_policies", "company")));
+    await assertFails(
+      getDoc(doc(user, "leave_balance_buckets", "profile-b_2026")),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "leave_balance_buckets"),
+          where("employee_profile_id", "==", "profile-a"),
+          where("employee_user_id", "==", "user-a"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+          orderBy("leave_year", "desc"),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "leave_ledger_entries"),
+          where("employee_profile_id", "==", "profile-a"),
+          where("employee_user_id", "==", "user-a"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          orderBy("posting_date", "desc"),
+        ),
+      ),
+    );
+    await assertFails(getDoc(doc(user, "leave_ledger_entries", "ledger-b")));
+    await assertSucceeds(getDoc(doc(user, "leave_requests", "request-a")));
+    await assertFails(getDoc(doc(user, "leave_requests", "request-b")));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "leave_requests"),
+          where("employee_profile_id", "==", "profile-a"),
+          where("employee_user_id", "==", "user-a"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+          orderBy("created_at", "desc"),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "company_holidays"),
+          where("is_deleted", "==", false),
+          orderBy("holiday_date", "asc"),
+        ),
+      ),
+    );
+    await assertFails(
+      updateDoc(doc(user, "company_holidays", "2026-09-02"), {
+        holiday_date: "2026-09-03",
+      }),
+    );
+    await assertSucceeds(
+      getDoc(doc(user, "leave_approval_configs", "company")),
+    );
+    await assertSucceeds(getDoc(doc(user, "leave_approval_tasks", "task-a")));
+    await assertFails(getDoc(doc(user, "leave_approval_tasks", "task-b")));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(user, "leave_approval_tasks"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+        ),
+      ),
+    );
+    await assertFails(
+      getDocs(
+        query(
+          collection(user, "leave_approval_tasks"),
+          where("is_deleted", "==", false),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDoc(doc(user, "leave_approval_reassignments", "reassign-a")),
+    );
+    await assertFails(
+      updateDoc(doc(user, "leave_approval_tasks", "task-a"), {
+        status: "APPROVED",
+      }),
+    );
+    await assertSucceeds(getDoc(doc(user, "leave_import_batches", "import-a")));
+    await assertSucceeds(getDoc(doc(user, "leave_import_rows", "import-a_2")));
+    await assertFails(
+      updateDoc(doc(user, "leave_import_batches", "import-a"), {
+        status: "COMMITTED",
+      }),
+    );
     const employee = environment.authenticatedContext("user-b").firestore();
+    await assertFails(getDoc(doc(employee, "leave_policies", "company")));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(employee, "leave_approval_tasks"),
+          where("employee_user_id", "==", "user-b"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+        ),
+      ),
+    );
     await assertSucceeds(
       getDoc(doc(employee, "employee_employment_transitions", "transition-b")),
     );
+    await assertFails(
+      getDoc(doc(employee, "leave_import_batches", "import-a")),
+    );
+    await assertFails(getDoc(doc(employee, "leave_import_rows", "import-a_2")));
   });
 
   it("inherits voucher and transfer scope into child documents", async () => {
@@ -631,6 +914,41 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(
       getDoc(doc(destinationUser, "transfer_orders/transfer-cd/items/item-1")),
+    );
+  });
+
+  it("keeps company-wide leave reconciliation evidence admin-only", async () => {
+    const user = environment.authenticatedContext("user-a").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+    await assertFails(getDoc(doc(user, "leave_reconciliation_runs", "run-1")));
+    await assertSucceeds(
+      getDoc(doc(admin, "leave_reconciliation_runs", "run-1")),
+    );
+  });
+
+  it("authorizes transfer list queries by source or destination scope", async () => {
+    const sourceUser = environment.authenticatedContext("user-a").firestore();
+    const destinationUser = environment
+      .authenticatedContext("user-b")
+      .firestore();
+
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(sourceUser, "transfer_orders"),
+          where("source_warehouse_id", "in", ["warehouse-c"]),
+          where("is_deleted", "==", false),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(destinationUser, "transfer_orders"),
+          where("destination_warehouse_id", "in", ["store-d"]),
+          where("is_deleted", "==", false),
+        ),
+      ),
     );
   });
 
@@ -667,6 +985,33 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(
       getDoc(doc(storeUser, "revenue_sync", "store-d_2026-07")),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(
+          storeUser,
+          "revenue_dashboards",
+          "store-d_date_2026-07-01_2026-07-01",
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(
+          storeUser,
+          "revenue_dashboards/store-d_date_2026-07-01_2026-07-01/orders",
+          "order-1",
+        ),
+      ),
+    );
+    await assertFails(
+      getDoc(
+        doc(
+          storeUser,
+          "revenue_dashboards",
+          "store-d_date_2026-07-02_2026-07-02",
+        ),
+      ),
     );
   });
 

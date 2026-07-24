@@ -38,6 +38,7 @@ interface UserState {
     permissions: PermissionMap,
   ) => void;
   markAccessOffline: () => void;
+  markAccessOnline: () => void;
   revokeAccess: (
     status?: Extract<UserAccessRuntimeStatus, "REVOKED" | "ERROR">,
   ) => void;
@@ -164,6 +165,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
           ? "OFFLINE_READY"
           : "OFFLINE_UNVERIFIED",
         permissions: hasVerifiedAccess ? state.permissions : {},
+      };
+    }),
+
+  markAccessOnline: () =>
+    set((state) => {
+      if (state.accessStatus !== "OFFLINE_READY") return state;
+      return {
+        accessStatus: "READY",
+        lastAccessServerSyncAt: new Date().toISOString(),
       };
     }),
 

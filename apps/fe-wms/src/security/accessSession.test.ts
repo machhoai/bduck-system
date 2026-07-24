@@ -10,6 +10,7 @@ import {
 } from "@bduck/shared-types";
 import {
   buildMaterializedPermissions,
+  needsGrantReload,
   parseActiveAccessMetadata,
 } from "../lib/accessSnapshotPolicy";
 import {
@@ -89,6 +90,36 @@ function grant(
     sync_time: now,
   };
 }
+
+test("same-version reconnect preserves verified access and mounted UI state", () => {
+  const store = useUserStore.getState();
+  store.clearAuth();
+  store.setAuthData(user("office-b-user"));
+  store.applyAccessSnapshot(1, "access-v1", {
+    "warehouse-c": { "inventory.read": true },
+  });
+  store.markAccessOffline();
+
+  const offlineState = useUserStore.getState();
+  const offlineEpoch = offlineState.accessEpoch;
+  assert.equal(offlineState.accessStatus, "OFFLINE_READY");
+  assert.equal(
+    needsGrantReload(
+      offlineState,
+      metadata("office-b-user", 1, "access-v1", 1),
+    ),
+    false,
+  );
+
+  offlineState.markAccessOnline();
+  const onlineState = useUserStore.getState();
+  assert.equal(onlineState.accessStatus, "READY");
+  assert.equal(onlineState.accessEpoch, offlineEpoch);
+  assert.equal(
+    onlineState.hasPermission("inventory.read", "warehouse-c"),
+    true,
+  );
+});
 
 test("access version revokes old listeners before applying the new scope", () => {
   const store = useUserStore.getState();
