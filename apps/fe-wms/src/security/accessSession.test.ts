@@ -121,6 +121,27 @@ test("same-version reconnect preserves verified access and mounted UI state", ()
   );
 });
 
+test("same-version session refresh does not advance access epoch", () => {
+  const store = useUserStore.getState();
+  store.clearAuth();
+  store.setAuthData(user("office-b-user"));
+  store.applyAccessSnapshot(1, "access-v1", {
+    "warehouse-c": { "inventory.read": true },
+  });
+  const readyState = useUserStore.getState();
+  const readyEpoch = readyState.accessEpoch;
+  const readyPermissions = readyState.permissions;
+
+  useUserStore.getState().applyAccessSnapshot(1, "access-v1", {
+    "warehouse-c": { "inventory.read": true },
+  });
+
+  const refreshedState = useUserStore.getState();
+  assert.equal(refreshedState.accessStatus, "READY");
+  assert.equal(refreshedState.accessEpoch, readyEpoch);
+  assert.equal(refreshedState.permissions, readyPermissions);
+});
+
 test("access version revokes old listeners before applying the new scope", () => {
   const store = useUserStore.getState();
   store.clearAuth();

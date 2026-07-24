@@ -146,14 +146,29 @@ export const useUserStore = create<UserState>()((set, get) => ({
     })),
 
   applyAccessSnapshot: (accessVersion, activeAccessVersionId, permissions) =>
-    set((state) => ({
-      permissions,
-      accessStatus: "READY",
-      accessVersion,
-      activeAccessVersionId,
-      lastAccessServerSyncAt: new Date().toISOString(),
-      accessEpoch: state.accessEpoch + 1,
-    })),
+    set((state) => {
+      const sameVerifiedAccess =
+        (state.accessStatus === "READY" ||
+          state.accessStatus === "OFFLINE_READY") &&
+        state.accessVersion === accessVersion &&
+        state.activeAccessVersionId === activeAccessVersionId;
+
+      if (sameVerifiedAccess) {
+        return {
+          accessStatus: "READY",
+          lastAccessServerSyncAt: new Date().toISOString(),
+        };
+      }
+
+      return {
+        permissions,
+        accessStatus: "READY",
+        accessVersion,
+        activeAccessVersionId,
+        lastAccessServerSyncAt: new Date().toISOString(),
+        accessEpoch: state.accessEpoch + 1,
+      };
+    }),
 
   markAccessOffline: () =>
     set((state) => {
