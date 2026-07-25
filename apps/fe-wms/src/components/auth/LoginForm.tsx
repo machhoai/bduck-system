@@ -107,9 +107,9 @@ export default function LoginForm() {
     };
 
     return (
-        <div className="min-h-screen flex bg-[var(--color-surface-base)]">
+        <div className="min-h-screen flex flex-col md:flex-row bg-[var(--color-surface-base)]">
             {/* ── Left Panel: Brand Visual ── */}
-            <div className="hidden lg:flex lg:w-[45%] relative items-center justify-end">
+            <div className="flex flex-1 justify-start lg:w-[45%] relative items-end md:items-center md:justify-end">
                 {/* Soft gradient orb */}
                 <div
                     className="absolute w-[500px] h-[500px] rounded-full opacity-20 blur-[120px]"
@@ -135,9 +135,9 @@ export default function LoginForm() {
                 />
 
                 {/* Brand content */}
-                <div className="relative z-10 max-w-full">
+                <div className="relative z-10 pl-4 max-w-full">
                     <h1
-                        className="text-[5.75rem] text-right font-bold leading-[1.1] tracking-tight mb-2"
+                        className="text-7xl md:text-[5.75rem] md:text-right font-bold leading-[1.1] tracking-tight"
                         style={{
                             fontFamily: 'var(--font-display)',
                             color: 'var(--color-text-primary)',
@@ -150,10 +150,10 @@ export default function LoginForm() {
                         PULSE
                     </h1>
 
-                    <p className='text-right text-sm'>Platform for Unified Leadership, Service & Enterprise</p>
+                    <p className='md:text-right text-[var(--color-text-muted)] text-sm'>Platform for Unified Leadership, Service & Enterprise</p>
 
                     {/* Status indicators */}
-                    <div className="mt-1 flex items-center justify-end gap-3">
+                    <div className="mt-1 hidden md:flex items-center justify-start md:justify-end gap-3">
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-[var(--color-text-muted)]">
                                 {copy.version}
@@ -169,35 +169,8 @@ export default function LoginForm() {
             </div>
 
             {/* ── Right Panel: Login Form ── */}
-            <div className="flex-1 flex items-center justify-start px-4 lg:pl-10">
+            <div className="flex-1 flex items-start md:items-center mt-4 md:mt-0 justify-start px-4 lg:pl-10">
                 <div className="w-full max-w-[400px]">
-                    {/* Mobile brand header */}
-                    <div className="lg:hidden mb-2 flex items-center gap-3">
-                        <div className="relative z-10 max-w-full">
-                            <Image
-                                src="/logo/jwc-h.png"
-                                alt="J-PULSE"
-                                width={700}
-                                height={238}
-                                priority
-                                className="h-auto w-full max-w-[420px]"
-                            />
-
-                            {/* Status indicators */}
-                            <div className="mb-1 flex items-center justify-start gap-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-[var(--color-text-muted)]">
-                                        {copy.version}
-                                    </span>
-                                </div>
-                                <div className="w-px h-3 bg-[var(--color-border-subtle)]" />
-                                <span className="text-xs text-[var(--color-text-muted)]">
-                                    v1.0.0
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Form header */}
                     <div className="mb-4">
                         <h2
@@ -207,51 +180,6 @@ export default function LoginForm() {
                             {copy.title}
                         </h2>
                     </div>
-
-                    {canSelectLocalDatabase && (
-                        <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--color-brand-primary)]/30 bg-[var(--color-brand-primary)]/5 p-3">
-                            <div className="mb-2 flex items-center justify-between gap-3">
-                                <label
-                                    htmlFor="local-firebase-target"
-                                    className="text-xs font-semibold tracking-wide text-[var(--color-text-secondary)]"
-                                >
-                                    Nguồn dữ liệu local
-                                </label>
-                                <span className="rounded-full bg-[var(--color-brand-primary)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-brand-primary)]">
-                                    Chỉ local
-                                </span>
-                            </div>
-                            <select
-                                id="local-firebase-target"
-                                value={localFirebaseTarget}
-                                onChange={handleDatabaseChange}
-                                disabled={isLoading || isSwitchingDatabase}
-                                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] disabled:opacity-50"
-                            >
-                                <option value="test-jw-system">
-                                    test-jw-system — Dữ liệu kiểm thử
-                                </option>
-                                <option value="jw-system-f2104">
-                                    jw-system-f2104 — Dữ liệu thật
-                                </option>
-                            </select>
-                            <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
-                                {isSwitchingDatabase
-                                    ? 'Đang chuyển nguồn dữ liệu...'
-                                    : localFirebaseTarget === 'jw-system-f2104'
-                                        ? 'Bạn đang đăng nhập vào dữ liệu thật. Mọi thay đổi sẽ tác động trực tiếp lên hệ thống thật.'
-                                        : 'Bạn đang đăng nhập vào môi trường dữ liệu kiểm thử.'}
-                            </p>
-                            {databaseSwitchError && (
-                                <p
-                                    role="alert"
-                                    className="mt-1 text-xs text-[var(--color-accent-error)]"
-                                >
-                                    {databaseSwitchError}
-                                </p>
-                            )}
-                        </div>
-                    )}
 
                     {/* Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
@@ -403,6 +331,33 @@ export default function LoginForm() {
                                 </div>
                             )}
                         </div>
+
+                        {canSelectLocalDatabase && (
+                            <div className="mt-2">
+                                <select
+                                    id="local-firebase-target"
+                                    value={localFirebaseTarget}
+                                    onChange={handleDatabaseChange}
+                                    disabled={isLoading || isSwitchingDatabase}
+                                    className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-border-focus)] disabled:opacity-50"
+                                >
+                                    <option value="test-jw-system">
+                                        test-jw-system — Dữ liệu kiểm thử
+                                    </option>
+                                    <option value="jw-system-f2104">
+                                        jw-system-f2104 — Dữ liệu thật
+                                    </option>
+                                </select>
+                                {databaseSwitchError && (
+                                    <p
+                                        role="alert"
+                                        className="mt-1 text-xs text-[var(--color-accent-error)]"
+                                    >
+                                        {databaseSwitchError}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Submit button */}
                         <button
