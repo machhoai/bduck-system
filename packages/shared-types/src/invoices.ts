@@ -108,6 +108,8 @@ export interface InvoiceBulkIssueInvoiceSummary {
   source_order_document_id: string;
   source_order_id: string;
   order_number: string | null;
+  revision: number;
+  source_payload_hash: string;
   payment_time: string;
   total_amount_without_vat: number;
   total_vat_amount: number;

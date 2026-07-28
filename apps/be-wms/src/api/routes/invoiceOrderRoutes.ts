@@ -8,6 +8,7 @@ import {
 import {
   getInvoiceDocumentHandler,
   prepareInvoiceDocumentHandler,
+  previewBulkIssueInvoiceDocumentHandler,
   previewInvoiceDocumentHandler,
   updateInvoiceDocumentHandler,
 } from "../controllers/invoiceDocumentController.js";
@@ -64,6 +65,11 @@ router.post(
   "/bulk-issues/preview",
   requirePermission("invoices.bulk_issue", bodyWarehouseId),
   previewInvoiceBulkIssueHandler,
+);
+router.post(
+  "/bulk-issues/documents/:id/preview",
+  requirePermission("invoices.bulk_issue", bodyWarehouseId),
+  previewBulkIssueInvoiceDocumentHandler,
 );
 router.post(
   "/bulk-issues",

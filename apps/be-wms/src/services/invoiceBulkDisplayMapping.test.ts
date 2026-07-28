@@ -107,6 +107,8 @@ test("bulk preview groups quantities by mapped product name and unit", () => {
         id: "document-1",
         source_order_id: "order-1",
         source_order_number: "HD-1",
+        revision: 3,
+        source_payload_hash: "a".repeat(64),
         payment_time: "2026-07-28T10:00:00+07:00",
         calculation,
       },
@@ -123,6 +125,8 @@ test("bulk preview groups quantities by mapped product name and unit", () => {
     },
   ]);
   assert.equal(result.invoices[0]?.products[0]?.item_name, "Vé lượt");
+  assert.equal(result.invoices[0]?.revision, 3);
+  assert.equal(result.invoices[0]?.source_payload_hash, "a".repeat(64));
 });
 
 test("unit mapping can differ between products with the same source unit", () => {

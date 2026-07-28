@@ -118,16 +118,17 @@ export const previewInvoiceSourceOrder = async (
   return result;
 };
 
-export const previewInvoiceDocument = async (
+const previewInvoiceDocumentWithPermission = async (
   documentId: string,
   warehouseId: string,
   expectedRevision: number,
   expectedSourcePayloadHash: string,
   actorId: string,
   authorization: AuthorizationService,
+  requiredPermission: "invoices.prepare" | "invoices.bulk_issue",
   auditMetadata?: AuditMetadata,
 ) => {
-  authorization.assert("invoices.prepare", warehouseId);
+  authorization.assert(requiredPermission, warehouseId);
   const document = await invoiceDocumentRepository.getDocument(
     documentId,
     warehouseId,
@@ -240,3 +241,43 @@ export const previewInvoiceDocument = async (
   });
   return result;
 };
+
+export const previewInvoiceDocument = (
+  documentId: string,
+  warehouseId: string,
+  expectedRevision: number,
+  expectedSourcePayloadHash: string,
+  actorId: string,
+  authorization: AuthorizationService,
+  auditMetadata?: AuditMetadata,
+) =>
+  previewInvoiceDocumentWithPermission(
+    documentId,
+    warehouseId,
+    expectedRevision,
+    expectedSourcePayloadHash,
+    actorId,
+    authorization,
+    "invoices.prepare",
+    auditMetadata,
+  );
+
+export const previewBulkIssueInvoiceDocument = (
+  documentId: string,
+  warehouseId: string,
+  expectedRevision: number,
+  expectedSourcePayloadHash: string,
+  actorId: string,
+  authorization: AuthorizationService,
+  auditMetadata?: AuditMetadata,
+) =>
+  previewInvoiceDocumentWithPermission(
+    documentId,
+    warehouseId,
+    expectedRevision,
+    expectedSourcePayloadHash,
+    actorId,
+    authorization,
+    "invoices.bulk_issue",
+    auditMetadata,
+  );

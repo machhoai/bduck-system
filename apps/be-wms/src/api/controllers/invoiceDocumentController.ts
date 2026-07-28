@@ -12,7 +12,10 @@ import {
   prepareInvoiceDocumentFromSourceOrder,
   updateInvoiceDocument,
 } from "../../services/invoiceDocumentService.js";
-import { previewInvoiceDocument } from "../../services/invoicePreviewService.js";
+import {
+  previewBulkIssueInvoiceDocument,
+  previewInvoiceDocument,
+} from "../../services/invoicePreviewService.js";
 import { MeInvoiceApiError } from "../../services/meInvoiceClient.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -139,6 +142,31 @@ export const previewInvoiceDocumentHandler = async (
     const { id } = invoiceDocumentParamsSchema.parse(req.params);
     const input = invoiceDocumentPreviewSchema.parse(req.body);
     const data = await previewInvoiceDocument(
+      id,
+      input.warehouse_id,
+      input.expected_revision,
+      input.expected_source_payload_hash,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tạo link xem trước trong 5 phút.",
+      zh: "已创建 5 分钟有效的预览链接。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const previewBulkIssueInvoiceDocumentHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { id } = invoiceDocumentParamsSchema.parse(req.params);
+    const input = invoiceDocumentPreviewSchema.parse(req.body);
+    const data = await previewBulkIssueInvoiceDocument(
       id,
       input.warehouse_id,
       input.expected_revision,

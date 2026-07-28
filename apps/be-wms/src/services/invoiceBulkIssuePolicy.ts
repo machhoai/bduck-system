@@ -216,6 +216,8 @@ export const buildBulkIssueInvoiceSummaries = (
         typeof document.source_order_number === "string"
           ? document.source_order_number
           : null,
+      revision: Number(document.revision),
+      source_payload_hash: String(document.source_payload_hash),
       payment_time: String(document.payment_time),
       total_amount_without_vat: Number(
         calculation.total_amount_without_vat ?? 0,

@@ -296,6 +296,24 @@ export const invoiceApi = {
       body: JSON.stringify(payload),
     }),
 
+  previewBulkIssueDocument: (
+    id: string,
+    warehouseId: string,
+    expectedRevision: number,
+    expectedSourcePayloadHash: string,
+  ) =>
+    request<InvoicePreviewResult>(
+      `/api/invoices/bulk-issues/documents/${id}/preview`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          warehouse_id: warehouseId,
+          expected_revision: expectedRevision,
+          expected_source_payload_hash: expectedSourcePayloadHash,
+        }),
+      },
+    ),
+
   createBulkIssue: (
     payload: InvoiceBulkIssueSelectionPayload & {
       otp: string;
