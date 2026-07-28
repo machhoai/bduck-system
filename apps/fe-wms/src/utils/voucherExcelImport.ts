@@ -107,7 +107,7 @@ function getCellText(cell: ExcelJS.Cell): string {
       .map((rt) => rt.text)
       .join("");
   }
-  if (typeof v === "object" && "result" in v) {
+  if (typeof v === "object" && ("formula" in v || "result" in v)) {
     const r = (v as ExcelJS.CellFormulaValue).result;
     // Nếu kết quả công thức là số, trả về raw
     if (typeof r === "number") return String(r);
@@ -198,10 +198,16 @@ export async function readSheetPreview(
     }
   }
 
-  // Đếm số hàng có dữ liệu từ startRow
+  // Đếm số hàng thực sự có dữ liệu từ startRow. Các file mẫu có thể chứa
+  // công thức/validation ở nhiều hàng trống nên không dùng rowCount trực tiếp.
   let totalDataRows = 0;
-  sheet.eachRow((_, rowNum) => {
-    if (rowNum >= startRow) totalDataRows++;
+  sheet.eachRow((row, rowNum) => {
+    if (rowNum < startRow) return;
+    let hasData = false;
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      if (getCellText(cell).trim()) hasData = true;
+    });
+    if (hasData) totalDataRows++;
   });
 
   return {

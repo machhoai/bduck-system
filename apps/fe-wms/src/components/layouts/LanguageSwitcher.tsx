@@ -5,10 +5,12 @@ import { useTranslation } from "../../lib/i18n";
 
 interface LanguageSwitcherProps {
   className?: string;
+  variant?: "dark" | "light";
 }
 
 export default function LanguageSwitcher({
   className = "",
+  variant = "dark",
 }: LanguageSwitcherProps) {
   const { t, lang, setLang } = useTranslation();
   const nextLanguage = lang === "vi" ? "zh" : "vi";
@@ -17,6 +19,11 @@ export default function LanguageSwitcher({
       ? `${t.sidebar.language}: ${t.sidebar.vietnamese}`
       : `${t.sidebar.language}: ${t.sidebar.chinese}`;
 
+  const baseStyles =
+    variant === "light"
+      ? "text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 bg-white shadow-sm"
+      : "text-white/65 hover:bg-white/10 hover:text-white";
+
   return (
     <button
       type="button"
@@ -24,9 +31,9 @@ export default function LanguageSwitcher({
       title={title}
       aria-label={title}
       className={`
-        relative flex h-8 w-10 shrink-0 flex-1 aspect-square items-center justify-center rounded-[var(--radius-sm)]
-        text-white/65 transition-all duration-200 active:scale-95
-        hover:bg-white/10 hover:text-white
+        relative flex h-8 w-10 shrink-0 aspect-square items-center justify-center rounded-[var(--radius-sm)]
+        transition-all duration-200 active:scale-95
+        ${baseStyles}
         ${className}
       `}
     >

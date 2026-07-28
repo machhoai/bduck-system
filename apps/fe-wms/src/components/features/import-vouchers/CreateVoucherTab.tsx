@@ -724,6 +724,7 @@ export default function CreateVoucherTab({
                         <VoucherExcelImportPanel
                             uploadedFiles={files}
                             products={products}
+                            locations={locations}
                             onImport={bulkAddItems}
                         />
                         <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">

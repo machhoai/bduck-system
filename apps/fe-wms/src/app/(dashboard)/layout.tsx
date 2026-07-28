@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useUserStore } from "../../stores/useUserStore";
-import { I18nProvider } from "../../lib/i18n";
+import { I18nProvider, useTranslation } from "../../lib/i18n";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import DashboardSkeleton from "../../components/layouts/DashboardSkeleton";
 import { usePagePermission } from "../../hooks/usePagePermission";
@@ -13,6 +13,7 @@ import { useMFA } from "../../hooks/useMFA";
 import { useCurrentUserRoleSync } from "../../hooks/useCurrentUserRoleSync";
 import GuideProvider from "../../components/providers/GuideProvider";
 import { resolveDashboardRuntimeFailure } from "../../lib/authNavigationPolicy";
+import LanguageSwitcher from "../../components/layouts/LanguageSwitcher";
 
 /**
  * Dashboard Group Layout — Auth Guard + RBAC Guard + Layout wrapper
@@ -21,15 +22,12 @@ import { resolveDashboardRuntimeFailure } from "../../lib/authNavigationPolicy";
  * ► Nếu chưa login → redirect về /login
  * ► Nếu không có quyền → hiển thị trang 403
  * ► Nếu OK → render DashboardLayout + children
- * ► LUẬT THÉP: Dùng Skeleton loading thay vì spinner, RBAC check
+ * ► LUẬT THÉP: Dùng Skeleton loading thay vì spinner, RBAC check, bọc i18n
  */
-export default function DashboardGroupLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
+    const { t } = useTranslation();
     const isAuthenticated = useUserStore((s) => s.isAuthenticated);
     const authStatus = useUserStore((s) => s.authStatus);
     const accessStatus = useUserStore((s) => s.accessStatus);
@@ -55,15 +53,39 @@ export default function DashboardGroupLayout({
     const isVerifyingAuth =
         authStatus === "INITIALIZING" || authStatus === "VERIFYING";
     const runtimeFailure = resolveDashboardRuntimeFailure(authStatus, accessStatus);
+
     if (runtimeFailure) {
+        const failureMessages = {
+            offline: {
+                title: t.runtimeFailure?.offlineTitle || runtimeFailure.title,
+                description: t.runtimeFailure?.offlineDesc || runtimeFailure.description,
+            },
+            auth: {
+                title: t.runtimeFailure?.authTitle || runtimeFailure.title,
+                description: t.runtimeFailure?.authDesc || runtimeFailure.description,
+            },
+            access: {
+                title: t.runtimeFailure?.accessTitle || runtimeFailure.title,
+                description: t.runtimeFailure?.accessDesc || runtimeFailure.description,
+            },
+        };
+
+        const activeMessage = failureMessages[runtimeFailure.kind] || {
+            title: runtimeFailure.title,
+            description: runtimeFailure.description,
+        };
+
         return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+            <div className="relative flex min-h-screen items-center justify-center bg-slate-100 px-4">
+                <div className="absolute top-4 right-4 z-10">
+                    <LanguageSwitcher variant="light" />
+                </div>
                 <div className="w-full sm:max-w-80 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
                     <h1 className="text-lg font-semibold text-slate-900">
-                        {runtimeFailure.title}
+                        {activeMessage.title}
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {runtimeFailure.description}
+                        {activeMessage.description}
                     </p>
                     <div className="mt-5 flex justify-center gap-3">
                         <button
@@ -71,26 +93,27 @@ export default function DashboardGroupLayout({
                             onClick={() => window.location.reload()}
                             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                         >
-                            Thử lại
+                            {t.runtimeFailure?.retry || "Thử lại"}
                         </button>
                         <button
                             type="button"
                             onClick={() => router.replace("/login")}
                             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                         >
-                            Đăng nhập lại
+                            {t.runtimeFailure?.relogin || "Đăng nhập lại"}
                         </button>
                     </div>
                 </div>
             </div>
         );
     }
+
     if (!isMounted || isVerifyingAuth || !isAuthenticated || isVerifyingAccess) {
         return <DashboardSkeleton />;
     }
 
     return (
-        <I18nProvider>
+        <>
             <MFALockScreen />
             <div
                 key={accessEpoch}
@@ -102,6 +125,18 @@ export default function DashboardGroupLayout({
                     </DashboardLayout>
                 </GuideProvider>
             </div>
+        </>
+    );
+}
+
+export default function DashboardGroupLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <I18nProvider>
+            <DashboardContent>{children}</DashboardContent>
         </I18nProvider>
     );
 }

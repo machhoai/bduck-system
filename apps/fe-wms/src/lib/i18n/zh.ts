@@ -202,6 +202,17 @@ const zh: Dictionary = {
     chinese: "中文",
   },
 
+  runtimeFailure: {
+    offlineTitle: "您当前处于离线状态",
+    offlineDesc: "请重新连接互联网以验证登录会话和访问权限。",
+    authTitle: "无法验证登录会话",
+    authDesc: "身份验证服务器未响应或登录会话无效。请重试。",
+    accessTitle: "无法加载访问权限",
+    accessDesc: "权限服务当前不可用。您的互联网连接可能仍处于正常状态。",
+    retry: "重试",
+    relogin: "重新登录",
+  },
+
   user: {
     role: "角色",
     locations: "管理区域",

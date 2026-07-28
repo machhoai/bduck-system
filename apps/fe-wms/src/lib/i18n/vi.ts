@@ -49,6 +49,17 @@ const vi = {
         chinese: "Tiếng Trung",
     },
 
+    runtimeFailure: {
+        offlineTitle: "Bạn đang ngoại tuyến",
+        offlineDesc: "Kết nối lại Internet để xác minh phiên đăng nhập và quyền truy cập.",
+        authTitle: "Không thể xác minh phiên đăng nhập",
+        authDesc: "Máy chủ xác thực chưa phản hồi hoặc phiên đăng nhập không hợp lệ. Vui lòng thử lại.",
+        accessTitle: "Không thể tải quyền truy cập",
+        accessDesc: "Dịch vụ phân quyền hiện không khả dụng. Kết nối Internet của bạn vẫn có thể hoạt động bình thường.",
+        retry: "Thử lại",
+        relogin: "Đăng nhập lại",
+    },
+
     user: {
         role: "Vai trò",
         locations: "Khu vực quản lý",

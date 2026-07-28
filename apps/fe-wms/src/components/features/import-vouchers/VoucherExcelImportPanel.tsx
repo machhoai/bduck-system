@@ -15,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  Download,
   FileSpreadsheet,
   GripHorizontal,
   Loader2,
@@ -24,7 +25,7 @@ import {
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { gooeyToast } from "goey-toast";
-import type { Product } from "@bduck/shared-types";
+import type { Product, WarehouseLocation } from "@bduck/shared-types";
 import {
   type SheetColumnInfo,
   type SheetPreview,
@@ -51,6 +52,7 @@ interface VoucherExcelImportPanelProps {
   /** File chứng từ đã upload từ bước 1 (để gợi ý XLSX) */
   uploadedFiles: SelectedFile[];
   products: Product[];
+  locations: WarehouseLocation[];
   /** Callback khi người dùng xác nhận thêm sản phẩm */
   onImport: (
     items: { productId: string; quantity: number; unitPrice: number; notes: string; locationCode: string }[]
@@ -306,6 +308,7 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
 export function VoucherExcelImportPanel({
   uploadedFiles,
   products,
+  locations,
   onImport,
 }: VoucherExcelImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -323,6 +326,7 @@ export function VoucherExcelImportPanel({
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const [parseResults, setParseResults] = useState<VoucherItemParseResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
   // Các file XLSX từ bước 1
   const xlsxFromStep1 = uploadedFiles.filter(
@@ -475,6 +479,28 @@ export function VoucherExcelImportPanel({
     setParseResults([]);
   }, []);
 
+  const handleDownloadTemplate = useCallback(async () => {
+    setIsDownloadingTemplate(true);
+    try {
+      const { downloadVoucherExcelTemplate } = await import(
+        "@/utils/voucherExcelTemplate"
+      );
+      await downloadVoucherExcelTemplate({
+        products,
+        locations,
+        language: lang,
+      });
+      gooeyToast.success(copy.templateDownloaded);
+    } catch (err) {
+      console.error("[VoucherExcelImportPanel] download template:", err);
+      gooeyToast.error(copy.templateDownloadFailed, {
+        description: copy.tryAgain,
+      });
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  }, [copy, lang, locations, products]);
+
   const mappedKeys = Object.values(mapping).filter(Boolean) as string[];
 
   // ─────────────────────────────────────────────
@@ -494,6 +520,21 @@ export function VoucherExcelImportPanel({
             {copy.headerSubtitle}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => void handleDownloadTemplate()}
+          disabled={isDownloadingTemplate}
+          className="flex h-7 items-center gap-1.5 rounded-[var(--radius-xs)] border border-[var(--color-brand-primary)] px-2.5 text-xs font-semibold text-[var(--color-brand-primary)] transition-colors hover:bg-[var(--color-brand-primary-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isDownloadingTemplate ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Download size={12} />
+          )}
+          {isDownloadingTemplate
+            ? copy.downloadingTemplate
+            : copy.downloadTemplate}
+        </button>
         {phase !== "upload" && (
           <button
             type="button"
