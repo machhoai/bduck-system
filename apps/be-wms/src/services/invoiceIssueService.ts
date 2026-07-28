@@ -19,6 +19,7 @@ import {
   statusIsIssued,
   validateInvoiceIssueCandidate,
 } from "./invoiceIssuePolicy.js";
+import { bulkIssueConfigFingerprint } from "./invoiceBulkIssuePolicy.js";
 import { dispatchInvoiceIssueItem } from "./invoiceTaskDispatcher.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 
@@ -76,6 +77,7 @@ export const createInvoiceIssueJob = async (
   options: {
     permission?: "invoices.issue" | "invoices.bulk_issue";
     bulkRunId?: string;
+    expectedConfigFingerprint?: string;
   } = {},
 ) => {
   authorization.assert(options.permission ?? "invoices.issue", input.warehouse_id);
@@ -108,6 +110,16 @@ export const createInvoiceIssueJob = async (
     throw serviceError(422, "Cấu hình meInvoice của cửa hàng chưa sẵn sàng.", "STORE_CONFIG_NOT_READY");
   }
   const config = toPublicStoreConfig(storedConfig);
+  if (
+    options.expectedConfigFingerprint &&
+    bulkIssueConfigFingerprint(config) !== options.expectedConfigFingerprint
+  ) {
+    throw serviceError(
+      409,
+      "Cấu hình tên sản phẩm hoặc đơn vị đã thay đổi. Vui lòng xem trước lại.",
+      "BULK_DISPLAY_CONFIG_CHANGED",
+    );
+  }
   if (!config.go_live_at) {
     throw serviceError(422, "Chưa cấu hình thời điểm go-live nên hệ thống không cho phép phát hành.", "GO_LIVE_NOT_CONFIGURED");
   }

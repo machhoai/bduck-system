@@ -1,4 +1,5 @@
 import {
+  type InvoiceBulkIssueDisplayConfig,
   type InvoiceBulkIssuePreview,
   type InvoiceBulkIssueRun,
   type InvoiceBulkSelectionMode,
@@ -112,6 +113,8 @@ export interface MeInvoiceStoreConfigPayload {
   tax_rate_source: InvoiceTaxRateSource;
   default_vat_rate_name: InvoiceVatRateName | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
+  item_name_mapping: Record<string, string>;
+  unit_name_mapping: Record<string, string>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   payment_method_mapping: Record<string, string>;
   default_payment_method_name: string;
@@ -296,12 +299,44 @@ export const invoiceApi = {
     payload: InvoiceBulkIssueSelectionPayload & {
       otp: string;
       idempotency_key: string;
+      config_fingerprint: string;
       action_time: string;
     },
   ) => request<InvoiceBulkIssueRunView>("/api/invoices/bulk-issues", {
     method: "POST",
     body: JSON.stringify(payload),
   }),
+
+  getBulkIssueDisplayConfig: (warehouseId: string, businessDate: string) => {
+    const query = new URLSearchParams({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+    });
+    return request<InvoiceBulkIssueDisplayConfig>(
+      `/api/invoices/bulk-issues/display-config?${query.toString()}`,
+    );
+  },
+
+  saveBulkIssueDisplayConfig: (
+    warehouseId: string,
+    businessDate: string,
+    payload: Pick<
+      InvoiceBulkIssueDisplayConfig,
+      "item_name_mapping" | "unit_name_mapping"
+    >,
+  ) =>
+    request<InvoiceBulkIssueDisplayConfig>(
+      "/api/invoices/bulk-issues/display-config",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          warehouse_id: warehouseId,
+          business_date: businessDate,
+          ...payload,
+          action_time: new Date().toISOString(),
+        }),
+      },
+    ),
 
   listStoreAccountOptions: (warehouseId: string) =>
     request<MeInvoiceAccountOption[]>(

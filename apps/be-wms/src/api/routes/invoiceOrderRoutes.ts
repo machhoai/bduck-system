@@ -14,9 +14,11 @@ import {
 import {
   createInvoiceBulkIssueHandler,
   createInvoiceIssueJobHandler,
+  getInvoiceBulkDisplayConfigHandler,
   getInvoiceIssueJobHandler,
   previewInvoiceBulkIssueHandler,
   processInvoiceIssueItemHandler,
+  saveInvoiceBulkDisplayConfigHandler,
   sweepInvoiceIssueItemsHandler,
 } from "../controllers/invoiceIssueController.js";
 import {
@@ -48,6 +50,16 @@ router.post("/internal/issues/sweep", sweepInvoiceIssueItemsHandler);
 router.post("/internal/reconciliation/status-sweep", sweepIssuedInvoiceStatusesHandler);
 
 router.use(requireAuth);
+router.get(
+  "/bulk-issues/display-config",
+  requirePermission("invoices.bulk_issue", queryWarehouseId),
+  getInvoiceBulkDisplayConfigHandler,
+);
+router.put(
+  "/bulk-issues/display-config",
+  requirePermission("invoices.bulk_issue", bodyWarehouseId),
+  saveInvoiceBulkDisplayConfigHandler,
+);
 router.post(
   "/bulk-issues/preview",
   requirePermission("invoices.bulk_issue", bodyWarehouseId),

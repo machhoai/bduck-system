@@ -15,6 +15,7 @@ import {
   zeroDecimal,
 } from "./invoiceDecimal.js";
 import { canonicalJson } from "./invoiceOrderSyncUtils.js";
+import { applyInvoiceDisplayMapping } from "./invoiceDisplayMapping.js";
 
 const REF_ID_NAMESPACE = "e9e08082-9f44-4ee0-aeb6-55a0e91c2dfc";
 const REF_ID_NAMESPACE_VERSION = "meinvoice-original-v1";
@@ -168,31 +169,34 @@ export const buildMeInvoicePayload = (
         storeConfig.option_user_defined.exchange_rate_decimal_digits,
       ),
     },
-    OriginalInvoiceDetail: calculation.lines.map((line, index) => ({
-      ItemType: 1,
-      LineNumber: index + 1,
-      SortOrder: index + 1,
-      ItemCode: line.item_code ?? "",
-      ItemName: line.item_name,
-      UnitName: line.unit_name ?? storeConfig.default_unit_name ?? "",
-      Quantity: line.quantity,
-      UnitPrice: line.unit_price,
-      AmountOC: line.amount,
-      Amount: line.amount,
-      DiscountRate: resolveDiscountRate(
-        line.amount,
-        line.discount_rate,
-        line.calculated_discount_amount,
-        coefficientDigits,
-      ),
-      DiscountAmountOC: line.calculated_discount_amount,
-      DiscountAmount: line.calculated_discount_amount,
-      AmountWithoutVATOC: line.amount_without_vat,
-      AmountWithoutVAT: line.amount_without_vat,
-      VATRateName: line.vat_rate_name,
-      VATAmountOC: line.vat_amount,
-      VATAmount: line.vat_amount,
-    })),
+    OriginalInvoiceDetail: calculation.lines.map((sourceLine, index) => {
+      const line = applyInvoiceDisplayMapping(sourceLine, storeConfig);
+      return {
+        ItemType: 1,
+        LineNumber: index + 1,
+        SortOrder: index + 1,
+        ItemCode: line.item_code ?? "",
+        ItemName: line.item_name,
+        UnitName: line.unit_name ?? storeConfig.default_unit_name ?? "",
+        Quantity: line.quantity,
+        UnitPrice: line.unit_price,
+        AmountOC: line.amount,
+        Amount: line.amount,
+        DiscountRate: resolveDiscountRate(
+          line.amount,
+          line.discount_rate,
+          line.calculated_discount_amount,
+          coefficientDigits,
+        ),
+        DiscountAmountOC: line.calculated_discount_amount,
+        DiscountAmount: line.calculated_discount_amount,
+        AmountWithoutVATOC: line.amount_without_vat,
+        AmountWithoutVAT: line.amount_without_vat,
+        VATRateName: line.vat_rate_name,
+        VATAmountOC: line.vat_amount,
+        VATAmount: line.vat_amount,
+      };
+    }),
     TaxRateInfo: calculation.tax_rate_info.map((item) => ({
       VATRateName: item.vat_rate_name,
       AmountWithoutVATOC: item.amount_without_vat,

@@ -45,6 +45,9 @@ interface PromiseToastMessages {
   successDescription: string;
   /** Mô tả chi tiết khi thất bại — chuỗi hoặc hàm nhận error để hiển thị message từ server */
   errorDescription: string | ((err: unknown) => string);
+  /** Hành động thử lại tùy chọn cho thao tác bất đồng bộ */
+  retry?: () => void;
+  retryLabel?: string;
 }
 
 /**
@@ -103,6 +106,16 @@ export const showToast = {
         success: messages.successDescription,
         error: errorDesc,
       },
+      ...(messages.retry
+        ? {
+            action: {
+              error: {
+                label: messages.retryLabel ?? "Thử lại",
+                onClick: messages.retry,
+              },
+            },
+          }
+        : {}),
     });
 
     return promise;

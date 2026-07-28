@@ -97,6 +97,24 @@ export interface InvoiceBulkIssueSummary {
   product_quantity: number;
 }
 
+export interface InvoiceBulkIssueProductSummary {
+  item_name: string;
+  unit_name: string | null;
+  quantity: number;
+  invoice_count: number;
+}
+
+export interface InvoiceBulkIssueInvoiceSummary {
+  source_order_document_id: string;
+  source_order_id: string;
+  order_number: string | null;
+  payment_time: string;
+  total_amount_without_vat: number;
+  total_vat_amount: number;
+  total_amount: number;
+  products: InvoiceBulkIssueProductSummary[];
+}
+
 export interface InvoiceBulkIssueExcludedOrder {
   source_order_document_id: string;
   source_order_id: string;
@@ -110,11 +128,21 @@ export interface InvoiceBulkIssuePreview {
   selection_mode: InvoiceBulkSelectionMode;
   summary: InvoiceBulkIssueSummary;
   eligible_source_order_ids: string[];
+  config_fingerprint: string;
+  invoices: InvoiceBulkIssueInvoiceSummary[];
+  product_summary: InvoiceBulkIssueProductSummary[];
   excluded: InvoiceBulkIssueExcludedOrder[];
 }
 
-export interface InvoiceBulkIssueRun extends InvoiceBulkIssuePreview {
+export interface InvoiceBulkIssueRun {
   id: string;
+  warehouse_id: string;
+  business_date: string;
+  selection_mode: InvoiceBulkSelectionMode;
+  summary: InvoiceBulkIssueSummary;
+  eligible_source_order_ids: string[];
+  config_fingerprint: string;
+  excluded: InvoiceBulkIssueExcludedOrder[];
   job_ids: string[];
   requested_by: string;
   status: "CREATING" | "QUEUED" | "FAILED";
@@ -122,6 +150,15 @@ export interface InvoiceBulkIssueRun extends InvoiceBulkIssuePreview {
   sync_time: Date;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface InvoiceBulkIssueDisplayConfig {
+  warehouse_id: string;
+  business_date: string;
+  item_names: string[];
+  unit_names: string[];
+  item_name_mapping: Record<string, string>;
+  unit_name_mapping: Record<string, string>;
 }
 
 export enum InvoiceKind {
@@ -339,6 +376,8 @@ export interface MeInvoiceStoreConfig {
   tax_rate_source: InvoiceTaxRateSource;
   default_vat_rate_name: InvoiceVatRateName | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
+  item_name_mapping: Record<string, string>;
+  unit_name_mapping: Record<string, string>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   payment_method_mapping: Record<string, string>;
   default_payment_method_name: string;
@@ -501,9 +540,7 @@ const INVOICE_TRANSITIONS: Readonly<
   [InvoiceDocumentStatus.NEEDS_CORRECTION]: [
     InvoiceDocumentStatus.READY_TO_ISSUE,
   ],
-  [InvoiceDocumentStatus.NEEDS_REVIEW]: [
-    InvoiceDocumentStatus.READY_TO_ISSUE,
-  ],
+  [InvoiceDocumentStatus.NEEDS_REVIEW]: [InvoiceDocumentStatus.READY_TO_ISSUE],
   [InvoiceDocumentStatus.NEEDS_SECOND_REVIEW]: [
     InvoiceDocumentStatus.READY_TO_ISSUE,
   ],

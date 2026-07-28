@@ -41,6 +41,25 @@ const skuMappingSchema = z.object({
   vat_rate_name: vatRateNameSchema.optional(),
 });
 
+const displayMappingKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .regex(/^[^$\u0000]+$/, "Mapping key contains unsupported characters.");
+
+const displayMappingValueSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .regex(/^[^$\u0000]+$/, "Mapping value contains unsupported characters.");
+
+export const invoiceDisplayMappingSchema = z.record(
+  displayMappingKeySchema,
+  displayMappingValueSchema,
+);
+
 export const meInvoiceOptionUserDefinedSchema = z.object({
   main_currency: z.string().trim().min(3).max(3).default("VND"),
   amount_decimal_digits: decimalDigitsSchema.default(0),
@@ -72,6 +91,8 @@ export const meInvoiceStoreConfigInputSchema = z
     tax_rate_source: z.enum(["SOURCE", "SKU", "CATEGORY", "MANUAL_REVIEW"]),
     default_vat_rate_name: vatRateNameSchema.nullable().default(null),
     sku_mapping: z.record(z.string(), skuMappingSchema).default({}),
+    item_name_mapping: invoiceDisplayMappingSchema.default({}),
+    unit_name_mapping: invoiceDisplayMappingSchema.default({}),
     category_vat_mapping: z.record(z.string(), vatRateNameSchema).default({}),
     payment_method_mapping: z
       .record(z.string(), z.string().trim().min(1).max(100))

@@ -36,12 +36,21 @@ export const toPublicStoreConfig = (
     data.sku_mapping && typeof data.sku_mapping === "object"
       ? (data.sku_mapping as MeInvoiceStoreConfig["sku_mapping"])
       : {},
+  item_name_mapping:
+    data.item_name_mapping && typeof data.item_name_mapping === "object"
+      ? (data.item_name_mapping as MeInvoiceStoreConfig["item_name_mapping"])
+      : {},
+  unit_name_mapping:
+    data.unit_name_mapping && typeof data.unit_name_mapping === "object"
+      ? (data.unit_name_mapping as MeInvoiceStoreConfig["unit_name_mapping"])
+      : {},
   category_vat_mapping:
     data.category_vat_mapping && typeof data.category_vat_mapping === "object"
       ? (data.category_vat_mapping as MeInvoiceStoreConfig["category_vat_mapping"])
       : {},
   payment_method_mapping:
-    data.payment_method_mapping && typeof data.payment_method_mapping === "object"
+    data.payment_method_mapping &&
+    typeof data.payment_method_mapping === "object"
       ? (data.payment_method_mapping as MeInvoiceStoreConfig["payment_method_mapping"])
       : {},
   validated_at: dateFromValue(data.validated_at),
@@ -55,7 +64,9 @@ export const getMeInvoiceStoreConfig = async (
 ): Promise<MeInvoiceStoreConfig | null> => {
   authorization.assert("invoices.config", warehouseId);
   const stored = await meInvoiceConfigRepository.getStoreConfig(warehouseId);
-  return stored && stored.is_deleted !== true ? toPublicStoreConfig(stored) : null;
+  return stored && stored.is_deleted !== true
+    ? toPublicStoreConfig(stored)
+    : null;
 };
 
 export const listMeInvoiceStoreAccountOptions = async (
@@ -89,6 +100,8 @@ const validationFields = (input: MeInvoiceStoreConfigInput) => ({
   tax_rate_source: input.tax_rate_source,
   default_vat_rate_name: input.default_vat_rate_name,
   sku_mapping: input.sku_mapping,
+  item_name_mapping: input.item_name_mapping,
+  unit_name_mapping: input.unit_name_mapping,
   category_vat_mapping: input.category_vat_mapping,
   payment_method_mapping: input.payment_method_mapping,
   default_payment_method_name: input.default_payment_method_name,
@@ -110,7 +123,7 @@ const needsValidation = (
         Object.keys(nextFields).map((key) => [
           key,
           key === "go_live_at"
-            ? dateFromValue(previous[key])?.toISOString() ?? null
+            ? (dateFromValue(previous[key])?.toISOString() ?? null)
             : previous[key],
         ]),
       )
@@ -127,7 +140,9 @@ export const saveMeInvoiceStoreConfig = async (
 ): Promise<MeInvoiceStoreConfig> => {
   authorization.assert("invoices.config", warehouseId);
   await loadWarehouseById(warehouseId);
-  const account = await meInvoiceConfigRepository.getAccount(input.meinvoice_account_id);
+  const account = await meInvoiceConfigRepository.getAccount(
+    input.meinvoice_account_id,
+  );
   if (!account || account.is_deleted || (input.enabled && !account.enabled)) {
     throw {
       statusCode: 400,
@@ -164,21 +179,25 @@ export const saveMeInvoiceStoreConfig = async (
     issue_scope: "GO_LIVE_FORWARD",
     is_invoice_calculating_machine:
       input.sign_type === MeInvoiceSignType.CALCULATING_MACHINE,
-    validated_at: requiresRevalidation ? null : previous?.validated_at ?? null,
+    validated_at: requiresRevalidation
+      ? null
+      : (previous?.validated_at ?? null),
     validation_error_code: requiresRevalidation
       ? null
-      : previous?.validation_error_code ?? null,
+      : (previous?.validation_error_code ?? null),
     updated_by: actorId,
     updated_at: now,
     action_time: input.action_time ?? now,
     sync_time: now,
     is_deleted: false,
   };
-  if (!previous) Object.assign(payload, { created_by: actorId, created_at: now });
+  if (!previous)
+    Object.assign(payload, { created_by: actorId, created_at: now });
 
   await meInvoiceConfigRepository.setStoreConfig(warehouseId, payload);
   const stored = await meInvoiceConfigRepository.getStoreConfig(warehouseId);
-  if (!stored) throw new Error("Unable to reload saved meInvoice store config.");
+  if (!stored)
+    throw new Error("Unable to reload saved meInvoice store config.");
   const current = toPublicStoreConfig(stored);
 
   await logAudit({

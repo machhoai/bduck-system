@@ -8,12 +8,18 @@ import {
 } from "../../services/invoiceIssueSchemas.js";
 import {
   createInvoiceBulkIssueSchema,
+  invoiceBulkDisplayConfigQuerySchema,
   previewInvoiceBulkIssueSchema,
+  saveInvoiceBulkDisplayConfigSchema,
 } from "../../services/invoiceBulkIssueSchemas.js";
 import {
   createInvoiceBulkIssue,
   previewInvoiceBulkIssue,
 } from "../../services/invoiceBulkIssueService.js";
+import {
+  getInvoiceBulkDisplayConfig,
+  saveInvoiceBulkDisplayConfig,
+} from "../../services/invoiceBulkDisplayConfigService.js";
 import {
   createInvoiceIssueJob,
   getInvoiceIssueJob,
@@ -90,6 +96,53 @@ export const previewInvoiceBulkIssueHandler = async (req: Request, res: Response
     return sendSuccess(res, data, {
       vi: "Đã tính tổng đợt xuất hóa đơn.",
       zh: "已计算批量开票汇总。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getInvoiceBulkDisplayConfigHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = invoiceBulkDisplayConfigQuerySchema.parse(req.query);
+    const data = await getInvoiceBulkDisplayConfig(
+      input.warehouse_id,
+      input.business_date,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tải cấu hình tên sản phẩm và đơn vị.",
+      zh: "已加载商品名称和单位配置。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const saveInvoiceBulkDisplayConfigHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = saveInvoiceBulkDisplayConfigSchema.parse(req.body);
+    const data = await saveInvoiceBulkDisplayConfig(
+      input.warehouse_id,
+      input.business_date,
+      {
+        item_name_mapping: input.item_name_mapping,
+        unit_name_mapping: input.unit_name_mapping,
+        action_time: input.action_time,
+      },
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã lưu cấu hình tên sản phẩm và đơn vị.",
+      zh: "已保存商品名称和单位配置。",
     });
   } catch (error) {
     return handleError(res, error);

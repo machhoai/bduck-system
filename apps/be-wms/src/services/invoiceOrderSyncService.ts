@@ -33,6 +33,7 @@ import {
 import { loadWarehouseById } from "./warehouseService.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 import { sourceOrderIsInvoiceEligible } from "./invoiceReconciliationPolicy.js";
+import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
 import {
   canonicalJson,
   deriveAmountBeforeTax,
@@ -430,7 +431,11 @@ export const listInvoiceSourceOrders = async (
   authorization: AuthorizationService,
 ) => {
   authorization.assert("invoices.read", warehouseId);
-  return invoiceOrderRepository.listOrders(warehouseId, businessDate);
+  const orders = await invoiceOrderRepository.listOrders(
+    warehouseId,
+    businessDate,
+  );
+  return orders.filter(invoiceOrderShouldAppearInList);
 };
 
 export const getInvoiceSourceOrder = async (

@@ -56,6 +56,8 @@ const storeConfig = {
   tax_rate_source: "SOURCE",
   default_vat_rate_name: null,
   sku_mapping: {},
+  item_name_mapping: {},
+  unit_name_mapping: {},
   category_vat_mapping: {},
   payment_method_mapping: { "Thanh toán bằng tiền mặt": "Tiền mặt" },
   default_payment_method_name: "Tiền mặt/Chuyển khoản",

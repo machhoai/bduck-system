@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { invoiceDisplayMappingSchema } from "./meInvoiceConfigSchemas.js";
 
 const scopedId = z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const businessDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
@@ -33,6 +34,18 @@ export const previewInvoiceBulkIssueSchema = bulkSelectionSchema;
 export const createInvoiceBulkIssueSchema = bulkSelectionSchema.and(z.object({
   otp: z.string().regex(/^\d{6}$/),
   idempotency_key: z.string().trim().min(8).max(128),
+  config_fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   action_time: z.coerce.date(),
 }));
 
+export const invoiceBulkDisplayConfigQuerySchema = z.object({
+  warehouse_id: scopedId,
+  business_date: businessDate,
+});
+
+export const saveInvoiceBulkDisplayConfigSchema =
+  invoiceBulkDisplayConfigQuerySchema.extend({
+    item_name_mapping: invoiceDisplayMappingSchema,
+    unit_name_mapping: invoiceDisplayMappingSchema,
+    action_time: z.coerce.date(),
+  });
