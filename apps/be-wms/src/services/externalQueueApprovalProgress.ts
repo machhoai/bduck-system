@@ -1,5 +1,9 @@
 import type { ApprovalRecord } from "@bduck/shared-types";
-import { canActOnApprovalRecord, type ScopedUser } from "./scopedRoleAccess.js";
+import {
+  canActOnApprovalRecord,
+  type HasEffectiveRoleAtFacility,
+  type ScopedUser,
+} from "./scopedRoleAccess.js";
 
 export interface ExternalQueueNextApproval {
   level: number;
@@ -21,6 +25,7 @@ export function resolveExternalQueueNextApproval(
   records: readonly ApprovalRecord[],
   roleNamesById: ReadonlyMap<string, string>,
   user?: ScopedUser,
+  hasEffectiveRoleAtFacility?: HasEffectiveRoleAtFacility,
 ): ExternalQueueNextApproval | null {
   if (records.length === 0) return null;
 
@@ -57,7 +62,7 @@ export function resolveExternalQueueNextApproval(
           record.status === "PENDING" &&
           record.creator_id !== user.id &&
           !alreadyApprovedByUser &&
-          canActOnApprovalRecord(user, record),
+          canActOnApprovalRecord(user, record, hasEffectiveRoleAtFacility),
       )
     : null;
 

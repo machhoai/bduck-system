@@ -39,7 +39,10 @@ const assertApprovalAccess = (
   if (requireRole) {
     if (
       authorization.context.isSystemAdmin ||
-      (user && canActOnApprovalRecord(user, record))
+      (user &&
+        canActOnApprovalRecord(user, record, (roleId, facilityId) =>
+          authorization.hasRoleAtFacility(roleId, facilityId),
+        ))
     ) {
       return;
     }
@@ -154,6 +157,7 @@ export const approveLevel = async (
     comments,
     otp,
     approvalUser,
+    (roleId, facilityId) => authorization.hasRoleAtFacility(roleId, facilityId),
   );
 };
 
@@ -173,6 +177,7 @@ export const rejectApproval = async (
     reason,
     otp,
     approvalUser,
+    (roleId, facilityId) => authorization.hasRoleAtFacility(roleId, facilityId),
   );
 };
 

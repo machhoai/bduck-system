@@ -30,6 +30,7 @@ import type { AuthorizationService } from "./authorization/index.js";
 import { logAudit } from "./auditService.js";
 import { getVietnamLocalDate } from "./employeeEmploymentPolicy.js";
 import { evaluateLeaveDateSelection } from "./leavePolicy.js";
+import { isFullDayWorkFromHomeSelection } from "./leaveRequestPolicy.js";
 import { hasAvailableLeaveApprover } from "./leaveApproverEligibilityService.js";
 import { buildLeaveApprovalTasks } from "./leaveApprovalPolicy.js";
 import {
@@ -123,6 +124,18 @@ const validateRequest = async (
   const result = evaluateLeaveDateSelection(selections, {
     holiday_dates: new Set(holidays.map((holiday) => holiday.holiday_date)),
   });
+  if (
+    requestType === LeaveRequestType.WORK_FROM_HOME &&
+    !isFullDayWorkFromHomeSelection(result.normalized_days)
+  ) {
+    throw {
+      statusCode: 400,
+      messages: {
+        vi: "Yêu cầu làm việc tại nhà hiện chỉ hỗ trợ chọn nguyên ngày.",
+        zh: "居家办公申请目前仅支持选择全天。",
+      },
+    };
+  }
   if (!result.valid) {
     throw {
       statusCode: 400,
@@ -186,8 +199,7 @@ const writeTransactionAudits = async (
                   (previous) => previous.id === task.id,
                 )
               : null;
-          return (
-          logAudit({
+          return logAudit({
             entity_type: "leave_approval_tasks",
             entity_id: task.id,
             warehouse_id: task.workplace_warehouse_id,
@@ -197,8 +209,7 @@ const writeTransactionAudits = async (
               (previousTask as unknown as Record<string, unknown>) ?? null,
             new_value: task as unknown as Record<string, unknown>,
             action_time: task.action_time,
-          })
-          );
+          });
         })
       : []),
   ]);

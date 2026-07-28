@@ -3,12 +3,19 @@ import type {
   LeaveBalanceBucket,
   LeaveRequestDay,
 } from "@bduck/shared-types";
+import { LeaveDayPortion } from "@bduck/shared-types";
 import { getLeaveCarryoverExpiryDate } from "./leavePolicy.js";
 
 export interface LeaveAllocationResult {
   allocations: LeaveBalanceAllocation[];
   insufficient_units: number;
 }
+
+export const isFullDayWorkFromHomeSelection = (
+  days: readonly LeaveRequestDay[],
+): boolean =>
+  days.length > 0 &&
+  days.every((day) => day.portion === LeaveDayPortion.FULL_DAY);
 
 const canUseBucketForDate = (
   bucket: LeaveBalanceBucket,
@@ -38,10 +45,7 @@ export const allocatePaidLeaveUnits = (
   for (const day of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
     let remainingDayUnits = day.units;
     for (const bucket of orderedBuckets) {
-      if (
-        remainingDayUnits <= 0 ||
-        !canUseBucketForDate(bucket, day.date)
-      ) {
+      if (remainingDayUnits <= 0 || !canUseBucketForDate(bucket, day.date)) {
         continue;
       }
       const available = remainingByYear.get(bucket.leave_year) ?? 0;
@@ -58,9 +62,10 @@ export const allocatePaidLeaveUnits = (
   }
 
   return {
-    allocations: [...allocatedByYear.entries()].map(
-      ([leave_year, units]) => ({ leave_year, units }),
-    ),
+    allocations: [...allocatedByYear.entries()].map(([leave_year, units]) => ({
+      leave_year,
+      units,
+    })),
     insufficient_units: insufficientUnits,
   };
 };

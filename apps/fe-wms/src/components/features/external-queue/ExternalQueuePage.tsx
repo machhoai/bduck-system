@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ClipboardList,
   History,
@@ -33,13 +33,33 @@ const TAB_DEFINITIONS: TabDef[] = [
 export default function ExternalQueuePage() {
   const { t } = useTranslation();
   const externalQueueText = (t as any).externalQueue;
-  const hasPermission = useUserStore((state) => state.hasPermission);
-  const canManageQueue = hasPermission("external_scan.manage_queue");
-  const [activeTab, setActiveTab] = useState<TabId>("pending");
-  const visibleTabs = TAB_DEFINITIONS.filter(
-    (tab) =>
-      !["products", "approvalConfig"].includes(tab.id) || canManageQueue,
+  const canViewQueue = useUserStore(
+    (state) =>
+      state.hasPermission("external_scan.view") ||
+      state.hasPermission("external_scan.approve") ||
+      state.hasPermission("external_scan.manage_queue"),
   );
+  const canViewHistory = useUserStore(
+    (state) =>
+      state.hasPermission("external_scan.view") ||
+      state.hasPermission("external_scan.approve"),
+  );
+  const canManageQueue = useUserStore((state) =>
+    state.hasPermission("external_scan.manage_queue"),
+  );
+  const [activeTab, setActiveTab] = useState<TabId>("pending");
+  const visibleTabs = TAB_DEFINITIONS.filter((tab) => {
+    if (tab.id === "pending") return canViewQueue;
+    if (tab.id === "history") return canViewHistory;
+    return canManageQueue;
+  });
+  const activeTabIsVisible = visibleTabs.some((tab) => tab.id === activeTab);
+
+  useEffect(() => {
+    if (!activeTabIsVisible && visibleTabs[0]) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [activeTabIsVisible, visibleTabs]);
 
   const handleTabSwitch = (tabId: TabId) => {
     setActiveTab(tabId);
@@ -71,7 +91,7 @@ export default function ExternalQueuePage() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               const label =
-            externalQueueText?.tabs?.[tab.labelKey] ||
+                externalQueueText?.tabs?.[tab.labelKey] ||
                 (tab.id === "products"
                   ? "Cấu hình sản phẩm"
                   : tab.id === "approvalConfig"
@@ -110,10 +130,16 @@ export default function ExternalQueuePage() {
         </div>
 
         <div className="flex flex-col flex-1 p-3">
-          {activeTab === "pending" && <ExternalQueuePendingTab />}
-          {activeTab === "history" && <ExternalQueueHistoryTab />}
-          {activeTab === "products" && <ExternalQueueProductConfigTab />}
-          {activeTab === "approvalConfig" && (
+          {activeTabIsVisible && activeTab === "pending" && (
+            <ExternalQueuePendingTab />
+          )}
+          {activeTabIsVisible && activeTab === "history" && (
+            <ExternalQueueHistoryTab />
+          )}
+          {activeTabIsVisible && activeTab === "products" && (
+            <ExternalQueueProductConfigTab />
+          )}
+          {activeTabIsVisible && activeTab === "approvalConfig" && (
             <ExternalQueueApprovalConfigTab />
           )}
         </div>

@@ -43,6 +43,7 @@ import {
 import {
   canActOnApprovalRecord,
   resolveStepWarehouseId,
+  type HasEffectiveRoleAtFacility,
   type ScopedUser,
 } from "./scopedRoleAccess.js";
 
@@ -246,6 +247,7 @@ export async function approveLevel(
   comments?: string | null,
   otp?: string | null,
   approver?: ScopedUser,
+  hasEffectiveRoleAtFacility?: HasEffectiveRoleAtFacility,
 ): Promise<ApprovalResult> {
   const record = await approvalRepo.findById(approvalId);
 
@@ -265,7 +267,10 @@ export async function approveLevel(
     );
   }
 
-  if (approver && !canActOnApprovalRecord(approver, record)) {
+  if (
+    approver &&
+    !canActOnApprovalRecord(approver, record, hasEffectiveRoleAtFacility)
+  ) {
     throw createError(
       403,
       "Bạn không có đúng role trong phạm vi kho của bước duyệt này. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên để được gán role phù hợp.",
@@ -455,6 +460,7 @@ export async function rejectApproval(
   reason: string,
   otp?: string | null,
   rejector?: ScopedUser,
+  hasEffectiveRoleAtFacility?: HasEffectiveRoleAtFacility,
 ): Promise<ApprovalRecord> {
   if (!reason || reason.trim().length === 0) {
     throw createError(
@@ -474,7 +480,10 @@ export async function rejectApproval(
     );
   }
 
-  if (rejector && !canActOnApprovalRecord(rejector, record)) {
+  if (
+    rejector &&
+    !canActOnApprovalRecord(rejector, record, hasEffectiveRoleAtFacility)
+  ) {
     throw createError(
       403,
       "Bạn không có đúng role trong phạm vi kho của bước duyệt này. Vui lòng kiểm tra lại phân quyền theo kho hoặc liên hệ quản trị viên để được gán role phù hợp.",

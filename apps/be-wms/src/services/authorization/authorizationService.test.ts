@@ -57,6 +57,12 @@ const context = createAccessContext({
       sources: [directSource("unrelated")],
     },
     {
+      facilityId: "wildcard",
+      facilityType: WarehouseType.OFFICE,
+      permissions: { "*": true },
+      sources: [directSource("wildcard")],
+    },
+    {
       facilityId: "office",
       facilityType: WarehouseType.OFFICE,
       permissions: {
@@ -80,6 +86,11 @@ const context = createAccessContext({
 
 describe("AuthorizationService", () => {
   const service = new AuthorizationService(context);
+
+  it("identifies wildcard authority without conflating normal permissions", () => {
+    assert.equal(service.hasWildcardPermissionAtFacility("wildcard"), true);
+    assert.equal(service.hasWildcardPermissionAtFacility("source"), false);
+  });
 
   it("limits revenue actions to STORE facilities", () => {
     assert.equal(service.can("revenue.read", "source"), false);

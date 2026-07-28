@@ -96,10 +96,7 @@ export const isLeaveApprovalActorEligible = (input: {
   has_permission: boolean;
   has_assigned_role: boolean;
 }): boolean => {
-  if (
-    input.actor_id === input.employee_user_id ||
-    !input.has_permission
-  ) {
+  if (input.actor_id === input.employee_user_id || !input.has_permission) {
     return false;
   }
   return input.assignment.mode === "USER"
@@ -130,8 +127,15 @@ export const planLeaveApprovalDecision = (input: {
   current_task: LeaveApprovalTask;
   decision: "APPROVE" | "REJECT";
   next_level_available: boolean;
+  bypass_remaining_levels?: boolean;
 }): LeaveApprovalDecisionPlan => {
-  if (input.current_task.status !== LeaveApprovalTaskStatus.PENDING) {
+  if (
+    input.current_task.status !== LeaveApprovalTaskStatus.PENDING &&
+    !(
+      input.bypass_remaining_levels &&
+      input.current_task.status === LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE
+    )
+  ) {
     throw new Error("LEAVE_APPROVAL_TASK_NOT_PENDING");
   }
   const nextTask = nextWaitingLeaveApprovalTask(
@@ -147,6 +151,18 @@ export const planLeaveApprovalDecision = (input: {
         .filter((task) => task.status === LeaveApprovalTaskStatus.WAITING)
         .map((task) => task.id),
       request_status: LeaveRequestStatus.REJECTED,
+      terminal: true,
+    };
+  }
+  if (input.bypass_remaining_levels) {
+    return {
+      current_task_status: LeaveApprovalTaskStatus.APPROVED,
+      next_task_id: null,
+      next_task_status: null,
+      cancelled_task_ids: input.tasks
+        .filter((task) => task.status === LeaveApprovalTaskStatus.WAITING)
+        .map((task) => task.id),
+      request_status: LeaveRequestStatus.APPROVED,
       terminal: true,
     };
   }

@@ -199,4 +199,67 @@ describe("resolveExternalQueueNextApproval", () => {
     assert.equal(result?.actionable_record_id, "global-pending");
     assert.equal(result?.can_act, true);
   });
+
+  it("accepts an office-inherited role for a warehouse-scoped approval", () => {
+    const result = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "office-inherited",
+          approval_warehouse_id: "warehouse-1",
+          approval_scope: "ENTITY_WAREHOUSE",
+        }),
+      ],
+      new Map(),
+      scopedUser({
+        roleAssignments: [
+          {
+            id: "office-assignment",
+            user_id: "approver-1",
+            warehouse_id: "office-jjland",
+            role_id: "role-level-2",
+            is_active: true,
+            is_deleted: false,
+            valid_from: "2026-01-01",
+            valid_until: null,
+          },
+        ],
+      }),
+      (roleId, facilityId) =>
+        roleId === "role-level-2" && facilityId === "warehouse-1",
+    );
+
+    assert.equal(result?.actionable_record_id, "office-inherited");
+    assert.equal(result?.can_act, true);
+  });
+
+  it("does not treat an office-inherited role as a system-global role", () => {
+    const result = resolveExternalQueueNextApproval(
+      [
+        approval({
+          id: "global-only",
+          approval_warehouse_id: null,
+          approval_scope: "GLOBAL",
+        }),
+      ],
+      new Map(),
+      scopedUser({
+        roleAssignments: [
+          {
+            id: "office-assignment",
+            user_id: "approver-1",
+            warehouse_id: "office-jjland",
+            role_id: "role-level-2",
+            is_active: true,
+            is_deleted: false,
+            valid_from: "2026-01-01",
+            valid_until: null,
+          },
+        ],
+      }),
+      () => true,
+    );
+
+    assert.equal(result?.actionable_record_id, null);
+    assert.equal(result?.can_act, false);
+  });
 });

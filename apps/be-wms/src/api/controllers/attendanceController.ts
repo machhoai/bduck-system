@@ -1,11 +1,19 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import {
+  AttendanceLocationRule,
+  AttendanceVerificationStrategy,
+  AttendanceWorkArrangementType,
+} from "@bduck/shared-types";
+import {
+  approveAttendanceWorkArrangement,
+  cancelAttendanceWorkArrangement,
   checkInAttendance,
   createLateArrivalReport,
   fetchAttendanceContext,
   fetchAttendanceExemptions,
   fetchAttendancePolicies,
+  fetchAttendanceWorkArrangements,
   updateAttendanceExemptions,
   updateAttendancePolicy,
 } from "../../services/scopedAttendanceService.js";
@@ -19,6 +27,14 @@ import {
 const warehouseParamSchema = z.object({ warehouseId: z.string().uuid() });
 const checkInSchema = z.object({
   action_time: z.string().datetime().optional(),
+  location: z
+    .object({
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      accuracy_m: z.number().positive().max(10_000),
+      captured_at: z.string().datetime(),
+    })
+    .optional(),
 });
 const unsafeQueryOperatorPattern = /\$(where|ne|gt|gte|lt|lte|regex|in|nin)/i;
 const lateArrivalReportSchema = z.object({
@@ -57,6 +73,12 @@ const updatePolicySchema = z.object({
     )
     .max(20)
     .default([]),
+  verification_strategy: z.nativeEnum(AttendanceVerificationStrategy),
+  gps_radius_m: z.number().int().min(20).max(5_000),
+  gps_max_accuracy_m: z.number().int().min(10).max(1_000),
+  gps_max_age_seconds: z.number().int().min(30).max(900),
+  allow_business_trip: z.boolean(),
+  allow_work_from_home: z.boolean(),
 });
 const updateExemptionsSchema = z.object({
   excluded_user_ids: z
@@ -64,6 +86,45 @@ const updateExemptionsSchema = z.object({
     .max(500)
     .default([]),
 });
+const arrangementParamSchema = warehouseParamSchema.extend({
+  arrangementId: z.string().uuid(),
+});
+const workArrangementSchema = z
+  .object({
+    user_id: z.string().trim().min(1).max(128),
+    type: z.nativeEnum(AttendanceWorkArrangementType),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    location_rule: z.nativeEnum(AttendanceLocationRule),
+    destination_name: z.string().trim().max(200).nullable().optional(),
+    destination_coordinate: z
+      .object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      })
+      .nullable()
+      .optional(),
+    radius_m: z.number().int().min(20).max(5_000).nullable().optional(),
+    reason: z
+      .string()
+      .trim()
+      .min(4)
+      .max(500)
+      .refine((value) => !unsafeQueryOperatorPattern.test(value)),
+  })
+  .refine((value) => value.start_date <= value.end_date, {
+    message: "end_date must be on or after start_date",
+    path: ["end_date"],
+  })
+  .refine(
+    (value) =>
+      value.location_rule !== AttendanceLocationRule.GEOFENCE ||
+      Boolean(value.destination_coordinate),
+    {
+      message: "destination_coordinate is required for geofence",
+      path: ["destination_coordinate"],
+    },
+  );
 
 const getRequestUser = (req: Request) => requireAuthenticatedRequestUser(req);
 const getHeaderValue = (req: Request, headerName: string) => {
@@ -252,6 +313,74 @@ export const updateAttendanceExemptionsHandler = async (
     return sendSuccess(res, exemptions, {
       vi: "Đã cập nhật danh sách miễn chấm công.",
       zh: "免考勤列表已更新。",
+    });
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const getAttendanceWorkArrangementsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { warehouseId } = warehouseParamSchema.parse(req.params);
+    const arrangements = await fetchAttendanceWorkArrangements(
+      warehouseId,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, arrangements, {
+      vi: "Lấy lịch công tác/WFH thành công.",
+      zh: "成功获取出差/居家办公安排。",
+    });
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const approveAttendanceWorkArrangementHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { warehouseId } = warehouseParamSchema.parse(req.params);
+    const input = workArrangementSchema.parse(req.body || {});
+    const arrangement = await approveAttendanceWorkArrangement(
+      getRequestUser(req),
+      warehouseId,
+      input,
+      getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(
+      res,
+      arrangement,
+      { vi: "Đã lưu và duyệt lịch làm việc.", zh: "工作安排已保存并批准。" },
+      201,
+    );
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const cancelAttendanceWorkArrangementHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { warehouseId, arrangementId } = arrangementParamSchema.parse(
+      req.params,
+    );
+    const arrangement = await cancelAttendanceWorkArrangement(
+      getRequestUser(req),
+      warehouseId,
+      arrangementId,
+      getAuditRequestMetadata(req),
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, arrangement, {
+      vi: "Đã hủy lịch làm việc.",
+      zh: "工作安排已取消。",
     });
   } catch (error) {
     return handleAttendanceError(res, error);

@@ -37,12 +37,14 @@ export function MultiDateLeaveCalendar({
   days,
   holidays,
   disabled,
+  fullDayOnly = false,
   onChange,
 }: {
   labels: Record<string, string>;
   days: LeaveRequestDaySelection[];
   holidays: CompanyHoliday[];
   disabled: boolean;
+  fullDayOnly?: boolean;
   onChange: (days: LeaveRequestDaySelection[]) => void;
 }) {
   const [month, setMonth] = useState(
@@ -58,7 +60,10 @@ export function MultiDateLeaveCalendar({
   );
   const calendarDays = useMemo(() => buildCalendarDays(month), [month]);
   const selectedDays = useMemo(
-    () => [...days].filter((day) => day.date).sort((a, b) => a.date.localeCompare(b.date)),
+    () =>
+      [...days]
+        .filter((day) => day.date)
+        .sort((a, b) => a.date.localeCompare(b.date)),
     [days],
   );
 
@@ -168,24 +173,30 @@ export function MultiDateLeaveCalendar({
               <span className="text-xs font-semibold text-[var(--color-text-primary)]">
                 {day.date}
               </span>
-              <select
-                value={day.portion}
-                disabled={disabled}
-                aria-label={`${labels.leavePortion} ${day.date}`}
-                onChange={(event) =>
-                  updatePortion(
-                    day.date,
-                    event.target.value as LeaveDayPortion,
-                  )
-                }
-                className="h-9 rounded-xl border border-[var(--color-border-soft)] bg-white px-2 text-xs"
-              >
-                {portions.map((portion) => (
-                  <option key={portion.value} value={portion.value}>
-                    {labels[portion.label]}
-                  </option>
-                ))}
-              </select>
+              {fullDayOnly ? (
+                <span className="flex h-9 items-center rounded-xl bg-white px-2 text-xs text-[var(--color-text-secondary)]">
+                  {labels.fullDay}
+                </span>
+              ) : (
+                <select
+                  value={day.portion}
+                  disabled={disabled}
+                  aria-label={`${labels.leavePortion} ${day.date}`}
+                  onChange={(event) =>
+                    updatePortion(
+                      day.date,
+                      event.target.value as LeaveDayPortion,
+                    )
+                  }
+                  className="h-9 rounded-xl border border-[var(--color-border-soft)] bg-white px-2 text-xs"
+                >
+                  {portions.map((portion) => (
+                    <option key={portion.value} value={portion.value}>
+                      {labels[portion.label]}
+                    </option>
+                  ))}
+                </select>
+              )}
               <button
                 type="button"
                 disabled={disabled}

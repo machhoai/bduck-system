@@ -140,7 +140,11 @@ export function useLeaveApprovals(
             );
         snapshotUnsubscribers.push(
           ...taskQueries.map((taskQuery) =>
-            onSnapshot(taskQuery, () => void load(), () => void load()),
+            onSnapshot(
+              taskQuery,
+              () => void load(),
+              () => void load(),
+            ),
           ),
         );
       }
@@ -182,6 +186,7 @@ export function useLeaveApprovals(
         "leave_approval_tasks",
         "leave_requests",
         "leave_balance_buckets",
+        "attendance_work_arrangements",
       ]);
       return result;
     },

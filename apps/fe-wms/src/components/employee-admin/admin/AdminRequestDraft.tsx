@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  LeaveDayPortion,
   LeaveRequestType,
   type CompanyHoliday,
   type CreateLeaveRequestInput,
@@ -17,6 +18,7 @@ import { MultiDateLeaveCalendar } from "./MultiDateLeaveCalendar";
 
 const requestTypes = [
   { value: LeaveRequestType.PAID_ANNUAL, label: "paidLeave" },
+  { value: LeaveRequestType.WORK_FROM_HOME, label: "workFromHomeRequest" },
   { value: LeaveRequestType.UNPAID, label: "unpaidLeave" },
   { value: LeaveRequestType.MATERNITY, label: "maternityLeave" },
   { value: LeaveRequestType.SICK, label: "sickLeave" },
@@ -47,6 +49,7 @@ export function AdminRequestDraft({
     [holidays],
   );
   const units = getSelectedLeaveUnits(days);
+  const isWorkFromHome = requestType === LeaveRequestType.WORK_FROM_HOME;
 
   useEffect(() => setRequestType(initialType), [initialType]);
 
@@ -113,9 +116,18 @@ export function AdminRequestDraft({
         <select
           value={requestType}
           disabled={isSaving}
-          onChange={(event) =>
-            setRequestType(event.target.value as LeaveRequestType)
-          }
+          onChange={(event) => {
+            const nextType = event.target.value as LeaveRequestType;
+            setRequestType(nextType);
+            if (nextType === LeaveRequestType.WORK_FROM_HOME) {
+              setDays((current) =>
+                current.map((day) => ({
+                  ...day,
+                  portion: LeaveDayPortion.FULL_DAY,
+                })),
+              );
+            }
+          }}
           className="mt-1 h-11 w-full rounded-2xl border border-[var(--color-border-soft)] bg-white px-3 text-sm font-medium text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)]"
         >
           {requestTypes.map((item) => (
@@ -133,11 +145,16 @@ export function AdminRequestDraft({
               {labels.selectedLeaveDates}
             </p>
             <p className="text-[11px] text-[var(--color-text-muted)]">
-              {labels.leaveDateRule}
+              {isWorkFromHome
+                ? labels.workFromHomeDateRule
+                : labels.leaveDateRule}
             </p>
           </div>
           <span className="shrink-0 rounded-full bg-[var(--color-brand-primary-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--color-brand-primary)]">
-            {labels.totalLeaveUnits.replace("{units}", String(units))}
+            {(isWorkFromHome
+              ? labels.totalWorkFromHomeDays
+              : labels.totalLeaveUnits
+            ).replace("{units}", String(units))}
           </span>
         </div>
 
@@ -147,6 +164,7 @@ export function AdminRequestDraft({
             days={days}
             holidays={holidays}
             disabled={isSaving}
+            fullDayOnly={isWorkFromHome}
             onChange={setDays}
           />
         </div>

@@ -23,6 +23,7 @@ const statusKeys: Record<LeaveRequestStatus, string> = {
 };
 const typeKeys: Record<LeaveRequestType, string> = {
   [LeaveRequestType.PAID_ANNUAL]: "paidLeave",
+  [LeaveRequestType.WORK_FROM_HOME]: "workFromHomeRequest",
   [LeaveRequestType.UNPAID]: "unpaidLeave",
   [LeaveRequestType.SICK]: "sickLeave",
   [LeaveRequestType.MATERNITY]: "maternityLeave",
@@ -246,9 +247,7 @@ export function LeaveRequestHistory({
                       </button>
                       <button
                         type="button"
-                        disabled={
-                          busyId === request.id || !cancelReason.trim()
-                        }
+                        disabled={busyId === request.id || !cancelReason.trim()}
                         onClick={() => void runCancel(request.id)}
                         className="h-9 rounded-xl bg-red-600 text-xs font-semibold text-white disabled:opacity-50"
                       >

@@ -6,9 +6,7 @@ import {
   type LeaveApprovalTaskView,
   type ReassignLeaveApprovalTaskInput,
 } from "@bduck/shared-types";
-import {
-  decideLeaveApprovalTaskTransaction,
-} from "../repositories/leaveApprovalActionRepository.js";
+import { decideLeaveApprovalTaskTransaction } from "../repositories/leaveApprovalActionRepository.js";
 import {
   markLeaveApproverUnavailableTransaction,
   reassignLeaveApprovalTaskTransaction,
@@ -92,9 +90,9 @@ const reconcilePendingTasks = async (
   facilityIds: string[],
 ) => {
   const allowed = new Set(facilityIds);
-  const tasks = (await findLeaveApprovalTasksByStatus(
-    LeaveApprovalTaskStatus.PENDING,
-  )).filter((task) => allowed.has(task.workplace_warehouse_id));
+  const tasks = (
+    await findLeaveApprovalTasksByStatus(LeaveApprovalTaskStatus.PENDING)
+  ).filter((task) => allowed.has(task.workplace_warehouse_id));
   for (const task of tasks) {
     const available = await hasAvailableLeaveApprover(
       task.assignment,
@@ -124,19 +122,30 @@ export const fetchMyLeaveApprovalTasks = async (
 ): Promise<LeaveApprovalTaskView[]> => {
   const facilityIds = authorization.facilityIdsFor("leave.approve");
   await reconcilePendingTasks(actorId, facilityIds);
-  const tasks = await findLeaveApprovalTasksByStatus(
-    LeaveApprovalTaskStatus.PENDING,
-  );
+  const tasks = [
+    ...(await findLeaveApprovalTasksByStatus(LeaveApprovalTaskStatus.PENDING)),
+    ...(await findLeaveApprovalTasksByStatus(
+      LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE,
+    )),
+  ];
   const eligible: LeaveApprovalTask[] = [];
   for (const task of tasks) {
+    const hasAdminOverride = authorization.hasWildcardPermissionAtFacility(
+      task.workplace_warehouse_id,
+    );
     if (
       facilityIds.includes(task.workplace_warehouse_id) &&
-      (await isEligibleLeaveApprover(
-        actorId,
-        task.assignment,
-        task.workplace_warehouse_id,
-        task.employee_user_id,
-      ))
+      actorId !== task.employee_user_id &&
+      ((hasAdminOverride &&
+        (task.status === LeaveApprovalTaskStatus.PENDING ||
+          task.status === LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE)) ||
+        (task.status === LeaveApprovalTaskStatus.PENDING &&
+          (await isEligibleLeaveApprover(
+            actorId,
+            task.assignment,
+            task.workplace_warehouse_id,
+            task.employee_user_id,
+          ))))
     ) {
       eligible.push(task);
     }
@@ -148,9 +157,7 @@ export const fetchUnavailableLeaveApprovalTasks = async (
   actorId: string,
   authorization: AuthorizationService,
 ): Promise<LeaveApprovalTaskView[]> => {
-  const facilityIds = authorization.facilityIdsFor(
-    "leave.approver.reassign",
-  );
+  const facilityIds = authorization.facilityIdsFor("leave.approver.reassign");
   await reconcilePendingTasks(actorId, facilityIds);
   const allowed = new Set(facilityIds);
   return toViews(
@@ -171,13 +178,18 @@ export const decideLeaveApprovalTask = async (
   const task = await findLeaveApprovalTaskById(taskId);
   if (!task) throw taskNotFound;
   authorization.assert("leave.approve", task.workplace_warehouse_id);
+  const hasAdminOverride = authorization.hasWildcardPermissionAtFacility(
+    task.workplace_warehouse_id,
+  );
   if (
-    !(await isEligibleLeaveApprover(
-      actorId,
-      task.assignment,
-      task.workplace_warehouse_id,
-      task.employee_user_id,
-    ))
+    actorId === task.employee_user_id ||
+    (!hasAdminOverride &&
+      !(await isEligibleLeaveApprover(
+        actorId,
+        task.assignment,
+        task.workplace_warehouse_id,
+        task.employee_user_id,
+      )))
   ) {
     throw {
       statusCode: 403,
@@ -199,6 +211,10 @@ export const decideLeaveApprovalTask = async (
         nextTask.employee_user_id,
       )
     : true;
+  const employeeLabels = await findLeaveEmployeeLabels([
+    task.employee_profile_id,
+  ]);
+  const employee = employeeLabels.get(task.employee_profile_id);
   const result = await decideLeaveApprovalTaskTransaction({
     task_id: task.id,
     actor_id: actorId,
@@ -207,6 +223,9 @@ export const decideLeaveApprovalTask = async (
     action_time: input.action_time,
     posting_date: getVietnamLocalDate(),
     next_level_available: nextAvailable,
+    bypass_remaining_levels: hasAdminOverride,
+    employee_id: employee?.code ?? "",
+    employee_name: employee?.name ?? "",
   });
   await auditLeaveApprovalDecision(
     result,
@@ -224,7 +243,10 @@ export const decideLeaveApprovalTask = async (
   if (pendingTask) {
     void notifyPendingLeaveApprover(pendingTask, result.request, actorId).catch(
       (error) =>
-        console.error("[leaveApprovalService] next approver notice failed:", error),
+        console.error(
+          "[leaveApprovalService] next approver notice failed:",
+          error,
+        ),
     );
   }
   if (unavailableTask) {

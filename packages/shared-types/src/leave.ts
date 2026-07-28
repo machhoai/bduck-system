@@ -51,6 +51,7 @@ export const resolveLeaveFeatureEnabled = (
 
 export enum LeaveRequestType {
   PAID_ANNUAL = "PAID_ANNUAL",
+  WORK_FROM_HOME = "WORK_FROM_HOME",
   UNPAID = "UNPAID",
   SICK = "SICK",
   MATERNITY = "MATERNITY",

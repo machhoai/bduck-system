@@ -1,10 +1,13 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
+  approveAttendanceWorkArrangementHandler,
+  cancelAttendanceWorkArrangementHandler,
   checkInAttendanceHandler,
   createLateArrivalReportHandler,
   getAttendanceContextHandler,
   getAttendanceExemptionsHandler,
   getAttendancePoliciesHandler,
+  getAttendanceWorkArrangementsHandler,
   updateAttendanceExemptionsHandler,
   updateAttendancePolicyHandler,
 } from "../controllers/attendanceController.js";
@@ -53,6 +56,21 @@ router.put(
   "/exemptions/:warehouseId",
   requirePermission("attendance.config", warehouseParam),
   updateAttendanceExemptionsHandler,
+);
+router.get(
+  "/work-arrangements/:warehouseId",
+  requirePermission("attendance.config", warehouseParam),
+  getAttendanceWorkArrangementsHandler,
+);
+router.post(
+  "/work-arrangements/:warehouseId",
+  requirePermission("attendance.config", warehouseParam),
+  approveAttendanceWorkArrangementHandler,
+);
+router.patch(
+  "/work-arrangements/:warehouseId/:arrangementId/cancel",
+  requirePermission("attendance.config", warehouseParam),
+  cancelAttendanceWorkArrangementHandler,
 );
 
 export default router;

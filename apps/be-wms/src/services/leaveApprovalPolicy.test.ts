@@ -63,10 +63,7 @@ test("unavailable first approver blocks only the active level", () => {
     actor_id: request.employee_user_id,
     now: new Date(),
   });
-  assert.equal(
-    tasks[0].status,
-    LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE,
-  );
+  assert.equal(tasks[0].status, LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE);
   assert.equal(tasks[1].status, LeaveApprovalTaskStatus.WAITING);
 });
 
@@ -79,10 +76,7 @@ test("approval configuration requires at least one enabled level", () => {
 });
 
 test("enabled approval levels execute in ascending configured order", () => {
-  const normalized = normalizeLeaveApprovalLevels([
-    levels[2],
-    levels[0],
-  ]);
+  const normalized = normalizeLeaveApprovalLevels([levels[2], levels[0]]);
   assert.deepEqual(
     normalized.map((level) => level.level),
     [1, 3],
@@ -128,10 +122,7 @@ test("an unavailable next level blocks the request without completing it", () =>
     plan.next_task_status,
     LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE,
   );
-  assert.equal(
-    plan.request_status,
-    LeaveRequestStatus.APPROVER_UNAVAILABLE,
-  );
+  assert.equal(plan.request_status, LeaveRequestStatus.APPROVER_UNAVAILABLE);
   assert.equal(plan.terminal, false);
 });
 
@@ -150,6 +141,46 @@ test("approving the final level completes the request", () => {
     next_level_available: true,
   });
   assert.equal(plan.next_task_id, null);
+  assert.equal(plan.request_status, LeaveRequestStatus.APPROVED);
+  assert.equal(plan.terminal, true);
+});
+
+test("wildcard admin approval completes the request and closes later levels", () => {
+  const tasks = buildLeaveApprovalTasks({
+    request,
+    levels,
+    first_level_available: true,
+    actor_id: request.employee_user_id,
+    now: new Date(),
+  });
+  const plan = planLeaveApprovalDecision({
+    tasks,
+    current_task: tasks[0],
+    decision: "APPROVE",
+    next_level_available: true,
+    bypass_remaining_levels: true,
+  });
+  assert.equal(plan.request_status, LeaveRequestStatus.APPROVED);
+  assert.equal(plan.terminal, true);
+  assert.deepEqual(plan.cancelled_task_ids, [tasks[1].id, tasks[2].id]);
+});
+
+test("wildcard admin can complete a request stalled by an unavailable approver", () => {
+  const tasks = buildLeaveApprovalTasks({
+    request,
+    levels,
+    first_level_available: false,
+    actor_id: request.employee_user_id,
+    now: new Date(),
+  });
+  const plan = planLeaveApprovalDecision({
+    tasks,
+    current_task: tasks[0],
+    decision: "APPROVE",
+    next_level_available: false,
+    bypass_remaining_levels: true,
+  });
+  assert.equal(plan.current_task_status, LeaveApprovalTaskStatus.APPROVED);
   assert.equal(plan.request_status, LeaveRequestStatus.APPROVED);
   assert.equal(plan.terminal, true);
 });

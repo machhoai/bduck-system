@@ -20,6 +20,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
     roles: "roles",
     users: "users",
     attendance_late_reports: "attendance_late_reports",
+    attendance_work_arrangements: "attendance_work_arrangements",
     workflow_definitions: "workflow_definitions",
     workflow_versions: "workflow_definitions",
     workflow_instances: "workflow_instances",

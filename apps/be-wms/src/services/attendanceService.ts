@@ -2,9 +2,11 @@ import {
   AttendanceLogStatus,
   AttendanceLateReportStatus,
   AttendanceRejectedReason,
+  AttendanceVerificationStrategy,
   AuditAction,
   type AttendanceCheckInContext,
   type AttendanceLateReport,
+  type AttendanceLocationInput,
   type AttendanceLog,
   type EmployeeProfile,
   type User,
@@ -15,13 +17,19 @@ import {
   createAttendanceLateReport,
   createSuccessAttendanceLogOnce,
   getActiveAttendancePolicy,
+  getActiveAttendanceWorkArrangement,
   getTodaySuccessAttendanceLog,
   listActiveAttendanceExemptions,
   replaceActiveAttendancePolicy,
   replaceAttendanceExemptions,
 } from "../repositories/attendanceRepository.js";
 import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
+import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import {
+  evaluateAttendanceLocation,
+  type AttendanceLocationDecision,
+} from "./attendanceLocationPolicy.js";
 
 const TIMEZONE = "Asia/Ho_Chi_Minh" as const;
 
@@ -109,6 +117,8 @@ const buildLog = (
   rejectedReason: AttendanceRejectedReason | null,
   ipAddress: string | null,
   actionTime: Date,
+  location?: AttendanceLocationInput,
+  decision?: AttendanceLocationDecision,
 ): Omit<AttendanceLog, "id"> => {
   const syncTime = new Date();
   return {
@@ -124,6 +134,11 @@ const buildLog = (
     action_time: actionTime,
     sync_time: syncTime,
     ip_address: ipAddress,
+    check_in_method: decision?.method || null,
+    work_mode: decision?.workMode || null,
+    location: location || null,
+    distance_from_target_m: decision?.distanceFromTargetM ?? null,
+    work_arrangement_id: decision?.arrangement?.id || null,
     status,
     rejected_reason: rejectedReason,
   };
@@ -198,6 +213,9 @@ export const fetchAttendanceContext = async (
       today_success_log: null,
       current_ip_address: currentIpAddress,
       is_company_network: null,
+      verification_strategy: AttendanceVerificationStrategy.IP_ONLY,
+      location_required: false,
+      active_work_arrangement: null,
       messages: {
         vi: hasWorkplaceWithoutPermission
           ? "Bạn không có quyền chấm công tại cơ sở làm việc hiện tại."
@@ -209,13 +227,15 @@ export const fetchAttendanceContext = async (
     };
   }
 
-  const [policy, attendanceRequired] = await Promise.all([
+  const attendanceDate = getVietnamDateKey();
+  const [policy, attendanceRequired, activeWorkArrangement] = await Promise.all([
     getActiveAttendancePolicy(warehouseId),
     isAttendanceRequired(user.id, warehouseId),
+    getActiveAttendanceWorkArrangement(user.id, warehouseId, attendanceDate),
   ]);
   const todaySuccessLog = await getTodaySuccessAttendanceLog(
     user.id,
-    getVietnamDateKey(),
+    attendanceDate,
   );
   const canCheckIn = Boolean(
     hasCheckInPermission && policy?.enabled && attendanceRequired,
@@ -236,12 +256,25 @@ export const fetchAttendanceContext = async (
     today_success_log: todaySuccessLog,
     current_ip_address: currentIpAddress,
     is_company_network: isCompanyNetwork(requestIps, policy),
+    verification_strategy:
+      policy?.verification_strategy || AttendanceVerificationStrategy.IP_ONLY,
+    location_required: Boolean(
+      policy?.enabled &&
+        (policy.verification_strategy ===
+          AttendanceVerificationStrategy.GPS_ONLY ||
+          policy.verification_strategy ===
+            AttendanceVerificationStrategy.IP_AND_GPS ||
+          (policy.verification_strategy ===
+            AttendanceVerificationStrategy.IP_OR_GPS &&
+            !getMatchingPolicyIp(requestIps, policy.ip_addresses))),
+    ),
+    active_work_arrangement: activeWorkArrangement,
   };
 };
 
 export const checkInAttendance = async (
   user: RequestUser,
-  input: { action_time?: string },
+  input: { action_time?: string; location?: AttendanceLocationInput },
   requestIpInput: string | Array<string | null | undefined> | null | undefined,
   auditMetadata?: AuditMetadata,
   profileInput?: EmployeeProfile | null,
@@ -312,8 +345,23 @@ export const checkInAttendance = async (
   }
 
   const matchedIp = getMatchingPolicyIp(requestIps, policy.ip_addresses);
+  const [warehouse, arrangement] = await Promise.all([
+    warehouseRepository.findById(warehouseId),
+    getActiveAttendanceWorkArrangement(
+      user.id,
+      warehouseId,
+      getVietnamDateKey(actionTime),
+    ),
+  ]);
+  const decision = evaluateAttendanceLocation({
+    policy,
+    matchedIp: Boolean(matchedIp),
+    location: input.location,
+    workplaceCoordinate: warehouse?.coordinate || null,
+    arrangement,
+  });
 
-  if (!matchedIp) {
+  if (!decision.accepted) {
     const log = await createAttendanceLog(
       buildLog(
         user,
@@ -321,9 +369,11 @@ export const checkInAttendance = async (
         warehouseId,
         policy,
         AttendanceLogStatus.REJECTED,
-        AttendanceRejectedReason.INVALID_IP,
+        decision.rejectedReason || AttendanceRejectedReason.LOCATION_REQUIRED,
         ipAddress,
         actionTime,
+        input.location,
+        decision,
       ),
     );
     await auditAttendanceLog(log, user.id, auditMetadata);
@@ -343,8 +393,10 @@ export const checkInAttendance = async (
       policy,
       AttendanceLogStatus.SUCCESS,
       null,
-      matchedIp,
+      matchedIp || ipAddress,
       actionTime,
+      input.location,
+      decision,
     ),
   );
 
@@ -442,7 +494,16 @@ export const createLateArrivalReport = async (
 export const updateAttendancePolicy = async (
   user: RequestUser,
   warehouseId: string,
-  input: { enabled: boolean; ip_addresses: string[] },
+  input: {
+    enabled: boolean;
+    ip_addresses: string[];
+    verification_strategy: AttendanceVerificationStrategy;
+    gps_radius_m: number;
+    gps_max_accuracy_m: number;
+    gps_max_age_seconds: number;
+    allow_business_trip: boolean;
+    allow_work_from_home: boolean;
+  },
   auditMetadata?: AuditMetadata,
 ) => {
   const oldPolicy = await getActiveAttendancePolicy(warehouseId);
@@ -455,6 +516,12 @@ export const updateAttendancePolicy = async (
           .filter((ip): ip is string => Boolean(ip)),
       ),
     ),
+    verification_strategy: input.verification_strategy,
+    gps_radius_m: input.gps_radius_m,
+    gps_max_accuracy_m: input.gps_max_accuracy_m,
+    gps_max_age_seconds: input.gps_max_age_seconds,
+    allow_business_trip: input.allow_business_trip,
+    allow_work_from_home: input.allow_work_from_home,
     actorId: user.id,
   });
 

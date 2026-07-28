@@ -59,7 +59,9 @@ export function CompanyLeaveRequests({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-2xl bg-red-50 p-3 text-xs text-red-700">{error}</p>
+        <p className="rounded-2xl bg-red-50 p-3 text-xs text-red-700">
+          {error}
+        </p>
       )}
       <div className="grid gap-2 sm:grid-cols-[1fr_0.7fr_0.7fr]">
         <label className="relative">
@@ -116,9 +118,7 @@ export function CompanyLeaveRequests({
             >
               <button
                 type="button"
-                onClick={() =>
-                  setExpandedId(expanded ? null : item.request.id)
-                }
+                onClick={() => setExpandedId(expanded ? null : item.request.id)}
                 className="flex w-full items-start gap-3 text-left"
               >
                 <div className="min-w-0 flex-1">
@@ -129,7 +129,9 @@ export function CompanyLeaveRequests({
                     {item.request.days.map((day) => day.date).join(", ")}
                   </p>
                   <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                    {item.request.request_type} · {item.request.status}
+                    {labels[`leaveType${item.request.request_type}`] ||
+                      item.request.request_type}{" "}
+                    · {item.request.status}
                   </p>
                 </div>
                 <span className="text-sm font-bold text-[var(--color-brand-primary)]">

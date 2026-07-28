@@ -1,12 +1,13 @@
 "use client";
 
-import type {
-    EmployeeProfile,
-    User,
-    UserWarehouseRole,
-    Warehouse,
-    WarehouseAttendanceExemption,
-    WarehouseAttendancePolicy,
+import {
+    AttendanceVerificationStrategy,
+    type EmployeeProfile,
+    type User,
+    type UserWarehouseRole,
+    type Warehouse,
+    type WarehouseAttendanceExemption,
+    type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
 import { motion } from "framer-motion";
 import { Plus, Save, Settings2, Trash2 } from "lucide-react";
@@ -25,7 +26,17 @@ interface TimeAttendanceSettingsPanelProps {
     onWarehouseChange: (warehouseId: string) => void;
     onSavePolicy: (
         warehouseId: string,
-        payload: { enabled: boolean; ip_addresses: string[] },
+        payload: Pick<
+            WarehouseAttendancePolicy,
+            | "enabled"
+            | "ip_addresses"
+            | "verification_strategy"
+            | "gps_radius_m"
+            | "gps_max_accuracy_m"
+            | "gps_max_age_seconds"
+            | "allow_business_trip"
+            | "allow_work_from_home"
+        >,
     ) => Promise<unknown>;
     onSaveExemptions: (
         warehouseId: string,
@@ -74,15 +85,42 @@ export function TimeAttendanceSettingsPanel({
             ? selectedWarehouseId
             : warehouses[0]?.id || "";
     const policy = activeWarehouseId ? policies.get(activeWarehouseId) : null;
+    const activeWarehouse = warehouses.find(
+        (warehouse) => warehouse.id === activeWarehouseId,
+    );
     const [enabled, setEnabled] = useState(Boolean(policy?.enabled));
     const [ipAddresses, setIpAddresses] = useState<string[]>(
         policy?.ip_addresses?.length ? policy.ip_addresses : [""],
     );
     const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
+    const [verificationStrategy, setVerificationStrategy] = useState(
+        policy?.verification_strategy || AttendanceVerificationStrategy.IP_ONLY,
+    );
+    const [gpsRadiusM, setGpsRadiusM] = useState(policy?.gps_radius_m || 150);
+    const [gpsMaxAccuracyM, setGpsMaxAccuracyM] = useState(
+        policy?.gps_max_accuracy_m || 100,
+    );
+    const [gpsMaxAgeSeconds, setGpsMaxAgeSeconds] = useState(
+        policy?.gps_max_age_seconds || 120,
+    );
+    const [allowBusinessTrip, setAllowBusinessTrip] = useState(
+        policy?.allow_business_trip ?? false,
+    );
+    const [allowWorkFromHome, setAllowWorkFromHome] = useState(
+        policy?.allow_work_from_home ?? false,
+    );
 
     useEffect(() => {
         setEnabled(Boolean(policy?.enabled));
         setIpAddresses(policy?.ip_addresses?.length ? policy.ip_addresses : [""]);
+        setVerificationStrategy(
+            policy?.verification_strategy || AttendanceVerificationStrategy.IP_ONLY,
+        );
+        setGpsRadiusM(policy?.gps_radius_m || 150);
+        setGpsMaxAccuracyM(policy?.gps_max_accuracy_m || 100);
+        setGpsMaxAgeSeconds(policy?.gps_max_age_seconds || 120);
+        setAllowBusinessTrip(policy?.allow_business_trip ?? false);
+        setAllowWorkFromHome(policy?.allow_work_from_home ?? false);
     }, [policy]);
 
     useEffect(() => {
@@ -113,6 +151,12 @@ export function TimeAttendanceSettingsPanel({
         const task = onSavePolicy(activeWarehouseId, {
             enabled,
             ip_addresses: cleanIps,
+            verification_strategy: verificationStrategy,
+            gps_radius_m: gpsRadiusM,
+            gps_max_accuracy_m: gpsMaxAccuracyM,
+            gps_max_age_seconds: gpsMaxAgeSeconds,
+            allow_business_trip: allowBusinessTrip,
+            allow_work_from_home: allowWorkFromHome,
         });
         await gooeyToast.promise(task, {
             loading: labels.savingSettings,
@@ -240,6 +284,84 @@ export function TimeAttendanceSettingsPanel({
                         </button>
                     </div>
 
+                    <div className="mt-4 grid gap-3 rounded-2xl border border-[var(--color-border-soft)] bg-white p-3">
+                        <label className="grid gap-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+                            {labels.verificationStrategy}
+                            <select
+                                value={verificationStrategy}
+                                onChange={(event) =>
+                                    setVerificationStrategy(
+                                        event.target.value as AttendanceVerificationStrategy,
+                                    )
+                                }
+                                className="h-9 rounded-xl border border-[var(--color-border-subtle)] bg-white px-3 font-normal text-[var(--color-text-primary)]"
+                            >
+                                <option value={AttendanceVerificationStrategy.IP_ONLY}>
+                                    {labels.ipOnly}
+                                </option>
+                                <option value={AttendanceVerificationStrategy.GPS_ONLY}>
+                                    {labels.gpsOnly}
+                                </option>
+                                <option value={AttendanceVerificationStrategy.IP_OR_GPS}>
+                                    {labels.ipOrGps}
+                                </option>
+                                <option value={AttendanceVerificationStrategy.IP_AND_GPS}>
+                                    {labels.ipAndGps}
+                                </option>
+                            </select>
+                        </label>
+                        {verificationStrategy !== AttendanceVerificationStrategy.IP_ONLY ? (
+                            <>
+                                {!activeWarehouse?.coordinate ? (
+                                    <p className="rounded-xl bg-[#f59e0b10] p-2 text-xs text-[#936000]">
+                                        {labels.missingWarehouseCoordinate}
+                                    </p>
+                                ) : null}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <NumberField
+                                        label={labels.gpsRadius}
+                                        value={gpsRadiusM}
+                                        min={20}
+                                        max={5000}
+                                        onChange={setGpsRadiusM}
+                                    />
+                                    <NumberField
+                                        label={labels.gpsAccuracy}
+                                        value={gpsMaxAccuracyM}
+                                        min={10}
+                                        max={1000}
+                                        onChange={setGpsMaxAccuracyM}
+                                    />
+                                    <NumberField
+                                        label={labels.gpsAge}
+                                        value={gpsMaxAgeSeconds}
+                                        min={30}
+                                        max={900}
+                                        onChange={setGpsMaxAgeSeconds}
+                                    />
+                                </div>
+                            </>
+                        ) : null}
+                        <label className="flex items-center gap-2 text-xs text-[var(--color-text-primary)]">
+                            <input
+                                type="checkbox"
+                                checked={allowBusinessTrip}
+                                onChange={(event) => setAllowBusinessTrip(event.target.checked)}
+                                className="h-4 w-4 accent-[var(--color-brand-primary)]"
+                            />
+                            {labels.allowBusinessTrip}
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-[var(--color-text-primary)]">
+                            <input
+                                type="checkbox"
+                                checked={allowWorkFromHome}
+                                onChange={(event) => setAllowWorkFromHome(event.target.checked)}
+                                className="h-4 w-4 accent-[var(--color-brand-primary)]"
+                            />
+                            {labels.allowWorkFromHome}
+                        </label>
+                    </div>
+
                     <button
                         type="button"
                         onClick={() => void handlePolicySave()}
@@ -309,5 +431,33 @@ export function TimeAttendanceSettingsPanel({
                 </div >
             </div >
         </motion.section >
+    );
+}
+
+function NumberField({
+    label,
+    value,
+    min,
+    max,
+    onChange,
+}: {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <label className="grid min-w-0 gap-1 text-micro font-semibold text-[var(--color-text-secondary)]">
+            <span className="truncate">{label}</span>
+            <input
+                type="number"
+                value={value}
+                min={min}
+                max={max}
+                onChange={(event) => onChange(Number(event.target.value))}
+                className="h-9 min-w-0 rounded-xl border border-[var(--color-border-subtle)] px-2 text-xs font-normal text-[var(--color-text-primary)]"
+            />
+        </label>
     );
 }

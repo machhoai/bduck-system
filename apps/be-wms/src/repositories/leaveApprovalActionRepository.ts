@@ -1,8 +1,13 @@
 import {
+  AttendanceLocationRule,
+  AttendanceWorkArrangementStatus,
+  AttendanceWorkArrangementType,
   LeaveApprovalTaskStatus,
   LeaveLedgerEntryType,
+  LeaveRequestType,
   LeaveRequestStatus,
   type LeaveApprovalTask,
+  type AttendanceWorkArrangement,
   type LeaveBalanceBucket,
   type LeaveDayReservation,
   type LeaveLedgerEntry,
@@ -22,6 +27,7 @@ const REQUESTS = "leave_requests";
 const BALANCES = "leave_balance_buckets";
 const LEDGER = "leave_ledger_entries";
 const RESERVATIONS = "leave_day_reservations";
+const WORK_ARRANGEMENTS = "attendance_work_arrangements";
 
 const map = <T>(snapshot: FirebaseFirestore.DocumentSnapshot): T =>
   ({ id: snapshot.id, ...snapshot.data() }) as T;
@@ -34,6 +40,7 @@ export interface LeaveApprovalActionResult {
   previous_buckets: LeaveBalanceBucket[];
   buckets: LeaveBalanceBucket[];
   ledger_entries: LeaveLedgerEntry[];
+  work_arrangements: AttendanceWorkArrangement[];
 }
 
 export const decideLeaveApprovalTaskTransaction = async (input: {
@@ -44,13 +51,22 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
   action_time: Date;
   posting_date: string;
   next_level_available: boolean;
+  bypass_remaining_levels: boolean;
+  employee_id: string;
+  employee_name: string;
 }): Promise<LeaveApprovalActionResult> =>
   db.runTransaction(async (transaction) => {
     const taskReference = db.collection(TASKS).doc(input.task_id);
     const taskSnapshot = await transaction.get(taskReference);
     if (!taskSnapshot.exists) throw new Error("LEAVE_APPROVAL_TASK_NOT_FOUND");
     const currentTask = map<LeaveApprovalTask>(taskSnapshot);
-    if (currentTask.status !== LeaveApprovalTaskStatus.PENDING) {
+    if (
+      currentTask.status !== LeaveApprovalTaskStatus.PENDING &&
+      !(
+        input.bypass_remaining_levels &&
+        currentTask.status === LeaveApprovalTaskStatus.APPROVER_UNAVAILABLE
+      )
+    ) {
       throw {
         statusCode: 409,
         messages: {
@@ -73,7 +89,13 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
     ]);
     if (!requestSnapshot.exists) throw new Error("LEAVE_REQUEST_NOT_FOUND");
     const previousRequest = map<LeaveRequest>(requestSnapshot);
-    if (previousRequest.status !== LeaveRequestStatus.PENDING_APPROVAL) {
+    if (
+      previousRequest.status !== LeaveRequestStatus.PENDING_APPROVAL &&
+      !(
+        input.bypass_remaining_levels &&
+        previousRequest.status === LeaveRequestStatus.APPROVER_UNAVAILABLE
+      )
+    ) {
       throw {
         statusCode: 409,
         messages: {
@@ -91,6 +113,7 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
       current_task: currentTask,
       decision: input.decision,
       next_level_available: input.next_level_available,
+      bypass_remaining_levels: input.bypass_remaining_levels,
     });
     const tasks = previousTasks.map((task) => {
       if (task.id === currentTask.id) {
@@ -149,11 +172,13 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
       : [];
     const ledgerReferences = terminal
       ? previousRequest.balance_allocations.map((allocation) =>
-          db.collection(LEDGER).doc(
-            createLeaveLedgerDocumentId(
-              `${input.decision === "APPROVE" ? "request-approved" : "request-rejected"}:${previousRequest.id}:${allocation.leave_year}`,
+          db
+            .collection(LEDGER)
+            .doc(
+              createLeaveLedgerDocumentId(
+                `${input.decision === "APPROVE" ? "request-approved" : "request-rejected"}:${previousRequest.id}:${allocation.leave_year}`,
+              ),
             ),
-          ),
         )
       : [];
     const ledgerSnapshots = ledgerReferences.length
@@ -263,10 +288,47 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
       action_time: input.action_time,
       sync_time: now,
     };
+    const workArrangements: AttendanceWorkArrangement[] =
+      terminal &&
+      input.decision === "APPROVE" &&
+      previousRequest.request_type === LeaveRequestType.WORK_FROM_HOME
+        ? previousRequest.days.map((day) => ({
+            id: `wfh_${previousRequest.id}_${day.date}`,
+            warehouse_id: previousRequest.workplace_warehouse_id,
+            user_id: previousRequest.employee_user_id,
+            employee_profile_id: previousRequest.employee_profile_id,
+            employee_id: input.employee_id,
+            employee_name: input.employee_name,
+            type: AttendanceWorkArrangementType.WORK_FROM_HOME,
+            start_date: day.date,
+            end_date: day.date,
+            location_rule: AttendanceLocationRule.CAPTURE_ONLY,
+            destination_name: null,
+            destination_coordinate: null,
+            radius_m: null,
+            reason: previousRequest.reason,
+            source_leave_request_id: previousRequest.id,
+            status: AttendanceWorkArrangementStatus.APPROVED,
+            requested_by: previousRequest.employee_user_id,
+            approved_by: input.actor_id,
+            approved_at: now,
+            cancelled_by: null,
+            cancelled_at: null,
+            created_at: now,
+            updated_at: now,
+            is_deleted: false,
+          }))
+        : [];
     tasks.forEach((task) =>
       transaction.set(db.collection(TASKS).doc(task.id), task),
     );
     transaction.set(requestReference, request);
+    workArrangements.forEach((arrangement) =>
+      transaction.set(
+        db.collection(WORK_ARRANGEMENTS).doc(arrangement.id),
+        arrangement,
+      ),
+    );
     return {
       previous_request: previousRequest,
       request,
@@ -275,5 +337,6 @@ export const decideLeaveApprovalTaskTransaction = async (input: {
       previous_buckets: previousBuckets,
       buckets,
       ledger_entries: ledgerEntries,
+      work_arrangements: workArrangements,
     };
   });

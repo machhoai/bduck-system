@@ -2,12 +2,40 @@
 
 import Link from "next/link";
 import { ClipboardList, ScanBarcode } from "lucide-react";
+import { useUserStore } from "../../../stores/useUserStore";
 
-export default function ExternalNavTabs({ active }: { active: "queue" | "count" }) {
+export default function ExternalNavTabs({
+  active,
+}: {
+  active: "queue" | "count";
+}) {
+  const canViewQueue = useUserStore(
+    (state) =>
+      state.hasPermission("external_scan.view") ||
+      state.hasPermission("external_scan.approve") ||
+      state.hasPermission("external_scan.manage_queue"),
+  );
+  const canViewCount = useUserStore(
+    (state) =>
+      state.hasPermission("external_count.view") ||
+      state.hasPermission("external_count.count"),
+  );
   const tabs = [
-    { id: "queue", href: "/external/queue", label: "Queue", icon: ScanBarcode },
-    { id: "count", href: "/external/count", label: "Count", icon: ClipboardList },
-  ] as const;
+    {
+      id: "queue",
+      href: "/external/queue",
+      label: "Queue",
+      icon: ScanBarcode,
+      visible: canViewQueue,
+    },
+    {
+      id: "count",
+      href: "/external/count",
+      label: "Count",
+      icon: ClipboardList,
+      visible: canViewCount,
+    },
+  ].filter((tab) => tab.visible);
 
   return (
     <div className="mb-3 flex items-center gap-2 border-b border-[var(--color-border-subtle)]">
@@ -37,4 +65,3 @@ export default function ExternalNavTabs({ active }: { active: "queue" | "count" 
     </div>
   );
 }
-

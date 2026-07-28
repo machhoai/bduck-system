@@ -214,11 +214,14 @@ class NotificationRepository {
       const batch = db.batch();
       const now = new Date();
       chunk.forEach((token) => {
-        batch.update(db.collection(PUSH_TOKEN_COLLECTION).doc(getPushTokenId(token)), {
-          is_active: false,
-          disabled_at: now,
-          updated_at: now,
-        });
+        batch.update(
+          db.collection(PUSH_TOKEN_COLLECTION).doc(getPushTokenId(token)),
+          {
+            is_active: false,
+            disabled_at: now,
+            updated_at: now,
+          },
+        );
       });
       await batch.commit();
     }
@@ -254,6 +257,49 @@ class NotificationRepository {
     if (roleIds.length === 0) return [];
 
     const userIds = new Set<string>();
+    const materializedSources = new Map<
+      string,
+      Promise<Array<Record<string, unknown>>>
+    >();
+
+    const loadMaterializedSources = (
+      userId: string,
+      facilityId: string,
+    ): Promise<Array<Record<string, unknown>>> => {
+      const key = `${userId}:${facilityId}`;
+      const existing = materializedSources.get(key);
+      if (existing) return existing;
+
+      const pending = (async () => {
+        const metadataSnapshot = await db
+          .collection("user_access")
+          .doc(userId)
+          .get();
+        const activeVersionId = metadataSnapshot.get("active_version_id");
+        if (typeof activeVersionId !== "string" || !activeVersionId) {
+          return [];
+        }
+
+        const grantSnapshot = await db
+          .collection("user_access")
+          .doc(userId)
+          .collection("versions")
+          .doc(activeVersionId)
+          .collection("facilities")
+          .doc(facilityId)
+          .get();
+        if (!grantSnapshot.exists || grantSnapshot.get("is_deleted") === true) {
+          return [];
+        }
+
+        const sources = grantSnapshot.get("sources");
+        return Array.isArray(sources)
+          ? (sources as Array<Record<string, unknown>>)
+          : [];
+      })();
+      materializedSources.set(key, pending);
+      return pending;
+    };
 
     for (const chunk of chunkArray(roleIds, 30)) {
       const snapshot = await db
@@ -262,35 +308,65 @@ class NotificationRepository {
         .where("is_active", "==", true)
         .get();
 
-      snapshot.docs.forEach((docSnap) => {
+      for (const docSnap of snapshot.docs) {
         const data = docSnap.data();
+        if (data.is_deleted === true) continue;
 
         const now = new Date();
         const validFrom = data.valid_from ? new Date(data.valid_from) : null;
-        if (validFrom && validFrom.getTime() > now.getTime()) return;
+        if (validFrom && validFrom.getTime() > now.getTime()) continue;
         const validUntil = data.valid_until ? new Date(data.valid_until) : null;
-        if (validUntil && validUntil.getTime() < now.getTime()) return;
+        if (validUntil && validUntil.getTime() < now.getTime()) continue;
 
         const assignmentWarehouseId =
           typeof data.warehouse_id === "string" ? data.warehouse_id : null;
-        const isAssignmentGlobal = assignmentWarehouseId == null || assignmentWarehouseId === "";
+        const isAssignmentGlobal =
+          assignmentWarehouseId == null || assignmentWarehouseId === "";
 
         if (options.requireGlobal === true && !isAssignmentGlobal) {
-          return;
+          continue;
+        }
+
+        const isDirectlyEligible =
+          options.requireGlobal === true
+            ? isAssignmentGlobal
+            : warehouseId != null && warehouseId !== ""
+              ? assignmentWarehouseId === warehouseId ||
+                (options.allowGlobalFallback === true && isAssignmentGlobal)
+              : true;
+
+        let isInheritedEligible = false;
+        if (
+          !isDirectlyEligible &&
+          options.requireGlobal !== true &&
+          warehouseId != null &&
+          warehouseId !== "" &&
+          assignmentWarehouseId &&
+          data.scope_origin === "DIRECT" &&
+          typeof data.user_id === "string" &&
+          typeof data.role_id === "string"
+        ) {
+          const sources = await loadMaterializedSources(
+            data.user_id,
+            warehouseId,
+          );
+          isInheritedEligible = sources.some(
+            (source) =>
+              source.type === "OFFICE_INHERITED" &&
+              source.role_id === data.role_id &&
+              source.assignment_id === docSnap.id &&
+              source.office_id === assignmentWarehouseId,
+          );
         }
 
         if (
-          warehouseId != null && warehouseId !== "" &&
-          assignmentWarehouseId !== warehouseId &&
-          !(options.allowGlobalFallback === true && isAssignmentGlobal)
+          (isDirectlyEligible || isInheritedEligible) &&
+          typeof data.user_id === "string" &&
+          data.user_id.trim()
         ) {
-          return;
-        }
-
-        if (typeof data.user_id === "string" && data.user_id.trim()) {
           userIds.add(data.user_id);
         }
-      });
+      }
     }
 
     return Array.from(userIds);
@@ -341,7 +417,10 @@ class NotificationRepository {
       }
 
       if (!role || role.is_deleted) continue;
-      if (role.permissions["*"] === true || role.permissions[permissionKey] === true) {
+      if (
+        role.permissions["*"] === true ||
+        role.permissions[permissionKey] === true
+      ) {
         userIds.add(userId);
       }
     }

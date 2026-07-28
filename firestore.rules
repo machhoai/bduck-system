@@ -452,6 +452,13 @@ service cloud.firestore {
           || hasFacilityPermission(resource.data.warehouse_id, 'attendance.config'));
       allow write: if false;
     }
+    match /attendance_work_arrangements/{docId} {
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.view')
+          || hasFacilityPermission(resource.data.warehouse_id, 'attendance.config'));
+      allow write: if false;
+    }
     match /attendance_logs/{docId} {
       allow read: if signedIn()
         && (resource.data.user_id == request.auth.uid

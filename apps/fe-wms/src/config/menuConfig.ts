@@ -224,6 +224,7 @@ export const menuItems: MenuItem[] = [
         permissionsAny: [
             "external_scan.view",
             "external_scan.approve",
+            "external_scan.manage_queue",
             "external_count.view",
             "external_count.count",
         ],

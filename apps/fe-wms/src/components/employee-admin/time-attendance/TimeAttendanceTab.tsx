@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, UsersRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { LateArrivalReportSheet } from "./LateArrivalReportSheet";
+import { AttendanceWorkArrangementPanel } from "./AttendanceWorkArrangementPanel";
 import { TimeAttendanceCalendar } from "./TimeAttendanceCalendar";
 import { TimeAttendanceFilters } from "./TimeAttendanceFilters";
 import { TimeAttendanceSettingsPanel } from "./TimeAttendanceSettingsPanel";
@@ -19,6 +20,7 @@ import {
     useAttendanceLogs,
     useAttendancePolicies,
 } from "@/hooks/useAttendance";
+import { useAttendanceWorkArrangements } from "@/hooks/useAttendanceWorkArrangements";
 import {
     useEmployeeProfiles,
     useMyEmployeeProfile,
@@ -148,6 +150,11 @@ export function TimeAttendanceTab() {
     const settingsWarehouseId = selectedSettingsWarehouseId || null;
     const { exemptions: settingsExemptions, updateExemptions } =
         useAttendanceExemptions(settingsWarehouseId);
+    const {
+        arrangements,
+        approve: approveWorkArrangement,
+        cancel: cancelWorkArrangement,
+    } = useAttendanceWorkArrangements(settingsWarehouseId);
     const visibleWarehouseIds = useMemo(
         () => new Set(visibleWarehouses.map((warehouse) => warehouse.id)),
         [visibleWarehouses],
@@ -323,7 +330,7 @@ export function TimeAttendanceTab() {
                 <MobileStat icon={<CheckCircle2 size={15} />} label={labels.today || "Today"} value={mobileStats.checkedToday} tone="success" />
             </div>
 
-            <div className="grid gap-3 xl:grid-cols-[200px_minmax(0,1fr)] lg:gap-4">
+            <div className="grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] lg:gap-4">
                 <TimeCheckInPanel
                     context={context}
                     labels={labels}
@@ -380,6 +387,18 @@ export function TimeAttendanceTab() {
                 onSavePolicy={updatePolicy}
                 onSaveExemptions={updateExemptions}
             />
+
+            {canConfigureAttendance ? (
+                <AttendanceWorkArrangementPanel
+                    labels={labels}
+                    warehouseId={settingsWarehouseId}
+                    currentUserId={user?.id}
+                    profiles={profiles}
+                    arrangements={arrangements}
+                    onApprove={approveWorkArrangement}
+                    onCancel={cancelWorkArrangement}
+                />
+            ) : null}
 
             <LateArrivalReportSheet
                 open={lateReportOpen}

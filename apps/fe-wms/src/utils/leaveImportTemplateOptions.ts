@@ -76,10 +76,12 @@ export const buildLeaveImportTemplateOptions = (
       ),
     },
   ],
-  requestTypes: Object.values(LeaveRequestType).map((code) => ({
-    code,
-    label: getTemplateLabel(labels, `leaveType${code}`, code),
-  })),
+  requestTypes: Object.values(LeaveRequestType)
+    .filter((code) => code !== LeaveRequestType.WORK_FROM_HOME)
+    .map((code) => ({
+      code,
+      label: getTemplateLabel(labels, `leaveType${code}`, code),
+    })),
   requestStatuses: [
     LeaveRequestStatus.APPROVED,
     LeaveRequestStatus.REJECTED,

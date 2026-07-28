@@ -1,6 +1,16 @@
 {
   "indexes": [
     {
+      "collectionGroup": "attendance_work_arrangements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "leave_approval_tasks",
       "queryScope": "COLLECTION",
       "fields": [

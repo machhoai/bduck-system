@@ -12,8 +12,7 @@ import { createZeroLeaveDelta } from "./leaveBalancePolicy.js";
 const LOCAL_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const SAFE_REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/u;
 const SAFE_EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/u;
-const UNSAFE_QUERY_PATTERN =
-  /\$(?:where|ne|gt|gte|lt|lte|in|nin|or|and)\b/iu;
+const UNSAFE_QUERY_PATTERN = /\$(?:where|ne|gt|gte|lt|lte|in|nin|or|and)\b/iu;
 
 const message = (vi: string, zh: string): LocalizedText => ({ vi, zh });
 
@@ -42,12 +41,7 @@ export const validateLeaveImportIdentity = (input: {
     );
   }
   if (!SAFE_EMPLOYEE_CODE_PATTERN.test(input.employee_code)) {
-    errors.push(
-      message(
-        "Mã nhân viên không hợp lệ.",
-        "员工编号无效。",
-      ),
-    );
+    errors.push(message("Mã nhân viên không hợp lệ.", "员工编号无效。"));
   }
   return errors;
 };
@@ -92,6 +86,14 @@ export const validateLeaveImportPayload = (
   if (recordType === LeaveImportRecordType.HISTORICAL_REQUEST) {
     const expectedUnits =
       payload.day_portion === LeaveDayPortion.FULL_DAY ? 1 : 0.5;
+    if (payload.request_type === LeaveRequestType.WORK_FROM_HOME) {
+      errors.push(
+        message(
+          "Không hỗ trợ nhập đơn làm việc tại nhà qua dữ liệu lịch sử nghỉ phép.",
+          "历史休假导入不支持居家办公申请。",
+        ),
+      );
+    }
     if (
       !payload.request_type ||
       !payload.day_portion ||
@@ -112,11 +114,7 @@ export const validateLeaveImportPayload = (
     return errors;
   }
 
-  if (
-    payload.request_type ||
-    payload.request_status ||
-    payload.day_portion
-  ) {
+  if (payload.request_type || payload.request_status || payload.day_portion) {
     errors.push(
       message(
         "Các cột thông tin đơn nghỉ chỉ dùng cho HISTORICAL_REQUEST.",

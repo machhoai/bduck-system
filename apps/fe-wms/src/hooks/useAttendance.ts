@@ -1,11 +1,13 @@
 "use client";
 
-import type {
-  AttendanceCheckInContext,
-  AttendanceLateReport,
-  AttendanceLog,
-  WarehouseAttendanceExemption,
-  WarehouseAttendancePolicy,
+import {
+  AttendanceVerificationStrategy,
+  type AttendanceLocationInput,
+  type AttendanceCheckInContext,
+  type AttendanceLateReport,
+  type AttendanceLog,
+  type WarehouseAttendanceExemption,
+  type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
@@ -31,8 +33,9 @@ export {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+const PENDING_CHECK_IN_KEY = "bduck.attendance.pending-check-in.v1";
 
-async function callAttendanceApi<T>(
+export async function callAttendanceApi<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -49,6 +52,33 @@ async function callAttendanceApi<T>(
   }
   return body.data as T;
 }
+
+const captureAttendanceLocation = (): Promise<AttendanceLocationInput> => {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return Promise.reject(
+      new Error("Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS."),
+    );
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy_m: position.coords.accuracy,
+          captured_at: new Date(position.timestamp).toISOString(),
+        }),
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Bạn cần cho phép truy cập vị trí để chấm công."
+            : "Không lấy được vị trí chính xác. Hãy bật GPS và thử lại.";
+        reject(new Error(message));
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
+  });
+};
 
 export function useAttendanceContext() {
   const [context, setContext] = useState<AttendanceCheckInContext | null>(null);
@@ -91,6 +121,7 @@ export function useAttendanceContext() {
         "attendance_logs",
         "warehouse_attendance_policies",
         "warehouse_attendance_exemptions",
+        "attendance_work_arrangements",
       ],
       () => void reload(),
     );
@@ -100,18 +131,89 @@ export function useAttendanceContext() {
     };
   }, [reload]);
 
+  useEffect(() => {
+    const flushPendingCheckIn = async () => {
+      const pending =
+        typeof window === "undefined"
+          ? null
+          : window.localStorage.getItem(PENDING_CHECK_IN_KEY);
+      if (!pending || !context?.can_check_in || context.today_success_log) return;
+      try {
+        const parsed = JSON.parse(pending) as {
+          version: 1;
+          action_time: string;
+        };
+        if (parsed.version !== 1) return;
+        const shouldCaptureLocation = Boolean(
+          context.active_work_arrangement ||
+            context.location_required ||
+            context.verification_strategy ===
+              AttendanceVerificationStrategy.GPS_ONLY ||
+            context.verification_strategy ===
+              AttendanceVerificationStrategy.IP_AND_GPS,
+        );
+        const location = shouldCaptureLocation
+          ? await captureAttendanceLocation()
+          : undefined;
+        await callAttendanceApi<AttendanceLog>("/api/attendance/check-in", {
+          method: "POST",
+          body: JSON.stringify({
+            action_time: parsed.action_time,
+            location,
+          }),
+        });
+        window.localStorage.removeItem(PENDING_CHECK_IN_KEY);
+        emitDataMutation(["attendance_logs", "audit_logs"]);
+        await reload();
+      } catch (pendingError) {
+        console.error("[useAttendanceContext] pending check-in error:", pendingError);
+      }
+    };
+    window.addEventListener("online", flushPendingCheckIn);
+    if (navigator.onLine) void flushPendingCheckIn();
+    return () => window.removeEventListener("online", flushPendingCheckIn);
+  }, [context, reload]);
+
   const checkIn = useCallback(async () => {
-    const log = await callAttendanceApi<AttendanceLog>(
-      "/api/attendance/check-in",
-      {
-        method: "POST",
-        body: JSON.stringify({ action_time: new Date().toISOString() }),
-      },
+    const shouldCaptureLocation = Boolean(
+      context?.active_work_arrangement ||
+        context?.location_required ||
+        context?.verification_strategy ===
+          AttendanceVerificationStrategy.GPS_ONLY ||
+        context?.verification_strategy ===
+          AttendanceVerificationStrategy.IP_AND_GPS,
     );
-    emitDataMutation(["attendance_logs", "audit_logs"]);
-    await reload();
-    return log;
-  }, [reload]);
+    const location = shouldCaptureLocation
+      ? await captureAttendanceLocation()
+      : undefined;
+    const actionTime = new Date().toISOString();
+    try {
+      const log = await callAttendanceApi<AttendanceLog>(
+        "/api/attendance/check-in",
+        {
+        method: "POST",
+        body: JSON.stringify({
+          action_time: actionTime,
+          location,
+        }),
+      },
+      );
+      emitDataMutation(["attendance_logs", "audit_logs"]);
+      await reload();
+      return log;
+    } catch (checkInError) {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        window.localStorage.setItem(
+          PENDING_CHECK_IN_KEY,
+          JSON.stringify({ version: 1, action_time: actionTime }),
+        );
+        throw new Error(
+          "Đang mất kết nối. Lần check-in đã được lưu trên thiết bị và sẽ tự đồng bộ khi có mạng.",
+        );
+      }
+      throw checkInError;
+    }
+  }, [context, reload]);
 
   const reportLate = useCallback(
     async (payload: {
@@ -215,7 +317,7 @@ export function useAttendancePolicies() {
   const updatePolicy = useCallback(
     async (
       warehouseId: string,
-      payload: { enabled: boolean; ip_addresses: string[] },
+      payload: AttendancePolicyUpdate,
     ) => {
       const result = await callAttendanceApi<WarehouseAttendancePolicy>(
         `/api/attendance/policies/${warehouseId}`,
@@ -237,6 +339,18 @@ export function useAttendancePolicies() {
 
   return { policies, policyByWarehouse, loading, updatePolicy };
 }
+
+export type AttendancePolicyUpdate = Pick<
+  WarehouseAttendancePolicy,
+  | "enabled"
+  | "ip_addresses"
+  | "verification_strategy"
+  | "gps_radius_m"
+  | "gps_max_accuracy_m"
+  | "gps_max_age_seconds"
+  | "allow_business_trip"
+  | "allow_work_from_home"
+>;
 
 export function useAttendanceExemptions(warehouseId?: string | null) {
   const [exemptions, setExemptions] = useState<WarehouseAttendanceExemption[]>(

@@ -1,7 +1,4 @@
-import {
-  AuditAction,
-  LeaveApprovalTaskStatus,
-} from "@bduck/shared-types";
+import { AuditAction, LeaveApprovalTaskStatus } from "@bduck/shared-types";
 import type { LeaveApprovalActionResult } from "../repositories/leaveApprovalActionRepository.js";
 import type {
   LeaveApprovalAvailabilityResult,
@@ -49,8 +46,7 @@ export const auditLeaveApprovalDecision = async (
       entity_type: "leave_requests",
       entity_id: result.request.id,
       warehouse_id: result.request.workplace_warehouse_id,
-      action:
-        decision === "APPROVE" ? AuditAction.APPROVE : AuditAction.REJECT,
+      action: decision === "APPROVE" ? AuditAction.APPROVE : AuditAction.REJECT,
       user_id: actorId,
       old_value: result.previous_request as unknown as Record<string, unknown>,
       new_value: result.request as unknown as Record<string, unknown>,
@@ -105,6 +101,18 @@ export const auditLeaveApprovalDecision = async (
           (previous) => previous.id === bucket.id,
         ) as unknown as Record<string, unknown>,
         new_value: bucket as unknown as Record<string, unknown>,
+        action_time: actionTime,
+      }),
+    ),
+    ...result.work_arrangements.map((arrangement) =>
+      logAudit({
+        entity_type: "attendance_work_arrangements",
+        entity_id: arrangement.id,
+        warehouse_id: arrangement.warehouse_id,
+        action: AuditAction.CREATE,
+        user_id: actorId,
+        old_value: null,
+        new_value: arrangement as unknown as Record<string, unknown>,
         action_time: actionTime,
       }),
     ),

@@ -391,6 +391,24 @@ async function seedDocuments() {
         },
       ],
       [
+        "attendance_work_arrangements/arrangement-c",
+        {
+          user_id: "user-a",
+          warehouse_id: "warehouse-c",
+          status: "APPROVED",
+          is_deleted: false,
+        },
+      ],
+      [
+        "attendance_work_arrangements/arrangement-d",
+        {
+          user_id: "user-b",
+          warehouse_id: "store-d",
+          status: "APPROVED",
+          is_deleted: false,
+        },
+      ],
+      [
         "expenses/expense-c",
         { warehouse_id: "warehouse-c", period: "2026-07" },
       ],
@@ -978,6 +996,24 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertFails(
       getDoc(doc(warehouseUser, "attendance_logs", "attendance-d")),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(
+          warehouseUser,
+          "attendance_work_arrangements",
+          "arrangement-c",
+        ),
+      ),
+    );
+    await assertFails(
+      getDoc(
+        doc(
+          warehouseUser,
+          "attendance_work_arrangements",
+          "arrangement-d",
+        ),
+      ),
     );
     await assertSucceeds(getDoc(doc(warehouseUser, "expenses", "expense-c")));
     await assertFails(

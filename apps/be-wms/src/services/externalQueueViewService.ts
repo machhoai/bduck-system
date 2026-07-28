@@ -210,6 +210,8 @@ export const buildExternalQueueBatchViews = async (
             lookup.approvalRecordsByEntity.get(group.export_voucher_id) ?? [],
             lookup.roles,
             user,
+            (roleId, facilityId) =>
+              authorization.hasRoleAtFacility(roleId, facilityId),
           )
         : null;
       delete group.product_ids;

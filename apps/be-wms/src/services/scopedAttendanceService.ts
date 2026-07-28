@@ -9,6 +9,7 @@ import {
 } from "./attendanceAuthorizationPolicy.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import * as attendanceService from "./attendanceService.js";
+import * as attendanceWorkArrangementService from "./attendanceWorkArrangementService.js";
 
 export const fetchAttendanceContext = async (
   user: AuthenticatedRequestUser,
@@ -28,7 +29,7 @@ export const fetchAttendanceContext = async (
 
 export const checkInAttendance = async (
   user: AuthenticatedRequestUser,
-  input: { action_time?: string },
+  input: Parameters<typeof attendanceService.checkInAttendance>[1],
   requestIps: string | Array<string | null | undefined> | null | undefined,
   auditMetadata: AuditMetadata | undefined,
   authorization: AuthorizationService,
@@ -76,7 +77,7 @@ export const fetchAttendancePolicies = (authorization: AuthorizationService) =>
 export const updateAttendancePolicy = (
   user: AuthenticatedRequestUser,
   warehouseId: string,
-  input: { enabled: boolean; ip_addresses: string[] },
+  input: Parameters<typeof attendanceService.updateAttendancePolicy>[2],
   auditMetadata: AuditMetadata | undefined,
   authorization: AuthorizationService,
 ) => {
@@ -85,6 +86,50 @@ export const updateAttendancePolicy = (
     user,
     warehouseId,
     input,
+    auditMetadata,
+  );
+};
+
+export const fetchAttendanceWorkArrangements = (
+  warehouseId: string,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("attendance.config", warehouseId);
+  return attendanceWorkArrangementService.fetchAttendanceWorkArrangements(
+    warehouseId,
+  );
+};
+
+export const approveAttendanceWorkArrangement = (
+  user: AuthenticatedRequestUser,
+  warehouseId: string,
+  input: Parameters<
+    typeof attendanceWorkArrangementService.approveAttendanceWorkArrangement
+  >[2],
+  auditMetadata: AuditMetadata | undefined,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("attendance.config", warehouseId);
+  return attendanceWorkArrangementService.approveAttendanceWorkArrangement(
+    user,
+    warehouseId,
+    input,
+    auditMetadata,
+  );
+};
+
+export const cancelAttendanceWorkArrangement = (
+  user: AuthenticatedRequestUser,
+  warehouseId: string,
+  arrangementId: string,
+  auditMetadata: AuditMetadata | undefined,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("attendance.config", warehouseId);
+  return attendanceWorkArrangementService.cancelAttendanceWorkArrangement(
+    user,
+    warehouseId,
+    arrangementId,
     auditMetadata,
   );
 };

@@ -5,7 +5,10 @@ import {
   type LeaveBalanceBucket,
   type LeaveRequestDay,
 } from "@bduck/shared-types";
-import { allocatePaidLeaveUnits } from "./leaveRequestPolicy.js";
+import {
+  allocatePaidLeaveUnits,
+  isFullDayWorkFromHomeSelection,
+} from "./leaveRequestPolicy.js";
 
 const bucket = (
   leaveYear: number,
@@ -31,8 +34,7 @@ const bucket = (
 
 const day = (date: string, units: 0.5 | 1 = 1): LeaveRequestDay => ({
   date,
-  portion:
-    units === 1 ? LeaveDayPortion.FULL_DAY : LeaveDayPortion.MORNING,
+  portion: units === 1 ? LeaveDayPortion.FULL_DAY : LeaveDayPortion.MORNING,
   units,
 });
 
@@ -54,9 +56,7 @@ describe("paid leave allocation", () => {
       [day("2027-04-01")],
       [bucket(2026, 5), bucket(2027, 0.5)],
     );
-    assert.deepEqual(result.allocations, [
-      { leave_year: 2027, units: 0.5 },
-    ]);
+    assert.deepEqual(result.allocations, [{ leave_year: 2027, units: 0.5 }]);
     assert.equal(result.insufficient_units, 0.5);
   });
 
@@ -70,5 +70,15 @@ describe("paid leave allocation", () => {
       { leave_year: 2027, units: 1 },
     ]);
     assert.equal(result.insufficient_units, 0);
+  });
+});
+
+describe("work from home selection", () => {
+  it("accepts only full work days", () => {
+    assert.equal(isFullDayWorkFromHomeSelection([day("2027-03-30")]), true);
+    assert.equal(
+      isFullDayWorkFromHomeSelection([day("2027-03-30", 0.5)]),
+      false,
+    );
   });
 });

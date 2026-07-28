@@ -68,6 +68,19 @@ test("historical requests require a completed status and matching portion", () =
   );
 });
 
+test("historical leave imports reject work from home requests", () => {
+  assert.ok(
+    validateLeaveImportPayload(
+      LeaveImportRecordType.HISTORICAL_REQUEST,
+      payload({
+        request_type: LeaveRequestType.WORK_FROM_HOME,
+        request_status: LeaveRequestStatus.APPROVED,
+        day_portion: LeaveDayPortion.FULL_DAY,
+      }),
+    ).length > 0,
+  );
+});
+
 test("ledger rows reject request-only columns and non-half units", () => {
   assert.ok(
     validateLeaveImportPayload(

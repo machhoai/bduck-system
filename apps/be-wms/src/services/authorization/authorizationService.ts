@@ -78,6 +78,20 @@ export class AuthorizationService {
     );
   }
 
+  hasWildcardPermissionAtFacility(facilityId: string): boolean {
+    if (
+      typeof facilityId !== "string" ||
+      facilityId.trim() !== facilityId ||
+      facilityId.length === 0
+    ) {
+      return false;
+    }
+    return (
+      this.context.isSystemAdmin ||
+      this.context.grants[facilityId]?.permissions["*"] === true
+    );
+  }
+
   hasRoleAtFacility(roleId: string, facilityId: string): boolean {
     const grant = this.context.grants[facilityId];
     return Boolean(

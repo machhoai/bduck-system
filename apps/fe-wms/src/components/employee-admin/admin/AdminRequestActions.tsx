@@ -1,13 +1,39 @@
 "use client";
 
 import { LeaveRequestType } from "@bduck/shared-types";
-import { Baby, CalendarClock, FileText, HeartPulse } from "lucide-react";
+import { Baby, CalendarClock, FileText, HeartPulse, House } from "lucide-react";
 
 const requestTypes = [
-  { key: "paidLeave", value: LeaveRequestType.PAID_ANNUAL, icon: CalendarClock, tone: "text-[#257a3e] bg-[#257a3e10]" },
-  { key: "unpaidLeave", value: LeaveRequestType.UNPAID, icon: FileText, tone: "text-[#936000] bg-[#93600010]" },
-  { key: "maternityLeave", value: LeaveRequestType.MATERNITY, icon: Baby, tone: "text-[#7928ca] bg-[#7928ca10]" },
-  { key: "sickLeave", value: LeaveRequestType.SICK, icon: HeartPulse, tone: "text-[#b42318] bg-[#b4231810]" },
+  {
+    key: "paidLeave",
+    value: LeaveRequestType.PAID_ANNUAL,
+    icon: CalendarClock,
+    tone: "text-[#257a3e] bg-[#257a3e10]",
+  },
+  {
+    key: "workFromHomeRequest",
+    value: LeaveRequestType.WORK_FROM_HOME,
+    icon: House,
+    tone: "text-[#0066cc] bg-[#0066cc10]",
+  },
+  {
+    key: "unpaidLeave",
+    value: LeaveRequestType.UNPAID,
+    icon: FileText,
+    tone: "text-[#936000] bg-[#93600010]",
+  },
+  {
+    key: "maternityLeave",
+    value: LeaveRequestType.MATERNITY,
+    icon: Baby,
+    tone: "text-[#7928ca] bg-[#7928ca10]",
+  },
+  {
+    key: "sickLeave",
+    value: LeaveRequestType.SICK,
+    icon: HeartPulse,
+    tone: "text-[#b42318] bg-[#b4231810]",
+  },
 ];
 
 export function AdminRequestActions({
@@ -18,7 +44,7 @@ export function AdminRequestActions({
   onSelect: (requestType: LeaveRequestType) => void;
 }) {
   return (
-    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
       {requestTypes.map((item) => {
         const Icon = item.icon;
         return (

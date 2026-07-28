@@ -14,6 +14,11 @@ export interface ScopedUser {
   roleAssignments?: RoleAssignmentValidityInput[];
 }
 
+export type HasEffectiveRoleAtFacility = (
+  roleId: string,
+  facilityId: string,
+) => boolean;
+
 interface RoleScopeOptions {
   allowGlobalFallback?: boolean;
   requireGlobal?: boolean;
@@ -74,11 +79,12 @@ export function getApprovalWarehouseId(record: ApprovalRecord): string | null {
 export function canActOnApprovalRecord(
   user: ScopedUser,
   record: ApprovalRecord,
+  hasEffectiveRoleAtFacility?: HasEffectiveRoleAtFacility,
 ): boolean {
   const approvalWarehouseId = getApprovalWarehouseId(record);
   const requireGlobal = record.approval_scope === "GLOBAL";
 
-  return hasRoleInScope(
+  const hasDirectRole = hasRoleInScope(
     user.roleAssignments,
     record.role_id,
     approvalWarehouseId,
@@ -86,6 +92,14 @@ export function canActOnApprovalRecord(
       allowGlobalFallback: record.allow_global_fallback === true,
       requireGlobal,
     },
+  );
+
+  if (hasDirectRole || requireGlobal || !approvalWarehouseId) {
+    return hasDirectRole;
+  }
+
+  return (
+    hasEffectiveRoleAtFacility?.(record.role_id, approvalWarehouseId) === true
   );
 }
 
