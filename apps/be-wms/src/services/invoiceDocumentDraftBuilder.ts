@@ -8,6 +8,7 @@ import {
 } from "@bduck/shared-types";
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
 import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -68,7 +69,9 @@ export const buildInitialInvoiceDocument = (
   ) {
     return null;
   }
-  const items = asItems(sourceOrder.normalized_items);
+  const items = asItems(sourceOrder.normalized_items).filter(
+    invoiceLineShouldAppearInIssuedInvoice,
+  );
   const preflight = asPreflight(sourceOrder.preflight);
   return {
     id: sourceOrderDocumentId,

@@ -158,6 +158,53 @@ test("preflight allows a complete post-go-live order", () => {
   assert.deepEqual(result.issues, []);
 });
 
+test("preflight ignores zero-priced products and rejects invoices containing only them", () => {
+  const paidLine = baseLine();
+  const freeLine = baseLine({
+    line_number: 2,
+    source_item_id: "free-item",
+    item_code: null,
+    item_name: null,
+    unit_name: null,
+    unit_price: 0,
+    vat_rate_name: null,
+    vat_rate: null,
+    source_amount_without_vat: 0,
+    source_vat_amount: 0,
+    source_total_amount: 0,
+  });
+  const run = (
+    lines: InvoiceSourceOrderLine[],
+    calculationLines: InvoiceSourceOrderLine[],
+  ) =>
+    preflightInvoiceSourceOrder({
+      lines,
+      calculation: calculateInvoice(calculationLines, false, option),
+      amount_decimal_digits: 0,
+      source_amount_without_vat: calculationLines.length ? 100_000 : 0,
+      source_vat_amount: calculationLines.length ? 10_000 : 0,
+      source_total_amount: calculationLines.length ? 110_000 : 0,
+      payment_time: new Date("2026-07-20T03:00:00.000Z"),
+      mapped_payment_method: "Tiền mặt",
+      store_config_exists: true,
+      store_config_enabled: true,
+      price_includes_vat: false,
+      inv_series: "1C26TAA",
+      go_live_at: new Date("2026-07-20T02:00:00.000Z"),
+      account_exists: true,
+      account_enabled: true,
+      account_last_test_succeeded: true,
+    });
+
+  const mixed = run([paidLine, freeLine], [paidLine]);
+  assert.equal(mixed.issue_eligible, true);
+  assert.equal(mixed.issues.some((item) => item.path.startsWith("items.1")), false);
+
+  const freeOnly = run([freeLine], []);
+  assert.equal(freeOnly.issue_eligible, false);
+  assert.equal(freeOnly.issues.some((item) => item.code === "ITEMS_EMPTY"), true);
+});
+
 test("preflight blocks pre-go-live orders and missing VAT configuration", () => {
   const lines = [baseLine({ vat_rate_name: null, vat_rate: null })];
   const result = preflightInvoiceSourceOrder({

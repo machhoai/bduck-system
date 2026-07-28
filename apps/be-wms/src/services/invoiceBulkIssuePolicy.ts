@@ -14,6 +14,7 @@ import {
   zeroDecimal,
 } from "./invoiceDecimal.js";
 import { applyInvoiceDisplayMapping } from "./invoiceDisplayMapping.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 
 export const bulkIssueRunId = (
   warehouseId: string,
@@ -108,8 +109,14 @@ export const summarizeBulkIssue = (
     const items = Array.isArray(document.items)
       ? (document.items as Record<string, unknown>[])
       : [];
-    productLineCount += items.length;
-    for (const item of items) {
+    const invoiceItems = items.filter((item) =>
+      invoiceLineShouldAppearInIssuedInvoice({
+        unit_price:
+          typeof item.unit_price === "number" ? item.unit_price : null,
+      }),
+    );
+    productLineCount += invoiceItems.length;
+    for (const item of invoiceItems) {
       quantity = addDecimal(quantity, parseDecimal(Number(item.quantity ?? 0)));
     }
   }
@@ -139,6 +146,7 @@ const summarizeProducts = (
   const products = new Map<string, InvoiceBulkIssueProductSummary>();
 
   for (const line of lines) {
+    if (!invoiceLineShouldAppearInIssuedInvoice(line)) continue;
     const mapped = applyInvoiceDisplayMapping(line, config);
     const itemName = mapped.item_name ?? "—";
     const key = `${itemName}\u0000${mapped.unit_name ?? ""}`;

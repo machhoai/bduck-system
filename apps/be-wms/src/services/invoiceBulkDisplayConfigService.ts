@@ -7,6 +7,7 @@ import { invoiceOrderRepository } from "../repositories/invoiceOrderRepository.j
 import { meInvoiceConfigRepository } from "../repositories/meInvoiceConfigRepository.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
 
 interface DisplayMappings {
@@ -57,7 +58,9 @@ const buildDisplayConfig = async (
   const orders = (
     await invoiceOrderRepository.listOrders(warehouseId, businessDate)
   ).filter(invoiceOrderShouldAppearInList);
-  const lines = orders.flatMap(sourceLines);
+  const lines = orders
+    .flatMap(sourceLines)
+    .filter(invoiceLineShouldAppearInIssuedInvoice);
   const itemNames = new Set<string>();
   const unitNames = new Set<string>();
   const itemUnits = new Map<string, string | null>();

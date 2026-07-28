@@ -16,6 +16,7 @@ import {
 } from "./invoiceDecimal.js";
 import { canonicalJson } from "./invoiceOrderSyncUtils.js";
 import { applyInvoiceDisplayMapping } from "./invoiceDisplayMapping.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 
 const REF_ID_NAMESPACE = "e9e08082-9f44-4ee0-aeb6-55a0e91c2dfc";
 const REF_ID_NAMESPACE_VERSION = "meinvoice-original-v1";
@@ -90,16 +91,22 @@ export const buildMeInvoicePayload = (
   if (!calculation || !sourceOrderId || !warehouseId || !paymentTime) {
     throw new Error("INVOICE_SOURCE_ORDER_NOT_PREPARED");
   }
+  const invoiceLines = calculation.lines.filter(
+    invoiceLineShouldAppearInIssuedInvoice,
+  );
+  if (invoiceLines.length === 0) {
+    throw new Error("INVOICE_NO_BILLABLE_ITEMS");
+  }
 
   const refId = uuidv5(
     `${REF_ID_NAMESPACE_VERSION}:${account.legal_entity_id}:${warehouseId}:${sourceOrderId}:ORIGINAL`,
     REF_ID_NAMESPACE,
   );
   const totalSaleAmount = sumMoney(
-    calculation.lines.map((line) => line.amount),
+    invoiceLines.map((line) => line.amount),
   );
   const totalDiscountAmount = sumMoney(
-    calculation.lines.map((line) => line.calculated_discount_amount),
+    invoiceLines.map((line) => line.calculated_discount_amount),
   );
   const coefficientDigits =
     storeConfig.option_user_defined.coefficient_decimal_digits;
@@ -169,7 +176,7 @@ export const buildMeInvoicePayload = (
         storeConfig.option_user_defined.exchange_rate_decimal_digits,
       ),
     },
-    OriginalInvoiceDetail: calculation.lines.map((sourceLine, index) => {
+    OriginalInvoiceDetail: invoiceLines.map((sourceLine, index) => {
       const line = applyInvoiceDisplayMapping(sourceLine, storeConfig);
       return {
         ItemType: 1,

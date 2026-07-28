@@ -5,7 +5,10 @@ import type {
   MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
-import { buildBulkIssueInvoiceSummaries } from "./invoiceBulkIssuePolicy.js";
+import {
+  buildBulkIssueInvoiceSummaries,
+  summarizeBulkIssue,
+} from "./invoiceBulkIssuePolicy.js";
 import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
 
@@ -159,6 +162,63 @@ test("unit mapping can differ between products with the same source unit", () =>
       { item_name: "Vé lượt", unit_name: "Cái" },
     ],
   );
+});
+
+test("zero-priced products are excluded from summaries and MISA payload", () => {
+  const paidLine = line("B.Duck Vịt con bắn nước tung tăng", "Vé", 2);
+  const freeLine = {
+    ...line("Quà tặng 0đ", "Cái", 1),
+    unit_price: 0,
+    source_amount_without_vat: 0,
+    source_vat_amount: 0,
+    source_total_amount: 0,
+    amount: 0,
+    amount_without_vat: 0,
+    vat_amount: 0,
+    total_amount: 0,
+  };
+  const mixedCalculation = {
+    ...calculation,
+    lines: [paidLine, freeLine],
+  };
+  const document = {
+    id: "document-1",
+    source_order_id: "order-1",
+    source_order_number: "HD-1",
+    payment_time: "2026-07-28T10:00:00+07:00",
+    items: [paidLine, freeLine],
+    calculation: mixedCalculation,
+  };
+
+  const preview = buildBulkIssueInvoiceSummaries([document], config);
+  assert.equal(preview.product_summary.length, 1);
+  assert.equal(preview.product_summary[0]?.item_name, "Vé lượt");
+
+  const summary = summarizeBulkIssue(1, [document], []);
+  assert.equal(summary.product_line_count, 1);
+  assert.equal(summary.product_quantity, 2);
+
+  const built = buildMeInvoicePayload(
+    {
+      warehouse_id: "warehouse-1",
+      source_order_id: "order-1",
+      source_order_number: "HD-1",
+      payment_time: "2026-07-28T10:00:00+07:00",
+      payment_method_name: "Tiền mặt",
+      buyer: {},
+      calculation: mixedCalculation,
+    },
+    config,
+    {
+      id: "account-1",
+      legal_entity_id: "legal-1",
+    } as StoredMeInvoiceAccount,
+  );
+  const details = built.payload.OriginalInvoiceDetail as Array<
+    Record<string, unknown>
+  >;
+  assert.equal(details.length, 1);
+  assert.equal(details[0]?.ItemName, "Vé lượt");
 });
 
 test("MISA payload applies saved product and unit mappings", () => {

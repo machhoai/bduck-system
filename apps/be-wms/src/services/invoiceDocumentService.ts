@@ -24,6 +24,7 @@ import {
 } from "./invoiceDocumentPolicy.js";
 import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import type { InvoiceDocumentUpdateInput } from "./invoiceDocumentSchemas.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
 import { dateFromValue } from "./meInvoiceConfigService.js";
@@ -293,11 +294,14 @@ const validationForEditedDraft = (
     source_vat_amount: null,
     source_total_amount: null,
   }));
+  const invoiceItems = comparisonFreeItems.filter(
+    invoiceLineShouldAppearInIssuedInvoice,
+  );
   const calculation =
     storeConfig.price_includes_vat === null
       ? null
       : calculateInvoice(
-          comparisonFreeItems,
+          invoiceItems,
           storeConfig.price_includes_vat,
           storeConfig.option_user_defined,
         );
@@ -383,10 +387,12 @@ export const updateInvoiceDocument = async (
       "INVOICE_SOURCE_STALE",
     );
   }
-  const nextItems: InvoiceSourceOrderLine[] = input.items.map((item) => ({
-    ...item,
-    vat_rate: vatRateValue(item.vat_rate_name),
-  }));
+  const nextItems: InvoiceSourceOrderLine[] = input.items
+    .map((item) => ({
+      ...item,
+      vat_rate: vatRateValue(item.vat_rate_name),
+    }))
+    .filter(invoiceLineShouldAppearInIssuedInvoice);
   const comparableCurrent = {
     buyer: current.buyer,
     payment_method_name: current.payment_method_name,

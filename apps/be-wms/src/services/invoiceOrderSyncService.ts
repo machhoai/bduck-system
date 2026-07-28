@@ -20,6 +20,7 @@ import {
   INVOICE_CALCULATION_VERSION,
 } from "./invoiceCalculationService.js";
 import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
+import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { adaptJoyworldOrderItems } from "./invoiceOrderAdapter.js";
 import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import type { InvoiceOrderSyncInput } from "./invoiceOrderSyncSchemas.js";
@@ -193,12 +194,15 @@ const buildSourceOrder = (
     unit_price_decimal_digits:
       storeConfig?.option_user_defined.unit_price_oc_decimal_digits ?? 0,
   });
+  const invoiceItems = normalizedItems.filter(
+    invoiceLineShouldAppearInIssuedInvoice,
+  );
   const calculation =
     storeConfig?.price_includes_vat === null ||
     storeConfig?.price_includes_vat === undefined
       ? null
       : calculateInvoice(
-          normalizedItems,
+          invoiceItems,
           storeConfig.price_includes_vat,
           storeConfig.option_user_defined,
         );
