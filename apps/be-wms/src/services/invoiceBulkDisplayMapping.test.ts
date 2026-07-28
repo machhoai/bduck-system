@@ -41,6 +41,9 @@ const config = {
   item_name_mapping: {
     "B.Duck Vịt con bắn nước tung tăng": "Vé lượt",
   },
+  item_unit_mapping: {
+    "B.Duck Vịt con bắn nước tung tăng": "Cái",
+  },
   unit_name_mapping: { Vé: "Cái" },
   default_unit_name: "Cái",
   inv_series: "1C26TAA",
@@ -117,6 +120,45 @@ test("bulk preview groups quantities by mapped product name and unit", () => {
     },
   ]);
   assert.equal(result.invoices[0]?.products[0]?.item_name, "Vé lượt");
+});
+
+test("unit mapping can differ between products with the same source unit", () => {
+  const productConfig = {
+    ...config,
+    item_unit_mapping: {
+      "B.Duck Vịt con bắn nước tung tăng": "Cái",
+      "Vé khu vui chơi": "Lượt",
+    },
+  };
+  const result = buildBulkIssueInvoiceSummaries(
+    [
+      {
+        id: "document-1",
+        source_order_id: "order-1",
+        source_order_number: "HD-1",
+        payment_time: "2026-07-28T10:00:00+07:00",
+        calculation: {
+          ...calculation,
+          lines: [
+            line("B.Duck Vịt con bắn nước tung tăng", "Vé", 2),
+            line("Vé khu vui chơi", "Vé", 1),
+          ],
+        },
+      },
+    ],
+    productConfig,
+  );
+
+  assert.deepEqual(
+    result.product_summary.map(({ item_name, unit_name }) => ({
+      item_name,
+      unit_name,
+    })),
+    [
+      { item_name: "Vé khu vui chơi", unit_name: "Lượt" },
+      { item_name: "Vé lượt", unit_name: "Cái" },
+    ],
+  );
 });
 
 test("MISA payload applies saved product and unit mappings", () => {

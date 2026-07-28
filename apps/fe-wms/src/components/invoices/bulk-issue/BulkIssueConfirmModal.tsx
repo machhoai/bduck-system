@@ -60,16 +60,17 @@ export function BulkIssueConfirmModal({
       aria-modal="true"
       aria-label={vi ? "Xác nhận xuất hóa đơn" : "确认批量开票"}
     >
-      <div className="flex max-h-[96vh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-slate-50 shadow-2xl sm:max-w-5xl sm:rounded-2xl">
-        <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
-          <div>
+      <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-slate-50 shadow-2xl sm:max-h-[90vh] sm:max-w-5xl sm:rounded-2xl animate-in slide-in-from-bottom-5 duration-200">
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pt-3 pb-4">
+          <div className="flex-1">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300 sm:hidden" />
             <p className="text-micro font-bold uppercase tracking-wider text-sky-700">
               MISA meInvoice
             </p>
             <h3 className="mt-0.5 text-base font-bold text-slate-950">
               {vi ? "Kiểm tra danh sách trước khi xuất" : "开票前核对列表"}
             </h3>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500">
               {preview.business_date} ·{" "}
               {preview.selection_mode === "ALL"
                 ? vi
@@ -83,7 +84,7 @@ export function BulkIssueConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
             aria-label={vi ? "Đóng" : "关闭"}
           >
             <X size={18} />
@@ -247,18 +248,18 @@ export function BulkIssueConfirmModal({
           )}
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-slate-200 bg-white p-3 sm:p-4">
+        <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end sm:p-4">
           <button
             type="button"
             onClick={onCancel}
-            className="h-9 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="h-9 w-full sm:w-auto rounded-lg border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all"
           >
             {vi ? "Quay lại" : "返回"}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="h-9 rounded-md bg-sky-700 px-4 text-xs font-bold text-white hover:bg-sky-800"
+            className="h-9 w-full sm:w-auto rounded-lg bg-sky-700 px-4 text-xs font-bold text-white hover:bg-sky-800 active:scale-[0.98] transition-all"
           >
             {vi ? "Xác nhận và tiếp tục OTP" : "确认并继续 OTP"}
           </button>

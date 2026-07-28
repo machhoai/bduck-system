@@ -59,6 +59,7 @@ interface ConfigForm {
   payment_mappings: PaymentMappingRow[];
   sku_mapping: MeInvoiceStoreConfigPayload["sku_mapping"];
   item_name_mapping: MeInvoiceStoreConfigPayload["item_name_mapping"];
+  item_unit_mapping: MeInvoiceStoreConfigPayload["item_unit_mapping"];
   unit_name_mapping: MeInvoiceStoreConfigPayload["unit_name_mapping"];
   category_vat_mapping: MeInvoiceStoreConfigPayload["category_vat_mapping"];
   option_user_defined: MeInvoiceOptionUserDefined;
@@ -94,6 +95,7 @@ const blankForm = (): ConfigForm => ({
   payment_mappings: [{ id: "mapping-new", source: "", target: "" }],
   sku_mapping: {},
   item_name_mapping: {},
+  item_unit_mapping: {},
   unit_name_mapping: {},
   category_vat_mapping: {},
   option_user_defined: DEFAULT_OPTION_USER_DEFINED,
@@ -143,6 +145,7 @@ const toForm = (config: MeInvoiceStoreConfigView): ConfigForm => {
         : [{ id: "mapping-new", source: "", target: "" }],
     sku_mapping: config.sku_mapping,
     item_name_mapping: config.item_name_mapping,
+    item_unit_mapping: config.item_unit_mapping ?? {},
     unit_name_mapping: config.unit_name_mapping,
     category_vat_mapping: config.category_vat_mapping,
     option_user_defined: config.option_user_defined,
@@ -257,6 +260,7 @@ export function InvoiceConfigurationPanel({
       default_vat_rate_name: form.default_vat_rate_name || null,
       sku_mapping: form.sku_mapping,
       item_name_mapping: form.item_name_mapping,
+      item_unit_mapping: form.item_unit_mapping,
       unit_name_mapping: form.unit_name_mapping,
       category_vat_mapping: form.category_vat_mapping,
       payment_method_mapping: paymentMethodMapping,

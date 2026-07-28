@@ -43,7 +43,10 @@ export const bulkIssueSelectionFingerprint = (input: {
 export const bulkIssueConfigFingerprint = (
   config: Pick<
     MeInvoiceStoreConfig,
-    "item_name_mapping" | "unit_name_mapping" | "default_unit_name"
+    | "item_name_mapping"
+    | "item_unit_mapping"
+    | "unit_name_mapping"
+    | "default_unit_name"
   >,
 ) =>
   createHash("sha256")
@@ -52,6 +55,11 @@ export const bulkIssueConfigFingerprint = (
         item_name_mapping: Object.fromEntries(
           Object.entries(config.item_name_mapping).sort(([left], [right]) =>
             left.localeCompare(right),
+          ),
+        ),
+        item_unit_mapping: Object.fromEntries(
+          Object.entries(config.item_unit_mapping ?? {}).sort(
+            ([left], [right]) => left.localeCompare(right),
           ),
         ),
         unit_name_mapping: Object.fromEntries(
@@ -122,7 +130,10 @@ const summarizeProducts = (
   lines: InvoiceCalculatedLine[],
   config: Pick<
     MeInvoiceStoreConfig,
-    "item_name_mapping" | "unit_name_mapping" | "default_unit_name"
+    | "item_name_mapping"
+    | "item_unit_mapping"
+    | "unit_name_mapping"
+    | "default_unit_name"
   >,
 ): InvoiceBulkIssueProductSummary[] => {
   const products = new Map<string, InvoiceBulkIssueProductSummary>();

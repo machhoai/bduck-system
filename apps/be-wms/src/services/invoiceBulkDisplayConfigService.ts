@@ -11,7 +11,14 @@ import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.j
 
 interface DisplayMappings {
   item_name_mapping: Record<string, string>;
+  item_unit_mapping: Record<string, string>;
   unit_name_mapping: Record<string, string>;
+}
+
+interface DisplayMappingInput {
+  item_name_mapping: Record<string, string>;
+  item_unit_mapping?: Record<string, string>;
+  unit_name_mapping?: Record<string, string>;
 }
 
 const mappingFrom = (value: unknown): Record<string, string> =>
@@ -53,15 +60,38 @@ const buildDisplayConfig = async (
   const lines = orders.flatMap(sourceLines);
   const itemNames = new Set<string>();
   const unitNames = new Set<string>();
+  const itemUnits = new Map<string, string | null>();
 
   for (const line of lines) {
-    if (line.item_name?.trim()) itemNames.add(line.item_name.trim());
-    if (line.unit_name?.trim()) unitNames.add(line.unit_name.trim());
+    const itemName = line.item_name?.trim();
+    const unitName = line.unit_name?.trim() || null;
+    if (itemName) {
+      itemNames.add(itemName);
+      if (!itemUnits.has(itemName) || (!itemUnits.get(itemName) && unitName)) {
+        itemUnits.set(itemName, unitName);
+      }
+    }
+    if (unitName) unitNames.add(unitName);
   }
+
+  const products = [...itemUnits.entries()]
+    .map(([item_name, unit_name]) => ({ item_name, unit_name }))
+    .sort((left, right) => left.item_name.localeCompare(right.item_name, "vi"));
+  const storedItemUnitMapping = mappingFrom(stored.item_unit_mapping);
+  const legacyUnitMapping = mappingFrom(stored.unit_name_mapping);
+  const itemUnitMapping = Object.fromEntries(
+    products.flatMap((product) => {
+      const configured =
+        storedItemUnitMapping[product.item_name] ??
+        (product.unit_name ? legacyUnitMapping[product.unit_name] : undefined);
+      return configured ? [[product.item_name, configured]] : [];
+    }),
+  );
 
   return {
     warehouse_id: warehouseId,
     business_date: businessDate,
+    products,
     item_names: [...itemNames].sort((left, right) =>
       left.localeCompare(right, "vi"),
     ),
@@ -69,7 +99,8 @@ const buildDisplayConfig = async (
       left.localeCompare(right, "vi"),
     ),
     item_name_mapping: mappingFrom(stored.item_name_mapping),
-    unit_name_mapping: mappingFrom(stored.unit_name_mapping),
+    item_unit_mapping: itemUnitMapping,
+    unit_name_mapping: legacyUnitMapping,
   };
 };
 
@@ -86,7 +117,7 @@ export const getInvoiceBulkDisplayConfig = async (
 export const saveInvoiceBulkDisplayConfig = async (
   warehouseId: string,
   businessDate: string,
-  mappings: DisplayMappings & { action_time: Date },
+  mappings: DisplayMappingInput & { action_time: Date },
   actorId: string,
   authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
@@ -95,12 +126,14 @@ export const saveInvoiceBulkDisplayConfig = async (
   const stored = await loadStoredConfig(warehouseId);
   const previous: DisplayMappings = {
     item_name_mapping: mappingFrom(stored.item_name_mapping),
+    item_unit_mapping: mappingFrom(stored.item_unit_mapping),
     unit_name_mapping: mappingFrom(stored.unit_name_mapping),
   };
   const now = new Date();
   const next: DisplayMappings = {
     item_name_mapping: mappings.item_name_mapping,
-    unit_name_mapping: mappings.unit_name_mapping,
+    item_unit_mapping: mappings.item_unit_mapping ?? previous.item_unit_mapping,
+    unit_name_mapping: mappings.unit_name_mapping ?? previous.unit_name_mapping,
   };
 
   await meInvoiceConfigRepository.setStoreConfig(warehouseId, {
@@ -122,7 +155,7 @@ export const saveInvoiceBulkDisplayConfig = async (
       action_time: mappings.action_time,
       sync_time: now,
     },
-    notes: "Bulk invoice product name and unit mappings updated",
+    notes: "Bulk invoice product name and per-product unit mappings updated",
     ...auditMetadata,
   });
   return buildDisplayConfig(warehouseId, businessDate, {

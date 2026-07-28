@@ -3191,7 +3191,7 @@ Object.assign(vi, {
         changePassword: "Đổi mật khẩu",
     },
     externalQueue: {
-        title: "Quét mã ngoài (Máy POS)",
+        title: "Hệ thống ngoài",
         subtitle: "Duyệt yêu cầu xuất kho từ thiết bị bên ngoài (như máy POS)",
         tabs: {
             pending: "Chờ duyệt",

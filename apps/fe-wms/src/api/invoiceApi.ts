@@ -114,6 +114,7 @@ export interface MeInvoiceStoreConfigPayload {
   default_vat_rate_name: InvoiceVatRateName | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
   item_name_mapping: Record<string, string>;
+  item_unit_mapping: Record<string, string>;
   unit_name_mapping: Record<string, string>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   payment_method_mapping: Record<string, string>;
@@ -322,7 +323,7 @@ export const invoiceApi = {
     businessDate: string,
     payload: Pick<
       InvoiceBulkIssueDisplayConfig,
-      "item_name_mapping" | "unit_name_mapping"
+      "item_name_mapping" | "item_unit_mapping"
     >,
   ) =>
     request<InvoiceBulkIssueDisplayConfig>(

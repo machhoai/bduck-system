@@ -92,6 +92,7 @@ export const meInvoiceStoreConfigInputSchema = z
     default_vat_rate_name: vatRateNameSchema.nullable().default(null),
     sku_mapping: z.record(z.string(), skuMappingSchema).default({}),
     item_name_mapping: invoiceDisplayMappingSchema.default({}),
+    item_unit_mapping: invoiceDisplayMappingSchema.default({}),
     unit_name_mapping: invoiceDisplayMappingSchema.default({}),
     category_vat_mapping: z.record(z.string(), vatRateNameSchema).default({}),
     payment_method_mapping: z

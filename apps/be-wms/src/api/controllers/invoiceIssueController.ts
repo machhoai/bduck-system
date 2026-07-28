@@ -133,7 +133,12 @@ export const saveInvoiceBulkDisplayConfigHandler = async (
       input.business_date,
       {
         item_name_mapping: input.item_name_mapping,
-        unit_name_mapping: input.unit_name_mapping,
+        ...(input.item_unit_mapping
+          ? { item_unit_mapping: input.item_unit_mapping }
+          : {}),
+        ...(input.unit_name_mapping
+          ? { unit_name_mapping: input.unit_name_mapping }
+          : {}),
         action_time: input.action_time,
       },
       requireAuthenticatedRequestUser(req).id,

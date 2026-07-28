@@ -55,7 +55,7 @@ export const useInvoiceBulkDisplayConfig = ({
   const [itemNameMapping, setItemNameMapping] = useState<
     Record<string, string>
   >({});
-  const [unitNameMapping, setUnitNameMapping] = useState<
+  const [itemUnitMapping, setItemUnitMapping] = useState<
     Record<string, string>
   >({});
   const [loadingConfig, setLoadingConfig] = useState(false);
@@ -65,8 +65,8 @@ export const useInvoiceBulkDisplayConfig = ({
     () =>
       Boolean(displayConfig) &&
       (!sameMapping(itemNameMapping, displayConfig?.item_name_mapping ?? {}) ||
-        !sameMapping(unitNameMapping, displayConfig?.unit_name_mapping ?? {})),
-    [displayConfig, itemNameMapping, unitNameMapping],
+        !sameMapping(itemUnitMapping, displayConfig?.item_unit_mapping ?? {})),
+    [displayConfig, itemNameMapping, itemUnitMapping],
   );
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export const useInvoiceBulkDisplayConfig = ({
     setConfigOpen(false);
     setDisplayConfig(null);
     setItemNameMapping({});
-    setUnitNameMapping({});
+    setItemUnitMapping({});
   }, [warehouseId, businessDate]);
 
   const startConfiguration = async (mode: InvoiceBulkSelectionMode) => {
@@ -96,7 +96,7 @@ export const useInvoiceBulkDisplayConfig = ({
       );
       setDisplayConfig(nextConfig);
       setItemNameMapping(nextConfig.item_name_mapping);
-      setUnitNameMapping(nextConfig.unit_name_mapping);
+      setItemUnitMapping(nextConfig.item_unit_mapping);
     } catch (error) {
       console.error("[useInvoiceBulkDisplayConfig] load", error);
       const message =
@@ -123,7 +123,7 @@ export const useInvoiceBulkDisplayConfig = ({
       businessDate,
       {
         item_name_mapping: itemNameMapping,
-        unit_name_mapping: unitNameMapping,
+        item_unit_mapping: itemUnitMapping,
       },
     );
     try {
@@ -142,7 +142,7 @@ export const useInvoiceBulkDisplayConfig = ({
       });
       setDisplayConfig(saved);
       setItemNameMapping(saved.item_name_mapping);
-      setUnitNameMapping(saved.unit_name_mapping);
+      setItemUnitMapping(saved.item_unit_mapping);
     } catch (error) {
       console.error("[useInvoiceBulkDisplayConfig] save", error);
       onError(
@@ -158,7 +158,7 @@ export const useInvoiceBulkDisplayConfig = ({
     configOpen,
     displayConfig,
     itemNameMapping,
-    unitNameMapping,
+    itemUnitMapping,
     loadingConfig,
     savingConfig,
     configDirty,
@@ -169,8 +169,8 @@ export const useInvoiceBulkDisplayConfig = ({
       setItemNameMapping((current) =>
         withMappingValue(current, source, target),
       ),
-    changeUnitName: (source: string, target: string) =>
-      setUnitNameMapping((current) =>
+    changeItemUnit: (source: string, target: string) =>
+      setItemUnitMapping((current) =>
         withMappingValue(current, source, target),
       ),
   };

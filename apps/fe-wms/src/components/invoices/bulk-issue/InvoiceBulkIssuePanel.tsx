@@ -241,13 +241,13 @@ export function InvoiceBulkIssuePanel({
         <BulkIssueConfigurationModal
           config={display.displayConfig}
           itemNameMapping={display.itemNameMapping}
-          unitNameMapping={display.unitNameMapping}
+          itemUnitMapping={display.itemUnitMapping}
           dirty={display.configDirty}
           saving={display.savingConfig}
           previewing={previewing}
           lang={lang}
           onItemNameChange={display.changeItemName}
-          onUnitNameChange={display.changeUnitName}
+          onItemUnitChange={display.changeItemUnit}
           onSave={() => void display.saveDisplayConfig()}
           onContinue={() => void startPreview()}
           onCancel={() =>

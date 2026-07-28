@@ -152,12 +152,19 @@ export interface InvoiceBulkIssueRun {
   updated_at: Date;
 }
 
+export interface InvoiceBulkIssueDisplayProduct {
+  item_name: string;
+  unit_name: string | null;
+}
+
 export interface InvoiceBulkIssueDisplayConfig {
   warehouse_id: string;
   business_date: string;
+  products: InvoiceBulkIssueDisplayProduct[];
   item_names: string[];
   unit_names: string[];
   item_name_mapping: Record<string, string>;
+  item_unit_mapping: Record<string, string>;
   unit_name_mapping: Record<string, string>;
 }
 
@@ -377,6 +384,7 @@ export interface MeInvoiceStoreConfig {
   default_vat_rate_name: InvoiceVatRateName | null;
   sku_mapping: Record<string, InvoiceSkuMapping>;
   item_name_mapping: Record<string, string>;
+  item_unit_mapping?: Record<string, string>;
   unit_name_mapping: Record<string, string>;
   category_vat_mapping: Record<string, InvoiceVatRateName>;
   payment_method_mapping: Record<string, string>;

@@ -33,6 +33,7 @@ import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
 import { MisaInvoicePanel } from "./MisaInvoicePanel";
 import { InvoiceBulkIssuePanel } from "./bulk-issue/InvoiceBulkIssuePanel";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const copy = {
     vi: {
@@ -830,7 +831,7 @@ export default function InvoiceManagementPage() {
                     </section>
 
                     {selectedOrder && (
-                        <OrderReviewDrawer
+                        <OrderReviewSheet
                             order={selectedOrder}
                             lang={lang}
                             labels={d}
@@ -880,6 +881,149 @@ function Field({
     );
 }
 
+function OrderReviewSheet({
+    order,
+    lang,
+    labels,
+    canPrepare,
+    onChanged,
+    onClose,
+}: {
+    order: InvoiceSourceOrderView;
+    lang: "vi" | "zh";
+    labels: typeof copy.vi | typeof copy.zh;
+    canPrepare: boolean;
+    onChanged: () => Promise<void>;
+    onClose: () => void;
+}) {
+    return (
+        <BottomSheet
+            isOpen={Boolean(order)}
+            onClose={onClose}
+            title={order.order_number ?? order.source_order_id}
+            defaultSnap="full"
+            mobileBreakpoint="lg"
+            desktopClassName="lg:fixed lg:inset-y-0 lg:right-0 lg:top-0 lg:w-[620px] lg:max-w-full lg:rounded-l-2xl lg:rounded-r-none lg:border-l lg:border-t-0 lg:shadow-2xl"
+            contentClassName="flex-1 overflow-y-auto px-4 pb-8 space-y-5"
+        >
+            <div className="pt-2">
+                <p className="text-xxs font-semibold uppercase tracking-wider text-slate-400">
+                    {labels.detail} · {order.payment_time ?? "—"}
+                </p>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                    <MoneyCell
+                        label={labels.beforeTax}
+                        value={
+                            order.calculation?.total_amount_without_vat ??
+                            order.amount_before_tax ??
+                            0
+                        }
+                    />
+                    <MoneyCell
+                        label={labels.vat}
+                        value={
+                            order.calculation?.total_vat_amount ?? order.tax_money ?? 0
+                        }
+                    />
+                    <MoneyCell
+                        label={labels.totalMoney}
+                        value={order.calculation?.total_amount ?? order.real_money ?? 0}
+                        strong
+                    />
+                </div>
+
+                <section className="mt-5">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            {labels.issues}
+                        </h3>
+                        <span
+                            className={`rounded-full border px-2.5 py-0.5 text-xxs font-semibold ${statusStyle(order.preflight.status)}`}
+                        >
+                            {statusLabel(order.preflight.status, lang)}
+                        </span>
+                    </div>
+                    {order.preflight.issues.length === 0 ? (
+                        <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-3 text-xs font-medium text-emerald-800">
+                            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" /> {labels.noIssues}
+                        </div>
+                    ) : (
+                        <div className="mt-2 grid gap-2">
+                            {order.preflight.issues.map((item, index) => (
+                                <div
+                                    key={`${item.code}-${index}`}
+                                    className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3"
+                                >
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                                        <AlertTriangle size={14} className="shrink-0" /> {item.code}
+                                    </div>
+                                    <p className="mt-1 text-xs text-amber-900 leading-snug">
+                                        {item.message}
+                                    </p>
+                                    <p className="mt-1 font-mono text-[10px] text-amber-700 break-all">
+                                        {item.path}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <section className="mt-5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {labels.sourceItems} ({order.normalized_items.length})
+                    </h3>
+                    <div className="mt-2 grid gap-2">
+                        {(order.calculation?.lines ?? order.normalized_items).map(
+                            (item, index) => (
+                                <div
+                                    key={`${item.line_number}-${index}`}
+                                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-xs font-bold text-slate-900">
+                                                {item.item_name ?? "—"}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-xxs text-slate-400">
+                                                {item.item_code ?? item.source_item_id ?? "—"}
+                                            </p>
+                                        </div>
+                                        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xxs font-bold text-slate-700">
+                                            {item.vat_rate_name ?? "VAT ?"}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-600 border-t border-slate-100 pt-2">
+                                        <span className="font-medium text-slate-500">
+                                            {item.quantity ?? 0} {item.unit_name ?? "—"} × {money.format(item.unit_price ?? 0)}
+                                        </span>
+                                        {"total_amount" in item &&
+                                            typeof item.total_amount === "number" && (
+                                                <span className="font-bold text-slate-900 tabular-nums">
+                                                    {money.format(item.total_amount)}
+                                                </span>
+                                            )}
+                                    </div>
+                                </div>
+                            ),
+                        )}
+                    </div>
+                </section>
+
+                <div className="mt-5 border-t border-slate-200/80 pt-4">
+                    <InvoiceDraftWorkflow
+                        order={order}
+                        lang={lang}
+                        canPrepare={canPrepare}
+                        onChanged={onChanged}
+                    />
+                </div>
+            </div>
+        </BottomSheet>
+    );
+}
+
 function StatCard({
     label,
     value,
@@ -908,170 +1052,6 @@ function StatCard({
                 <p className="text-xl font-bold tabular-nums text-slate-900">{value}</p>
                 <p className="text-xs text-slate-500">{label}</p>
             </div>
-        </div>
-    );
-}
-
-function OrderReviewDrawer({
-    order,
-    lang,
-    labels,
-    canPrepare,
-    onChanged,
-    onClose,
-}: {
-    order: InvoiceSourceOrderView;
-    lang: "vi" | "zh";
-    labels: typeof copy.vi | typeof copy.zh;
-    canPrepare: boolean;
-    onChanged: () => Promise<void>;
-    onClose: () => void;
-}) {
-    return (
-        <div
-            className="fixed inset-0 z-50 flex justify-end bg-slate-950/45"
-            role="dialog"
-            aria-modal="true"
-        >
-            <button
-                type="button"
-                aria-label={labels.close}
-                onClick={onClose}
-                className="absolute inset-0 cursor-default"
-            />
-            <aside className="relative flex h-full w-full max-w-[60%] flex-col bg-white shadow-2xl">
-                <div className="flex items-start justify-between border-b border-slate-200 p-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            {labels.detail}
-                        </p>
-                        <h2 className="mt-1 text-lg font-bold text-slate-900">
-                            {order.order_number ?? order.source_order_id}
-                        </h2>
-                        <p className="mt-1 text-xs text-slate-500">
-                            {order.payment_time ?? "—"}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100"
-                        aria-label={labels.close}
-                    >
-                        <X size={19} />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4">
-                    <div className="grid grid-cols-3 gap-2">
-                        <MoneyCell
-                            label={labels.beforeTax}
-                            value={
-                                order.calculation?.total_amount_without_vat ??
-                                order.amount_before_tax ??
-                                0
-                            }
-                        />
-                        <MoneyCell
-                            label={labels.vat}
-                            value={
-                                order.calculation?.total_vat_amount ?? order.tax_money ?? 0
-                            }
-                        />
-                        <MoneyCell
-                            label={labels.totalMoney}
-                            value={order.calculation?.total_amount ?? order.real_money ?? 0}
-                            strong
-                        />
-                    </div>
-
-                    <section className="mt-5">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-slate-900">
-                                {labels.issues}
-                            </h3>
-                            <span
-                                className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusStyle(order.preflight.status)}`}
-                            >
-                                {statusLabel(order.preflight.status, lang)}
-                            </span>
-                        </div>
-                        {order.preflight.issues.length === 0 ? (
-                            <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                                <CheckCircle2 size={16} /> {labels.noIssues}
-                            </div>
-                        ) : (
-                            <div className="mt-2 grid gap-2">
-                                {order.preflight.issues.map((item, index) => (
-                                    <div
-                                        key={`${item.code}-${index}`}
-                                        className="rounded-lg border border-amber-200 bg-amber-50 p-3"
-                                    >
-                                        <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
-                                            <AlertTriangle size={14} /> {item.code}
-                                        </div>
-                                        <p className="mt-1 text-sm text-amber-900">
-                                            {item.message}
-                                        </p>
-                                        <p className="mt-1 font-mono text-[11px] text-amber-700">
-                                            {item.path}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className="mt-5">
-                        <h3 className="text-sm font-bold text-slate-900">
-                            {labels.sourceItems} ({order.normalized_items.length})
-                        </h3>
-                        <div className="mt-2 grid gap-2">
-                            {(order.calculation?.lines ?? order.normalized_items).map(
-                                (item, index) => (
-                                    <div
-                                        key={`${item.line_number}-${index}`}
-                                        className="rounded-lg border border-slate-200 p-3"
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-semibold text-slate-900">
-                                                    {item.item_name ?? "—"}
-                                                </p>
-                                                <p className="mt-0.5 font-mono text-xs text-slate-500">
-                                                    {item.item_code ?? item.source_item_id ?? "—"}
-                                                </p>
-                                            </div>
-                                            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
-                                                {item.vat_rate_name ?? "VAT ?"}
-                                            </span>
-                                        </div>
-                                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                                            <span>
-                                                {item.quantity ?? 0} {item.unit_name ?? "—"}
-                                            </span>
-                                            <span>{money.format(item.unit_price ?? 0)}</span>
-                                            {"total_amount" in item &&
-                                                typeof item.total_amount === "number" && (
-                                                    <span className="font-semibold text-slate-900">
-                                                        {money.format(item.total_amount)}
-                                                    </span>
-                                                )}
-                                        </div>
-                                    </div>
-                                ),
-                            )}
-                        </div>
-                    </section>
-
-                    <InvoiceDraftWorkflow
-                        order={order}
-                        lang={lang}
-                        canPrepare={canPrepare}
-                        onChanged={onChanged}
-                    />
-                </div>
-            </aside>
         </div>
     );
 }

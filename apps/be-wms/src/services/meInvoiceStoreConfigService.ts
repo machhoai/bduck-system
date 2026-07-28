@@ -40,6 +40,10 @@ export const toPublicStoreConfig = (
     data.item_name_mapping && typeof data.item_name_mapping === "object"
       ? (data.item_name_mapping as MeInvoiceStoreConfig["item_name_mapping"])
       : {},
+  item_unit_mapping:
+    data.item_unit_mapping && typeof data.item_unit_mapping === "object"
+      ? (data.item_unit_mapping as Record<string, string>)
+      : {},
   unit_name_mapping:
     data.unit_name_mapping && typeof data.unit_name_mapping === "object"
       ? (data.unit_name_mapping as MeInvoiceStoreConfig["unit_name_mapping"])
@@ -101,6 +105,7 @@ const validationFields = (input: MeInvoiceStoreConfigInput) => ({
   default_vat_rate_name: input.default_vat_rate_name,
   sku_mapping: input.sku_mapping,
   item_name_mapping: input.item_name_mapping,
+  item_unit_mapping: input.item_unit_mapping,
   unit_name_mapping: input.unit_name_mapping,
   category_vat_mapping: input.category_vat_mapping,
   payment_method_mapping: input.payment_method_mapping,

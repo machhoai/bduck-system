@@ -46,6 +46,10 @@ export const invoiceBulkDisplayConfigQuerySchema = z.object({
 export const saveInvoiceBulkDisplayConfigSchema =
   invoiceBulkDisplayConfigQuerySchema.extend({
     item_name_mapping: invoiceDisplayMappingSchema,
-    unit_name_mapping: invoiceDisplayMappingSchema,
+    item_unit_mapping: invoiceDisplayMappingSchema.optional(),
+    unit_name_mapping: invoiceDisplayMappingSchema.optional(),
     action_time: z.coerce.date(),
-  });
+  }).refine(
+    (value) => value.item_unit_mapping || value.unit_name_mapping,
+    "Product unit mapping is required",
+  );
