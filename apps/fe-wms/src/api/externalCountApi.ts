@@ -64,6 +64,38 @@ export type ExternalCountSession = {
   submitted_at?: unknown;
 };
 
+export type ExternalCountItem = {
+  id: string;
+  session_id: string;
+  product_id: string;
+  warehouse_location_id: string;
+  system_quantity: number;
+  atp_snapshot: number;
+  expected_at_count_time?: number | null;
+  current_atp?: number | null;
+  counted_quantity: number | null;
+  counted_at?: unknown;
+  discrepancy: number;
+  condition: "GOOD" | "DAMAGED" | "EXPIRED" | "MISSING" | string;
+  has_discrepancy: boolean;
+  discrepancy_reason?: string | null;
+  discrepancy_note?: string | null;
+  evidence_urls?: string[];
+  base_atp?: number | null;
+  movement_detected?: boolean;
+  notes?: string | null;
+  product_name?: string | null;
+  product_code?: string | null;
+  product_barcode?: string | null;
+  product_unit?: string | null;
+  product_image_url?: string | null;
+};
+
+export type ExternalCountDetail = {
+  session: ExternalCountSession;
+  items: ExternalCountItem[];
+};
+
 export type ExternalCountRequirementConfig = {
   id: string;
   enabled: boolean;
@@ -89,6 +121,11 @@ export const externalCountApi = {
       `/${query ? `?${query}` : ""}`,
     );
   },
+
+  getDetail: (id: string) =>
+    apiFetch<{ success: boolean; data: ExternalCountDetail }>(
+      `/${encodeURIComponent(id)}`,
+    ),
 
   getRequirement: () =>
     apiFetch<{ success: boolean; data: ExternalCountRequirementConfig }>(
