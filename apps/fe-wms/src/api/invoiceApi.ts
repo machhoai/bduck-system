@@ -34,6 +34,17 @@ interface ApiEnvelope<T> {
   messages?: { vi?: string; zh?: string };
 }
 
+export class InvoiceApiError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode: number,
+    readonly code: string | null,
+  ) {
+    super(message);
+    this.name = "InvoiceApiError";
+  }
+}
+
 export type InvoiceSourceOrderView = Omit<
   InvoiceSourceOrder,
   "source_action_time" | "source_sync_time" | "created_at" | "updated_at"
@@ -284,7 +295,15 @@ const request = async <T>(
       envelope?.messages?.[language] ??
       envelope?.messages?.vi ??
       `HTTP ${response.status}`;
-    throw new Error(message);
+    const errorData =
+      envelope?.data && typeof envelope.data === "object"
+        ? (envelope.data as Record<string, unknown>)
+        : null;
+    throw new InvoiceApiError(
+      message,
+      response.status,
+      typeof errorData?.code === "string" ? errorData.code : null,
+    );
   }
   return envelope.data as T;
 };

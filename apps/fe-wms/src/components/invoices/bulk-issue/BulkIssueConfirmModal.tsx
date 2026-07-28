@@ -8,10 +8,9 @@ import {
   PackageCheck,
   X,
 } from "lucide-react";
-import { useState } from "react";
 import type { InvoiceBulkIssuePreview } from "@bduck/shared-types";
-import { invoiceApi } from "@/api/invoiceApi";
-import { showToast } from "@/utils/toast";
+import { useBulkIssueMisaPreview } from "@/hooks/useBulkIssueMisaPreview";
+import { BulkIssueSummaryCard } from "./BulkIssueSummaryCard";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -23,32 +22,6 @@ const quantity = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 2,
 });
 
-function SummaryCard({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string | number;
-  strong?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg border p-2.5 ${
-        strong ? "border-sky-200 bg-sky-50" : "border-slate-200 bg-slate-50"
-      }`}
-    >
-      <p className="text-xxs text-slate-500">{label}</p>
-      <p
-        className={`mt-0.5 text-sm font-bold tabular-nums ${
-          strong ? "text-sky-800" : "text-slate-900"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
 export function BulkIssueConfirmModal({
   preview,
   lang,
@@ -62,85 +35,10 @@ export function BulkIssueConfirmModal({
 }) {
   const summary = preview.summary;
   const vi = lang === "vi";
-  const [previewingInvoiceId, setPreviewingInvoiceId] = useState<string | null>(
-    null,
+  const { previewingInvoiceId, previewInvoice } = useBulkIssueMisaPreview(
+    preview,
+    lang,
   );
-
-  const handleMisaPreview = async (
-    invoice: InvoiceBulkIssuePreview["invoices"][number],
-  ) => {
-    if (previewingInvoiceId) return;
-    const previewWindow = window.open("about:blank", "_blank");
-    if (previewWindow) previewWindow.opener = null;
-    setPreviewingInvoiceId(invoice.source_order_document_id);
-    try {
-      const result = await showToast.promise(
-        invoiceApi.previewBulkIssueDocument(
-          invoice.source_order_document_id,
-          preview.warehouse_id,
-          invoice.revision,
-          invoice.source_payload_hash,
-        ),
-        {
-          loading: vi ? "Đang tạo bản xem trước…" : "正在生成预览…",
-          success: vi ? "Đã tạo bản xem trước" : "预览已生成",
-          error: vi ? "Không thể tạo bản xem trước" : "无法生成预览",
-          successDescription: vi
-            ? "Link MISA có hiệu lực 5 phút."
-            : "MISA 预览链接有效期为 5 分钟。",
-          errorDescription: (error) =>
-            error instanceof Error
-              ? error.message
-              : vi
-                ? "Không thể tạo bản xem trước"
-                : "无法生成预览",
-        },
-      );
-      let url: URL;
-      try {
-        url = new URL(result.url);
-      } catch {
-        previewWindow?.close();
-        showToast.error(
-          vi ? "Không thể tạo bản xem trước" : "无法生成预览",
-          vi ? "Link xem trước MISA không hợp lệ." : "MISA 预览链接无效。",
-        );
-        return;
-      }
-      if (
-        url.protocol !== "https:" ||
-        (url.hostname !== "meinvoice.vn" &&
-          !url.hostname.endsWith(".meinvoice.vn"))
-      ) {
-        previewWindow?.close();
-        showToast.error(
-          vi ? "Không thể tạo bản xem trước" : "无法生成预览",
-          vi ? "Link xem trước MISA không hợp lệ." : "MISA 预览链接无效。",
-        );
-        return;
-      }
-      if (previewWindow) previewWindow.location.replace(url.toString());
-      else {
-        const openedWindow = window.open(
-          url.toString(),
-          "_blank",
-          "noopener,noreferrer",
-        );
-        if (!openedWindow) {
-          showToast.warning(
-            vi ? "Trình duyệt đã chặn cửa sổ mới" : "浏览器已阻止新窗口",
-            vi
-              ? "Hãy cho phép cửa sổ bật lên rồi thử xem trước lại."
-              : "请允许弹出窗口后重试预览。",
-          );
-        }
-      }
-    } catch {
-      previewWindow?.close();
-    } finally {
-      setPreviewingInvoiceId(null);
-    }
-  };
 
   return (
     <div
@@ -182,20 +80,20 @@ export function BulkIssueConfirmModal({
 
         <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-4">
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <SummaryCard
+            <BulkIssueSummaryCard
               label={vi ? "Số lượng hóa đơn" : "发票数量"}
               value={summary.eligible_count}
               strong
             />
-            <SummaryCard
+            <BulkIssueSummaryCard
               label={vi ? "Tiền trước thuế" : "税前金额"}
               value={money.format(summary.total_amount_without_vat)}
             />
-            <SummaryCard
+            <BulkIssueSummaryCard
               label={vi ? "Tổng VAT" : "增值税合计"}
               value={money.format(summary.total_vat_amount)}
             />
-            <SummaryCard
+            <BulkIssueSummaryCard
               label={vi ? "Tiền sau thuế" : "税后总额"}
               value={money.format(summary.total_amount)}
               strong
@@ -297,7 +195,7 @@ export function BulkIssueConfirmModal({
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
-                        void handleMisaPreview(invoice);
+                        void previewInvoice(invoice);
                       }}
                       className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 text-xxs font-bold text-sky-800 transition hover:bg-sky-100 disabled:cursor-wait disabled:opacity-50"
                     >

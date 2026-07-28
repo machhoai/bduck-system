@@ -21,6 +21,7 @@ import {
   requireAuthenticatedRequestUser,
   requireRequestAuthorization,
 } from "../middlewares/requestAccessContext.js";
+import { toInvoicePreviewErrorResponse } from "./invoicePreviewError.js";
 
 const handleError = (res: Response, error: unknown) => {
   console.error("[invoiceOrderSyncController]", error);
@@ -36,14 +37,12 @@ const handleError = (res: Response, error: unknown) => {
     );
   }
   if (error instanceof MeInvoiceApiError) {
+    const mapped = toInvoicePreviewErrorResponse(error);
     return sendError(
       res,
-      {
-        vi: "Không thể xử lý yêu cầu với MISA meInvoice.",
-        zh: "无法处理 MISA meInvoice 请求。",
-      },
-      error.httpStatus >= 400 && error.httpStatus < 500 ? 400 : 502,
-      { code: error.code },
+      mapped.messages,
+      mapped.statusCode,
+      mapped.data,
     );
   }
   const known = error as {

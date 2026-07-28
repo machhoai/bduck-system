@@ -23,6 +23,7 @@ import {
   requireAuthenticatedRequestUser,
   requireRequestAuthorization,
 } from "../middlewares/requestAccessContext.js";
+import { toInvoicePreviewErrorResponse } from "./invoicePreviewError.js";
 
 const handleError = (res: Response, error: unknown) => {
   console.error("[invoiceDocumentController]", error);
@@ -38,14 +39,12 @@ const handleError = (res: Response, error: unknown) => {
     );
   }
   if (error instanceof MeInvoiceApiError) {
+    const mapped = toInvoicePreviewErrorResponse(error);
     return sendError(
       res,
-      {
-        vi: "Không thể tạo bản xem trước từ MISA meInvoice.",
-        zh: "无法从 MISA meInvoice 创建预览。",
-      },
-      error.httpStatus >= 400 && error.httpStatus < 500 ? 400 : 502,
-      { code: error.code },
+      mapped.messages,
+      mapped.statusCode,
+      mapped.data,
     );
   }
   const known = error as {

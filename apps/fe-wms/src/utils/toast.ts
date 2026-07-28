@@ -40,7 +40,7 @@ interface PromiseToastMessages {
   /** Tiêu đề hiển thị khi thành công */
   success: string;
   /** Tiêu đề hiển thị khi thất bại */
-  error: string;
+  error: string | ((err: unknown) => string);
   /** Mô tả chi tiết khi thành công */
   successDescription: string;
   /** Mô tả chi tiết khi thất bại — chuỗi hoặc hàm nhận error để hiển thị message từ server */
