@@ -13,7 +13,6 @@ interface LateArrivalReportSheetProps {
     onClose: () => void;
     onSubmit: (payload: {
         attendance_date?: string;
-        expected_arrival_time?: string | null;
         estimated_arrival_time?: string | null;
         reason: string;
     }) => Promise<AttendanceLateReport>;
@@ -26,8 +25,7 @@ export function LateArrivalReportSheet({
     onSubmit,
 }: LateArrivalReportSheetProps) {
     const [attendanceDate, setAttendanceDate] = useState(getTodayKey());
-    const [expectedArrivalTime, setExpectedArrivalTime] = useState("");
-    const [estimatedArrivalTime, setEstimatedArrivalTime] = useState("");
+    const [arrivalTime, setArrivalTime] = useState("");
     const [reason, setReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
@@ -35,8 +33,7 @@ export function LateArrivalReportSheet({
 
     const resetForm = () => {
         setAttendanceDate(getTodayKey());
-        setExpectedArrivalTime("");
-        setEstimatedArrivalTime("");
+        setArrivalTime("");
         setReason("");
     };
 
@@ -45,8 +42,7 @@ export function LateArrivalReportSheet({
         setSubmitting(true);
         const task = onSubmit({
             attendance_date: attendanceDate,
-            expected_arrival_time: expectedArrivalTime || null,
-            estimated_arrival_time: estimatedArrivalTime || null,
+            estimated_arrival_time: arrivalTime || null,
             reason: reason.trim(),
         });
 
@@ -102,30 +98,17 @@ export function LateArrivalReportSheet({
                     />
                 </label>
 
-                <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                        <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
-                            {labels.expectedArrivalTime || "Expected"}
-                        </span>
-                        <input
-                            type="time"
-                            value={expectedArrivalTime}
-                            onChange={(event) => setExpectedArrivalTime(event.target.value)}
-                            className="mt-1 h-11 rounded-2xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
-                        />
-                    </label>
-                    <label className="block">
-                        <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
-                            {labels.estimatedArrivalTime || "Arrival"}
-                        </span>
-                        <input
-                            type="time"
-                            value={estimatedArrivalTime}
-                            onChange={(event) => setEstimatedArrivalTime(event.target.value)}
-                            className="mt-1 h-11 rounded-2xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
-                        />
-                    </label>
-                </div>
+                <label className="block">
+                    <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                        {labels.estimatedArrivalTime || "Estimated arrival time"}
+                    </span>
+                    <input
+                        type="time"
+                        value={arrivalTime}
+                        onChange={(event) => setArrivalTime(event.target.value)}
+                        className="mt-1 h-11 w-full rounded-2xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+                    />
+                </label>
 
                 <label className="block">
                     <span className="text-xs font-semibold text-[var(--color-text-secondary)]">

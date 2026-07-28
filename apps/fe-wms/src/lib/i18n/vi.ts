@@ -3110,8 +3110,7 @@ Object.assign(vi, {
         lateReportTitle: "Báo đến trễ",
         lateReportHint:
             "Ghi lại lý do để người quản lý thấy ngay cạnh lịch sử chấm công trong ngày.",
-        expectedArrivalTime: "Giờ dự kiến",
-        estimatedArrivalTime: "Giờ sẽ đến",
+        estimatedArrivalTime: "Giờ dự kiến đến",
         lateReason: "Lý do đến trễ",
         lateReasonPlaceholder: "Ví dụ: kẹt xe, lịch cá nhân đột xuất...",
         submitLateReport: "Gửi báo trễ",

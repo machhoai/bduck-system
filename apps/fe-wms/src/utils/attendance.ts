@@ -201,3 +201,16 @@ export const buildLatestLateReportMap = (reports: AttendanceLateReport[]) => {
   });
   return map;
 };
+
+export const getLateReportArrivalTime = (
+  report:
+    | Pick<
+        AttendanceLateReport,
+        "estimated_arrival_time" | "expected_arrival_time"
+      >
+    | null
+    | undefined,
+) =>
+  report?.estimated_arrival_time?.trim() ||
+  report?.expected_arrival_time?.trim() ||
+  "";

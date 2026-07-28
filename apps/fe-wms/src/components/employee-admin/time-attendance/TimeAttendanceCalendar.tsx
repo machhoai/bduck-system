@@ -14,6 +14,7 @@ import {
     getNextWeekKey,
     getPrevMonthKey,
     getPrevWeekKey,
+    getLateReportArrivalTime,
     getTodayKey,
     getWeekStartKey,
     type AttendanceDay,
@@ -384,6 +385,7 @@ export function TimeAttendanceCalendar({
                                             <LateReportHint
                                                 label={labels.reportLate || "Late"}
                                                 reason={lateReport.reason}
+                                                arrivalTime={getLateReportArrivalTime(lateReport)}
                                             />
                                         ) : null}
                                     </article>
@@ -474,6 +476,7 @@ export function TimeAttendanceCalendar({
                                                                 <LateReportChip
                                                                     label={labels.reportLate || "Late"}
                                                                     reason={lateReport.reason}
+                                                                    arrivalTime={getLateReportArrivalTime(lateReport)}
                                                                 />
                                                             ) : null}
                                                         </div>
@@ -486,6 +489,7 @@ export function TimeAttendanceCalendar({
                                                                 <LateReportChip
                                                                     label={labels.reportLate || "Late"}
                                                                     reason={lateReport.reason}
+                                                                    arrivalTime={getLateReportArrivalTime(lateReport)}
                                                                 />
                                                             ) : null}
                                                         </div>
@@ -497,6 +501,7 @@ export function TimeAttendanceCalendar({
                                                             <LateReportChip
                                                                 label={labels.reportLate || "Late"}
                                                                 reason={lateReport.reason}
+                                                                arrivalTime={getLateReportArrivalTime(lateReport)}
                                                             />
                                                         </div>
                                                     ) : null}
@@ -517,15 +522,20 @@ export function TimeAttendanceCalendar({
 function LateReportHint({
     label,
     reason,
+    arrivalTime,
 }: {
     label: string;
     reason: string;
+    arrivalTime: string;
 }) {
     return (
         <div className="mt-2 flex items-start gap-2 rounded-2xl bg-[#f59e0b10] px-3 py-2 text-left text-xs text-[#936000]">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             <p className="min-w-0">
-                <span className="font-semibold">{label}:</span>{" "}
+                <span className="font-semibold">
+                    {label}
+                    {arrivalTime ? ` · ${arrivalTime}` : ""}:
+                </span>{" "}
                 <span className="break-words">{reason}</span>
             </p>
         </div>
@@ -535,16 +545,24 @@ function LateReportHint({
 function LateReportChip({
     label,
     reason,
+    arrivalTime,
 }: {
     label: string;
     reason: string;
+    arrivalTime: string;
 }) {
+    const title = `${label}${arrivalTime ? ` · ${arrivalTime}` : ""}: ${reason}`;
+
     return (
         <span
-            title={`${label}: ${reason}`}
-            className="inline-flex max-w-[92px] items-center gap-1 rounded-md bg-[#f59e0b10] px-1.5 py-0.5 text-[9px] font-semibold text-[#936000]"
+            title={title}
+            aria-label={title}
+            className="inline-flex max-w-[104px] items-center gap-1 rounded-md bg-[#f59e0b10] px-1.5 py-0.5 text-[9px] font-semibold text-[#936000]"
         >
             <AlertTriangle size={10} />
+            {arrivalTime ? (
+                <span className="shrink-0 tabular-nums">{arrivalTime}</span>
+            ) : null}
             <span className="truncate">{reason}</span>
         </span>
     );
