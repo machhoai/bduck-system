@@ -18,7 +18,7 @@ export type ExternalCountRequirementConfig = {
 export const updateExternalCountRequirementSchema = z.object({
   enabled: z.boolean(),
   require_before_scan: z.boolean(),
-  require_before_submit: z.boolean(),
+  require_before_submit: z.boolean().optional().default(false),
 });
 
 export type UpdateExternalCountRequirementInput = z.infer<
@@ -50,7 +50,7 @@ const fromFirestore = (
     id: DOC_ID,
     enabled: data.enabled === true,
     require_before_scan: data.require_before_scan !== false,
-    require_before_submit: data.require_before_submit !== false,
+    require_before_submit: false,
     updated_at: toDate(data.updated_at),
     updated_by: data.updated_by ?? null,
   };
@@ -63,9 +63,9 @@ export const getExternalCountRequirement = async () => {
 
   return {
     id: DOC_ID,
-    enabled: false,
+    enabled: true,
     require_before_scan: true,
-    require_before_submit: true,
+    require_before_submit: false,
     updated_at: null,
     updated_by: null,
   };
@@ -80,7 +80,7 @@ export const updateExternalCountRequirement = async (
   const data = {
     enabled: input.enabled,
     require_before_scan: input.require_before_scan,
-    require_before_submit: input.require_before_submit,
+    require_before_submit: false,
     updated_at: now,
     updated_by: actorId,
   };

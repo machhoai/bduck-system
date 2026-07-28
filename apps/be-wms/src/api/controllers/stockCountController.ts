@@ -44,6 +44,16 @@ const checkpointSchema = z.object({
   idempotency_key: z.string().trim().min(8).max(160),
   external_operator_name: z.string().trim().max(120).optional().nullable(),
   external_operator_id: z.string().trim().max(120).optional().nullable(),
+  shift_id: z.string().trim().min(1).max(120).optional().nullable(),
+  shift_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
+  authorized_operator_ids: z
+    .array(z.string().trim().min(1).max(120))
+    .max(100)
+    .optional(),
   device_id: z.string().trim().max(120).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
   action_time: z.string().datetime().optional(),
@@ -59,6 +69,12 @@ const stateSchema = z.object({
   warehouse_id: z.string().min(1),
   warehouse_location_id: z.string().min(1),
   business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  operator_id_external: z.string().trim().max(120).optional(),
+  shift_id: z.string().trim().max(120).optional(),
+  shift_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 const integrationClient = (req: Request): IntegrationClient =>
@@ -125,6 +141,10 @@ export const getExternalCountStateHandler = async (
       warehouseId: query.warehouse_id,
       warehouseLocationId: query.warehouse_location_id,
       businessDate: query.business_date,
+      client: integrationClient(req),
+      operatorId: query.operator_id_external ?? null,
+      shiftId: query.shift_id ?? null,
+      shiftDate: query.shift_date ?? null,
     });
     sendSuccess(res, data, {
       vi: "Đã tải trạng thái kiểm đếm.",

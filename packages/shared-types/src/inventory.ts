@@ -127,6 +127,12 @@ export interface StockCountSession {
   supervisor_id: string | null; // FK → users — CHECK(counter_id <> supervisor_id)
   external_operator_name?: string | null;
   external_operator_id?: string | null;
+  shift_id?: string | null;
+  shift_date?: string | null;
+  authorized_operator_ids?: string[];
+  previous_access_session_id?: string | null;
+  access_activated_at?: Date | null;
+  finalized_batch_id?: string | null;
   external_client_id?: string | null;
   device_id?: string | null;
   business_date?: string | null;

@@ -205,7 +205,11 @@ export enum StockCountSource {
 }
 
 export enum ExternalCountCheckpointType {
+  SHIFT_OPENING = "SHIFT_OPENING",
+  OPTIONAL_CLOSING = "OPTIONAL_CLOSING",
+  /** @deprecated Legacy value kept so older clients and records remain readable. */
   BEFORE_SCAN = "BEFORE_SCAN",
+  /** @deprecated Legacy value kept so older clients and records remain readable. */
   BEFORE_SUBMIT = "BEFORE_SUBMIT",
 }
 

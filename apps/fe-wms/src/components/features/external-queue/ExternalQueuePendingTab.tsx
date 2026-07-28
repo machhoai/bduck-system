@@ -439,6 +439,12 @@ export default function ExternalQueuePendingTab() {
                                     {batch.location_code}
                                   </span>
                                 )}
+                                {batch.shift_id && (
+                                  <span className="rounded-full border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-2 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)]">
+                                    {batch.shift_id} ·{" "}
+                                    {batch.work_shift_date || batch.queue_date}
+                                  </span>
+                                )}
                               </div>
 
                               <div className="mt-2 grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">

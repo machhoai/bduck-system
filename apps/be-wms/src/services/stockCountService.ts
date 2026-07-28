@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import {
   AuditAction,
   ExternalCountCheckpointType,
+  ExternalScanQueueStatus,
   IssueType,
   NonconformitySourceType,
   NonconformityStatus,
@@ -26,6 +27,7 @@ import { findAll as findInventory } from "../repositories/inventoryRepository.js
 import { locationRepository } from "../repositories/locationRepository.js";
 import { productRepository } from "../repositories/productRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
+import * as externalScanRepository from "../repositories/externalScanRepository.js";
 import {
   findItemsBySessionId,
   findItemById,
@@ -37,6 +39,14 @@ import {
 } from "../repositories/stockCountRepository.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import { getExternalCountRequirement } from "./externalCountConfigService.js";
+import { externalScanAccessRef } from "./externalScanAccessService.js";
+import {
+  calculateExternalCountExpectation,
+  isOpeningExternalCheckpoint,
+  isSameExternalShift,
+  isStaleExternalHandover,
+  shouldFinalizeQueuedScan,
+} from "./externalShiftHandoverPolicy.js";
 
 type ServiceError = Error & {
   statusCode: number;
@@ -83,6 +93,9 @@ export interface ExternalCountCheckpointInput {
   idempotency_key: string;
   external_operator_name?: string | null;
   external_operator_id?: string | null;
+  shift_id?: string | null;
+  shift_date?: string | null;
+  authorized_operator_ids?: string[];
   device_id?: string | null;
   notes?: string | null;
   action_time?: string;
@@ -110,9 +123,83 @@ function reportNumber(now: Date, index: number) {
 }
 
 function purposeFromCheckpoint(type: ExternalCountCheckpointType) {
-  return type === ExternalCountCheckpointType.BEFORE_SCAN
+  return type === ExternalCountCheckpointType.SHIFT_OPENING ||
+    type === ExternalCountCheckpointType.BEFORE_SCAN
     ? StockCountPurpose.EXTERNAL_OPENING
     : StockCountPurpose.EXTERNAL_CLOSING;
+}
+
+function externalHandoverBatchId(shiftDate: string, accessSessionId: string) {
+  return `B-${shiftDate.replace(/-/g, "")}-${accessSessionId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+async function finalizePreviousShiftQueue(params: {
+  client: IntegrationClient;
+  warehouseId: string;
+  warehouseLocationId: string;
+  previousAccessSessionId: string | null;
+  newAccessSessionId: string;
+  shiftDate: string;
+  actorId: string;
+}) {
+  const queued = await externalScanRepository.findQueuedByLocation({
+    clientId: params.client.id,
+    warehouseId: params.warehouseId,
+    locationId: params.warehouseLocationId,
+    limit: 5000,
+  });
+  const previousScans = queued.filter((scan) =>
+    shouldFinalizeQueuedScan(
+      scan.access_session_id,
+      params.previousAccessSessionId,
+      params.newAccessSessionId,
+    ),
+  );
+  if (previousScans.length === 0) return null;
+
+  const finalizedShiftDate = previousScans[0]?.shift_date || params.shiftDate;
+  const batchId = externalHandoverBatchId(
+    finalizedShiftDate,
+    params.newAccessSessionId,
+  );
+  const now = new Date();
+  for (let index = 0; index < previousScans.length; index += 400) {
+    const batch = db.batch();
+    previousScans.slice(index, index + 400).forEach((scan) => {
+      batch.update(db.collection("external_scan_queue").doc(scan.id), {
+        status: ExternalScanQueueStatus.SUBMITTED,
+        batch_id: batchId,
+        sync_time: now,
+        handover_to_session_id: params.newAccessSessionId,
+        notes: "Tự động chốt khi ca kế tiếp hoàn tất kiểm kê đầu ca.",
+      });
+    });
+    await batch.commit();
+  }
+
+  await sessionsCollection().doc(params.newAccessSessionId).update({
+    finalized_batch_id: batchId,
+    updated_at: now,
+  });
+  await logAudit({
+    entity_type: "EXTERNAL_SCAN",
+    entity_id: batchId,
+    warehouse_id: params.warehouseId,
+    action: AuditAction.UPDATE,
+    user_id: params.actorId,
+    old_value: {
+      status: ExternalScanQueueStatus.QUEUED,
+      access_session_id: params.previousAccessSessionId,
+    },
+    new_value: {
+      status: ExternalScanQueueStatus.SUBMITTED,
+      handover_to_session_id: params.newAccessSessionId,
+      total_scans: previousScans.length,
+      auto_submitted_by_handover: true,
+    },
+    notes: "Tự động chốt hàng chờ khi chuyển quyền quét sang ca kế tiếp.",
+  }).catch(console.error);
+  return batchId;
 }
 
 function issueTypeFor(item: StockCountItem) {
@@ -747,7 +834,8 @@ async function buildCountItems(
     const inventoryRecord = inventoryByProductId.get(product.id) ?? null;
     const currentAtp = Number(inventoryRecord?.atp_quantity ?? 0);
     const baseAtp = input.base_atp ?? null;
-    const expected = baseAtp ?? currentAtp;
+    const { movementDelta, expectedAtCountTime: expected } =
+      calculateExternalCountExpectation(baseAtp, currentAtp);
     const condition = input.condition ?? StockCountItemCondition.GOOD;
     const discrepancy = input.counted_quantity - expected;
     const hasIssue =
@@ -770,7 +858,7 @@ async function buildCountItems(
       product_id: product.id,
       warehouse_location_id: locationId,
       system_quantity: expected,
-      atp_snapshot: currentAtp,
+      atp_snapshot: baseAtp ?? currentAtp,
       expected_at_count_time: expected,
       current_atp: currentAtp,
       counted_quantity: input.counted_quantity,
@@ -778,7 +866,7 @@ async function buildCountItems(
       discrepancy,
       condition,
       has_discrepancy: hasIssue,
-      movement_delta_before_count: baseAtp == null ? 0 : currentAtp - baseAtp,
+      movement_delta_before_count: movementDelta,
       movement_delta_after_count: 0,
       evidence_urls: evidenceUrls,
       base_atp: baseAtp,
@@ -907,6 +995,31 @@ export async function submitExternalCountCheckpoint(
 ) {
   validateClientAccess(client, input.warehouse_id);
   await assertLocation(input.warehouse_id, input.warehouse_location_id);
+  const openingCheckpoint = isOpeningExternalCheckpoint(input.checkpoint_type);
+  const shiftId = input.shift_id?.trim() || null;
+  const shiftDate = input.shift_date?.trim() || input.business_date;
+  const operatorId = input.external_operator_id?.trim() || null;
+  const authorizedOperatorIds = [
+    ...new Set(
+      [...(input.authorized_operator_ids ?? []), operatorId]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .map((value) => value.trim()),
+    ),
+  ];
+  if (openingCheckpoint && (!shiftId || !operatorId)) {
+    throw serviceError(
+      400,
+      "Kiểm kê đầu ca cần có ca làm việc và nhân viên thực hiện.",
+      "开班盘点需要班次和操作员工。",
+    );
+  }
+  if (openingCheckpoint && authorizedOperatorIds.length === 0) {
+    throw serviceError(
+      400,
+      "Ca làm việc chưa có nhân viên được cấp quyền.",
+      "该班次没有可授权的员工。",
+    );
+  }
 
   const duplicate = (
     await findSessions({
@@ -920,9 +1033,30 @@ export async function submitExternalCountCheckpoint(
       session.external_client_id === client.id &&
       session.idempotency_key === input.idempotency_key,
   );
-  if (duplicate) return getExternalCountDetail(duplicate.id);
+  if (duplicate) {
+    if (openingCheckpoint) {
+      await finalizePreviousShiftQueue({
+        client,
+        warehouseId: input.warehouse_id,
+        warehouseLocationId: input.warehouse_location_id,
+        previousAccessSessionId: duplicate.previous_access_session_id ?? null,
+        newAccessSessionId: duplicate.id,
+        shiftDate,
+        actorId: operatorId || `EXT:${client.id}`,
+      });
+    }
+    return getExternalCountDetail(duplicate.id);
+  }
 
   const now = new Date();
+  const startedAt = input.action_time ? new Date(input.action_time) : now;
+  if (!Number.isFinite(startedAt.getTime())) {
+    throw serviceError(
+      400,
+      "Thời điểm bắt đầu không hợp lệ.",
+      "开始时间无效。",
+    );
+  }
   const sessionId = randomUUID();
   const counted = await buildCountItems(
     sessionId,
@@ -952,19 +1086,25 @@ export async function submitExternalCountCheckpoint(
     supervisor_id: null,
     external_operator_name: input.external_operator_name ?? null,
     external_operator_id: input.external_operator_id ?? null,
+    shift_id: shiftId,
+    shift_date: shiftDate,
+    authorized_operator_ids: authorizedOperatorIds,
+    previous_access_session_id: null,
+    access_activated_at: null,
+    finalized_batch_id: null,
     external_client_id: client.id,
     device_id: input.device_id ?? null,
     business_date: input.business_date,
     idempotency_key: input.idempotency_key,
     blind_count_enabled: false,
-    started_at: now,
-    completed_at: status === StockCountSessionStatus.VERIFIED ? now : null,
+    started_at: startedAt,
+    completed_at: now,
     submitted_at: now,
     cancelled_at: null,
     cancelled_by: null,
     cancel_reason: null,
     discrepancy_count: exceptions.length,
-    action_time: input.action_time ? new Date(input.action_time) : now,
+    action_time: startedAt,
     sync_time: now,
     notes: input.notes ?? null,
     is_deleted: false,
@@ -972,7 +1112,62 @@ export async function submitExternalCountCheckpoint(
     updated_at: now,
   };
 
+  let previousAccessSessionId: string | null = null;
   await db.runTransaction(async (txn) => {
+    const accessRef = openingCheckpoint
+      ? externalScanAccessRef(
+          client.id,
+          input.warehouse_id,
+          input.warehouse_location_id,
+        )
+      : null;
+    const accessSnapshot = accessRef ? await txn.get(accessRef) : null;
+    const currentAccess = accessSnapshot?.exists
+      ? (accessSnapshot.data() as {
+          active_count_session_id?: string;
+          shift_id?: string;
+          shift_date?: string;
+          count_started_at?: Date | { toDate(): Date };
+        })
+      : null;
+    const currentStartedAt =
+      currentAccess?.count_started_at &&
+      typeof currentAccess.count_started_at === "object" &&
+      "toDate" in currentAccess.count_started_at
+        ? currentAccess.count_started_at.toDate()
+        : currentAccess?.count_started_at instanceof Date
+          ? currentAccess.count_started_at
+          : null;
+    if (
+      openingCheckpoint &&
+      isStaleExternalHandover(currentStartedAt, startedAt)
+    ) {
+      throw serviceError(
+        409,
+        "Một ca mới hơn đã hoàn tất kiểm kê. Không thể ghi đè quyền quét.",
+        "已有更新班次完成盘点，无法覆盖扫描权限。",
+      );
+    }
+    if (
+      openingCheckpoint &&
+      currentAccess?.active_count_session_id &&
+      isSameExternalShift(
+        currentAccess.shift_id,
+        currentAccess.shift_date,
+        shiftId,
+        shiftDate,
+      )
+    ) {
+      throw serviceError(
+        409,
+        "Ca này đã hoàn tất kiểm kê đầu ca và đang có quyền quét.",
+        "该班次已完成开班盘点并拥有扫描权限。",
+      );
+    }
+    previousAccessSessionId = currentAccess?.active_count_session_id ?? null;
+    session.previous_access_session_id = previousAccessSessionId;
+    session.access_activated_at = openingCheckpoint ? now : null;
+
     const inventoryById = new Map<string, Inventory>();
     for (const { inventoryRecord } of counted) {
       if (!inventoryRecord) continue;
@@ -1001,7 +1196,37 @@ export async function submitExternalCountCheckpoint(
       `EXT:${client.id}`,
       now,
     );
+    if (accessRef && openingCheckpoint && shiftId) {
+      txn.set(accessRef, {
+        id: accessRef.id,
+        client_id: client.id,
+        warehouse_id: input.warehouse_id,
+        warehouse_location_id: input.warehouse_location_id,
+        active_count_session_id: sessionId,
+        shift_id: shiftId,
+        shift_date: shiftDate,
+        operator_ids: authorizedOperatorIds,
+        activated_by_operator_id: operatorId,
+        activated_by_operator_name: input.external_operator_name ?? null,
+        count_started_at: startedAt,
+        activated_at: now,
+        previous_count_session_id: previousAccessSessionId,
+        updated_at: now,
+      });
+    }
   });
+
+  if (openingCheckpoint) {
+    await finalizePreviousShiftQueue({
+      client,
+      warehouseId: input.warehouse_id,
+      warehouseLocationId: input.warehouse_location_id,
+      previousAccessSessionId,
+      newAccessSessionId: sessionId,
+      shiftDate,
+      actorId: operatorId || `EXT:${client.id}`,
+    });
+  }
 
   await logAudit({
     entity_type: "STOCK_COUNT_SESSION",
@@ -1055,30 +1280,53 @@ export async function getExternalCountState(params: {
   warehouseId: string;
   warehouseLocationId: string;
   businessDate: string;
+  client?: IntegrationClient;
+  operatorId?: string | null;
+  shiftId?: string | null;
+  shiftDate?: string | null;
 }) {
   const config = await getExternalCountRequirement();
-  const [beforeScanSatisfied, beforeSubmitSatisfied, sessions] =
-    await Promise.all([
-      isExternalCountCheckpointSatisfied({
-        ...params,
-        checkpointType: ExternalCountCheckpointType.BEFORE_SCAN,
-      }),
-      isExternalCountCheckpointSatisfied({
-        ...params,
-        checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT,
-      }),
-      listExternalCountSessions({
-        warehouse_id: params.warehouseId,
-        warehouse_location_id: params.warehouseLocationId,
-        business_date: params.businessDate,
-      }),
-    ]);
+  const { getExternalScanAccess } =
+    await import("./externalScanAccessService.js");
+  const [access, sessions] = await Promise.all([
+    params.client
+      ? getExternalScanAccess(
+          params.client.id,
+          params.warehouseId,
+          params.warehouseLocationId,
+        )
+      : Promise.resolve(null),
+    listExternalCountSessions({
+      warehouse_id: params.warehouseId,
+      warehouse_location_id: params.warehouseLocationId,
+      business_date: params.businessDate,
+    }),
+  ]);
+  const canScan =
+    !config.enabled ||
+    Boolean(
+      params.operatorId && access?.operator_ids.includes(params.operatorId),
+    );
+  const currentShiftActive = Boolean(
+    access &&
+    params.shiftId &&
+    access.shift_id === params.shiftId &&
+    (!params.shiftDate || access.shift_date === params.shiftDate),
+  );
 
   return {
     config,
     gates: {
-      before_scan: beforeScanSatisfied,
-      before_submit: beforeSubmitSatisfied,
+      before_scan: canScan,
+      before_submit: true,
+    },
+    access: {
+      can_scan: canScan,
+      current_shift_active: currentShiftActive,
+      active_count_session_id: access?.active_count_session_id ?? null,
+      active_shift_id: access?.shift_id ?? null,
+      active_shift_date: access?.shift_date ?? null,
+      activated_at: access?.activated_at ?? null,
     },
     checkpoints: sessions,
   };
@@ -1088,8 +1336,7 @@ export const isExternalCountGateOpen = async (params: {
   warehouseId: string;
   warehouseLocationId: string;
   businessDate: string;
-}) =>
-  isExternalCountCheckpointSatisfied({
-    ...params,
-    checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT,
-  });
+}) => {
+  void params;
+  return true;
+};

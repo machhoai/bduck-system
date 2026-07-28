@@ -16,18 +16,18 @@ import { productRepository as productRepo } from "../repositories/productReposit
 import { logAudit } from "./auditService.js";
 import {
   AuditAction,
-  ExternalCountCheckpointType,
   ExportReferenceType,
   ExportType,
   ExportVoucherStatus,
 } from "@bduck/shared-types";
 import { generateVoucherNumber } from "../utils/voucherNumberGenerator.js";
 import * as scannableProductService from "./externalQueueScannableProductService.js";
-import * as approvalService from "./approvalService.js";
 import {
-  isExternalCountCheckpointSatisfied,
-  isExternalCountGateOpen,
-} from "./stockCountService.js";
+  externalScanAccessRef,
+  isOperatorAllowedToScan,
+} from "./externalScanAccessService.js";
+import * as approvalService from "./approvalService.js";
+import { isExternalCountGateOpen } from "./stockCountService.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
 async function resolveProduct(
@@ -126,6 +126,8 @@ export const scanProduct = async (
     operator_id_external: string | null;
     device_id: string | null;
     scan_time: string;
+    shift_id?: string | null;
+    shift_date?: string | null;
   },
   clientIp: string,
 ): Promise<ExternalScanQueue> => {
@@ -135,13 +137,13 @@ export const scanProduct = async (
     throw new Error("UNAUTHORIZED_WAREHOUSE");
   }
 
-  const beforeScanCountOk = await isExternalCountCheckpointSatisfied({
+  const scanAccess = await isOperatorAllowedToScan({
+    client,
     warehouseId,
     warehouseLocationId: data.warehouse_location_id,
-    businessDate: getShiftDate(new Date(data.scan_time)),
-    checkpointType: ExternalCountCheckpointType.BEFORE_SCAN,
+    operatorId: data.operator_id_external,
   });
-  if (!beforeScanCountOk) {
+  if (!scanAccess.allowed) {
     throw new Error("EXTERNAL_COUNT_BEFORE_SCAN_REQUIRED");
   }
 
@@ -162,6 +164,26 @@ export const scanProduct = async (
   let onHoldAfter = 0;
 
   await db.runTransaction(async (tx) => {
+    let activeAccess = scanAccess.access;
+    if (scanAccess.enforced) {
+      const accessSnapshot = await tx.get(
+        externalScanAccessRef(
+          client.id,
+          warehouseId,
+          data.warehouse_location_id,
+        ),
+      );
+      activeAccess = accessSnapshot.exists
+        ? (accessSnapshot.data() as typeof scanAccess.access)
+        : null;
+      if (
+        !data.operator_id_external ||
+        !activeAccess?.operator_ids.includes(data.operator_id_external)
+      ) {
+        throw new Error("EXTERNAL_COUNT_BEFORE_SCAN_REQUIRED");
+      }
+    }
+
     // 1. Check Inventory ATP
     const invSnapshot = await tx.get(
       db
@@ -208,6 +230,13 @@ export const scanProduct = async (
       sync_time: new Date(),
       operator_name: data.operator_name,
       operator_id_external: data.operator_id_external,
+      shift_id: activeAccess?.shift_id ?? data.shift_id ?? null,
+      shift_date:
+        activeAccess?.shift_date ??
+        data.shift_date ??
+        getShiftDate(new Date(data.scan_time)),
+      access_session_id: activeAccess?.active_count_session_id ?? null,
+      handover_to_session_id: null,
       device_id: data.device_id,
       batch_id: null,
       status: ExternalScanQueueStatus.QUEUED,
@@ -309,16 +338,6 @@ export const submitBatch = async (
     throw new Error("UNAUTHORIZED_WAREHOUSE");
   }
 
-  const beforeSubmitCountOk = await isExternalCountCheckpointSatisfied({
-    warehouseId: data.warehouse_id,
-    warehouseLocationId: data.warehouse_location_id,
-    businessDate: data.shift_date,
-    checkpointType: ExternalCountCheckpointType.BEFORE_SUBMIT,
-  });
-  if (!beforeSubmitCountOk) {
-    throw new Error("EXTERNAL_COUNT_BEFORE_SUBMIT_REQUIRED");
-  }
-
   const batchId = buildLocationBatchId(data.shift_date);
 
   const scans = await externalScanRepo.findQueuedByLocationAndDate(
@@ -329,6 +348,9 @@ export const submitBatch = async (
 
   if (scans.length === 0) {
     throw new Error("NO_QUEUED_SCANS");
+  }
+  if (scans.some((scan) => Boolean(scan.access_session_id))) {
+    throw new Error("SHIFT_HANDOVER_AUTO_SUBMIT_REQUIRED");
   }
 
   const batch = db.batch();
@@ -538,6 +560,16 @@ export const autoSubmitQueuedLocations = async (params: {
   for (const group of groupMap.values()) {
     const first = group[0];
     const shiftDate = getShiftDate(toDate(first.scan_time));
+    if (group.some((scan) => Boolean(scan.access_session_id))) {
+      blockedLocations.push({
+        warehouse_id: first.warehouse_id,
+        warehouse_location_id: first.warehouse_location_id,
+        business_date: shiftDate,
+        queued_scans: group.length,
+        reason: "WAITING_FOR_SHIFT_HANDOVER",
+      });
+      continue;
+    }
     const countGateOpen = await isExternalCountGateOpen({
       warehouseId: first.warehouse_id,
       warehouseLocationId: first.warehouse_location_id,

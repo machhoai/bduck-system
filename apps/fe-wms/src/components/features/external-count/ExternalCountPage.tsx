@@ -48,6 +48,10 @@ const copy = {
     issues: "Có chênh lệch",
     beforeScanLabel: "Trước khi quét",
     beforeSubmitLabel: "Trước khi nộp",
+    openingLabel: "Đầu ca · chuyển quyền quét",
+    optionalClosingLabel: "Cuối ngày · minh chứng tùy chọn",
+    workflowHint:
+      "Mỗi ca kiểm kê đầu ca để nhận quyền quét. Khi hoàn tất, quyền ca trước bị thu hồi và hàng chờ của ca trước được tự động chốt.",
     operator: "Nhân viên",
     client: "Client",
     discrepancy: "Chênh lệch",
@@ -80,6 +84,10 @@ const copy = {
     issues: "有差异",
     beforeScanLabel: "扫描前",
     beforeSubmitLabel: "提交前",
+    openingLabel: "开班 · 转移扫描权限",
+    optionalClosingLabel: "日终 · 可选凭证",
+    workflowHint:
+      "每个班次完成开班盘点后取得扫描权限；上一班次权限会被收回，其队列自动结算。",
     operator: "操作员",
     client: "客户端",
     discrepancy: "差异",
@@ -246,8 +254,8 @@ export default function ExternalCountPage() {
     setIsSaving(true);
     const action = externalCountApi.updateRequirement({
       enabled: config.enabled,
-      require_before_scan: config.require_before_scan,
-      require_before_submit: config.require_before_submit,
+      require_before_scan: true,
+      require_before_submit: false,
     });
     gooeyToast.promise(action, {
       loading: text.saving,
@@ -296,18 +304,9 @@ export default function ExternalCountPage() {
               disabled={!canConfigure}
               onChange={(checked) => setConfig((prev) => prev ? { ...prev, enabled: checked } : prev)}
             />
-            <ToggleRow
-              label={text.beforeScan}
-              checked={config?.require_before_scan ?? true}
-              disabled={!canConfigure || !config?.enabled}
-              onChange={(checked) => setConfig((prev) => prev ? { ...prev, require_before_scan: checked } : prev)}
-            />
-            <ToggleRow
-              label={text.beforeSubmit}
-              checked={config?.require_before_submit ?? true}
-              disabled={!canConfigure || !config?.enabled}
-              onChange={(checked) => setConfig((prev) => prev ? { ...prev, require_before_submit: checked } : prev)}
-            />
+            <p className="rounded-md border border-[var(--color-border-soft)] bg-[var(--color-neutral-50)] px-3 py-2 text-xs leading-5 text-[var(--color-text-secondary)]">
+              {text.workflowHint}
+            </p>
             <button
               type="button"
               onClick={saveConfig}
@@ -391,9 +390,12 @@ export default function ExternalCountPage() {
                 ? locationById.get(session.warehouse_location_id)
                 : null;
               const checkpointLabel =
+                session.checkpoint_type === "SHIFT_OPENING" ||
                 session.checkpoint_type === "BEFORE_SCAN"
-                  ? text.beforeScanLabel
-                  : text.beforeSubmitLabel;
+                  ? text.openingLabel
+                  : session.checkpoint_type === "OPTIONAL_CLOSING"
+                    ? text.optionalClosingLabel
+                    : text.beforeSubmitLabel;
               const performedAt = formatExecutionTime(executionTime(session), lang);
 
               return (

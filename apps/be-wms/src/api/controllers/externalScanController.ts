@@ -181,6 +181,12 @@ const scanSchema = z.object({
   operator_id_external: z.string().nullable(),
   device_id: z.string().nullable(),
   scan_time: z.string(),
+  shift_id: z.string().trim().max(120).optional().nullable(),
+  shift_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
 });
 
 const scan = async (req: Request, res: Response) => {
@@ -225,8 +231,8 @@ const scan = async (req: Request, res: Response) => {
         success: false,
         data: null,
         messages: {
-          vi: "Can gui checkpoint kiem dem BEFORE_SCAN hop le truoc khi quet.",
-          zh: "扫描前需要提交有效的 BEFORE_SCAN 盘点检查点。",
+          vi: "Bạn chưa có quyền quét tại quầy này. Hãy hoàn tất kiểm kê đầu ca.",
+          zh: "您尚无此柜台的扫描权限，请先完成开班盘点。",
         },
       });
     } else if (error.message === "UNAUTHORIZED_WAREHOUSE") {
@@ -288,20 +294,17 @@ const submitBatch = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[submitBatch]", error);
-    if (error.message === "EXTERNAL_COUNT_BEFORE_SUBMIT_REQUIRED") {
-      return res.status(409).json({
-        success: false,
-        data: null,
-        messages: {
-          vi: "Can gui checkpoint kiem dem BEFORE_SUBMIT hop le truoc khi nop batch.",
-          zh: "提交批次前需要有效的 BEFORE_SUBMIT 盘点检查点。",
-        },
-      });
-    }
-    return res.status(400).json({
+    const handoverManaged =
+      error.message === "SHIFT_HANDOVER_AUTO_SUBMIT_REQUIRED";
+    return res.status(handoverManaged ? 409 : 400).json({
       success: false,
       data: null,
-      messages: { vi: "Không thể gửi batch.", zh: "无法提交批次。" },
+      messages: handoverManaged
+        ? {
+            vi: "Hàng chờ của ca sẽ tự động chốt khi ca kế tiếp hoàn tất kiểm kê đầu ca.",
+            zh: "本班次队列将在下一班完成开班盘点后自动结算。",
+          }
+        : { vi: "Không thể gửi batch.", zh: "无法提交批次。" },
     });
   }
 };

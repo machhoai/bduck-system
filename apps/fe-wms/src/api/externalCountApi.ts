@@ -17,12 +17,20 @@ async function apiFetch<T = unknown>(
 
   const body = await response.json().catch(() => null);
   if (!response.ok || body?.success === false) {
-    throw createDetailedApiError(response, body, `API Error: ${response.status}`);
+    throw createDetailedApiError(
+      response,
+      body,
+      `API Error: ${response.status}`,
+    );
   }
   return body;
 }
 
-export type ExternalCountCheckpointType = "BEFORE_SCAN" | "BEFORE_SUBMIT";
+export type ExternalCountCheckpointType =
+  | "SHIFT_OPENING"
+  | "OPTIONAL_CLOSING"
+  | "BEFORE_SCAN"
+  | "BEFORE_SUBMIT";
 
 export type ExternalCountSession = {
   id: string;
@@ -35,6 +43,12 @@ export type ExternalCountSession = {
   business_date: string;
   external_operator_name?: string | null;
   external_operator_id?: string | null;
+  shift_id?: string | null;
+  shift_date?: string | null;
+  authorized_operator_ids?: string[];
+  previous_access_session_id?: string | null;
+  access_activated_at?: unknown;
+  finalized_batch_id?: string | null;
   external_client_id?: string | null;
   device_id?: string | null;
   idempotency_key?: string | null;

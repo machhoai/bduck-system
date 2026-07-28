@@ -36,6 +36,10 @@ export interface ExternalScanQueue {
   sync_time: Date;
   operator_name: string;
   operator_id_external: string | null;
+  shift_id?: string | null;
+  shift_date?: string | null;
+  access_session_id?: string | null;
+  handover_to_session_id?: string | null;
   device_id: string | null;
   batch_id: string | null;
   status: ExternalScanQueueStatus;
@@ -51,6 +55,23 @@ export interface ExternalScanQueue {
   notes: string | null;
   is_deleted: boolean;
   created_at: Date;
+}
+
+export interface ExternalScanAccessState {
+  id: string;
+  client_id: string;
+  warehouse_id: string;
+  warehouse_location_id: string;
+  active_count_session_id: string;
+  shift_id: string;
+  shift_date: string;
+  operator_ids: string[];
+  activated_by_operator_id: string | null;
+  activated_by_operator_name: string | null;
+  count_started_at: Date;
+  activated_at: Date;
+  previous_count_session_id: string | null;
+  updated_at: Date;
 }
 
 export interface ExternalQueueScannableProductConfig {

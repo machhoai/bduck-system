@@ -438,7 +438,7 @@ export default function BatchDetailDrawer({
             </button>
           </div>
 
-          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-6">
             <InfoTile
               icon={Hash}
               label={drawerText?.info?.pos || "Máy POS"}
@@ -461,6 +461,15 @@ export default function BatchDetailDrawer({
                 Array.isArray(batchData.operator_names)
                   ? batchData.operator_names.join(", ")
                   : batchData.operator_name
+              }
+            />
+            <InfoTile
+              icon={Calendar}
+              label="Ca được chốt"
+              value={
+                batchData.shift_id
+                  ? `${batchData.shift_id} · ${batchData.work_shift_date || ""}`
+                  : "-"
               }
             />
             <InfoTile
