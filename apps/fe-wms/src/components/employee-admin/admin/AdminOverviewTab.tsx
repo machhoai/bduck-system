@@ -95,7 +95,7 @@ export function AdminOverviewTab({
         <div
             className={
                 leaveFeatureEnabled
-                    ? "grid gap-3 lg:grid-cols-[1.12fr_0.88fr] lg:gap-4"
+                    ? "grid gap-3 lg:grid-cols-[0.8fr_1.2fr] lg:gap-4"
                     : "grid gap-3 lg:gap-4"
             }
         >
