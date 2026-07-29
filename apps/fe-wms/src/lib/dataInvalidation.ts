@@ -8,6 +8,8 @@ export type DataInvalidationKey =
   | "attendance_work_arrangements"
   | "employee_profiles"
   | "employee_employment_transitions"
+  | "employee_contracts"
+  | "employee_contract_documents"
   | "leave_balance_buckets"
   | "leave_ledger_entries"
   | "leave_policies"

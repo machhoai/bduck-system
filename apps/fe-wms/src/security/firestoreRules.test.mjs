@@ -8,12 +8,14 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDoc,
   getDocs,
   orderBy,
   query,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -218,6 +220,119 @@ async function seedDocuments() {
           effective_date: "2026-07-23",
           is_deleted: false,
         },
+      ],
+      [
+        "employee_contracts/contract-a",
+        {
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          status: "ACTIVE",
+          start_date: "2026-01-01",
+          end_date: "2026-12-31",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contracts/contract-b",
+        {
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          status: "ACTIVE",
+          start_date: "2026-02-01",
+          end_date: "2027-01-31",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contracts/contract-c",
+        {
+          employee_profile_id: "profile-c",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "warehouse-c",
+          status: "ACTIVE",
+          start_date: "2026-03-01",
+          end_date: "2027-02-28",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contract_documents/document-a",
+        {
+          contract_id: "contract-a",
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          storage_path: "employee-contract-documents/a.pdf",
+          version: 1,
+          updated_at: new Date("2026-01-02T00:00:00.000Z"),
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contract_documents/document-b",
+        {
+          contract_id: "contract-b",
+          employee_profile_id: "profile-b",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "store-d",
+          storage_path: "employee-contract-documents/b.pdf",
+          version: 1,
+          updated_at: new Date("2026-02-02T00:00:00.000Z"),
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contract_documents/document-c",
+        {
+          contract_id: "contract-c",
+          employee_profile_id: "profile-c",
+          employee_user_id: "user-b",
+          workplace_warehouse_id: "warehouse-c",
+          storage_path: "employee-contract-documents/c.pdf",
+          version: 1,
+          updated_at: new Date("2026-03-02T00:00:00.000Z"),
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contract_document_upload_intents/intent-a",
+        {
+          contract_id: "contract-a",
+          employee_profile_id: "profile-a",
+          employee_user_id: "user-a",
+          workplace_warehouse_id: "warehouse-c",
+          is_deleted: false,
+        },
+      ],
+      [
+        "employee_contract_number_locks/lock-a",
+        { contract_id: "contract-a", is_deleted: false },
+      ],
+      [
+        "employee_contract_document_locks/contract-a",
+        { contract_id: "contract-a", is_deleted: false },
+      ],
+      [
+        "employee_contract_operations/operation-a",
+        { actor_id: "user-a", is_deleted: false },
+      ],
+      [
+        "employee_contract_automation_runs/run-a",
+        { as_of_date: "2026-07-29", status: "COMPLETED", is_deleted: false },
+      ],
+      [
+        "employee_contract_status_operations/status-operation-a",
+        { contract_id: "contract-a", as_of_date: "2026-07-29" },
+      ],
+      [
+        "employee_contract_expiry_notification_locks/warning-a",
+        { contract_id: "contract-a", warning_days: 30, is_deleted: false },
+      ],
+      [
+        "employee_contract_migration_operations/migration-operation-a",
+        { contract_id: "contract-a", row_number: 4, is_deleted: false },
       ],
       [
         "leave_policies/company",
@@ -565,6 +680,9 @@ beforeEach(async () => {
       "attendance.view": true,
       "expenses.read": true,
       "employees.read": true,
+      "employees.contracts.read": true,
+      "employees.contracts.documents.read": true,
+      "employees.contracts.self.read": true,
       "leave.self.read": true,
       "leave.approve": true,
       "leave.approver.reassign": true,
@@ -580,6 +698,7 @@ beforeEach(async () => {
       "revenue.read": true,
       "invoices.read": true,
       "invoices.config": true,
+      "employees.contracts.self.read": true,
       "leave.self.read": true,
     },
   });
@@ -916,6 +1035,173 @@ describe("grant-aware Firestore rules", () => {
     await assertFails(getDoc(doc(employee, "leave_import_rows", "import-a_2")));
   });
 
+  it("enforces facility RBAC and exact employee identity on contract reads", async () => {
+    const hr = environment.authenticatedContext("user-a").firestore();
+    const employee = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+
+    await assertSucceeds(getDoc(doc(hr, "employee_contracts", "contract-c")));
+    await assertSucceeds(
+      getDoc(doc(hr, "employee_contract_documents", "document-c")),
+    );
+    await assertFails(
+      getDoc(doc(hr, "employee_contract_documents", "document-b")),
+    );
+    await assertSucceeds(
+      getDoc(doc(employee, "employee_contracts", "contract-b")),
+    );
+    await assertSucceeds(
+      getDoc(doc(employee, "employee_contract_documents", "document-b")),
+    );
+    await assertFails(
+      getDoc(doc(employee, "employee_contract_documents", "document-a")),
+    );
+    await assertFails(
+      getDoc(doc(employee, "employee_contracts", "contract-c")),
+    );
+    await assertFails(
+      getDoc(doc(employee, "employee_contract_documents", "document-c")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin, "employee_contract_documents", "document-a")),
+    );
+    await assertFails(
+      getDoc(doc(anonymous, "employee_contracts", "contract-a")),
+    );
+  });
+
+  it("requires facility and employee discriminators on contract queries", async () => {
+    const hr = environment.authenticatedContext("user-a").firestore();
+    const employee = environment.authenticatedContext("user-b").firestore();
+
+    const hrContracts = await assertSucceeds(
+      getDocs(
+        query(
+          collection(hr, "employee_contracts"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+          orderBy("start_date", "desc"),
+        ),
+      ),
+    );
+    assert.equal(hrContracts.size, 2);
+    const hrDocuments = await assertSucceeds(
+      getDocs(
+        query(
+          collection(hr, "employee_contract_documents"),
+          where("workplace_warehouse_id", "==", "warehouse-c"),
+          where("is_deleted", "==", false),
+          orderBy("updated_at", "desc"),
+        ),
+      ),
+    );
+    assert.equal(hrDocuments.size, 2);
+    await assertFails(getDocs(collection(hr, "employee_contracts")));
+    await assertFails(
+      getDocs(
+        query(
+          collection(hr, "employee_contracts"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+          orderBy("start_date", "desc"),
+        ),
+      ),
+    );
+
+    const selfContracts = await assertSucceeds(
+      getDocs(
+        query(
+          collection(employee, "employee_contracts"),
+          where("employee_user_id", "==", "user-b"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+          orderBy("start_date", "desc"),
+        ),
+      ),
+    );
+    assert.equal(selfContracts.size, 1);
+    const selfDocuments = await assertSucceeds(
+      getDocs(
+        query(
+          collection(employee, "employee_contract_documents"),
+          where("employee_user_id", "==", "user-b"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+          orderBy("version", "desc"),
+        ),
+      ),
+    );
+    assert.equal(selfDocuments.size, 1);
+    await assertFails(
+      getDocs(
+        query(
+          collection(employee, "employee_contracts"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+          orderBy("start_date", "desc"),
+        ),
+      ),
+    );
+    await assertFails(
+      getDocs(
+        query(
+          collection(employee, "employee_contract_documents"),
+          where("employee_user_id", "==", "user-a"),
+          where("workplace_warehouse_id", "==", "store-d"),
+          where("is_deleted", "==", false),
+          orderBy("version", "desc"),
+        ),
+      ),
+    );
+  });
+
+  it("keeps all contract mutations and internal collections backend-only", async () => {
+    const hr = environment.authenticatedContext("user-a").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    for (const path of [
+      ["employee_contract_document_upload_intents", "intent-a"],
+      ["employee_contract_document_locks", "contract-a"],
+      ["employee_contract_number_locks", "lock-a"],
+      ["employee_contract_operations", "operation-a"],
+      ["employee_contract_automation_runs", "run-a"],
+      ["employee_contract_status_operations", "status-operation-a"],
+      ["employee_contract_expiry_notification_locks", "warning-a"],
+      ["employee_contract_migration_operations", "migration-operation-a"],
+    ]) {
+      await assertFails(getDoc(doc(hr, ...path)));
+      await assertFails(getDoc(doc(admin, ...path)));
+    }
+    await assertFails(
+      setDoc(doc(hr, "employee_contracts", "contract-client-created"), {
+        employee_profile_id: "profile-a",
+        employee_user_id: "user-a",
+        workplace_warehouse_id: "warehouse-c",
+        is_deleted: false,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(hr, "employee_contracts", "contract-a"), {
+        status: "TERMINATED",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(hr, "employee_contract_documents", "document-a"), {
+        is_current: false,
+      }),
+    );
+    await assertFails(deleteDoc(doc(hr, "employee_contracts", "contract-a")));
+    await assertFails(
+      deleteDoc(doc(hr, "employee_contract_documents", "document-a")),
+    );
+    await assertFails(
+      updateDoc(doc(admin, "employee_contracts", "contract-a"), {
+        status: "TERMINATED",
+      }),
+    );
+  });
+
   it("inherits voucher and transfer scope into child documents", async () => {
     const sourceUser = environment.authenticatedContext("user-a").firestore();
     const destinationUser = environment
@@ -999,20 +1285,12 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(
       getDoc(
-        doc(
-          warehouseUser,
-          "attendance_work_arrangements",
-          "arrangement-c",
-        ),
+        doc(warehouseUser, "attendance_work_arrangements", "arrangement-c"),
       ),
     );
     await assertFails(
       getDoc(
-        doc(
-          warehouseUser,
-          "attendance_work_arrangements",
-          "arrangement-d",
-        ),
+        doc(warehouseUser, "attendance_work_arrangements", "arrangement-d"),
       ),
     );
     await assertSucceeds(getDoc(doc(warehouseUser, "expenses", "expense-c")));

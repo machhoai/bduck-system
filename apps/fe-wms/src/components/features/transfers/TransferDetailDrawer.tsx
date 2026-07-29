@@ -27,7 +27,9 @@ import {
   User,
   Warehouse,
   X,
+  HelpCircle,
 } from "lucide-react";
+import { useNextStep } from "nextstepjs";
 import { gooeyToast } from "goey-toast";
 import {
   collection,
@@ -224,6 +226,7 @@ export default function TransferDetailDrawer({
   mobileBottomSheet = false,
 }: TransferDetailDrawerProps) {
   const { t } = useTranslation();
+  const { startNextStep } = useNextStep();
   const { warehouses } = useWarehouses();
   const currentUser = useUserStore((s) => s.user);
   const hasPermission = useUserStore((s) => s.hasPermission);
@@ -555,6 +558,8 @@ export default function TransferDetailDrawer({
       />
 
       <div
+        data-guide-active-tour="vouchersTransferDetailTour"
+        data-guide-priority="100"
         className={
           mobileBottomSheet
             ? "fixed inset-x-0 bottom-[var(--bottomnav-height)] z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] bg-white shadow-2xl md:inset-y-0 md:left-auto md:right-0 md:bottom-auto md:max-h-none md:w-[90%] md:rounded-none lg:w-2/3"
@@ -566,7 +571,7 @@ export default function TransferDetailDrawer({
             <div className="h-1 w-10 rounded-full bg-[var(--color-border-subtle)]" />
           </div>
         )}
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
+        <div id="voucher-guide-detail-header" className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]">
               <ArrowRightLeft className="h-4.5 w-4.5" />
@@ -581,6 +586,15 @@ export default function TransferDetailDrawer({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => startNextStep("vouchersTransferDetailTour")}
+              className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)]"
+              aria-label={t.guide.common.helpTitle}
+              title={t.guide.common.helpTitle}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
             {order && onClone && (
               <button
                 type="button"
@@ -648,7 +662,7 @@ export default function TransferDetailDrawer({
                 </span>
               </div>
 
-              <div className="px-4 pt-2">
+              <div id="voucher-guide-detail-information" className="px-4 pt-2">
                 <Field icon={Hash} label="Mã phiếu" value={order.order_number} />
                 <Field
                   icon={Warehouse}
@@ -773,7 +787,7 @@ export default function TransferDetailDrawer({
                 )}
               </div>
 
-              <div className="mt-4 px-4">
+              <div id="voucher-guide-detail-items" className="mt-4 px-4">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                   {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                 </h3>
@@ -896,7 +910,9 @@ export default function TransferDetailDrawer({
                 )}
               </div>
 
-              <AttachmentSection urls={attachmentUrls} t={t} />
+              <div id="voucher-guide-detail-attachments">
+                <AttachmentSection urls={attachmentUrls} t={t} />
+              </div>
 
               {isReceivePhase && !readOnly && (
                 <div className="mt-4 border-t border-[var(--color-border-soft)] px-4 pt-4 pb-4">
@@ -914,7 +930,7 @@ export default function TransferDetailDrawer({
         </div>
 
         {showCancelSection && (
-          <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
+          <div id="voucher-guide-detail-actions" className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
             <div className="space-y-3">
               <div
                 className={`flex items-start gap-3 rounded-xl border p-3 ${

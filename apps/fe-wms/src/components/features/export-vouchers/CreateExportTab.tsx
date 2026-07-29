@@ -36,6 +36,8 @@ import {
     EXPORT_VOUCHER_CREATE_TEXT,
     type ComponentLocale,
 } from "../../../lib/i18n/componentTranslations";
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
 
 type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
@@ -140,6 +142,8 @@ export default function CreateExportTab({
     const { warehouses, loading: warehousesLoading } = useWarehouses();
     const { products, loading: productsLoading } = useProducts();
     const [step, setStep] = useState<StepId>(0);
+    const activeGuideTour = getVoucherCreateTourName("EXPORT", step);
+    useGuidedTourTransition(activeGuideTour);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [productSearch, setProductSearch] = useState("");
     const [files, setFiles] = useState<SelectedFile[]>([]);
@@ -562,8 +566,12 @@ export default function CreateExportTab({
     };
 
     return (
-        <div className="flex flex-1 h-full flex-col gap-4">
-            <div className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
+        <div
+            className="flex flex-1 h-full flex-col gap-4"
+            data-guide-active-tour={activeGuideTour}
+            data-guide-priority="30"
+        >
+            <div id="voucher-guide-wizard" className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
                 <button
                     type="button"
                     onClick={goPrev}
@@ -610,6 +618,7 @@ export default function CreateExportTab({
 
                 {step < STEPS.length - 1 ? (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={goNext}
                         disabled={!canGoNext()}
@@ -620,6 +629,7 @@ export default function CreateExportTab({
                     </button>
                 ) : (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={handleSubmit}
                         disabled={isSubmitting}
@@ -632,7 +642,7 @@ export default function CreateExportTab({
 
             <div className="flex-1 flex flex-col rounded-xl">
                 {step === 0 && (
-                    <div className="space-y-4">
+                    <div id="voucher-guide-warehouse" className="space-y-4">
                         {/* Export type selector */}
                         <div>
                             <label className="mb-1.5 block text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -719,7 +729,7 @@ export default function CreateExportTab({
                         )}
 
                         {/* Notes / Adjustment reason */}
-                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                        <section id="voucher-guide-notes" className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <label className="block">
                                 <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                                     {exportType === "ADJUSTMENT" ? `${copy.adjustmentReason} *` : copy.notes}
@@ -746,27 +756,31 @@ export default function CreateExportTab({
                 )}
 
                 {step === 1 && (
-                    <FileUploadField
-                        files={files}
-                        onFilesChange={setFiles}
-                        disabled={isSubmitting}
-                        maxFiles={5}
-                        label={copy.uploadLabel}
-                        hint={copy.uploadHint}
-                    />
+                    <div id="voucher-guide-upload">
+                        <FileUploadField
+                            files={files}
+                            onFilesChange={setFiles}
+                            disabled={isSubmitting}
+                            maxFiles={5}
+                            label={copy.uploadLabel}
+                            hint={copy.uploadHint}
+                        />
+                    </div>
                 )}
 
                 {step === 2 && (
                     <div className="flex-1 flex gap-3">
                         {/* Left column: Excel import + Product catalog */}
                         <section className="h-full flex-1 flex flex-col gap-2">
-                            <VoucherExcelImportPanel
-                                uploadedFiles={files}
-                                products={products}
-                                locations={locations}
-                                onImport={bulkAddItems}
-                            />
-                            <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <div id="voucher-guide-excel">
+                                <VoucherExcelImportPanel
+                                    uploadedFiles={files}
+                                    products={products}
+                                    locations={locations}
+                                    onImport={bulkAddItems}
+                                />
+                            </div>
+                            <div id="voucher-guide-catalog" className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -821,7 +835,7 @@ export default function CreateExportTab({
                         </section>
 
                         {/* Right column: Selected products */}
-                        <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                        <section id="voucher-guide-selected-items" className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <div>
                                     <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -1175,7 +1189,7 @@ export default function CreateExportTab({
                 )}
 
                 {step === 3 && (
-                    <div className="space-y-4">
+                    <div id="voucher-guide-summary" className="space-y-4">
                         <h3 className="text-sm font-semibold text-gray-900">
                             {copy.confirmTitle}
                         </h3>

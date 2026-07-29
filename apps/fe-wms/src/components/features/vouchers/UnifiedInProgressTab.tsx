@@ -213,7 +213,12 @@ export default function UnifiedInProgressTab({
 
   if (vouchers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-20 text-center">
+      <div
+        id="voucher-guide-empty"
+        data-guide-active-tour="vouchersInProgressEmptyTour"
+        data-guide-priority="20"
+        className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-20 text-center"
+      >
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-surface-card)]">
           <PackageOpen size={24} className="text-[var(--color-text-muted)]" />
         </div>
@@ -230,9 +235,13 @@ export default function UnifiedInProgressTab({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="flex flex-col gap-3"
+      data-guide-active-tour="vouchersInProgressTour"
+      data-guide-priority="20"
+    >
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div id="voucher-guide-filters" className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search
             size={14}
@@ -444,12 +453,12 @@ export default function UnifiedInProgressTab({
 
       {/* List */}
       {filteredVouchers.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">
+        <p id="voucher-guide-no-results" className="py-10 text-center text-sm text-[var(--color-text-muted)]">
           {(t as any).vouchers?.inProgressTab?.noMatches ||
             "Không tìm thấy lệnh phù hợp"}
         </p>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div id="voucher-guide-cards" className="flex flex-col gap-5">
           {groupedVouchers.map((group) => (
             <section key={group.key} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">

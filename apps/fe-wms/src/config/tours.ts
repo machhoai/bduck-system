@@ -1,4 +1,11 @@
 import type { Step, Tour } from "nextstepjs";
+import type { GuideCopy, GuideModuleTourKey } from "./guides/types";
+import {
+  filterVoucherTourSteps,
+  getVoucherTours,
+} from "./guides/voucherTours";
+
+export type { GuideCopy } from "./guides/types";
 
 export const GUIDE_TARGETS = {
   mainContent: "#wms-main-content",
@@ -15,47 +22,6 @@ export const GUIDE_TARGETS = {
   dashboardLowStock: "#wms-dashboard-low-stock",
   dashboardTopProducts: "#wms-dashboard-top-products",
 } as const;
-
-type GuideModuleTourKey = "vouchers" | "import-vouchers" | "export-vouchers" | "transfers";
-
-export type GuideCopy = {
-  card: {
-    step: string;
-    previous: string;
-    next: string;
-    finish: string;
-    skip: string;
-  };
-  common: {
-    workspaceTitle: string;
-    workspaceContent: string;
-    topbarTitle: string;
-    topbarContent: string;
-    helpTitle: string;
-    helpContent: string;
-    exportTitle: string;
-    exportContent: string;
-    notificationsTitle: string;
-    notificationsContent: string;
-    sidebarTitle: string;
-    sidebarContent: string;
-  };
-  dashboard: {
-    introTitle: string;
-    introContent: string;
-    filterTitle: string;
-    filterContent: string;
-    kpiTitle: string;
-    kpiContent: string;
-    chartsTitle: string;
-    chartsContent: string;
-    lowStockTitle: string;
-    lowStockContent: string;
-    rankingTitle: string;
-    rankingContent: string;
-  };
-  modules: Record<GuideModuleTourKey, { title: string; content: string }>;
-};
 
 function withDefaults(step: Step): Step {
   return {
@@ -102,8 +68,11 @@ function buildModuleTour(tour: string, key: GuideModuleTourKey, copy: GuideCopy)
   };
 }
 
-export function getGuideTours(copy: GuideCopy): Tour[] {
-  return [
+export function getGuideTours(
+  copy: GuideCopy,
+  visibleSelectors: ReadonlySet<string> | null = null,
+): Tour[] {
+  const tours = [
     {
       tour: "workspaceTour",
       steps: [
@@ -219,11 +188,13 @@ export function getGuideTours(copy: GuideCopy): Tour[] {
         }),
       ],
     },
-    buildModuleTour("vouchersTour", "vouchers", copy),
     buildModuleTour("import-vouchersTour", "import-vouchers", copy),
     buildModuleTour("export-vouchersTour", "export-vouchers", copy),
     buildModuleTour("transfersTour", "transfers", copy),
+    ...getVoucherTours(copy),
   ];
+
+  return filterVoucherTourSteps(tours, visibleSelectors);
 }
 
 const routeTourMap: Array<{ pattern: RegExp; tour: string }> = [
@@ -236,5 +207,19 @@ const routeTourMap: Array<{ pattern: RegExp; tour: string }> = [
 ];
 
 export function getGuideTourName(pathname: string): string {
+  if (typeof document !== "undefined") {
+    const activeTours = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-guide-active-tour]"),
+    )
+      .filter((element) => element.getClientRects().length > 0)
+      .sort(
+        (left, right) =>
+          Number(right.dataset.guidePriority ?? 0) -
+          Number(left.dataset.guidePriority ?? 0),
+      );
+    const activeTour = activeTours[0]?.dataset.guideActiveTour;
+    if (activeTour) return activeTour;
+  }
+
   return routeTourMap.find(({ pattern }) => pattern.test(pathname))?.tour ?? "workspaceTour";
 }

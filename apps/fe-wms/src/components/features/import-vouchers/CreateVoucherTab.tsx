@@ -39,6 +39,8 @@ import {
     IMPORT_VOUCHER_CREATE_TEXT,
     type ComponentLocale,
 } from "../../../lib/i18n/componentTranslations";
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
 
 type Locale = ComponentLocale;
 
@@ -147,6 +149,8 @@ export default function CreateVoucherTab({
     const { locations: allLocations } = useWarehouseLocations();
     const { products, loading: productsLoading } = useProducts();
     const [step, setStep] = useState<StepId>(0);
+    const activeGuideTour = getVoucherCreateTourName("IMPORT", step);
+    useGuidedTourTransition(activeGuideTour);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [productSearch, setProductSearch] = useState("");
     const [files, setFiles] = useState<SelectedFile[]>([]);
@@ -552,8 +556,12 @@ export default function CreateVoucherTab({
     };
 
     return (
-        <div className="flex flex-1 h-full flex-col gap-4">
-            <div className="flex h-10 items-center justify-between w-full gap-1 overflow-hidden py-1">
+        <div
+            className="flex flex-1 h-full flex-col gap-4"
+            data-guide-active-tour={activeGuideTour}
+            data-guide-priority="30"
+        >
+            <div id="voucher-guide-wizard" className="flex h-10 items-center justify-between w-full gap-1 overflow-hidden py-1">
                 <button
                     type="button"
                     onClick={goPrev}
@@ -604,6 +612,7 @@ export default function CreateVoucherTab({
 
                 {step < 3 ? (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={goNext}
                         disabled={!canGoNext()}
@@ -614,6 +623,7 @@ export default function CreateVoucherTab({
                     </button>
                 ) : (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={handleSubmit}
                         disabled={isSubmitting}
@@ -628,25 +638,27 @@ export default function CreateVoucherTab({
 
             {step === 0 && (
                 <div className="space-y-4">
-                    <WarehouseSelectionPanel
-                        warehouses={warehouses}
-                        locations={allLocations}
-                        selectedWarehouseId={formData.warehouse_id}
-                        loading={warehousesLoading}
-                        locale={locale}
-                        onSelect={(warehouseId) =>
-                            setFormData((current) => ({
-                                ...current,
-                                warehouse_id: warehouseId,
-                                items: current.items.map((item) => ({
-                                    ...item,
-                                    warehouse_location_id: "",
-                                })),
-                            }))
-                        }
-                    />
+                    <div id="voucher-guide-warehouse">
+                        <WarehouseSelectionPanel
+                            warehouses={warehouses}
+                            locations={allLocations}
+                            selectedWarehouseId={formData.warehouse_id}
+                            loading={warehousesLoading}
+                            locale={locale}
+                            onSelect={(warehouseId) =>
+                                setFormData((current) => ({
+                                    ...current,
+                                    warehouse_id: warehouseId,
+                                    items: current.items.map((item) => ({
+                                        ...item,
+                                        warehouse_location_id: "",
+                                    })),
+                                }))
+                            }
+                        />
+                    </div>
 
-                    <section className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:grid-cols-2">
+                    <section id="voucher-guide-information" className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:grid-cols-2">
                         <label className="block">
                             <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                                 {(t as any).importVoucher?.form?.supplier ?? "Nhà cung cấp"} *
@@ -701,7 +713,7 @@ export default function CreateVoucherTab({
             )}
 
             {step === 1 && (
-                <section className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
+                <section id="voucher-guide-upload" className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
                     <FileUploadField
                         files={files}
                         onFilesChange={setFiles}
@@ -721,13 +733,15 @@ export default function CreateVoucherTab({
                 <div className="flex-1 flex gap-3">
                     <section className="h-full flex-1 flex flex-col gap-2">
                         {/* Excel import panel - inline, above catalog */}
-                        <VoucherExcelImportPanel
-                            uploadedFiles={files}
-                            products={products}
-                            locations={locations}
-                            onImport={bulkAddItems}
-                        />
-                        <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                        <div id="voucher-guide-excel">
+                            <VoucherExcelImportPanel
+                                uploadedFiles={files}
+                                products={products}
+                                locations={locations}
+                                onImport={bulkAddItems}
+                            />
+                        </div>
+                        <div id="voucher-guide-catalog" className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -780,7 +794,7 @@ export default function CreateVoucherTab({
                         </div>
                     </section>
 
-                    <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                    <section id="voucher-guide-selected-items" className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                         <div className="mb-3 flex items-center justify-between">
                             <div>
                                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -798,14 +812,16 @@ export default function CreateVoucherTab({
 
                         {/* Quick Location Assign toolbar */}
                         {formData.items.length > 0 && formData.warehouse_id && (
-                            <QuickLocationAssign
-                                items={formData.items}
-                                products={products}
-                                locations={locations}
-                                getBestLocation={getBestLocationForProduct}
-                                onAssign={batchAssignLocations}
-                                disabled={locationsLoading || inventoryLoading}
-                            />
+                            <div id="voucher-guide-quick-location">
+                                <QuickLocationAssign
+                                    items={formData.items}
+                                    products={products}
+                                    locations={locations}
+                                    getBestLocation={getBestLocationForProduct}
+                                    onAssign={batchAssignLocations}
+                                    disabled={locationsLoading || inventoryLoading}
+                                />
+                            </div>
                         )}
 
                         {formData.items.length === 0 ? (
@@ -1012,7 +1028,7 @@ export default function CreateVoucherTab({
             )}
 
             {step === 3 && (
-                <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <section id="voucher-guide-summary" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                         <div className="mb-4 flex items-center gap-2">
                             <ClipboardList
@@ -1060,7 +1076,7 @@ export default function CreateVoucherTab({
                         </div>
                     </div>
 
-                    <aside className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
+                    <aside id="voucher-guide-summary-metrics" className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
                                 <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">

@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import VouchersPage from "../../../components/features/vouchers/VouchersPage";
+import ImportVoucherSkeleton from "../../../components/features/import-vouchers/ImportVoucherSkeleton";
 
 export const metadata = {
   title: "Vouchers & Transfers | B.Duck System",
@@ -6,5 +8,9 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <VouchersPage />;
+  return (
+    <Suspense fallback={<ImportVoucherSkeleton />}>
+      <VouchersPage />
+    </Suspense>
+  );
 }

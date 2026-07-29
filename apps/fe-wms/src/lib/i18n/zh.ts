@@ -2250,6 +2250,199 @@ const zh: Dictionary = {
         content: "调拨页面支持创建仓库间转货任务、跟踪路线并确认收货。",
       },
     },
+    vouchers: {
+      page: {
+        title: "仓库单据管理",
+        content:
+          "这里集中管理入库、出库和调拨单。指引会根据当前标签、创建步骤或已打开的详情窗口自动切换。",
+      },
+      metrics: {
+        title: "状态指标",
+        content: "三个指标分别显示进行中、待审批和已完成的单据数量。",
+      },
+      tabs: {
+        title: "选择功能",
+        content: "使用创建、处理中和历史标签来新建、跟踪或查询单据。",
+      },
+      create: {
+        types: {
+          title: "第 1 步：选择单据类型",
+          content: "选择入库、出库或调拨；后续表单会随类型变化。",
+        },
+        wizard: {
+          title: "查看创建进度",
+          content: "完成当前必填项后点击下一步；提交前可返回修改。",
+        },
+        import: {
+          warehouse: {
+            title: "选择收货仓库",
+            content: "后续库位和商品数据会根据所选仓库加载。",
+          },
+          information: {
+            title: "填写入库信息",
+            content: "填写来源、参考编号、预计日期和备注，然后继续。",
+          },
+          upload: {
+            title: "上传凭证",
+            content: "上传相关图片或文件；流程要求时至少需要一个附件。",
+          },
+          excel: {
+            title: "通过 Excel 添加商品",
+            content: "下载模板并按列填写后导入，可批量添加商品。",
+          },
+          catalog: {
+            title: "选择商品",
+            content: "按名称、编码或条码搜索并选择要入库的商品。",
+          },
+          selectedItems: {
+            title: "填写数量",
+            content: "为每行填写数量、单价和库位，所有行有效后才能继续。",
+          },
+          quickLocation: {
+            title: "快速分配库位",
+            content: "使用此工具可一次为多行分配库位。",
+          },
+          summary: {
+            title: "复核入库单",
+            content: "检查仓库、基本信息、附件、商品和总数量。",
+          },
+          submit: {
+            title: "完成创建入库单",
+            content: "点击创建；如出现确认或 OTP 对话框，请完成后结束。",
+          },
+        },
+        export: {
+          typeAndWarehouse: {
+            title: "选择出库类型和仓库",
+            content: "选择出库目的和源仓库；转仓时还要选择不同的目标仓库。",
+          },
+          notes: {
+            title: "填写备注",
+            content: "补充业务说明，部分调整类型必须填写。",
+          },
+          upload: {
+            title: "上传凭证",
+            content: "添加相关文件；流程可能要求附件后才能提交。",
+          },
+          excel: {
+            title: "通过 Excel 导入",
+            content: "使用模板批量填写商品、数量和库位编码。",
+          },
+          catalog: {
+            title: "选择可出库商品",
+            content: "仅选择源仓库中有可用 ATP 的商品。",
+          },
+          selectedItems: {
+            title: "分配出库数量",
+            content: "选择库位和数量，数量不能超过该库位 ATP。",
+          },
+          summary: {
+            title: "复核出库单",
+            content: "提交前检查出库类型、仓库、附件和所有商品行。",
+          },
+          submit: {
+            title: "完成创建出库单",
+            content: "点击创建，并按要求完成确认或 OTP。",
+          },
+        },
+        transfer: {
+          typeAndRoute: {
+            title: "选择调拨路线",
+            content: "选择调拨类型、源仓库和目标仓库，两个仓库不能相同。",
+          },
+          notes: {
+            title: "填写调拨备注",
+            content: "记录调拨目的、收货人或其他注意事项。",
+          },
+          upload: {
+            title: "上传凭证",
+            content: "按需要或流程要求添加调拨文件。",
+          },
+          excel: {
+            title: "通过 Excel 导入",
+            content: "使用模板批量添加商品、数量和源库位。",
+          },
+          catalog: {
+            title: "选择调拨商品",
+            content: "选择源仓库中有可用 ATP 的商品。",
+          },
+          selectedItems: {
+            title: "分配调拨数量",
+            content: "选择源库位和数量，不能超过 ATP。",
+          },
+          summary: {
+            title: "复核调拨单",
+            content: "提交前检查仓库路线、附件和商品清单。",
+          },
+          submit: {
+            title: "完成创建调拨单",
+            content: "点击创建，并按要求完成确认或 OTP。",
+          },
+        },
+      },
+      inProgress: {
+        empty: {
+          title: "暂无处理中单据",
+          content: "有活动单据后会显示在这里。",
+        },
+        filters: {
+          title: "筛选处理中单据",
+          content: "按关键字、类型和状态缩小结果范围。",
+        },
+        cards: {
+          title: "单据列表",
+          content: "卡片显示类型、编号、仓库、状态和进度；点击可查看详情。",
+        },
+        noResults: {
+          title: "没有匹配结果",
+          content: "请更改关键字或减少筛选条件。",
+        },
+      },
+      history: {
+        empty: {
+          title: "暂无历史记录",
+          content: "已完成或结束的单据会保存在这里。",
+        },
+        filters: {
+          title: "查询历史",
+          content: "使用搜索、类型和状态筛选查找已处理单据。",
+        },
+        cards: {
+          title: "历史结果",
+          content: "点击卡片查看完整信息和商品行。",
+        },
+        noResults: {
+          title: "未找到历史记录",
+          content: "请调整搜索或筛选条件。",
+        },
+        pagination: {
+          title: "翻页",
+          content: "使用分页按钮查看后续结果。",
+        },
+      },
+      detail: {
+        header: {
+          title: "单据详情",
+          content: "顶部显示编号、类型和当前状态。",
+        },
+        information: {
+          title: "业务信息",
+          content: "检查仓库、创建人、时间和备注。",
+        },
+        items: {
+          title: "商品清单",
+          content: "查看每行商品、库位、数量和状态。",
+        },
+        attachments: {
+          title: "附件",
+          content: "如果此区域出现，可在此打开单据附件。",
+        },
+        actions: {
+          title: "可用操作",
+          content: "按钮会根据状态和权限变化，仅显示当前允许的操作。",
+        },
+      },
+    },
   },
   officeScope: {
     title: "办公室管理范围",

@@ -4,6 +4,7 @@ import type { LeaveRequestType } from "@bduck/shared-types";
 import { LeaveRequestType as LeaveRequestTypeValue } from "@bduck/shared-types";
 import { BriefcaseBusiness, IdCard, UserRound } from "lucide-react";
 import { useState } from "react";
+import { EmployeeSelfContractPanel } from "@/components/employees/EmployeeSelfContractPanel";
 import { buildAdminProfileFields, formatMaybeDate } from "./adminOverviewUtils";
 import { ActionButton, EmptyState, InfoPill } from "./AdminOverviewParts";
 import { LeaveBalanceCard } from "./LeaveBalanceCard";
@@ -17,6 +18,7 @@ import type {
     AdminOverviewTabProps,
     ExtendedEmployeeProfile,
 } from "./AdminOverviewTab.types";
+import { isEmployeeContractsFeatureEnabled } from "@/lib/employeeContractFeatureFlag";
 
 export function AdminOverviewTab({
     labels,
@@ -148,6 +150,9 @@ export function AdminOverviewTab({
                         ))}
                     </div>
                 </section>
+                {profile && isEmployeeContractsFeatureEnabled ? (
+                    <EmployeeSelfContractPanel profile={profile} />
+                ) : null}
                 <section
                     data-employee-admin-animate
                     className="hidden lg:block rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-white p-5"

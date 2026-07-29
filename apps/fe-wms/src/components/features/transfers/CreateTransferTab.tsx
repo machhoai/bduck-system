@@ -39,6 +39,8 @@ import {
     TRANSFER_CREATE_TEXT,
     type ComponentLocale,
 } from "../../../lib/i18n/componentTranslations";
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
 
 type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
@@ -152,6 +154,8 @@ export default function CreateTransferTab({
     const { warehouses, loading: warehousesLoading } = useWarehouses();
     const { products, loading: productsLoading } = useProducts();
     const [step, setStep] = useState<StepId>(0);
+    const activeGuideTour = getVoucherCreateTourName("TRANSFER", step);
+    useGuidedTourTransition(activeGuideTour);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [productSearch, setProductSearch] = useState("");
@@ -591,8 +595,12 @@ export default function CreateTransferTab({
     };
 
     return (
-        <div className="flex flex-1 h-full flex-col gap-4">
-            <div className="flex w-full justify-between items-center mx-auto gap-1 overflow-x-auto py-1">
+        <div
+            className="flex flex-1 h-full flex-col gap-4"
+            data-guide-active-tour={activeGuideTour}
+            data-guide-priority="30"
+        >
+            <div id="voucher-guide-wizard" className="flex w-full justify-between items-center mx-auto gap-1 overflow-x-auto py-1">
                 <button
                     type="button"
                     onClick={() => step > 0 && setStep((step - 1) as StepId)}
@@ -637,6 +645,7 @@ export default function CreateTransferTab({
                 </div>
                 {step < STEPS.length - 1 ? (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={() => canGoNext() && setStep((step + 1) as StepId)}
                         disabled={!canGoNext()}
@@ -647,6 +656,7 @@ export default function CreateTransferTab({
                     </button>
                 ) : (
                     <button
+                        id="voucher-guide-wizard-action"
                         type="button"
                         onClick={() => setShowConfirm(true)}
                         disabled={isSubmitting}
@@ -666,7 +676,7 @@ export default function CreateTransferTab({
 
             <div className="flex-1 flex flex-col rounded-xl">
                 {step === 0 && (
-                    <div className="space-y-4">
+                    <div id="voucher-guide-warehouse" className="space-y-4">
                         {/* Transfer type selector */}
                         <div>
                             <label className="mb-1.5 block text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -828,7 +838,7 @@ export default function CreateTransferTab({
                         )}
 
                         {/* Notes */}
-                        <section className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                        <section id="voucher-guide-notes" className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <label className="block">
                                 <span className="mb-1 block text-sm font-semibold text-[var(--color-text-secondary)]">
                                     {copy.notes}
@@ -846,7 +856,7 @@ export default function CreateTransferTab({
                 )}
 
                 {step === 1 && (
-                    <section className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
+                    <section id="voucher-guide-upload" className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:p-4">
                         <FileUploadField
                             files={files}
                             onFilesChange={setFiles}
@@ -862,13 +872,15 @@ export default function CreateTransferTab({
                     <div className="flex-1 flex gap-3">
                         {/* Left column: Excel import + Product catalog */}
                         <section className="h-full flex-1 flex flex-col gap-2">
-                            <VoucherExcelImportPanel
-                                uploadedFiles={files}
-                                products={products}
-                                locations={srcLocations}
-                                onImport={bulkAddItems}
-                            />
-                            <div className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                            <div id="voucher-guide-excel">
+                                <VoucherExcelImportPanel
+                                    uploadedFiles={files}
+                                    products={products}
+                                    locations={srcLocations}
+                                    onImport={bulkAddItems}
+                                />
+                            </div>
+                            <div id="voucher-guide-catalog" className="rounded-[var(--radius-md)] flex-1 border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -923,7 +935,7 @@ export default function CreateTransferTab({
                         </section>
 
                         {/* Right column: Selected products */}
-                        <section className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
+                        <section id="voucher-guide-selected-items" className="rounded-[var(--radius-md)] flex-1 flex flex-col border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4">
                             <div className="mb-3 flex items-center justify-start gap-3">
 
                                 <Package
@@ -1344,7 +1356,7 @@ export default function CreateTransferTab({
                 )}
 
                 {step === 3 && (
-                    <div className="space-y-4">
+                    <div id="voucher-guide-summary" className="space-y-4">
                         {/* Route Map (inter-warehouse only) */}
                         {!isIntra && (
                             <TransferRouteMap
@@ -1413,7 +1425,7 @@ export default function CreateTransferTab({
                             </div>
 
                             {/* Metrics sidebar */}
-                            <aside className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
+                            <aside id="voucher-guide-summary-metrics" className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 lg:sticky lg:top-4 lg:self-start">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] p-3">
                                         <p className="text-xxs font-semibold uppercase text-[var(--color-text-muted)]">

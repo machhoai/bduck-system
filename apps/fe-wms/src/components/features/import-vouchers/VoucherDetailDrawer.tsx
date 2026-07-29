@@ -33,7 +33,9 @@ import {
     Edit,
     CheckCircle2,
     ClipboardSignature,
+    HelpCircle,
 } from "lucide-react";
+import { useNextStep } from "nextstepjs";
 import { doc, collection, query as fsQuery, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useEntityApprovers } from "@/hooks/useEntityApprovers";
@@ -163,6 +165,7 @@ const TERMINAL_STATUSES = new Set(["CANCELLED", "COMPLETED"]);
 
 export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit }: VoucherDetailDrawerProps) {
     const { t, lang } = useTranslation();
+    const { startNextStep } = useNextStep();
     const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
     const currentUser = useUserStore((s) => s.user);
     const hasPermission = useUserStore((s) => s.hasPermission);
@@ -427,9 +430,13 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                 contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
                 desktopClassName="md:inset-y-0 md:bottom-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[90%] md:rounded-none md:border-0 lg:w-2/3"
             >
-                <div className="flex min-h-0 flex-1 flex-col bg-white">
+                <div
+                    className="flex min-h-0 flex-1 flex-col bg-white"
+                    data-guide-active-tour="vouchersDetailTour"
+                    data-guide-priority="100"
+                >
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
+                    <div id="voucher-guide-detail-header" className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-4">
                         <div>
                             <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
                                 {t.vouchers.detail.title}
@@ -437,6 +444,15 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{voucher.voucher_number}</p>
                         </div>
                         <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => startNextStep("vouchersDetailTour")}
+                                className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-neutral-100)]"
+                                aria-label={t.guide.common.helpTitle}
+                                title={t.guide.common.helpTitle}
+                            >
+                                <HelpCircle className="h-5 w-5" />
+                            </button>
                             {canEdit && onEdit && (
                                 <button
                                     type="button"
@@ -497,7 +513,7 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                         </div>
 
                         {/* Fields */}
-                        <div className="px-4 pt-2">
+                        <div id="voucher-guide-detail-information" className="px-4 pt-2">
                             <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                             <Field
                                 icon={Warehouse}
@@ -571,7 +587,7 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                         </div>
 
                         {/* Items */}
-                        <div className="mt-4 px-4">
+                        <div id="voucher-guide-detail-items" className="mt-4 px-4">
                             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                                 {t.tasks.items.title} ({items.length} {t.tasks.items.productCount})
                             </h3>
@@ -695,7 +711,9 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                         </div>
 
                         {/* Attachments */}
-                        <AttachmentSection urls={attachmentUrls} t={t} />
+                        <div id="voucher-guide-detail-attachments">
+                            <AttachmentSection urls={attachmentUrls} t={t} />
+                        </div>
 
                         {/* Bottom spacing */}
                         <div className="h-6" />
@@ -703,7 +721,7 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
 
                     {/* Footer: Cancel actions */}
                     {showCancelSection && (
-                        <div className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
+                        <div id="voucher-guide-detail-actions" className="border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] px-4 py-4">
                             <div className="space-y-3">
                                 {/* Info banner for creator cancel */}
                                 {canCreatorCancel && !canForceCancel && (

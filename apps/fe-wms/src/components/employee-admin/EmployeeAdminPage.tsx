@@ -37,10 +37,17 @@ export function EmployeeAdminPage() {
     const { t } = useTranslation();
     const labels = fallbackLabels(t);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [activeTab, setActiveTab] = useState<EmployeeAdminTabKey>("time");
+    const hasPermission = useUserStore((state) => state.hasPermission);
+    const canAccessTime =
+        hasPermission("attendance.check_in") ||
+        hasPermission("attendance.view") ||
+        hasPermission("attendance.export") ||
+        hasPermission("attendance.config");
+    const [activeTab, setActiveTab] = useState<EmployeeAdminTabKey>(
+        canAccessTime ? "time" : "admin",
+    );
     const { profile, isLoading: profileLoading } = useMyEmployeeProfile();
     const { warehouses, loading: warehousesLoading } = useWarehouses();
-    const hasPermission = useUserStore((state) => state.hasPermission);
 
     const warehouse = useMemo(
         () =>
@@ -175,6 +182,12 @@ export function EmployeeAdminPage() {
         );
     }, [activeTab, loading]);
 
+    useEffect(() => {
+        if (!canAccessTime && activeTab === "time") {
+            setActiveTab("admin");
+        }
+    }, [activeTab, canAccessTime]);
+
     if (loading) return <EmployeeAdminSkeleton />;
 
     return (
@@ -216,6 +229,7 @@ export function EmployeeAdminPage() {
                     activeTab={activeTab}
                     labels={labels}
                     onChange={setActiveTab}
+                    showTimeTab={canAccessTime}
                 />
             </div>
 

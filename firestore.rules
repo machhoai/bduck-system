@@ -236,6 +236,64 @@ service cloud.firestore {
     match /employee_employment_transition_locks/{docId} {
       allow read, write: if false;
     }
+    match /employee_contracts/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'employees.contracts.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'employees.contracts.read'
+          ));
+      allow write: if false;
+    }
+    match /employee_contract_documents/{docId} {
+      allow read: if signedIn()
+        && ((resource.data.employee_user_id == request.auth.uid
+            && hasFacilityPermission(
+              resource.data.workplace_warehouse_id,
+              'employees.contracts.self.read'
+            ))
+          || isSystemAdmin()
+          || hasFacilityPermission(
+            resource.data.workplace_warehouse_id,
+            'employees.contracts.documents.read'
+          ));
+      allow write: if false;
+    }
+    match /employee_contract_document_upload_intents/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_document_locks/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_number_locks/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_operations/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_automation_runs/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_status_operations/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_expiry_notification_locks/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_migration_operations/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_import_batches/{docId} {
+      allow read, write: if false;
+    }
+    match /employee_contract_import_rows/{docId} {
+      allow read, write: if false;
+    }
     match /leave_balance_buckets/{docId} {
       allow read: if signedIn()
         && ((resource.data.employee_user_id == request.auth.uid

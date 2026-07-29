@@ -22,7 +22,11 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import type { UserWithAssignments } from "@/hooks/useUsers";
+import { useEmployeeContractLabels } from "@/hooks/useEmployeeContractLabels";
 import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
+import { isEmployeeContractsFeatureEnabled } from "@/lib/employeeContractFeatureFlag";
+import { EmployeeContractPanel } from "./EmployeeContractPanel";
 import { profileStatusLabel } from "./employeeProfileFormTypes";
 
 interface EmployeeDetailBottomSheetProps {
@@ -87,6 +91,7 @@ export function EmployeeDetailBottomSheet({
 }: EmployeeDetailBottomSheetProps) {
   const { t } = useTranslation();
   const labels = t.employeeManagement;
+  const contractLabels = useEmployeeContractLabels();
   const details = t.employeeManagement.detailSections;
   const statusLabels = t.employeeManagement.statusLabels as Record<
     string,
@@ -95,6 +100,8 @@ export function EmployeeDetailBottomSheet({
   const employmentStatusLabels = t.employeeManagement
     .employmentStatusLabels as Record<string, string>;
   const [isMobile, setIsMobile] = useState(false);
+  const currentUser = useUserStore((state) => state.user);
+  const hasPermission = useUserStore((state) => state.hasPermission);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -107,6 +114,32 @@ export function EmployeeDetailBottomSheet({
 
   const initials = getInitials(profile.full_name);
   const avatarBg = getAvatarBg(profile.full_name);
+  const facilityId = profile.workplace_warehouse_id;
+  const isSelf = Boolean(
+    profile.user_id && profile.user_id === currentUser?.id,
+  );
+  const canReadContracts =
+    isEmployeeContractsFeatureEnabled &&
+    (hasPermission("employees.contracts.read", facilityId) ||
+      (isSelf &&
+        hasPermission("employees.contracts.self.read", facilityId)));
+  const canManageContracts =
+    isEmployeeContractsFeatureEnabled &&
+    hasPermission("employees.contracts.manage", facilityId);
+  const canTerminateContracts =
+    isEmployeeContractsFeatureEnabled &&
+    hasPermission("employees.contracts.terminate", facilityId);
+  const canReadContractDocuments =
+    isEmployeeContractsFeatureEnabled &&
+    (hasPermission("employees.contracts.documents.read", facilityId) ||
+      (isSelf &&
+        hasPermission("employees.contracts.self.read", facilityId)));
+  const canManageContractDocuments =
+    isEmployeeContractsFeatureEnabled &&
+    hasPermission("employees.contracts.documents.manage", facilityId);
+  const canImportContractHistory =
+    isEmployeeContractsFeatureEnabled &&
+    hasPermission("employees.contracts.history.import");
 
   const detailContent = (
     <div className="flex flex-col gap-4 text-sm text-[var(--color-text-primary)]">
@@ -257,6 +290,17 @@ export function EmployeeDetailBottomSheet({
           />
         </div>
       </div>
+
+      <EmployeeContractPanel
+        profile={profile}
+        labels={contractLabels}
+        canRead={canReadContracts}
+        canManage={canManageContracts}
+        canTerminate={canTerminateContracts}
+        canReadDocuments={canReadContractDocuments}
+        canManageDocuments={canManageContractDocuments}
+        canImportHistory={canImportContractHistory}
+      />
 
       {/* Thông tin liên hệ */}
       <div className="space-y-2 rounded-2xl border border-[var(--color-border-subtle)] bg-white p-3.5 shadow-2xs">

@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [],
+  "files": [
+    "src/api/employeeContractApi.ts",
+    "src/components/employees/ContractDateField.tsx",
+    "src/components/employees/EmployeeContractActionBar.tsx",
+    "src/components/employees/EmployeeContractDocuments.tsx",
+    "src/components/employees/EmployeeContractExpiryPanel.tsx",
+    "src/components/employees/EmployeeContractFormSheet.tsx",
+    "src/components/employees/EmployeeContractLifecycleSheet.tsx",
+    "src/components/employees/EmployeeContractPanel.tsx",
+    "src/components/employees/EmployeeContractSheet.tsx",
+    "src/components/employees/EmployeeContractTimeline.tsx",
+    "src/components/employees/employeeContractUiPolicy.ts",
+    "src/components/employees/employeeContractUiTypes.ts",
+    "src/hooks/useEmployeeContracts.ts",
+    "src/hooks/useExpiringEmployeeContracts.ts",
+    "src/lib/i18n/employeeContractTranslations.ts",
+    "src/lib/employeeContractFeatureFlag.ts",
+    "src/utils/contractDateInput.ts"
+  ]
+}

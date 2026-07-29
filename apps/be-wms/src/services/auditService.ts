@@ -37,6 +37,12 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   roles: "roles",
   users: "users",
   employee_profiles: "employee_profiles",
+  employee_contracts: "employee_contracts",
+  employee_contract_documents: "employee_contract_documents",
+  employee_contract_document_upload_intents:
+    "employee_contract_document_upload_intents",
+  employee_contract_import_batches: "employee_contract_import_batches",
+  employee_contract_import_rows: "employee_contract_import_rows",
   employee_employment_transitions: "employee_employment_transitions",
   leave_balance_buckets: "leave_balance_buckets",
   leave_ledger_entries: "leave_ledger_entries",

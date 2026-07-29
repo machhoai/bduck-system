@@ -717,6 +717,69 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "按生效日期变更试用、正式或离职状态，并保留完整历史记录。",
     },
   },
+  {
+    key: "employees.contracts.self.read",
+    group: "employees",
+    label: { vi: "Xem hợp đồng của tôi", zh: "查看我的劳动合同" },
+    description: {
+      vi: "Xem thông tin và lịch sử hợp đồng lao động của chính mình.",
+      zh: "查看本人的劳动合同信息和历史记录。",
+    },
+  },
+  {
+    key: "employees.contracts.read",
+    group: "employees",
+    label: { vi: "Xem hợp đồng lao động", zh: "查看劳动合同" },
+    description: {
+      vi: "Xem hợp đồng lao động của nhân viên trong phạm vi cơ sở được cấp quyền.",
+      zh: "查看授权场所范围内员工的劳动合同。",
+    },
+  },
+  {
+    key: "employees.contracts.manage",
+    group: "employees",
+    label: { vi: "Quản lý hợp đồng lao động", zh: "管理劳动合同" },
+    description: {
+      vi: "Tạo, sửa và gia hạn hợp đồng lao động trong phạm vi được cấp quyền.",
+      zh: "在授权范围内创建、修改和续签劳动合同。",
+    },
+  },
+  {
+    key: "employees.contracts.terminate",
+    group: "employees",
+    label: { vi: "Hủy và chấm dứt hợp đồng", zh: "取消和终止劳动合同" },
+    description: {
+      vi: "Hủy hợp đồng chưa hiệu lực hoặc chấm dứt hợp đồng đang hiệu lực.",
+      zh: "取消尚未生效的合同或终止当前生效的合同。",
+    },
+  },
+  {
+    key: "employees.contracts.documents.read",
+    group: "employees",
+    label: { vi: "Xem tệp hợp đồng", zh: "查看合同文件" },
+    description: {
+      vi: "Xem tệp PDF hợp đồng trong phạm vi được cấp quyền.",
+      zh: "查看授权范围内的合同 PDF 文件。",
+    },
+  },
+  {
+    key: "employees.contracts.documents.manage",
+    group: "employees",
+    label: { vi: "Quản lý tệp hợp đồng", zh: "管理合同文件" },
+    description: {
+      vi: "Tải lên và quản lý các phiên bản tệp PDF hợp đồng.",
+      zh: "上传和管理合同 PDF 文件版本。",
+    },
+  },
+  {
+    key: "employees.contracts.history.import",
+    group: "employees",
+    label: { vi: "Nhập lịch sử hợp đồng", zh: "导入合同历史" },
+    description: {
+      vi: "Xem trước và nhập dữ liệu hợp đồng lao động cũ.",
+      zh: "预览并导入历史劳动合同数据。",
+    },
+  },
 
   // ── Leave ──
   {

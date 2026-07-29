@@ -24,6 +24,7 @@ services:
       - NODE_ENV=production
       - BE_WMS_PORT=4000
       - BE_WMS_CORS_ORIGIN=${BE_WMS_CORS_ORIGIN:-http://app.wms.localhost}
+      - EMPLOYEE_CONTRACTS_FEATURE_ENABLED=${EMPLOYEE_CONTRACTS_FEATURE_ENABLED:-false}
     ports:
       - "4000:4000"
     networks:
@@ -43,6 +44,7 @@ services:
         - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_PUBLIC_LEAVE_FEATURE_ENABLED=${NEXT_PUBLIC_LEAVE_FEATURE_ENABLED:-false}
+        - NEXT_PUBLIC_EMPLOYEE_CONTRACTS_FEATURE_ENABLED=${NEXT_PUBLIC_EMPLOYEE_CONTRACTS_FEATURE_ENABLED:-false}
     container_name: fe-wms
     env_file:
       - .env.local

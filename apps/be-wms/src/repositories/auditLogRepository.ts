@@ -29,6 +29,12 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   expenses: "expenses",
   notification_dispatches: "notification_dispatches",
   account_invitations: "account_invitations",
+  employee_contracts: "employee_contracts",
+  employee_contract_documents: "employee_contract_documents",
+  employee_contract_document_upload_intents:
+    "employee_contract_document_upload_intents",
+  employee_contract_import_batches: "employee_contract_import_batches",
+  employee_contract_import_rows: "employee_contract_import_rows",
 };
 
 /** Fields to try (in order) when resolving an entity's display name */

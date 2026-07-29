@@ -11,7 +11,10 @@ import {
 import { EmployeeProfileStatus } from "@bduck/shared-types";
 import type { EmployeeProfile, Warehouse } from "@bduck/shared-types";
 import type { UserWithAssignments } from "@/hooks/useUsers";
+import { useEmployeeContractLabels } from "@/hooks/useEmployeeContractLabels";
+import { useExpiringEmployeeContracts } from "@/hooks/useExpiringEmployeeContracts";
 import { useTranslation } from "@/lib/i18n";
+import { isEmployeeContractsFeatureEnabled } from "@/lib/employeeContractFeatureFlag";
 import { profileStatusLabel } from "./employeeProfileFormTypes";
 import {
   EmployeeRow,
@@ -20,6 +23,7 @@ import {
   MetricCard,
 } from "./EmployeeManagementParts";
 import { EmployeeDetailBottomSheet } from "./EmployeeDetailBottomSheet";
+import { EmployeeContractExpiryPanel } from "./EmployeeContractExpiryPanel";
 import {
   filterWarehousesByScope,
   isWarehouseInScope,
@@ -45,6 +49,7 @@ interface EmployeeManagementViewProps {
 export function EmployeeManagementView(props: EmployeeManagementViewProps) {
   const { t } = useTranslation();
   const labels = t.employeeManagement;
+  const contractLabels = useEmployeeContractLabels();
   const statusLabels = t.employeeManagement.statusLabels as Record<
     string,
     string
@@ -67,6 +72,23 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
   const readableWarehouses = useMemo(
     () => filterWarehousesByScope(props.warehouses, props.readScope),
     [props.readScope, props.warehouses],
+  );
+  const profileSummaryById = useMemo(
+    () =>
+      new Map(
+        props.profiles.map((profile) => [
+          profile.id,
+          {
+            full_name: profile.full_name,
+            employee_code: profile.employee_code,
+          },
+        ]),
+      ),
+    [props.profiles],
+  );
+  const expiring = useExpiringEmployeeContracts(
+    contractLabels.expiry.loadError,
+    isEmployeeContractsFeatureEnabled,
   );
 
   const visibleProfiles = useMemo(() => {
@@ -167,6 +189,22 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
           value={stats.linked}
         />
       </section>
+
+      {isEmployeeContractsFeatureEnabled ? (
+        <EmployeeContractExpiryPanel
+          contracts={expiring.contracts}
+          profiles={profileSummaryById}
+          labels={contractLabels}
+          isLoading={expiring.isLoading}
+          error={expiring.error}
+          onOpenEmployee={(profileId) =>
+            setSelectedDetailProfile(
+              props.profiles.find((profile) => profile.id === profileId) ??
+                null,
+            )
+          }
+        />
+      ) : null}
 
       {/* Main content panel & filters */}
       <section className="flex flex-col gap-3 lg:shadow-none">

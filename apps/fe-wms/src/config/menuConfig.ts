@@ -151,6 +151,7 @@ export const menuItems: MenuItem[] = [
             "attendance.export",
             "attendance.config",
             "leave.self.read",
+            "employees.contracts.self.read",
         ],
         showInBottomNav: true,
     },
@@ -241,7 +242,9 @@ export function getVisibleMenuItems(
 ): MenuItem[] {
     return items.filter((item) => {
         if (item.permission && hasPermission(item.permission)) return true;
-        if (item.permissionsAny?.some((permission) => hasPermission(permission))) {
+        if (
+            item.permissionsAny?.some((permission) => hasPermission(permission))
+        ) {
             return true;
         }
         return !item.permission && !item.permissionsAny;

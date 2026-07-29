@@ -2176,6 +2176,233 @@ const vi = {
                     "Trang điều chuyển hỗ trợ tạo lệnh chuyển hàng giữa các kho, theo dõi tuyến chuyển và xác nhận nhận hàng.",
             },
         },
+        vouchers: {
+            page: {
+                title: "Quản lý lệnh kho",
+                content:
+                    "Trang này tập trung lệnh nhập, xuất và điều chuyển. Hướng dẫn sẽ tự đổi theo tab, bước tạo lệnh hoặc cửa sổ chi tiết đang mở.",
+            },
+            metrics: {
+                title: "Số liệu trạng thái",
+                content:
+                    "Ba chỉ số cho biết tổng lệnh đang hoạt động, số lệnh chờ duyệt và số lệnh đã hoàn thành.",
+            },
+            tabs: {
+                title: "Chọn chức năng",
+                content:
+                    "Chọn Tạo lệnh để lập lệnh mới, Đang xử lý để theo dõi công việc hiện tại, hoặc Lịch sử để tra cứu lệnh đã kết thúc.",
+            },
+            create: {
+                types: {
+                    title: "Bước 1: Chọn loại lệnh",
+                    content:
+                        "Chọn Nhập kho, Xuất kho hoặc Điều chuyển. Biểu mẫu và các bước tiếp theo sẽ đổi theo loại bạn chọn.",
+                },
+                wizard: {
+                    title: "Theo dõi tiến độ",
+                    content:
+                        "Thanh bước cho biết bạn đang ở đâu. Hoàn thành các trường bắt buộc rồi dùng nút Tiếp tục; có thể quay lại để sửa trước khi gửi.",
+                },
+                import: {
+                    warehouse: {
+                        title: "Chọn kho nhận",
+                        content:
+                            "Chọn kho sẽ nhận hàng. Danh sách vị trí và dữ liệu sản phẩm ở các bước sau phụ thuộc vào kho này.",
+                    },
+                    information: {
+                        title: "Nhập thông tin phiếu",
+                        content:
+                            "Điền nguồn nhập, mã tham chiếu, ngày dự kiến và ghi chú nếu có. Kiểm tra thông tin rồi bấm Tiếp tục.",
+                    },
+                    upload: {
+                        title: "Đính kèm chứng từ",
+                        content:
+                            "Tải ảnh hoặc tài liệu liên quan. Nếu quy trình yêu cầu chứng từ, bạn phải có ít nhất một tệp trước khi sang bước sau.",
+                    },
+                    excel: {
+                        title: "Thêm sản phẩm bằng Excel",
+                        content:
+                            "Có thể tải file mẫu, điền đúng cột rồi nhập lại để thêm nhiều sản phẩm nhanh.",
+                    },
+                    catalog: {
+                        title: "Chọn sản phẩm",
+                        content:
+                            "Tìm theo tên, mã hoặc barcode rồi chọn sản phẩm cần nhập. Mỗi sản phẩm đã chọn sẽ xuất hiện trong danh sách bên dưới.",
+                    },
+                    selectedItems: {
+                        title: "Khai báo số lượng",
+                        content:
+                            "Nhập số lượng, đơn giá và vị trí cho từng dòng. Mọi dòng phải hợp lệ trước khi tiếp tục.",
+                    },
+                    quickLocation: {
+                        title: "Gán vị trí nhanh",
+                        content:
+                            "Dùng công cụ này để gán nhanh vị trí kho cho nhiều dòng thay vì chỉnh từng sản phẩm.",
+                    },
+                    summary: {
+                        title: "Rà soát lệnh nhập",
+                        content:
+                            "Kiểm tra lại kho, thông tin, chứng từ, số mặt hàng và tổng số lượng. Quay lại nếu cần sửa.",
+                    },
+                    submit: {
+                        title: "Hoàn tất tạo lệnh nhập",
+                        content:
+                            "Bấm Tạo phiếu để gửi. Nếu hệ thống yêu cầu OTP hoặc xác nhận, hoàn thành hộp thoại xuất hiện để kết thúc.",
+                    },
+                },
+                export: {
+                    typeAndWarehouse: {
+                        title: "Chọn loại xuất và kho",
+                        content:
+                            "Chọn mục đích xuất và kho xuất hàng. Nếu là chuyển kho, chọn thêm kho đích khác kho nguồn.",
+                    },
+                    notes: {
+                        title: "Nhập ghi chú",
+                        content:
+                            "Bổ sung nội dung nghiệp vụ; ghi chú là bắt buộc với một số loại điều chỉnh.",
+                    },
+                    upload: {
+                        title: "Đính kèm chứng từ",
+                        content:
+                            "Tải tài liệu liên quan. Quy trình có thể bắt buộc chứng từ trước khi cho phép gửi.",
+                    },
+                    excel: {
+                        title: "Nhập danh sách bằng Excel",
+                        content:
+                            "Dùng file mẫu để thêm nhanh sản phẩm, số lượng và mã vị trí.",
+                    },
+                    catalog: {
+                        title: "Chọn hàng có thể xuất",
+                        content:
+                            "Tìm và chọn sản phẩm còn ATP tại kho nguồn.",
+                    },
+                    selectedItems: {
+                        title: "Phân bổ hàng xuất",
+                        content:
+                            "Chọn vị trí và số lượng cho từng dòng. Số lượng không được vượt ATP của vị trí.",
+                    },
+                    summary: {
+                        title: "Rà soát lệnh xuất",
+                        content:
+                            "Kiểm tra loại xuất, kho, chứng từ và toàn bộ dòng hàng trước khi gửi.",
+                    },
+                    submit: {
+                        title: "Hoàn tất tạo lệnh xuất",
+                        content:
+                            "Bấm Tạo phiếu và hoàn thành bước xác nhận hoặc OTP nếu được yêu cầu.",
+                    },
+                },
+                transfer: {
+                    typeAndRoute: {
+                        title: "Chọn tuyến điều chuyển",
+                        content:
+                            "Chọn loại điều chuyển, kho nguồn và kho đích. Kho nguồn và kho đích phải khác nhau.",
+                    },
+                    notes: {
+                        title: "Nhập ghi chú điều chuyển",
+                        content:
+                            "Ghi mục đích, người nhận hoặc thông tin cần lưu ý cho tuyến chuyển.",
+                    },
+                    upload: {
+                        title: "Đính kèm chứng từ",
+                        content:
+                            "Thêm tài liệu điều chuyển nếu có hoặc nếu quy trình bắt buộc.",
+                    },
+                    excel: {
+                        title: "Nhập danh sách bằng Excel",
+                        content:
+                            "Dùng file mẫu để thêm nhanh sản phẩm, số lượng và vị trí lấy hàng.",
+                    },
+                    catalog: {
+                        title: "Chọn hàng điều chuyển",
+                        content:
+                            "Chọn sản phẩm còn ATP tại kho nguồn.",
+                    },
+                    selectedItems: {
+                        title: "Phân bổ hàng chuyển",
+                        content:
+                            "Chọn vị trí nguồn và số lượng từng dòng; không được vượt ATP.",
+                    },
+                    summary: {
+                        title: "Rà soát lệnh điều chuyển",
+                        content:
+                            "Kiểm tra tuyến kho, chứng từ và danh sách hàng trước khi gửi.",
+                    },
+                    submit: {
+                        title: "Hoàn tất tạo lệnh điều chuyển",
+                        content:
+                            "Bấm Tạo lệnh và hoàn thành xác nhận hoặc OTP nếu được yêu cầu.",
+                    },
+                },
+            },
+            inProgress: {
+                empty: {
+                    title: "Chưa có lệnh đang xử lý",
+                    content: "Khi có lệnh hoạt động, chúng sẽ xuất hiện tại đây.",
+                },
+                filters: {
+                    title: "Lọc lệnh đang xử lý",
+                    content:
+                        "Tìm theo mã hoặc nội dung và lọc theo loại lệnh, trạng thái để thu hẹp kết quả.",
+                },
+                cards: {
+                    title: "Danh sách lệnh",
+                    content:
+                        "Mỗi thẻ tóm tắt loại, mã, kho, trạng thái và tiến độ. Bấm vào thẻ để mở chi tiết.",
+                },
+                noResults: {
+                    title: "Không có kết quả phù hợp",
+                    content: "Đổi từ khóa hoặc bỏ bớt bộ lọc để xem lại dữ liệu.",
+                },
+            },
+            history: {
+                empty: {
+                    title: "Chưa có lịch sử",
+                    content: "Lệnh hoàn thành hoặc kết thúc sẽ được lưu tại đây.",
+                },
+                filters: {
+                    title: "Tra cứu lịch sử",
+                    content:
+                        "Dùng tìm kiếm và bộ lọc loại, trạng thái để tìm lại lệnh đã xử lý.",
+                },
+                cards: {
+                    title: "Kết quả lịch sử",
+                    content: "Bấm một thẻ để xem đầy đủ thông tin và các dòng hàng.",
+                },
+                noResults: {
+                    title: "Không tìm thấy lịch sử",
+                    content: "Thử đổi điều kiện tìm kiếm hoặc bộ lọc.",
+                },
+                pagination: {
+                    title: "Chuyển trang",
+                    content: "Dùng các nút trang để xem phần kết quả tiếp theo.",
+                },
+            },
+            detail: {
+                header: {
+                    title: "Chi tiết lệnh",
+                    content:
+                        "Phần đầu cho biết mã, loại và trạng thái hiện tại của lệnh.",
+                },
+                information: {
+                    title: "Thông tin nghiệp vụ",
+                    content: "Kiểm tra kho, người tạo, thời gian và ghi chú của lệnh.",
+                },
+                items: {
+                    title: "Danh sách hàng",
+                    content: "Xem sản phẩm, vị trí, số lượng và tình trạng từng dòng.",
+                },
+                attachments: {
+                    title: "Chứng từ đính kèm",
+                    content: "Mở các tệp đã gắn với lệnh nếu khu vực này xuất hiện.",
+                },
+                actions: {
+                    title: "Thao tác khả dụng",
+                    content:
+                        "Các nút ở đây thay đổi theo trạng thái và quyền của bạn; chỉ thao tác đang được phép mới hiển thị.",
+                },
+            },
+        },
     },
     officeScope: {
         title: "Phạm vi quản lý của văn phòng",

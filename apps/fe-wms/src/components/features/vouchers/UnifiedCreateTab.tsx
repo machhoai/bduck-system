@@ -70,7 +70,7 @@ export default function UnifiedCreateTab({ cloneData, prefillWarehouseId, prefil
     return (
         <div className="flex flex-col flex-1 h-full">
             {/* Type Selector Header */}
-            <div className="flex flex-col gap-3 px-4 pt-4 pb-0">
+            <div id="voucher-guide-create-types" className="flex flex-col gap-3 px-4 pt-4 pb-0">
                 <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t.vouchers?.createTab?.selectType || "Chọn loại phiếu cần tạo:"}</p>
                 <div className="flex gap-3">
                     {canCreateVoucher && (

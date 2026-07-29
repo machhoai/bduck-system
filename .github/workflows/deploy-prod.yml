@@ -77,6 +77,7 @@ jobs:
           file: apps/fe-wms/Dockerfile
           build-args: |
             NEXT_PUBLIC_LEAVE_FEATURE_ENABLED=${{ vars.NEXT_PUBLIC_LEAVE_FEATURE_ENABLED || 'false' }}
+            NEXT_PUBLIC_EMPLOYEE_CONTRACTS_FEATURE_ENABLED=${{ vars.NEXT_PUBLIC_EMPLOYEE_CONTRACTS_FEATURE_ENABLED || 'true' }}
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}-fe-wms:${{ github.sha }}

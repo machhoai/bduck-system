@@ -231,7 +231,12 @@ export default function UnifiedHistoryTab({
 
   if (vouchers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-20 text-center">
+      <div
+        id="voucher-guide-empty"
+        data-guide-active-tour="vouchersHistoryEmptyTour"
+        data-guide-priority="20"
+        className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] py-20 text-center"
+      >
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-surface-card)]">
           <PackageOpen size={24} className="text-[var(--color-text-muted)]" />
         </div>
@@ -248,9 +253,13 @@ export default function UnifiedHistoryTab({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="flex flex-col gap-3"
+      data-guide-active-tour="vouchersHistoryTour"
+      data-guide-priority="20"
+    >
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white p-2 shadow-sm">
+      <div id="voucher-guide-filters" className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-white p-2 shadow-sm">
         <div className="relative flex-1 min-w-[180px]">
           <Search
             size={14}
@@ -460,13 +469,13 @@ export default function UnifiedHistoryTab({
 
       {/* List */}
       {filteredVouchers.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[var(--color-text-muted)]">
+        <p id="voucher-guide-no-results" className="py-10 text-center text-sm text-[var(--color-text-muted)]">
           {(t as any).vouchers?.historyTab?.noMatches ||
             "Không tìm thấy lệnh phù hợp"}
         </p>
       ) : (
         <>
-          <div className="flex flex-col gap-5">
+          <div id="voucher-guide-cards" className="flex flex-col gap-5">
             {groupedVouchers.map((group) => (
               <section key={group.key} className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -570,7 +579,7 @@ export default function UnifiedHistoryTab({
             ))}
           </div>
 
-          <section className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-4 py-3 text-sm text-[var(--color-text-secondary)] md:flex-row md:items-center md:justify-between">
+          <section id="voucher-guide-pagination" className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-4 py-3 text-sm text-[var(--color-text-secondary)] md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <span>
                 {(t as any).auditLog?.showing || "Hiển thị"} {visibleStart}-

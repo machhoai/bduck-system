@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, History, Plus, FileSignature } from "lucide-react";
+import { ClipboardList, History, Plus, FileSignature, HelpCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useNextStep } from "nextstepjs";
+import { getGuideTourName } from "../../../config/tours";
 import { useUnifiedVouchers } from "../../../hooks/useUnifiedVouchers";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
@@ -86,6 +88,7 @@ function MetricCard({
 
 export default function VouchersPage() {
     const { t } = useTranslation();
+    const { startNextStep } = useNextStep();
     const hasPermission = useUserStore((state) => state.hasPermission);
     const searchParams = useSearchParams();
     const prefillWarehouseId = searchParams.get("warehouseId") || undefined;
@@ -141,7 +144,7 @@ export default function VouchersPage() {
 
     return (
         <div className="flex flex-col gap-2 -mx-4 -mt-2 min-h-[calc(100dvh-80px)] bg-[var(--color-surface-subtle)] pb-24 sm:mx-0 sm:mt-0 sm:bg-transparent sm:pb-0">
-            <div className="sticky flex justify-between items-center top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+            <div id="voucher-guide-page-header" className="sticky flex justify-between items-center top-0 z-30 border-b border-[var(--color-border-subtle)] bg-white/95 px-4 pb-3 pt-4 backdrop-blur lg:static lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
                 <div className="flex items-center h-full gap-3">
                     <div className="flex h-full aspect-square shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
                         <FileSignature size={22} />
@@ -155,7 +158,17 @@ export default function VouchersPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex h-10 items-center px-4 bg-white rounded-2xl border border-[var(--color-border-subtle)]">
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => startNextStep(getGuideTourName(window.location.pathname))}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border-subtle)] bg-white text-[var(--color-text-secondary)] lg:hidden"
+                        aria-label={t.guide.common.helpTitle}
+                        title={t.guide.common.helpTitle}
+                    >
+                        <HelpCircle size={18} />
+                    </button>
+                <div id="voucher-guide-metrics" className="flex h-10 items-center px-4 bg-white rounded-2xl border border-[var(--color-border-subtle)]">
                     <MetricCard
                         icon={<IonIcon icon={playForward} size={18} className="text-[var(--color-status-approved-icon)]" />}
                         value={activeVouchers.length}
@@ -175,11 +188,12 @@ export default function VouchersPage() {
                         title={t.vouchers?.tabs?.history || "Hoàn thành"}
                     />
                 </div>
+                </div>
             </div>
 
             <div className="flex h-full flex-1 flex-col gap-2">
                 <div className="sticky top-[88px] z-20 lg:static">
-                    <div className="flex items-center border-b border-[var(--color-border-subtle)]">
+                    <div id="voucher-guide-tabs" className="flex items-center border-b border-[var(--color-border-subtle)]">
                         {visibleTabs.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = effectiveTab === tab.id;

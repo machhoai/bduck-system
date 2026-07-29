@@ -8,6 +8,7 @@ interface EmployeeAdminTabsProps {
     activeTab: EmployeeAdminTabKey;
     labels: Record<string, string>;
     onChange: (tab: EmployeeAdminTabKey) => void;
+    showTimeTab?: boolean;
 }
 
 const tabs: Array<{
@@ -15,19 +16,25 @@ const tabs: Array<{
     icon: typeof ClipboardList;
     labelKey: string;
 }> = [
-        { key: "time", icon: CalendarCheck, labelKey: "timeTab" },
-        { key: "admin", icon: ClipboardList, labelKey: "adminTab" },
-    ];
+    { key: "time", icon: CalendarCheck, labelKey: "timeTab" },
+    { key: "admin", icon: ClipboardList, labelKey: "adminTab" },
+];
 
 export function EmployeeAdminTabs({
     activeTab,
     labels,
     onChange,
+    showTimeTab = true,
 }: EmployeeAdminTabsProps) {
+    const visibleTabs = showTimeTab
+        ? tabs
+        : tabs.filter((tab) => tab.key !== "time");
     return (
         <div className="sticky top-2 z-20 rounded-full border border-white/80 bg-white/95 p-1 shadow-sm backdrop-blur lg:static lg:w-fit lg:border-[var(--color-border-soft)]">
-            <div className="grid grid-cols-2 gap-1 lg:flex">
-                {tabs.map((tab) => {
+            <div
+                className={`grid gap-1 lg:flex ${visibleTabs.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+            >
+                {visibleTabs.map((tab) => {
                     const Icon = tab.icon;
                     const active = activeTab === tab.key;
                     return (
@@ -35,13 +42,16 @@ export function EmployeeAdminTabs({
                             key={tab.key}
                             type="button"
                             onClick={() => onChange(tab.key)}
-                            className={`inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-all active:scale-[0.98] lg:min-w-36 ${active
-                                ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)]"
-                                }`}
+                            className={`inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-all active:scale-[0.98] lg:min-w-36 ${
+                                active
+                                    ? "bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)]"
+                            }`}
                         >
                             <Icon size={16} />
-                            <span className="truncate">{labels[tab.labelKey]}</span>
+                            <span className="truncate">
+                                {labels[tab.labelKey]}
+                            </span>
                         </button>
                     );
                 })}
