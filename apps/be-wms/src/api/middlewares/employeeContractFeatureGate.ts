@@ -1,5 +1,6 @@
 import { resolveEmployeeContractsFeatureEnabled } from "@bduck/shared-types";
 import type { RequestHandler } from "express";
+
 import { sendError } from "../../utils/responseHelper.js";
 
 export const requireEmployeeContractFeatureEnabled: RequestHandler = (

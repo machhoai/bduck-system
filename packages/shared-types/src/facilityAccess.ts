@@ -1,5 +1,5 @@
-import type { ISOTimestamped, SoftDeletable } from "./utility.js";
 import type { ActiveStatus, AuditAction, WarehouseType } from "./enums.js";
+import type { ISOTimestamped, SoftDeletable } from "./utility.js";
 
 export const FACILITY_ACCESS_POLICY_VERSION = "office-scope-v1" as const;
 

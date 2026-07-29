@@ -7,6 +7,7 @@ import {
 } from "@bduck/shared-types";
 import { FilePlus2, Sheet } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import {
   cancelEmployeeContract,
   createContractIdempotencyKey,
@@ -18,24 +19,25 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useEmployeeContracts } from "@/hooks/useEmployeeContracts";
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { useTranslation } from "@/lib/i18n";
+import { employeeContractImportTranslations } from "@/lib/i18n/employeeContractImportTranslations";
 import { showToast } from "@/utils/toast";
-import { EmployeeContractDocuments } from "./EmployeeContractDocuments";
+
 import { EmployeeContractActionBar } from "./EmployeeContractActionBar";
+import { EmployeeContractDocuments } from "./EmployeeContractDocuments";
 import {
   EmployeeContractFormSheet,
   type EmployeeContractDraftValues,
   type EmployeeContractFormMode,
 } from "./EmployeeContractFormSheet";
+import { EmployeeContractImportSheet } from "./EmployeeContractImportSheet";
 import {
   EmployeeContractLifecycleSheet,
   type EmployeeContractLifecycleMode,
 } from "./EmployeeContractLifecycleSheet";
 import { EmployeeContractTimeline } from "./EmployeeContractTimeline";
-import { EmployeeContractImportSheet } from "./EmployeeContractImportSheet";
-import { employeeContractImportTranslations } from "@/lib/i18n/employeeContractImportTranslations";
-import { useTranslation } from "@/lib/i18n";
-import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 import { resolveContractUiStatus } from "./employeeContractUiPolicy";
+import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 
 interface EmployeeContractPanelProps {
   profile: EmployeeProfile;

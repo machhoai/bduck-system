@@ -6,6 +6,14 @@ import {
 } from "@bduck/shared-types";
 
 import { db } from "../config/firebase.js";
+
+import {
+  EMPLOYEE_CONTRACT_DOCUMENT_UPLOAD_INTENTS_COLLECTION,
+  employeeContractDocumentIntentRef,
+  hashEmployeeContractDocumentRequest,
+  mapEmployeeContractDocumentIntentSnapshot,
+  writeEmployeeContractDocumentAudit,
+} from "./employeeContractDocumentRepository.js";
 import {
   contractError,
   employeeContractRef,
@@ -15,13 +23,6 @@ import {
   assertEmployeeContractForProfile,
   assertEmployeeContractWorkplace,
 } from "./employeeContractRepositoryGuards.js";
-import {
-  EMPLOYEE_CONTRACT_DOCUMENT_UPLOAD_INTENTS_COLLECTION,
-  employeeContractDocumentIntentRef,
-  hashEmployeeContractDocumentRequest,
-  mapEmployeeContractDocumentIntentSnapshot,
-  writeEmployeeContractDocumentAudit,
-} from "./employeeContractDocumentRepository.js";
 
 export const createEmployeeContractDocumentUploadIntentRecord = async (input: {
   employee_profile_id: string;

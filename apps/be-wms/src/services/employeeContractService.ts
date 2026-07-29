@@ -14,16 +14,17 @@ import {
   updateEmployeeContractRecord,
 } from "../repositories/employeeContractMutationRepository.js";
 import {
-  contractError,
-  type EmployeeContractAuditMetadata,
-  type EmployeeContractOperationContext,
-} from "../repositories/employeeContractRepository.js";
-import {
   findEmployeeContractById,
   findEmployeeContractsByProfileId,
 } from "../repositories/employeeContractQueryRepository.js";
 import { renewEmployeeContractRecord } from "../repositories/employeeContractRenewalRepository.js";
+import {
+  contractError,
+  type EmployeeContractAuditMetadata,
+  type EmployeeContractOperationContext,
+} from "../repositories/employeeContractRepository.js";
 import { getEmployeeProfileById } from "../repositories/employeeProfileRepository.js";
+
 import type { AuthorizationService } from "./authorization/index.js";
 import type {
   CancelEmployeeContractRequest,

@@ -1,6 +1,7 @@
-import { resolveEmployeeContractsFeatureEnabled } from "@bduck/shared-types";
 import assert from "node:assert/strict";
 import test from "node:test";
+
+import { resolveEmployeeContractsFeatureEnabled } from "@bduck/shared-types";
 
 test("contract feature defaults off in production and on elsewhere", () => {
   assert.equal(

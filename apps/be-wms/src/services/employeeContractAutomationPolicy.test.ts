@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   EmployeeContractStatus,
   EmployeeContractType,
   type EmployeeContract,
 } from "@bduck/shared-types";
+
 import {
   isEmployeeContractExpiringSoon,
   isEmployeeContractExpiryWarningDue,

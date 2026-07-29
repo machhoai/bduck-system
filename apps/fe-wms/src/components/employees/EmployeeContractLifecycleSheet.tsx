@@ -7,10 +7,11 @@ import {
   type LocalDate,
 } from "@bduck/shared-types";
 import { useEffect, useState, type FormEvent } from "react";
+
 import { ContractDateField } from "./ContractDateField";
 import { EmployeeContractSheet } from "./EmployeeContractSheet";
-import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 import { getCurrentContractLocalDate } from "./employeeContractUiPolicy";
+import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 
 export type EmployeeContractLifecycleMode = "cancel" | "terminate";
 

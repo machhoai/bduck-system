@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   EmployeeContractImportLifecycleState,
   EmployeeContractStatus,
@@ -7,8 +8,8 @@ import {
   EmployeeProfileStatus,
 } from "@bduck/shared-types";
 
-import { doEmployeeContractPeriodsOverlap } from "./employeeContractPolicy.js";
 import { buildImportedEmployeeContract } from "./employeeContractImportContractFactory.js";
+import { doEmployeeContractPeriodsOverlap } from "./employeeContractPolicy.js";
 
 const profile = {
   id: "profile-1",

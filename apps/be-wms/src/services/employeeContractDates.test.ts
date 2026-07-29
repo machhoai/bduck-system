@@ -1,11 +1,12 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   formatContractDisplayDate,
   getNextContractLocalDate,
   isValidContractLocalDate,
   parseContractDisplayDate,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import test from "node:test";
 
 test("parses and formats contract dates without timezone conversion", () => {
   assert.equal(parseContractDisplayDate("29-02-2024"), "2024-02-29");

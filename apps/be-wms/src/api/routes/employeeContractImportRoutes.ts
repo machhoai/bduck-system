@@ -7,8 +7,8 @@ import {
   previewEmployeeContractImportHandler,
 } from "../controllers/employeeContractImportController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 import { requireEmployeeContractFeatureEnabled } from "../middlewares/employeeContractFeatureGate.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 

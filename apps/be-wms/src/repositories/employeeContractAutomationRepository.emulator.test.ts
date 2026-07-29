@@ -1,3 +1,6 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   EmployeeContractStatus,
   EmployeeContractType,
@@ -5,8 +8,6 @@ import {
   type EmployeeContract,
   type EmployeeContractAutomationResult,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import test from "node:test";
 
 test(
   "automation locks make status, scheduler and warning writes idempotent",

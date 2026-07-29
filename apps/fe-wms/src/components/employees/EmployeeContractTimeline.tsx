@@ -5,8 +5,9 @@ import {
   type EmployeeContract,
 } from "@bduck/shared-types";
 import { CalendarRange, Link2 } from "lucide-react";
-import type { EmployeeContractLabels } from "./employeeContractUiTypes";
+
 import { resolveContractUiStatus } from "./employeeContractUiPolicy";
+import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 
 interface EmployeeContractTimelineProps {
   contracts: EmployeeContract[];

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   AuditAction,
   EmployeeContractDocumentUploadIntentStatus,
@@ -5,19 +7,10 @@ import {
   type EmployeeContractDocumentMutationResult,
   type EmployeeContractDocumentUploadIntent,
 } from "@bduck/shared-types";
-import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
 import type { PersistedEmployeeContractPdf } from "../services/employeeContractDocumentStorageService.js";
-import {
-  contractError,
-  employeeContractRef,
-  type EmployeeContractOperationContext,
-} from "./employeeContractRepository.js";
-import {
-  assertEmployeeContractForProfile,
-  assertEmployeeContractWorkplace,
-} from "./employeeContractRepositoryGuards.js";
+
 import {
   EMPLOYEE_CONTRACT_DOCUMENTS_COLLECTION,
   EMPLOYEE_CONTRACT_DOCUMENT_UPLOAD_INTENTS_COLLECTION,
@@ -29,6 +22,15 @@ import {
   writeEmployeeContractDocumentAudit,
   writeEmployeeContractDocumentVersionLock,
 } from "./employeeContractDocumentRepository.js";
+import {
+  contractError,
+  employeeContractRef,
+  type EmployeeContractOperationContext,
+} from "./employeeContractRepository.js";
+import {
+  assertEmployeeContractForProfile,
+  assertEmployeeContractWorkplace,
+} from "./employeeContractRepositoryGuards.js";
 
 export const finalizeEmployeeContractDocumentRecord = async (input: {
   employee_profile_id: string;

@@ -1,9 +1,10 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   EmployeeContractType,
   getNextContractLocalDate,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import test from "node:test";
 
 const addDays = (date: string, count: number): string => {
   let result: string | null = date;

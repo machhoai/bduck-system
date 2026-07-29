@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
+
 import {
   AuditAction,
   type EmployeeContractImportNormalizedPayload,
   type EmployeeProfile,
 } from "@bduck/shared-types";
-import { createHash } from "node:crypto";
+
 import { db } from "../config/firebase.js";
 import { buildImportedEmployeeContract } from "../services/employeeContractImportContractFactory.js";
 import {
@@ -11,6 +13,8 @@ import {
   normalizeEmployeeContractNumber,
   validateEmployeeContractDraft,
 } from "../services/employeeContractPolicy.js";
+
+import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 import {
   EMPLOYEE_PROFILES_COLLECTION,
   employeeContractNumberLockRef,
@@ -20,7 +24,6 @@ import {
   type EmployeeContractOperationContext,
 } from "./employeeContractRepository.js";
 import { throwEmployeeContractPolicyIssues } from "./employeeContractRepositoryGuards.js";
-import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 
 const OPERATIONS = "employee_contract_migration_operations";
 

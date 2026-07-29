@@ -4,8 +4,9 @@ import {
   type EmployeeProfile,
   type LocalizedText,
 } from "@bduck/shared-types";
-import type { ParsedEmployeeContractImportRow } from "./employeeContractImportWorkbookService.js";
+
 import { buildImportedEmployeeContract } from "./employeeContractImportContractFactory.js";
+import type { ParsedEmployeeContractImportRow } from "./employeeContractImportWorkbookService.js";
 import {
   doEmployeeContractPeriodsOverlap,
   normalizeEmployeeContractNumber,

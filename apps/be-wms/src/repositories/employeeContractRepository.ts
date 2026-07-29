@@ -1,12 +1,15 @@
-import {
-  AuditAction,
-  type EmployeeContract,
-  type EmployeeContractMutationResult,
-  type LocalizedText,
-} from "@bduck/shared-types";
 import { createHash } from "node:crypto";
 
+import type {
+  AuditAction,
+  EmployeeContract,
+  EmployeeContractMutationResult,
+  LocalizedText,
+} from "@bduck/shared-types";
+
+
 import { db } from "../config/firebase.js";
+
 import {
   mapFirestoreDocument,
   toFirestoreDate,

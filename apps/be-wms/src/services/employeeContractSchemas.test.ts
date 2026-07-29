@@ -1,6 +1,7 @@
-import { EmployeeContractType } from "@bduck/shared-types";
 import assert from "node:assert/strict";
 import test from "node:test";
+
+import { EmployeeContractType } from "@bduck/shared-types";
 
 import {
   cancelEmployeeContractSchema,

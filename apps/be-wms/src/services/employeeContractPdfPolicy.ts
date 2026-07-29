@@ -1,5 +1,6 @@
-import { EMPLOYEE_CONTRACT_PDF_MAX_BYTES } from "@bduck/shared-types";
 import { createHash } from "node:crypto";
+
+import { EMPLOYEE_CONTRACT_PDF_MAX_BYTES } from "@bduck/shared-types";
 
 export type EmployeeContractPdfIssueCode =
   | "CONTRACT_DOCUMENT_INVALID"

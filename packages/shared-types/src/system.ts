@@ -1,6 +1,6 @@
 // Phê duyệt, Audit log và Tệp đính kèm
 
-import {
+import type {
   ApprovalEntityType,
   ApprovalStatus,
   ApprovalMethod,

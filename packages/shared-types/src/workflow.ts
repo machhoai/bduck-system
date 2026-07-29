@@ -8,7 +8,7 @@
 //   workflow_instances/{id}/tasks     → WorkflowTask      (per-node state)
 // ============================================================
 
-import {
+import type {
     ApprovalEntityType,
     ApprovalMethod,
     WorkflowDefinitionStatus,

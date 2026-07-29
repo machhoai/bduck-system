@@ -1,13 +1,16 @@
+import { createHash } from "node:crypto";
+
 import {
   AuditAction,
   type EmployeeContract,
   type LocalDate,
 } from "@bduck/shared-types";
-import { createHash } from "node:crypto";
+
 import { db } from "../config/firebase.js";
 import { resolveAutomatedEmployeeContractStatus } from "../services/employeeContractAutomationPolicy.js";
 import { normalizeEmployeeContractNumber } from "../services/employeeContractPolicy.js";
 import type { EmployeeContractNumberLockView } from "../services/employeeContractReconciliationPolicy.js";
+
 import {
   EMPLOYEE_CONTRACTS_COLLECTION,
   employeeContractNumberLockRef,

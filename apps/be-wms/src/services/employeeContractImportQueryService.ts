@@ -5,11 +5,12 @@ import {
   findEmployeeContractImportRows,
 } from "../repositories/employeeContractImportRepository.js";
 import { findEmployeeProfiles } from "../repositories/employeeProfileRepository.js";
+
+import type { AuthorizationService } from "./authorization/index.js";
 import {
   assertEmployeeContractImportBatchAccess,
   buildEmployeeContractImportRowViews,
 } from "./employeeContractImportAccessService.js";
-import type { AuthorizationService } from "./authorization/index.js";
 
 export const getEmployeeContractImport = async (
   batchId: string,

@@ -1,6 +1,6 @@
 // Dữ liệu nền tảng cốt lõi
 
-import {
+import type {
   ActiveStatus,
   LocationStatus,
   LocationType,

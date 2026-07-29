@@ -1,9 +1,9 @@
+import type { LeaveRequest } from "./leave.js";
 import type {
   ISOTimestamped,
   LocalizedText,
   SoftDeletable,
 } from "./utility.js";
-import type { LeaveRequest } from "./leave.js";
 
 export enum LeaveApprovalTaskStatus {
   WAITING = "WAITING",

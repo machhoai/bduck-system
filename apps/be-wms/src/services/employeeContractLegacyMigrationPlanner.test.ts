@@ -1,3 +1,6 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   EmployeeContractType,
   EmployeeProfileStatus,
@@ -5,8 +8,7 @@ import {
   type EmployeeContractImportNormalizedPayload,
   type EmployeeProfile,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import test from "node:test";
+
 import type { ParsedEmployeeContractImportRow } from "./employeeContractImportWorkbookService.js";
 import { planEmployeeContractLegacyMigration } from "./employeeContractLegacyMigrationPlanner.js";
 

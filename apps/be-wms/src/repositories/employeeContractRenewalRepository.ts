@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   AuditAction,
   EmployeeContractStatus,
@@ -5,7 +7,6 @@ import {
   type EmployeeContractMutationResult,
   type RenewEmployeeContractInput,
 } from "@bduck/shared-types";
-import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
 import { validateEmployeeContractRenewal } from "../services/employeeContractLifecyclePolicy.js";
@@ -14,6 +15,8 @@ import {
   resolveEmployeeContractStatus,
 } from "../services/employeeContractPolicy.js";
 import { getVietnamLocalDate } from "../services/employeeEmploymentPolicy.js";
+
+import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 import {
   employeeContractNumberLockRef,
   employeeContractRef,
@@ -29,7 +32,6 @@ import {
   assertEmployeeContractWorkplace,
   throwEmployeeContractPolicyIssues,
 } from "./employeeContractRepositoryGuards.js";
-import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 
 export const renewEmployeeContractRecord = async (input: {
   employee_profile_id: string;

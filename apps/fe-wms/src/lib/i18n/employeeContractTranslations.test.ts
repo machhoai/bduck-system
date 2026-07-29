@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { employeeContractTranslations } from "./employeeContractTranslations.js";
 
 test("keeps the Vietnamese and Chinese contract dictionaries aligned", () => {

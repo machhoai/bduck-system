@@ -1,6 +1,6 @@
 // Tồn kho thực tế và Kiểm kê
 
-import {
+import type {
   StockCountType,
   StockCountPurpose,
   StockCountSource,

@@ -7,6 +7,7 @@ import {
 } from "@bduck/shared-types";
 
 import { db } from "../config/firebase.js";
+
 import {
   EMPLOYEE_CONTRACTS_COLLECTION,
   EMPLOYEE_PROFILES_COLLECTION,

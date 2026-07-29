@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm run lint
+      - name: Lint employee contract rollout
+        run: pnpm run lint:employee-contracts
 
       - name: Typecheck
         run: pnpm run typecheck

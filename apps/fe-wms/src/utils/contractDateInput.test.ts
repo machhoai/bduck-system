@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { normalizeContractDateInput } from "./contractDateInput.js";
 
 test("normalizes typed and pasted contract dates to DD-MM-YYYY", () => {

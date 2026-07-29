@@ -1,28 +1,30 @@
+import { createHash } from "node:crypto";
+
 import {
   EmployeeContractDocumentUploadIntentStatus,
   type EmployeeContract,
 } from "@bduck/shared-types";
-import { createHash } from "node:crypto";
 
-import { finalizeEmployeeContractDocumentRecord } from "../repositories/employeeContractDocumentMutationRepository.js";
 import { createEmployeeContractDocumentUploadIntentRecord } from "../repositories/employeeContractDocumentIntentRepository.js";
+import { finalizeEmployeeContractDocumentRecord } from "../repositories/employeeContractDocumentMutationRepository.js";
 import {
   findEmployeeContractDocumentById,
   findEmployeeContractDocumentIntentById,
   findEmployeeContractDocuments,
 } from "../repositories/employeeContractDocumentRepository.js";
+import { findEmployeeContractById } from "../repositories/employeeContractQueryRepository.js";
 import {
   contractError,
   type EmployeeContractAuditMetadata,
   type EmployeeContractOperationContext,
 } from "../repositories/employeeContractRepository.js";
-import { findEmployeeContractById } from "../repositories/employeeContractQueryRepository.js";
+
 import type { AuthorizationService } from "./authorization/index.js";
+import { canReadEmployeeContractDocument } from "./employeeContractDocumentAccessPolicy.js";
 import type {
   CreateEmployeeContractUploadIntentRequest,
   FinalizeEmployeeContractUploadRequest,
 } from "./employeeContractDocumentSchemas.js";
-import { canReadEmployeeContractDocument } from "./employeeContractDocumentAccessPolicy.js";
 import {
   buildEmployeeContractUploadStoragePath,
   createEmployeeContractSignedDownload,

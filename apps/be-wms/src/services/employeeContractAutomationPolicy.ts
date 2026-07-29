@@ -7,6 +7,7 @@ import {
   type EmployeeContract,
   type LocalDate,
 } from "@bduck/shared-types";
+
 import { resolveEmployeeContractStatus } from "./employeeContractPolicy.js";
 
 const FINAL_STATUSES = new Set<EmployeeContractStatus>([

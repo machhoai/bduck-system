@@ -1,7 +1,8 @@
-import { EMPLOYEE_CONTRACT_PDF_MAX_BYTES } from "@bduck/shared-types";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
+
+import { EMPLOYEE_CONTRACT_PDF_MAX_BYTES } from "@bduck/shared-types";
 
 import { inspectEmployeeContractPdf } from "./employeeContractPdfPolicy.js";
 

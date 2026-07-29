@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   AuditAction,
   EmployeeContractAutomationRunStatus,
@@ -6,11 +8,12 @@ import {
   type EmployeeContractAutomationRun,
   type LocalDate,
 } from "@bduck/shared-types";
-import { createHash } from "node:crypto";
+
 import { db } from "../config/firebase.js";
 import {
   resolveAutomatedEmployeeContractStatus,
 } from "../services/employeeContractAutomationPolicy.js";
+
 import {
   employeeContractRef,
   mapEmployeeContractSnapshot,

@@ -1,16 +1,17 @@
 "use client";
 
 import type { EmployeeContract } from "@bduck/shared-types";
+import { EmployeeContractStatus } from "@bduck/shared-types";
 import { Pencil, RefreshCw, XCircle } from "lucide-react";
+
 import type { EmployeeContractLifecycleMode } from "./EmployeeContractLifecycleSheet";
-import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 import {
   canCancelContract,
   canRenewContract,
   canTerminateContract,
   resolveContractUiStatus,
 } from "./employeeContractUiPolicy";
-import { EmployeeContractStatus } from "@bduck/shared-types";
+import type { EmployeeContractLabels } from "./employeeContractUiTypes";
 
 interface EmployeeContractActionBarProps {
   contract: EmployeeContract;

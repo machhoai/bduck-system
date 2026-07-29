@@ -4,24 +4,26 @@ import {
   type EmployeeContract,
   type EmployeeContractImportBatchView,
   type EmployeeContractImportRow,
-  type EmployeeProfile,
   type PreviewEmployeeContractImportInput,
 } from "@bduck/shared-types";
 
 import {
   createEmployeeContractImportPreview,
 } from "../repositories/employeeContractImportRepository.js";
-import { employeeContractNumberLockRef } from "../repositories/employeeContractRepository.js";
 import {
   findEmployeeContractByNormalizedNumber,
   findEmployeeContractsByProfileId,
 } from "../repositories/employeeContractQueryRepository.js";
+import { employeeContractNumberLockRef } from "../repositories/employeeContractRepository.js";
 import { findEmployeeProfiles } from "../repositories/employeeProfileRepository.js";
+
+import type { AuthorizationService } from "./authorization/index.js";
 import {
   assertCanImportEmployeeContracts,
   buildEmployeeContractImportRowViews,
   canImportContractsForProfile,
 } from "./employeeContractImportAccessService.js";
+import { buildImportedEmployeeContract } from "./employeeContractImportContractFactory.js";
 import {
   verifyEmployeeContractImportExcel,
   verifyEmployeeContractImportPdfs,
@@ -32,8 +34,6 @@ import {
   normalizeEmployeeContractNumber,
   validateEmployeeContractDraft,
 } from "./employeeContractPolicy.js";
-import type { AuthorizationService } from "./authorization/index.js";
-import { buildImportedEmployeeContract } from "./employeeContractImportContractFactory.js";
 
 const message = (vi: string, zh: string) => ({ vi, zh });
 

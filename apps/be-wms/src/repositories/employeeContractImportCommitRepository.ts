@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   AuditAction,
   EmployeeContractImportBatchStatus,
@@ -7,9 +9,9 @@ import {
   type EmployeeContractImportStagedDocument,
   type EmployeeProfile,
 } from "@bduck/shared-types";
-import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
+import { buildImportedEmployeeContract } from "../services/employeeContractImportContractFactory.js";
 import {
   createEmployeeContractPolicyIssue,
   createEmployeeContractPolicyMessage,
@@ -17,13 +19,24 @@ import {
   normalizeEmployeeContractNumber,
   validateEmployeeContractDraft,
 } from "../services/employeeContractPolicy.js";
-import { buildImportedEmployeeContract } from "../services/employeeContractImportContractFactory.js";
+
+import {
+  EMPLOYEE_CONTRACT_DOCUMENTS_COLLECTION,
+  employeeContractDocumentLockRef,
+  employeeContractDocumentRef,
+  writeEmployeeContractDocumentAudit,
+  writeEmployeeContractDocumentVersionLock,
+} from "./employeeContractDocumentRepository.js";
 import {
   EMPLOYEE_CONTRACT_IMPORT_BATCHES_COLLECTION,
   EMPLOYEE_CONTRACT_IMPORT_ROWS_COLLECTION,
   mapEmployeeContractImportBatch,
   mapEmployeeContractImportRow,
 } from "./employeeContractImportRepository.js";
+import {
+  loadEmployeeContractNumberInTransaction,
+  loadEmployeeContractsInTransaction,
+} from "./employeeContractQueryRepository.js";
 import {
   employeeContractNumberLockRef,
   employeeContractRef,
@@ -32,17 +45,6 @@ import {
   type EmployeeContractOperationContext,
 } from "./employeeContractRepository.js";
 import { throwEmployeeContractPolicyIssues } from "./employeeContractRepositoryGuards.js";
-import {
-  loadEmployeeContractNumberInTransaction,
-  loadEmployeeContractsInTransaction,
-} from "./employeeContractQueryRepository.js";
-import {
-  EMPLOYEE_CONTRACT_DOCUMENTS_COLLECTION,
-  employeeContractDocumentLockRef,
-  employeeContractDocumentRef,
-  writeEmployeeContractDocumentAudit,
-  writeEmployeeContractDocumentVersionLock,
-} from "./employeeContractDocumentRepository.js";
 
 export interface EmployeeContractImportRowCommitResult {
   row: EmployeeContractImportRow;

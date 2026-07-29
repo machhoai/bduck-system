@@ -4,6 +4,7 @@ import {
   type EmployeeContractAutomationResult,
   type EmployeeContractExpiryView,
 } from "@bduck/shared-types";
+
 import {
   claimEmployeeContractAutomationRun,
   completeEmployeeContractAutomationRun,
@@ -16,13 +17,14 @@ import {
   findExpiringEmployeeContracts,
 } from "../repositories/employeeContractQueryRepository.js";
 import { notificationRepository } from "../repositories/notificationRepository.js";
-import { sendPushForInAppNotifications } from "./pushNotificationService.js";
+
 import type { AuthorizationService } from "./authorization/index.js";
 import {
   isEmployeeContractExpiringSoon,
   isEmployeeContractExpiryWarningDue,
 } from "./employeeContractAutomationPolicy.js";
 import { getVietnamLocalDate } from "./employeeEmploymentPolicy.js";
+import { sendPushForInAppNotifications } from "./pushNotificationService.js";
 
 export const EMPLOYEE_CONTRACT_AUTOMATION_ACTOR =
   "system:cloud-scheduler:employee-contracts";

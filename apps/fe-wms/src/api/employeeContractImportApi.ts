@@ -7,8 +7,8 @@ import type {
   EmployeeContractImportUploadSession,
 } from "@bduck/shared-types";
 
-import { authenticatedFetch } from "@/utils/authenticatedFetch";
 import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";

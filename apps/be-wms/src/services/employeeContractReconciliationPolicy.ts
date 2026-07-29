@@ -4,11 +4,12 @@ import {
   type LocalDate,
   type LocalizedText,
 } from "@bduck/shared-types";
+
+import { resolveAutomatedEmployeeContractStatus } from "./employeeContractAutomationPolicy.js";
 import {
   doEmployeeContractPeriodsOverlap,
   normalizeEmployeeContractNumber,
 } from "./employeeContractPolicy.js";
-import { resolveAutomatedEmployeeContractStatus } from "./employeeContractAutomationPolicy.js";
 
 export type EmployeeContractReconciliationIssueCode =
   | "DUPLICATE_CONTRACT_NUMBER"

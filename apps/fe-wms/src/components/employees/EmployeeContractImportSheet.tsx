@@ -6,7 +6,8 @@ import {
   EmployeeContractImportBatchStatus,
   type EmployeeContractImportBatchView,
 } from "@bduck/shared-types";
-import { Download, FileSpreadsheet, Files, UploadCloud } from "lucide-react";
+import type { UploadCloud } from "lucide-react";
+import { Download, FileSpreadsheet, Files } from "lucide-react";
 import { useRef, useState } from "react";
 
 import {
@@ -14,10 +15,11 @@ import {
   fetchEmployeeContractImportBatch,
   previewEmployeeContractHistoryFiles,
 } from "@/api/employeeContractImportApi";
+import { emitDataMutation } from "@/lib/dataInvalidation";
 import { useTranslation } from "@/lib/i18n";
 import { employeeContractImportTranslations } from "@/lib/i18n/employeeContractImportTranslations";
-import { emitDataMutation } from "@/lib/dataInvalidation";
 import { showToast } from "@/utils/toast";
+
 import { EmployeeContractImportPreview } from "./EmployeeContractImportPreview";
 import { EmployeeContractSheet } from "./EmployeeContractSheet";
 
@@ -130,7 +132,7 @@ export function EmployeeContractImportSheet({
         return result;
       });
     try {
-      const result = await showToast.promise(operation, {
+      await showToast.promise(operation, {
         loading: labels.committing,
         success: labels.commitSuccess,
         error: labels.saveError,

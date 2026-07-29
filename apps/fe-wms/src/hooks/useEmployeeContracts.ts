@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+  EmployeeContract,
+  EmployeeContractDocument,
+} from "@bduck/shared-types";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -12,10 +16,7 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  EmployeeContract,
-  EmployeeContractDocument,
-} from "@bduck/shared-types";
+
 import {
   fetchEmployeeContractDocuments,
   fetchEmployeeContracts,

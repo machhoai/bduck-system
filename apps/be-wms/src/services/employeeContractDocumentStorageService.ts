@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   EMPLOYEE_CONTRACT_PDF_MAX_BYTES,
   type EmployeeContractDocument,
@@ -5,9 +7,9 @@ import {
   type EmployeeContractSignedDownload,
   type EmployeeContractSignedUploadIntent,
 } from "@bduck/shared-types";
-import { createHash } from "node:crypto";
 
 import { storage } from "../config/firebase.js";
+
 import {
   inspectEmployeeContractPdf,
   sanitizeEmployeeContractPdfFileName,

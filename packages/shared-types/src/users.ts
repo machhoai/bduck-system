@@ -1,6 +1,6 @@
 // Tài khoản, phân quyền, RBAC
 
-import { UserStatus } from "./enums.js";
+import type { UserStatus } from "./enums.js";
 import type { UserWarehouseRoleScopeOrigin } from "./facilityAccess.js";
 
 // ─────────────────────────────────────────────

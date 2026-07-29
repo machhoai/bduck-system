@@ -5,6 +5,7 @@ import {
   type EmployeeContractExpiryView,
 } from "@bduck/shared-types";
 import { CalendarClock, ChevronRight } from "lucide-react";
+
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { EmployeeContractLabels } from "@/lib/i18n/employeeContractTranslations";
 

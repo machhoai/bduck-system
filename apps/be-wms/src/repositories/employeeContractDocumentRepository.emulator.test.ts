@@ -1,10 +1,11 @@
+import assert from "node:assert/strict";
+import { createHash, randomUUID } from "node:crypto";
+import test from "node:test";
+
 import {
   EmployeeContractStatus,
   EmployeeContractType,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
-import test from "node:test";
 
 test(
   "document transactions preserve versions, idempotency and atomic audit",

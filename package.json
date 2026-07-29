@@ -22,6 +22,7 @@
         "--- QUALITY ---": "",
         "lint": "pnpm run --recursive lint",
         "lint:fix": "pnpm run --recursive lint:fix",
+        "lint:employee-contracts": "pnpm --filter @bduck/shared-types lint && pnpm --filter @bduck/be-wms exec eslint \"src/**/*employeeContract*.ts\" --max-warnings=0 && pnpm --filter @bduck/fe-wms exec eslint \"src/api/employeeContract*.ts\" \"src/components/employees/ContractDateField.tsx\" \"src/components/employees/EmployeeContract*.tsx\" \"src/components/employees/employeeContract*.ts\" \"src/hooks/useEmployeeContract*.ts\" \"src/hooks/useExpiringEmployeeContracts.ts\" \"src/lib/employeeContractFeatureFlag.ts\" \"src/lib/i18n/employeeContract*.ts\" \"src/utils/contractDateInput*.ts\" --max-warnings=0",
         "typecheck": "pnpm run --recursive typecheck",
         "security:audit": "node scripts/audit-facility-access.mjs --enforce --summary",
         "security:audit:report": "node scripts/audit-facility-access.mjs",

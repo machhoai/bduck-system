@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   AuditAction,
   EmployeeContractStatus,
@@ -6,7 +8,6 @@ import {
   type EmployeeContractMutationResult,
   type UpdateEmployeeContractInput,
 } from "@bduck/shared-types";
-import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
 import {
@@ -15,6 +16,8 @@ import {
   validateEmployeeContractDraft,
 } from "../services/employeeContractPolicy.js";
 import { getVietnamLocalDate } from "../services/employeeEmploymentPolicy.js";
+
+import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 import {
   EMPLOYEE_PROFILES_COLLECTION,
   contractError,
@@ -33,7 +36,6 @@ import {
   assertEmployeeProfileSnapshot,
   throwEmployeeContractPolicyIssues,
 } from "./employeeContractRepositoryGuards.js";
-import { loadEmployeeContractsInTransaction } from "./employeeContractQueryRepository.js";
 
 export const createEmployeeContractRecord = async (input: {
   employee_profile_id: string;
