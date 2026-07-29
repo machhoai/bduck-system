@@ -84,6 +84,16 @@ test("builds a localized template with employee and enum dropdowns", async () =>
     String(data.getCell("G3").dataValidation.formulae?.[0]),
     /\$C\$2:\$C\$5/,
   );
+  assert.equal(data.getCell("F3").dataValidation.type, "list");
+  assert.equal(data.getCell("F3").dataValidation.errorStyle, "stop");
+  assert.match(
+    String(data.getCell("F3").dataValidation.formulae?.[0]),
+    /\$M\$2:\$M\$3/,
+  );
+  assert.equal(refs.getCell("M2").value, 0.5);
+  assert.equal(refs.getCell("M3").value, 1);
+  assert.equal(refs.getCell("N731").value, 365);
+  assert.equal(refs.getCell("O732").value, -0.5);
   const buffer = await workbook.xlsx.writeBuffer();
   assert.ok(buffer.byteLength > 10_000);
 });

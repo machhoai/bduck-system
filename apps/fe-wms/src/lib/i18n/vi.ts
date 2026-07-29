@@ -3032,7 +3032,7 @@ Object.assign(vi, {
         leaveImportInvalidDateHint:
             "Nhập ngày trong khoảng 01/01/2000 đến 31/12/2100.",
         leaveImportInvalidUnitsHint:
-            "Số ngày phải theo bước 0,5 và nằm trong khoảng -365 đến 365.",
+            "Đơn lịch sử chỉ chọn 0,5 hoặc 1; các loại khác chọn theo bước 0,5 trong phạm vi cho phép.",
         leaveImportGuideTitle: "Hướng dẫn nhập lịch sử nghỉ phép",
         leaveImportGuideVersion:
             "Phiên bản mẫu: 1.0. Chỉ nhập dữ liệu trong sheet Lich_su_nghi_phep; không sửa hoặc xóa các sheet ẩn.",
@@ -3045,9 +3045,9 @@ Object.assign(vi, {
         leaveImportGuideOrdering:
             "Dữ liệu được xử lý từ trên xuống; hãy đặt dòng cộng phép trước dòng sử dụng/hết hạn.",
         leaveImportGuideHistorical:
-            "Đơn nghỉ phép lịch sử: chọn loại nghỉ, trạng thái và thời lượng; số ngày được tự tính.",
+            "Đơn nghỉ phép lịch sử: chọn loại nghỉ, trạng thái, thời lượng và Số ngày là 0,5 hoặc 1.",
         leaveImportGuideLedger:
-            "Các loại còn lại: điền số ngày theo bước 0,5. Điều chỉnh số dư cho phép số âm.",
+            "Các loại còn lại: chọn số ngày theo bước 0,5; điều chỉnh số dư có cả giá trị âm.",
         leaveImportGuideCode: "Mã",
         leaveImportGuideMeaning: "Ý nghĩa",
         leaveImportGuideDescription: "Cách sử dụng",
@@ -3057,7 +3057,7 @@ Object.assign(vi, {
         leaveImportTypeAdjustment: "Điều chỉnh số dư",
         leaveImportTypeExpired: "Ngày phép đã hết hạn",
         leaveImportDescriptionHISTORICAL_REQUEST:
-            "Tạo đơn nghỉ phép trong quá khứ; chọn loại nghỉ, trạng thái và thời lượng.",
+            "Tạo đơn nghỉ phép trong quá khứ; chọn loại nghỉ, trạng thái, thời lượng và 0,5 hoặc 1 ngày.",
         leaveImportDescriptionACCRUAL:
             "Ghi nhận số ngày phép đã được cộng trước khi chức năng này xuất hiện.",
         leaveImportDescriptionUSED:

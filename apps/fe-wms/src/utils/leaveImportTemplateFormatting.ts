@@ -1,4 +1,7 @@
-import { LEAVE_IMPORT_MAX_ROWS } from "@bduck/shared-types";
+import {
+  LEAVE_IMPORT_MAX_ROWS,
+  LeaveImportRecordType,
+} from "@bduck/shared-types";
 import ExcelJS from "exceljs";
 import {
   getTemplateLabel,
@@ -7,6 +10,11 @@ import {
 } from "./leaveImportTemplateOptions";
 
 const REFS_SHEET = "_refs";
+const HISTORICAL_UNITS_COLUMN = "M";
+const POSITIVE_UNITS_COLUMN = "N";
+const ADJUSTMENT_UNITS_COLUMN = "O";
+const MAX_UNITS = 365;
+const UNITS_PER_DAY = 2;
 
 export const writeLeaveImportReferencePair = (
   sheet: ExcelJS.Worksheet,
@@ -20,6 +28,30 @@ export const writeLeaveImportReferencePair = (
   options.forEach((option, index) => {
     sheet.getCell(index + 2, labelColumn).value = option.label;
     sheet.getCell(index + 2, codeColumn).value = option.code;
+  });
+};
+
+export const writeLeaveImportUnitReferences = (sheet: ExcelJS.Worksheet) => {
+  const positiveUnits = Array.from(
+    { length: MAX_UNITS * UNITS_PER_DAY },
+    (_, index) => (index + 1) / UNITS_PER_DAY,
+  );
+  const adjustmentUnits = [
+    ...positiveUnits,
+    ...positiveUnits.map((units) => -units),
+  ];
+
+  sheet.getCell(`${HISTORICAL_UNITS_COLUMN}1`).value = "historical_units";
+  sheet.getCell(`${POSITIVE_UNITS_COLUMN}1`).value = "positive_units";
+  sheet.getCell(`${ADJUSTMENT_UNITS_COLUMN}1`).value = "adjustment_units";
+  [0.5, 1].forEach((units, index) => {
+    sheet.getCell(`${HISTORICAL_UNITS_COLUMN}${index + 2}`).value = units;
+  });
+  positiveUnits.forEach((units, index) => {
+    sheet.getCell(`${POSITIVE_UNITS_COLUMN}${index + 2}`).value = units;
+  });
+  adjustmentUnits.forEach((units, index) => {
+    sheet.getCell(`${ADJUSTMENT_UNITS_COLUMN}${index + 2}`).value = units;
   });
 };
 
@@ -117,7 +149,28 @@ export const styleLeaveImportDataSheet = (
 export const addLeaveImportScalarValidations = (
   sheet: ExcelJS.Worksheet,
   labels: Record<string, string>,
+  recordTypes: LeaveImportTemplateOption[],
 ) => {
+  const referenceRowFor = (recordType: LeaveImportRecordType) => {
+    const index = recordTypes.findIndex((option) => option.code === recordType);
+    if (index < 0)
+      throw new Error(`LEAVE_IMPORT_RECORD_TYPE_MISSING:${recordType}`);
+    return index + 2;
+  };
+  const historicalRow = referenceRowFor(
+    LeaveImportRecordType.HISTORICAL_REQUEST,
+  );
+  const adjustmentRow = referenceRowFor(LeaveImportRecordType.ADJUSTMENT);
+  const historicalUnitsRange =
+    `'${REFS_SHEET}'!$${HISTORICAL_UNITS_COLUMN}$2:` +
+    `$${HISTORICAL_UNITS_COLUMN}$3`;
+  const positiveUnitsRange =
+    `'${REFS_SHEET}'!$${POSITIVE_UNITS_COLUMN}$2:` +
+    `$${POSITIVE_UNITS_COLUMN}$${MAX_UNITS * UNITS_PER_DAY + 1}`;
+  const adjustmentUnitsRange =
+    `'${REFS_SHEET}'!$${ADJUSTMENT_UNITS_COLUMN}$2:` +
+    `$${ADJUSTMENT_UNITS_COLUMN}$${MAX_UNITS * UNITS_PER_DAY * 2 + 1}`;
+
   for (let row = 3; row <= LEAVE_IMPORT_MAX_ROWS + 2; row += 1) {
     sheet.getCell(`B${row}`).dataValidation = {
       type: "textLength",
@@ -154,15 +207,32 @@ export const addLeaveImportScalarValidations = (
       ),
     };
     sheet.getCell(`F${row}`).dataValidation = {
-      type: "custom",
+      type: "list",
       allowBlank: true,
       formulae: [
-        `OR(F${row}="",AND(ISNUMBER(F${row}),MOD(ABS(F${row}),0.5)=0,F${row}>=-365,F${row}<=365))`,
+        `IF(OR($A${row}='${REFS_SHEET}'!$A$${historicalRow},` +
+          `$A${row}='${REFS_SHEET}'!$B$${historicalRow}),` +
+          `${historicalUnitsRange},IF(OR(` +
+          `$A${row}='${REFS_SHEET}'!$A$${adjustmentRow},` +
+          `$A${row}='${REFS_SHEET}'!$B$${adjustmentRow}),` +
+          `${adjustmentUnitsRange},${positiveUnitsRange}))`,
       ],
+      showInputMessage: true,
+      promptTitle: getTemplateLabel(
+        labels,
+        "leaveImportChooseFromList",
+        "Choose",
+      ),
+      prompt: getTemplateLabel(
+        labels,
+        "leaveImportInvalidUnitsHint",
+        "Choose units from the dropdown list.",
+      ),
       showErrorMessage: true,
+      errorStyle: "stop",
       errorTitle: getTemplateLabel(
         labels,
-        "leaveImportInvalidValue",
+        "leaveImportInvalidSelection",
         "Invalid value",
       ),
       error: getTemplateLabel(

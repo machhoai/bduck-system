@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import ExcelJS from "exceljs";
-import { parseLeaveImportWorkbookBuffer } from "./leaveImportWorkbookService.js";
+import {
+  assertSafeLeaveImportSourceUrl,
+  parseLeaveImportWorkbookBuffer,
+} from "./leaveImportWorkbookService.js";
 
 const headers = [
   "record_type",
@@ -16,7 +19,7 @@ const headers = [
   "reason",
 ];
 
-const workbookBuffer = async (version = "1.0") => {
+const workbookBuffer = async (version = "1.0", units: number | string = "") => {
   const workbook = new ExcelJS.Workbook();
   const data = workbook.addWorksheet("Leave_history");
   data.addRow(headers);
@@ -26,7 +29,7 @@ const workbookBuffer = async (version = "1.0") => {
     "nv001",
     "2026-01-12",
     2026,
-    "",
+    units,
     "PAID_ANNUAL",
     "APPROVED",
     "MORNING",
@@ -99,6 +102,13 @@ test("parses the versioned leave import workbook on the server", async () => {
   assert.equal(rows[0].normalized_payload.posting_date, "2026-01-12");
 });
 
+test("preserves explicitly selected historical units for payload validation", async () => {
+  const rows = await parseLeaveImportWorkbookBuffer(
+    await workbookBuffer("1.0", 1),
+  );
+  assert.equal(rows[0].normalized_payload.units, 1);
+});
+
 test("maps localized dropdown labels and employee selection to technical codes", async () => {
   const rows = await parseLeaveImportWorkbookBuffer(
     await localizedWorkbookBuffer(),
@@ -116,6 +126,29 @@ test("maps localized dropdown labels and employee selection to technical codes",
 test("rejects an unsupported leave import template version", async () => {
   await assert.rejects(
     async () => parseLeaveImportWorkbookBuffer(await workbookBuffer("0.9")),
+    (error: { statusCode?: number }) => error.statusCode === 400,
+  );
+});
+
+test("accepts the standard Firebase bucket without a configured default bucket", () => {
+  assert.doesNotThrow(() =>
+    assertSafeLeaveImportSourceUrl(
+      "https://firebasestorage.googleapis.com/v0/b/jw-system-f2104.firebasestorage.app/o/leave-imports%2Fsample.xlsx?alt=media",
+      new Set([
+        "jw-system-f2104.firebasestorage.app",
+        "jw-system-f2104.appspot.com",
+      ]),
+    ),
+  );
+});
+
+test("rejects a leave import URL from another Firebase project", () => {
+  assert.throws(
+    () =>
+      assertSafeLeaveImportSourceUrl(
+        "https://firebasestorage.googleapis.com/v0/b/other-project.firebasestorage.app/o/leave-imports%2Fsample.xlsx?alt=media",
+        new Set(["jw-system-f2104.firebasestorage.app"]),
+      ),
     (error: { statusCode?: number }) => error.statusCode === 400,
   );
 });

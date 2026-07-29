@@ -3000,7 +3000,8 @@ Object.assign(zh, {
     leaveImportInvalidValue: "值无效",
     leaveImportInvalidReferenceHint: "请输入唯一且不超过100个字符的参考编号。",
     leaveImportInvalidDateHint: "请输入2000-01-01至2100-12-31之间的日期。",
-    leaveImportInvalidUnitsHint: "天数必须以0.5为步长，并在-365至365之间。",
+    leaveImportInvalidUnitsHint:
+      "历史休假申请只能选择0.5或1；其他类型按0.5的步长选择允许范围内的天数。",
     leaveImportGuideTitle: "历史休假导入指南",
     leaveImportGuideVersion:
       "模板版本：1.0。仅在“休假历史”工作表中填写数据；请勿修改或删除隐藏工作表。",
@@ -3013,8 +3014,9 @@ Object.assign(zh, {
     leaveImportGuideOrdering:
       "数据按从上到下处理；请将累积行放在使用或过期行之前。",
     leaveImportGuideHistorical:
-      "历史休假申请：选择休假类型、状态和时段；系统会自动计算天数。",
-    leaveImportGuideLedger: "其他类型：天数以0.5为步长；余额调整可填写负数。",
+      "历史休假申请：选择休假类型、状态、时段，并将天数选择为0.5或1。",
+    leaveImportGuideLedger:
+      "其他类型：按0.5的步长选择天数；余额调整列表包含负数。",
     leaveImportGuideCode: "代码",
     leaveImportGuideMeaning: "含义",
     leaveImportGuideDescription: "使用说明",
@@ -3024,7 +3026,7 @@ Object.assign(zh, {
     leaveImportTypeAdjustment: "余额调整",
     leaveImportTypeExpired: "已过期假期",
     leaveImportDescriptionHISTORICAL_REQUEST:
-      "创建过去的休假申请；请选择休假类型、状态和时段。",
+      "创建过去的休假申请；请选择休假类型、状态、时段以及0.5或1天。",
     leaveImportDescriptionACCRUAL: "记录该功能上线前已累积的休假天数。",
     leaveImportDescriptionUSED: "记录过去已使用的休假天数。",
     leaveImportDescriptionADJUSTMENT:

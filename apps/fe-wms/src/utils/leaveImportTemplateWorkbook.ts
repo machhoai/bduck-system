@@ -9,6 +9,7 @@ import {
   fillLeaveImportGuide,
   styleLeaveImportDataSheet,
   writeLeaveImportReferencePair,
+  writeLeaveImportUnitReferences,
 } from "./leaveImportTemplateFormatting";
 import {
   buildLeaveImportTemplateOptions,
@@ -75,6 +76,7 @@ export const buildLeaveImportTemplateWorkbook = (
   writeLeaveImportReferencePair(refs, 7, 8, "day_portion", options.dayPortions);
   writeLeaveImportReferencePair(refs, 9, 10, "employee", options.employees);
   writeLeaveImportReferencePair(refs, 11, 12, "leave_year", options.years);
+  writeLeaveImportUnitReferences(refs);
 
   addLeaveImportListValidation(
     dataSheet,
@@ -124,7 +126,7 @@ export const buildLeaveImportTemplateWorkbook = (
     labels,
     true,
   );
-  addLeaveImportScalarValidations(dataSheet, labels);
+  addLeaveImportScalarValidations(dataSheet, labels, options.recordTypes);
 
   fillLeaveImportGuide(
     workbook.addWorksheet(guideSheetName),

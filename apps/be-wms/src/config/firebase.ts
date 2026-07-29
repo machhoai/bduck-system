@@ -28,6 +28,8 @@ interface FirebaseAdminServices {
   auth: Auth;
   storage: Storage;
   messaging: Messaging;
+  projectId: string;
+  storageBucketNames: ReadonlySet<string>;
 }
 
 function projectIdOf(serviceAccount: ServiceAccount): string {
@@ -83,12 +85,24 @@ function initializeAdminApp(
     : initializeApp(options, appName);
 }
 
-function servicesFor(app: App): FirebaseAdminServices {
+function servicesFor(
+  app: App,
+  projectId: string,
+  configuredStorageBucket?: string,
+): FirebaseAdminServices {
   return {
     db: getFirestore(app),
     auth: getAuth(app),
     storage: getStorage(app),
     messaging: getMessaging(app),
+    projectId,
+    storageBucketNames: new Set(
+      [
+        configuredStorageBucket,
+        `${projectId}.firebasestorage.app`,
+        `${projectId}.appspot.com`,
+      ].filter((bucketName): bucketName is string => Boolean(bucketName)),
+    ),
   };
 }
 
@@ -96,14 +110,20 @@ const defaultServiceAccount = parseServiceAccount(
   "FIREBASE_SERVICE_ACCOUNT_BASE64",
   true,
 )!;
+const defaultProjectId = projectIdOf(defaultServiceAccount);
+const defaultStorageBucket =
+  process.env.FIREBASE_STORAGE_BUCKET ??
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 const defaultApp = initializeAdminApp(
   "[DEFAULT]",
   defaultServiceAccount,
-  process.env.FIREBASE_STORAGE_BUCKET ??
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  defaultStorageBucket,
 );
-const defaultServices = servicesFor(defaultApp);
-const defaultProjectId = projectIdOf(defaultServiceAccount);
+const defaultServices = servicesFor(
+  defaultApp,
+  defaultProjectId,
+  defaultStorageBucket,
+);
 
 export const defaultLocalFirebaseTarget: LocalFirebaseTarget =
   defaultProjectId === "jw-system-f2104" ? "jw-system-f2104" : "test-jw-system";
@@ -153,7 +173,10 @@ if (isLocalFirebaseTargetSelectionEnabled()) {
       serviceAccount,
       configuration.storageBucket,
     );
-    localServices.set(configuration.target, servicesFor(app));
+    localServices.set(
+      configuration.target,
+      servicesFor(app, projectId, configuration.storageBucket),
+    );
   }
 }
 
@@ -176,7 +199,17 @@ function currentServices(): FirebaseAdminServices {
   return services;
 }
 
-function serviceProxy<K extends keyof FirebaseAdminServices>(
+export function getCurrentFirebaseProjectId(): string {
+  return currentServices().projectId;
+}
+
+export function getCurrentFirebaseStorageBucketNames(): ReadonlySet<string> {
+  return currentServices().storageBucketNames;
+}
+
+type FirebaseAdminServiceKey = "db" | "auth" | "storage" | "messaging";
+
+function serviceProxy<K extends FirebaseAdminServiceKey>(
   key: K,
 ): FirebaseAdminServices[K] {
   return new Proxy({} as FirebaseAdminServices[K], {

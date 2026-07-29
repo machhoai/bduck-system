@@ -28,7 +28,8 @@ Mỗi dòng dùng một `source_reference` duy nhất theo nhân viên. Cùng m�
 - `employee_code`
 - `posting_date` (`YYYY-MM-DD`)
 - `leave_year`
-- `units` (bước 0,5; để trống với `HISTORICAL_REQUEST`)
+- `units` (chọn từ danh sách; `HISTORICAL_REQUEST` chỉ có `0.5` hoặc `1`
+  và phải khớp `day_portion`; các loại khác theo bước `0.5`)
 - `request_type`
 - `request_status` (`APPROVED`, `REJECTED`, `CANCELLED`)
 - `day_portion`

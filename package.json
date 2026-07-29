@@ -69,7 +69,7 @@
         "prepare": "husky",
         "--- GCP CLOUD RUN ---": "",
         "gcp:build:be-wms": "gcloud builds submit --config cloudbuild.yaml --project jw-system-f2104",
-        "gcp:deploy:be-wms": "gcloud run deploy be-wms --image asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest --region asia-southeast1 --project jw-system-f2104 --allow-unauthenticated",
+        "gcp:deploy:be-wms": "gcloud run deploy be-wms --image asia-southeast1-docker.pkg.dev/jw-system-f2104/cloud-run-source-deploy/be-wms:latest --region asia-southeast1 --project jw-system-f2104 --allow-unauthenticated --update-env-vars FIREBASE_STORAGE_BUCKET=jw-system-f2104.firebasestorage.app",
         "deploy:be-wms": "pnpm run gcp:build:be-wms && pnpm run gcp:deploy:be-wms"
     },
     "devDependencies": {

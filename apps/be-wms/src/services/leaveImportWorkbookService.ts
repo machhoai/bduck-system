@@ -114,12 +114,15 @@ const parseRow = (
       LeaveRequestStatus.CANCELLED,
     ],
   );
+  const selectedUnits = parseUnits(values.units);
   const units =
-    recordType === LeaveImportRecordType.HISTORICAL_REQUEST && dayPortion
+    recordType === LeaveImportRecordType.HISTORICAL_REQUEST &&
+    dayPortion &&
+    selectedUnits === null
       ? dayPortion === LeaveDayPortion.FULL_DAY
         ? 1
         : 0.5
-      : parseUnits(values.units);
+      : selectedUnits;
 
   return {
     row_number: rowNumber,
@@ -173,7 +176,10 @@ const findHeaderColumns = (sheet: ExcelJS.Worksheet) => {
   return null;
 };
 
-const assertSafeSourceUrl = async (sourceUrl: string) => {
+export const assertSafeLeaveImportSourceUrl = (
+  sourceUrl: string,
+  allowedBucketNames: ReadonlySet<string>,
+) => {
   let url: URL;
   try {
     url = new URL(sourceUrl);
@@ -193,9 +199,8 @@ const assertSafeSourceUrl = async (sourceUrl: string) => {
   const pathParts = url.pathname.split("/");
   const bucketName = decodeURIComponent(pathParts[3] ?? "");
   const objectPath = decodeURIComponent(pathParts.slice(5).join("/"));
-  const { storage } = await import("../config/firebase.js");
   if (
-    bucketName !== storage.bucket().name ||
+    !allowedBucketNames.has(bucketName) ||
     !objectPath.startsWith("leave-imports/")
   ) {
     throw workbookError(
@@ -203,6 +208,15 @@ const assertSafeSourceUrl = async (sourceUrl: string) => {
       "源文件不属于系统的历史导入目录。",
     );
   }
+};
+
+const assertSafeSourceUrl = async (sourceUrl: string) => {
+  const { getCurrentFirebaseStorageBucketNames } =
+    await import("../config/firebase.js");
+  assertSafeLeaveImportSourceUrl(
+    sourceUrl,
+    getCurrentFirebaseStorageBucketNames(),
+  );
 };
 
 const downloadWorkbook = async (

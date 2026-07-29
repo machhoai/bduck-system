@@ -61,6 +61,17 @@ test("historical requests require a completed status and matching portion", () =
       LeaveImportRecordType.HISTORICAL_REQUEST,
       payload({
         request_type: LeaveRequestType.PAID_ANNUAL,
+        request_status: LeaveRequestStatus.APPROVED,
+        day_portion: LeaveDayPortion.MORNING,
+        units: 1,
+      }),
+    ).length > 0,
+  );
+  assert.ok(
+    validateLeaveImportPayload(
+      LeaveImportRecordType.HISTORICAL_REQUEST,
+      payload({
+        request_type: LeaveRequestType.PAID_ANNUAL,
         request_status: LeaveRequestStatus.PENDING_APPROVAL,
         day_portion: LeaveDayPortion.MORNING,
       }),
