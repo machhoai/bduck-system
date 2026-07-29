@@ -3,8 +3,9 @@
 /**
  * useApprovalTasks - realtime Firebase listener for actionable approvals.
  *
- * Reads pending approvals, keeps only the current pending level per entity, then
- * applies the current user's role + warehouse/global scope locally.
+ * Uses Firestore as a realtime invalidation signal, then loads the actionable
+ * approvals from the API so direct and office-inherited roles share the same
+ * backend authorization rules.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -107,7 +108,6 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
   const [loading, setLoading] = useState(true);
   const user = useUserStore((s) => s.user);
   const userRoleIds = useUserStore((s) => s.roleIds);
-  const hasScopedRole = useUserStore((s) => s.hasScopedRole);
   const permissions = useUserStore((s) => s.permissions);
   const facilityScope = useMemo(
     () => getAnyFacilityScope(permissions),
@@ -121,6 +121,9 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
       return;
     }
 
+    let disposed = false;
+    let refreshGeneration = 0;
+
     const applyRecords = (records: ApprovalRecord[]) => {
       const currentLevelRecords = filterCurrentPendingLevel(records);
 
@@ -128,22 +131,25 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
         return toTime(b.created_at) - toTime(a.created_at);
       });
 
-      setAllRecords(
-        currentLevelRecords.filter((record) =>
-          hasScopedRole(
-            record.role_id,
-            record.approval_warehouse_id === undefined
-              ? record.warehouse_id
-              : record.approval_warehouse_id,
-            {
-              allowGlobalFallback: record.allow_global_fallback === true,
-              requireGlobal: record.approval_scope === "GLOBAL",
-            },
-          ),
-        ),
-      );
+      setAllRecords(currentLevelRecords);
       setLoading(false);
     };
+
+    const refreshFromApi = async () => {
+      const generation = ++refreshGeneration;
+      try {
+        const records = await fetchPendingApprovalsFromApi();
+        if (disposed || generation !== refreshGeneration) return;
+        applyRecords(records);
+      } catch (error) {
+        if (disposed || generation !== refreshGeneration) return;
+        console.error("[useApprovalTasks] API refresh error:", error);
+        setLoading(false);
+      }
+    };
+
+    setAllRecords([]);
+    setLoading(true);
 
     const constraints = [where("status", "==", "PENDING")];
     const approvalQueries = buildFacilityScopedQueries({
@@ -160,20 +166,21 @@ export function useApprovalTasks(): UseApprovalTasksReturn {
           id: document.id,
           ...document.data(),
         }) as ApprovalRecord,
-      onData: applyRecords,
-      onError: async (error) => {
+      onData: () => {
+        void refreshFromApi();
+      },
+      onError: (error) => {
         console.error("[useApprovalTasks] onSnapshot error:", error);
-        try {
-          applyRecords(await fetchPendingApprovalsFromApi());
-        } catch (apiError) {
-          console.error("[useApprovalTasks] API fallback error:", apiError);
-          setLoading(false);
-        }
+        void refreshFromApi();
       },
     });
 
-    return () => unsubscribe();
-  }, [facilityScope, hasScopedRole, user?.id, userRoleIds]);
+    return () => {
+      disposed = true;
+      refreshGeneration += 1;
+      unsubscribe();
+    };
+  }, [facilityScope, user?.id, userRoleIds]);
 
   const selfCreatedIds = useMemo(() => {
     if (!user?.id) return new Set<string>();
