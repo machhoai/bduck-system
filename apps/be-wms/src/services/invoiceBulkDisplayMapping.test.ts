@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import type {
   InvoiceCalculatedLine,
   MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
+
 import {
   buildBulkIssueInvoiceSummaries,
   summarizeBulkIssue,
 } from "./invoiceBulkIssuePolicy.js";
-import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
+import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 
 const line = (
   itemName: string,
@@ -125,6 +128,21 @@ test("bulk preview groups quantities by mapped product name and unit", () => {
     },
   ]);
   assert.equal(result.invoices[0]?.products[0]?.item_name, "Vé lượt");
+  assert.deepEqual(result.invoices[0]?.lines[0], {
+    line_number: 1,
+    item_code: "ITEM-1",
+    item_name: "Vé lượt",
+    unit_name: "Cái",
+    quantity: 2,
+    unit_price: 100_000,
+    vat_rate_name: "10%",
+    vat_rate: 10,
+    amount_without_vat: 90_909,
+    vat_amount: 9_091,
+    total_amount: 100_000,
+  });
+  assert.equal(result.invoices[0]?.buyer.full_name, "Khách lẻ");
+  assert.equal(result.invoices[0]?.payment_method_name, "Tiền mặt");
   assert.equal(result.invoices[0]?.revision, 3);
   assert.equal(result.invoices[0]?.source_payload_hash, "a".repeat(64));
 });
@@ -197,6 +215,8 @@ test("zero-priced products are excluded from summaries and MISA payload", () => 
   const preview = buildBulkIssueInvoiceSummaries([document], config);
   assert.equal(preview.product_summary.length, 1);
   assert.equal(preview.product_summary[0]?.item_name, "Vé lượt");
+  assert.equal(preview.invoices[0]?.lines.length, 1);
+  assert.equal(preview.invoices[0]?.lines[0]?.item_name, "Vé lượt");
 
   const summary = summarizeBulkIssue(1, [document], []);
   assert.equal(summary.product_line_count, 1);

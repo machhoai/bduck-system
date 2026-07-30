@@ -1,6 +1,11 @@
 "use client";
 
 import {
+    InvoiceDocumentStatus,
+    InvoiceOrderSyncPurpose,
+    InvoicePreparationStatus,
+} from "@bduck/shared-types";
+import {
     AlertTriangle,
     CheckCircle2,
     ChevronRight,
@@ -13,11 +18,8 @@ import {
     X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-    InvoiceDocumentStatus,
-    InvoiceOrderSyncPurpose,
-    InvoicePreparationStatus,
-} from "@bduck/shared-types";
+import { createPortal } from "react-dom";
+
 import {
     invoiceApi,
     type InvoiceSourceOrderView,
@@ -26,14 +28,16 @@ import {
 import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
-import { showToast } from "@/utils/toast";
 import { shortName } from "@/utils/name";
-import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
+import { showToast } from "@/utils/toast";
+
+import { BottomSheet } from "../ui/BottomSheet";
+
+import { InvoiceBulkIssuePanel } from "./bulk-issue/InvoiceBulkIssuePanel";
 import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
+import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
 import { MisaInvoicePanel } from "./MisaInvoicePanel";
-import { InvoiceBulkIssuePanel } from "./bulk-issue/InvoiceBulkIssuePanel";
-import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const copy = {
     vi: {
@@ -73,15 +77,24 @@ const copy = {
         loading: "Đang tải dữ liệu…",
         noStore: "Bạn chưa có cửa hàng phù hợp trong phạm vi quyền.",
         syncDone: "Đồng bộ hoàn tất",
-        inserted: "mới",
-        updated: "thay đổi",
-        unchanged: "không đổi",
+        inserted: "Mới",
+        updated: "Thay đổi",
+        unchanged: "Không đổi",
         retry: "Thử lại",
         syncFailed: "Đồng bộ hóa đơn thất bại",
         syncDescription:
             "Toàn bộ đơn hàng trong ngày đã được lưu và tính lại preflight.",
         previewReady: "Đã tạo bản xem trước",
         previewFailed: "Không thể xem trước hóa đơn",
+        matchedMisa: "Khớp MISA",
+        misaReturned: "MISA trả về",
+        notIssued: "Chưa xuất",
+        mismatches: "Sai lệch",
+        unlinked: "Chưa có mã liên kết",
+        syncSummaryTitle: "Kết quả đồng bộ",
+        syncDetailsTitle: "Đối chiếu MISA",
+        errorTitle: "Lỗi tải dữ liệu",
+        dismiss: "Ẩn",
     },
     zh: {
         eyebrow: "MISA meInvoice",
@@ -127,6 +140,15 @@ const copy = {
         syncDescription: "当天全部订单已保存并重新执行预检。",
         previewReady: "预览已生成",
         previewFailed: "无法预览发票",
+        matchedMisa: "MISA 匹配",
+        misaReturned: "MISA 返回",
+        notIssued: "未开票",
+        mismatches: "差异/不匹配",
+        unlinked: "未关联代码",
+        syncSummaryTitle: "同步结果",
+        syncDetailsTitle: "MISA 对账",
+        errorTitle: "加载数据错误",
+        dismiss: "隐藏",
     },
 } as const;
 
@@ -165,10 +187,10 @@ const statusStyle = (status: InvoicePreparationStatus) => {
 const statusLabel = (status: InvoicePreparationStatus, lang: "vi" | "zh") => {
     const values = {
         vi: {
-            [InvoicePreparationStatus.READY_FOR_REVIEW]: "Sẵn sàng phát hành",
+            [InvoicePreparationStatus.READY_FOR_REVIEW]: "Sẵn sàng để xem",
             [InvoicePreparationStatus.READY_TO_ISSUE]: "Sẵn sàng phát hành",
             [InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION]: "Thiếu cấu hình thuế",
-            [InvoicePreparationStatus.NEEDS_REVIEW]: "Cần xử lý",
+            [InvoicePreparationStatus.NEEDS_REVIEW]: "Cần xem lại",
             [InvoicePreparationStatus.NEEDS_CORRECTION]: "Cần chỉnh dữ liệu",
         },
         zh: {
@@ -457,7 +479,7 @@ export default function InvoiceManagementPage() {
                         <select
                             value={activeStoreId}
                             onChange={(event) => setSelectedStoreId(event.target.value)}
-                            className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
                         >
                             {stores.map((store) => (
                                 <option key={store.id} value={store.id}>
@@ -471,11 +493,11 @@ export default function InvoiceManagementPage() {
                             type="date"
                             value={businessDate}
                             onChange={(event) => setBusinessDate(event.target.value)}
-                            className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
+                            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
                         />
                     </Field>}
                     {view !== "CONFIG" && <Field label={d.purpose}>
-                        <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-0.5">
+                        <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-1">
                             {[
                                 [InvoiceOrderSyncPurpose.ISSUE, d.issue],
                                 [InvoiceOrderSyncPurpose.RECONCILIATION, d.reconciliation],
@@ -484,7 +506,7 @@ export default function InvoiceManagementPage() {
                                     key={value}
                                     type="button"
                                     onClick={() => setPurpose(value as InvoiceOrderSyncPurpose)}
-                                    className={`h-7 rounded px-1.5 text-xxs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                                    className={`h-8 rounded-sm px-2 text-xs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
                                 >
                                     {label}
                                 </button>
@@ -495,7 +517,7 @@ export default function InvoiceManagementPage() {
                         type="button"
                         onClick={handleSync}
                         disabled={!canSync || syncing || !activeStoreId}
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {syncing ? (
                             <LoaderCircle className="animate-spin" size={14} />
@@ -507,7 +529,7 @@ export default function InvoiceManagementPage() {
                 </div>
             </header>
 
-            <nav className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-2xs" aria-label="Invoice views">
+            <nav className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-full border border-[var(--color-border-subtle)] bg-white shadow-2xs" aria-label="Invoice views">
                 {invoiceViews.map(([value, label], index) => {
                     const isLastOdd = index === invoiceViews.length - 1 && invoiceViews.length % 2 !== 0;
                     return (
@@ -518,7 +540,7 @@ export default function InvoiceManagementPage() {
                                 setView(value);
                                 if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                             }}
-                            className={`flex items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-semibold transition ${isLastOdd ? "col-span-2 sm:col-span-1" : ""
+                            className={`flex items-center justify-center rounded-full px-3 py-2 text-center text-xs font-semibold transition ${isLastOdd ? "col-span-2 sm:col-span-1" : ""
                                 } ${view === value
                                     ? "bg-slate-900 text-white shadow-2xs"
                                     : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 sm:bg-transparent"
@@ -532,55 +554,20 @@ export default function InvoiceManagementPage() {
 
 
             {view !== "CONFIG" && error && (
-                <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
-                    <AlertTriangle size={15} className="shrink-0" />
-                    <span className="flex-1">{error}</span>
-                    <button
-                        type="button"
-                        onClick={() => void loadOrders()}
-                        disabled={loading}
-                        className="rounded-md border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    >
-                        {d.retry}
-                    </button>
-                </div>
+                <ErrorNotificationCard
+                    d={d}
+                    error={error}
+                    loading={loading}
+                    onDismiss={() => setError(null)}
+                    onRetry={() => void loadOrders()}
+                />
             )}
             {view !== "CONFIG" && syncResult && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                    <CheckCircle2 size={15} />
-                    <strong>
-                        {d.syncDone}: {syncResult.order_count}
-                    </strong>
-                    <span>
-                        {syncResult.inserted_count} {d.inserted}
-                    </span>
-                    <span>
-                        {syncResult.updated_count} {d.updated}
-                    </span>
-                    <span>
-                        {syncResult.unchanged_count} {d.unchanged}
-                    </span>
-                    {syncResult.reconciliation && (
-                        <>
-                            <span className="h-3.5 w-px bg-emerald-300" />
-                            <span>
-                                {lang === "vi" ? "Khớp MISA" : "Matched"}: {syncResult.reconciliation.summary.matched_count}
-                            </span>
-                            <span>
-                                {lang === "vi" ? "MISA trả về" : "MISA returned"}: {syncResult.reconciliation.summary.misa_invoice_count}
-                            </span>
-                            <span>
-                                {lang === "vi" ? "Chưa xuất" : "Not issued"}: {syncResult.reconciliation.summary.source_not_in_misa_count}
-                            </span>
-                            <span>
-                                {lang === "vi" ? "Sai lệch" : "Mismatches"}: {syncResult.reconciliation.summary.mismatch_count + syncResult.reconciliation.summary.misa_not_in_source_count}
-                            </span>
-                            <span>
-                                {lang === "vi" ? "Chưa có mã liên kết" : "Unlinked"}: {syncResult.reconciliation.summary.unscoped_misa_count}
-                            </span>
-                        </>
-                    )}
-                </div>
+                <SyncResultCard
+                    d={d}
+                    onDismiss={() => setSyncResult(null)}
+                    syncResult={syncResult}
+                />
             )}
 
             {view === "CONFIG" ? (
@@ -903,16 +890,40 @@ function OrderReviewSheet({
     onChanged: () => Promise<void>;
     onClose: () => void;
 }) {
-    return (
-        <BottomSheet
-            isOpen={Boolean(order)}
-            onClose={onClose}
-            title={order.order_number ?? order.source_order_id}
-            defaultSnap="full"
-            mobileBreakpoint="lg"
-            desktopClassName="lg:fixed lg:inset-y-0 lg:left-auto lg:right-0 lg:top-0 lg:h-full lg:max-h-none lg:w-[620px] lg:max-w-full lg:rounded-l-2xl lg:rounded-r-none lg:border-l lg:border-t-0 lg:shadow-2xl"
-            contentClassName="flex-1 overflow-y-auto px-4 pb-8 space-y-5"
-        >
+    const [isDesktop, setIsDesktop] = useState(() =>
+        typeof window !== "undefined"
+            ? window.matchMedia("(min-width: 1024px)").matches
+            : false,
+    );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(min-width: 1024px)");
+        const handleChange = (event: MediaQueryListEvent) => {
+            setIsDesktop(event.matches);
+        };
+
+        setIsDesktop(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, []);
+
+    useEffect(() => {
+        if (!isDesktop) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isDesktop, onClose]);
+
+    const content = (
             <div className="pt-2">
                 <p className="text-xxs font-semibold uppercase tracking-wider text-slate-400">
                     {labels.detail} · {order.payment_time ?? "—"}
@@ -1027,7 +1038,64 @@ function OrderReviewSheet({
                     />
                 </div>
             </div>
-        </BottomSheet>
+    );
+
+    if (!isDesktop) {
+        return (
+            <BottomSheet
+                isOpen={Boolean(order)}
+                onClose={onClose}
+                title={order.order_number ?? order.source_order_id}
+                defaultSnap="full"
+                mobileBreakpoint="lg"
+                contentClassName="flex-1 overflow-y-auto px-4 pb-8 space-y-5"
+            >
+                {content}
+            </BottomSheet>
+        );
+    }
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-xs"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="invoice-order-detail-title"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose();
+            }}
+        >
+            <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
+                <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-micro font-bold uppercase tracking-wider text-sky-700">
+                            {labels.detail}
+                        </p>
+                        <h2
+                            id="invoice-order-detail-title"
+                            className="mt-0.5 truncate text-base font-bold text-slate-950"
+                        >
+                            {order.order_number ?? order.source_order_id}
+                        </h2>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                            {order.payment_time ?? "—"}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        aria-label={labels.close}
+                    >
+                        <X size={19} />
+                    </button>
+                </header>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8">
+                    {content}
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -1102,6 +1170,247 @@ function MobileMoney({
             <p className="truncate text-[10px] text-slate-400">{label}</p>
             <p className="mt-0.5 truncate font-bold tabular-nums">
                 {money.format(value)}
+            </p>
+        </div>
+    );
+}
+
+function ErrorNotificationCard({
+    error,
+    loading,
+    onRetry,
+    onDismiss,
+    d,
+}: {
+    error: string;
+    loading: boolean;
+    onRetry: () => void;
+    onDismiss?: () => void;
+    d: typeof copy["vi"] | typeof copy["zh"];
+}) {
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-rose-200/80 bg-gradient-to-r from-rose-50/95 via-rose-50/50 to-white p-3.5 shadow-xs transition-all">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-rose-200/60 bg-rose-100 text-rose-600 shadow-2xs">
+                        <AlertTriangle size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-rose-950">
+                                {d.errorTitle}
+                            </h4>
+                            <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
+                                Error
+                            </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">
+                            {error}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        disabled={loading}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-300/80 bg-white px-3 text-xs font-semibold text-rose-900 shadow-2xs transition hover:bg-rose-100/60 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                        <RefreshCw size={13} className={loading ? "animate-spin text-rose-600" : "text-rose-600"} />
+                        <span>{d.retry}</span>
+                    </button>
+                    {onDismiss && (
+                        <button
+                            type="button"
+                            onClick={onDismiss}
+                            className="flex size-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-100/80 hover:text-rose-800 transition active:scale-95 cursor-pointer"
+                            title={d.dismiss}
+                        >
+                            <X size={15} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SyncResultCard({
+    syncResult,
+    onDismiss,
+    d,
+}: {
+    syncResult: InvoiceSyncResult;
+    onDismiss?: () => void;
+    d: typeof copy["vi"] | typeof copy["zh"];
+}) {
+    const reco = syncResult.reconciliation?.summary;
+
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/90 bg-gradient-to-b from-emerald-50/80 via-white to-slate-50/30 p-3.5 shadow-xs space-y-3.5">
+            {/* Ambient subtle top line accent */}
+
+            {/* Header: Title, Order counter badge, Dismiss */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-2xs">
+                        <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-slate-900">
+                                {d.syncDone}
+                            </h4>
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold tabular-nums text-emerald-800">
+                                {syncResult.order_count} {d.order}
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            {d.syncDescription}
+                        </p>
+                    </div>
+                </div>
+
+                {onDismiss && (
+                    <button
+                        type="button"
+                        onClick={onDismiss}
+                        className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition active:scale-95 cursor-pointer"
+                        title={d.dismiss}
+                    >
+                        <X size={15} />
+                    </button>
+                )}
+            </div>
+
+            {/* HKAPI Sync Counters (New, Updated, Unchanged) */}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-2.5 py-1 text-xs shadow-2xs">
+                    <span className="size-2 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-medium text-emerald-900">{d.inserted}:</span>
+                    <span className="text-sm font-bold tabular-nums text-emerald-950">{syncResult.inserted_count}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-lg border border-sky-200/80 bg-sky-50/60 px-2.5 py-1 text-xs shadow-2xs">
+                    <span className="size-2 rounded-full bg-sky-500" />
+                    <span className="text-xs font-medium text-sky-900">{d.updated}:</span>
+                    <span className="text-sm font-bold tabular-nums text-sky-950">{syncResult.updated_count}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100/70 px-2.5 py-1 text-xs shadow-2xs">
+                    <span className="size-2 rounded-full bg-slate-400" />
+                    <span className="text-xs font-medium text-slate-700">{d.unchanged}:</span>
+                    <span className="text-sm font-bold tabular-nums text-slate-900">{syncResult.unchanged_count}</span>
+                </div>
+            </div>
+
+            {/* MISA Reconciliation Dashboard Matrix */}
+            {reco && (
+                <div className="rounded-xl border border-slate-200/80 bg-white/90 p-2.5 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xxs font-bold uppercase tracking-wider text-slate-600">
+                            {d.syncDetailsTitle}
+                        </span>
+                        <span className="text-xxs font-semibold text-emerald-700">
+                            MISA meInvoice
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                        <ReconciliationTile
+                            label={d.matchedMisa}
+                            value={reco.matched_count}
+                            tone="emerald"
+                        />
+                        <ReconciliationTile
+                            label={d.misaReturned}
+                            value={reco.misa_invoice_count}
+                            tone="sky"
+                        />
+                        <ReconciliationTile
+                            label={d.notIssued}
+                            value={reco.source_not_in_misa_count}
+                            tone="slate"
+                        />
+                        <ReconciliationTile
+                            label={d.mismatches}
+                            value={reco.mismatch_count + reco.misa_not_in_source_count}
+                            tone="rose"
+                        />
+                        <ReconciliationTile
+                            label={d.unlinked}
+                            value={reco.unscoped_misa_count}
+                            tone="amber"
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ReconciliationTile({
+    label,
+    value,
+    tone,
+}: {
+    label: string;
+    value: number;
+    tone: "emerald" | "sky" | "slate" | "rose" | "amber";
+}) {
+    const toneStyles = {
+        emerald: {
+            border: "border-emerald-200/80 hover:border-emerald-300",
+            bg: "bg-emerald-50/40",
+            text: "text-emerald-950",
+            num: "text-emerald-700",
+            indicator: "bg-emerald-500",
+        },
+        sky: {
+            border: "border-sky-200/80 hover:border-sky-300",
+            bg: "bg-sky-50/40",
+            text: "text-sky-950",
+            num: "text-sky-700",
+            indicator: "bg-sky-500",
+        },
+        slate: {
+            border: "border-slate-200/80 hover:border-slate-300",
+            bg: "bg-slate-50/60",
+            text: "text-slate-800",
+            num: "text-slate-700",
+            indicator: "bg-slate-400",
+        },
+        rose: {
+            border: "border-rose-200/80 hover:border-rose-300",
+            bg: "bg-rose-50/50",
+            text: "text-rose-950",
+            num: "text-rose-700",
+            indicator: "bg-rose-500",
+        },
+        amber: {
+            border: "border-amber-200/80 hover:border-amber-300",
+            bg: "bg-amber-50/50",
+            text: "text-amber-950",
+            num: "text-amber-700",
+            indicator: "bg-amber-500",
+        },
+    };
+
+    const style = toneStyles[tone];
+
+    return (
+        <div
+            className={`flex flex-col justify-between rounded-lg border p-2 transition-all shadow-2xs ${style.border} ${style.bg}`}
+        >
+            <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-xxs font-semibold text-slate-600">
+                    {label}
+                </span>
+                <span className={`size-1.5 rounded-full shrink-0 ${style.indicator}`} />
+            </div>
+            <p className={`mt-1.5 text-base font-bold tabular-nums ${style.num}`}>
+                {value}
             </p>
         </div>
     );

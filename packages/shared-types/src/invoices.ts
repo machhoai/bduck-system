@@ -104,6 +104,20 @@ export interface InvoiceBulkIssueProductSummary {
   invoice_count: number;
 }
 
+export interface InvoiceBulkIssueInvoiceLine {
+  line_number: number;
+  item_code: string | null;
+  item_name: string;
+  unit_name: string | null;
+  quantity: number;
+  unit_price: number;
+  vat_rate_name: InvoiceVatRateName | null;
+  vat_rate: number | null;
+  amount_without_vat: number;
+  vat_amount: number;
+  total_amount: number;
+}
+
 export interface InvoiceBulkIssueInvoiceSummary {
   source_order_document_id: string;
   source_order_id: string;
@@ -111,10 +125,13 @@ export interface InvoiceBulkIssueInvoiceSummary {
   revision: number;
   source_payload_hash: string;
   payment_time: string;
+  buyer: InvoiceDraftBuyer;
+  payment_method_name: string;
   total_amount_without_vat: number;
   total_vat_amount: number;
   total_amount: number;
   products: InvoiceBulkIssueProductSummary[];
+  lines: InvoiceBulkIssueInvoiceLine[];
 }
 
 export interface InvoiceBulkIssueExcludedOrder {

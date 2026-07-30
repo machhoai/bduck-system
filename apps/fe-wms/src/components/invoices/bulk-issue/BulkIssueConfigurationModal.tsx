@@ -5,6 +5,7 @@ import type {
   InvoiceBulkIssueDisplayProduct,
 } from "@bduck/shared-types";
 import { ArrowRight, Save, Tags, TriangleAlert, X } from "lucide-react";
+import { bulkIssueTranslations, type BulkIssueLabels } from "./bulkIssueTranslations";
 
 const inputClass =
   "h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100";
@@ -13,7 +14,7 @@ function ProductMappingSection({
   products,
   itemNameMapping,
   itemUnitMapping,
-  vi,
+  labels,
   disabled,
   onItemNameChange,
   onItemUnitChange,
@@ -21,7 +22,7 @@ function ProductMappingSection({
   products: InvoiceBulkIssueDisplayProduct[];
   itemNameMapping: Record<string, string>;
   itemUnitMapping: Record<string, string>;
-  vi: boolean;
+  labels: BulkIssueLabels;
   disabled: boolean;
   onItemNameChange: (source: string, target: string) => void;
   onItemUnitChange: (source: string, target: string) => void;
@@ -34,12 +35,10 @@ function ProductMappingSection({
         </span>
         <div>
           <h4 className="text-xs font-bold text-slate-900">
-            {vi ? "Cấu hình theo từng sản phẩm" : "按商品配置"}
+            {labels.productSectionTitle}
           </h4>
           <p className="mt-0.5 text-xxs text-slate-500">
-            {vi
-              ? `${products.length} sản phẩm · mỗi sản phẩm có tên và đơn vị riêng`
-              : `${products.length} 个商品 · 每个商品单独配置名称和单位`}
+            {labels.productSectionSubtitle(products.length)}
           </p>
         </div>
       </div>
@@ -48,9 +47,9 @@ function ProductMappingSection({
       ) : (
         <>
           <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,0.7fr)] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xxs font-bold uppercase tracking-wide text-slate-500 md:grid">
-            <span>{vi ? "Sản phẩm gốc" : "原商品"}</span>
-            <span>{vi ? "Tên sau đổi" : "新名称"}</span>
-            <span>{vi ? "Đơn vị sau đổi" : "新单位"}</span>
+            <span>{labels.originalProduct}</span>
+            <span>{labels.renamedProduct}</span>
+            <span>{labels.renamedUnit}</span>
           </div>
           <div className="divide-y divide-slate-100">
             {products.map((product) => (
@@ -66,36 +65,36 @@ function ProductMappingSection({
                     {product.item_name}
                   </p>
                   <p className="mt-0.5 text-xxs text-slate-500">
-                    {vi ? "Đơn vị gốc" : "原单位"}: {product.unit_name || "—"}
+                    {labels.originalUnit}: {product.unit_name || "—"}
                   </p>
                 </div>
                 <label className="grid gap-1">
                   <span className="text-xxs font-semibold text-slate-500 md:hidden">
-                    {vi ? "Tên sau đổi" : "新名称"}
+                    {labels.renamedProduct}
                   </span>
                   <input
                     value={itemNameMapping[product.item_name] ?? ""}
                     disabled={disabled}
-                    aria-label={`${vi ? "Tên sau đổi" : "新名称"}: ${product.item_name}`}
+                    aria-label={`${labels.renamedProduct}: ${product.item_name}`}
                     onChange={(event) =>
                       onItemNameChange(product.item_name, event.target.value)
                     }
-                    placeholder={vi ? "Giữ tên gốc" : "保留原名称"}
+                    placeholder={labels.keepOriginalName}
                     className={inputClass}
                   />
                 </label>
                 <label className="grid gap-1">
                   <span className="text-xxs font-semibold text-slate-500 md:hidden">
-                    {vi ? "Đơn vị sau đổi" : "新单位"}
+                    {labels.renamedUnit}
                   </span>
                   <input
                     value={itemUnitMapping[product.item_name] ?? ""}
                     disabled={disabled}
-                    aria-label={`${vi ? "Đơn vị sau đổi" : "新单位"}: ${product.item_name}`}
+                    aria-label={`${labels.renamedUnit}: ${product.item_name}`}
                     onChange={(event) =>
                       onItemUnitChange(product.item_name, event.target.value)
                     }
-                    placeholder={product.unit_name || (vi ? "Đơn vị" : "单位")}
+                    placeholder={product.unit_name || labels.unitPlaceholder}
                     className={inputClass}
                   />
                 </label>
@@ -136,14 +135,14 @@ export function BulkIssueConfigurationModal({
   onCancel: () => void;
 }) {
   const busy = saving || previewing;
-  const vi = lang === "vi";
+  const d = bulkIssueTranslations[lang];
 
   return (
     <div
       className="fixed inset-0 z-[9998] flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-xs sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={vi ? "Cấu hình xuất hóa đơn" : "批量开票配置"}
+      aria-label={d.configModalTitle}
     >
       <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-slate-50 shadow-2xl sm:max-h-[90vh] sm:max-w-4xl sm:rounded-2xl animate-in slide-in-from-bottom-5 duration-200">
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pt-3 pb-4">
@@ -153,13 +152,10 @@ export function BulkIssueConfigurationModal({
               MISA meInvoice
             </p>
             <h3 className="mt-0.5 text-base font-bold text-slate-950">
-              {vi ? "Cấu hình tên sản phẩm và đơn vị" : "配置商品名称和单位"}
+              {d.configModalSubtitle}
             </h3>
             <p className="mt-0.5 text-xs text-slate-500">
-              {config?.business_date ?? "—"} ·{" "}
-              {vi
-                ? "Danh sách từ toàn bộ hóa đơn trong ngày"
-                : "列表来自当天全部发票"}
+              {config?.business_date ?? "—"} · {d.configModalDescription}
             </p>
           </div>
           <button
@@ -167,7 +163,7 @@ export function BulkIssueConfigurationModal({
             onClick={onCancel}
             disabled={busy}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 disabled:opacity-40"
-            aria-label={vi ? "Đóng" : "关闭"}
+            aria-label={d.close}
           >
             <X size={18} />
           </button>
@@ -177,7 +173,7 @@ export function BulkIssueConfigurationModal({
           {!config ? (
             <div
               className="grid animate-pulse gap-3"
-              aria-label={vi ? "Đang tải cấu hình" : "正在加载配置"}
+              aria-label={d.loadingConfig}
             >
               {[0, 1].map((item) => (
                 <div
@@ -198,7 +194,7 @@ export function BulkIssueConfigurationModal({
               products={config.products}
               itemNameMapping={itemNameMapping}
               itemUnitMapping={itemUnitMapping}
-              vi={vi}
+              labels={d}
               disabled={busy}
               onItemNameChange={onItemNameChange}
               onItemUnitChange={onItemUnitChange}
@@ -210,9 +206,7 @@ export function BulkIssueConfigurationModal({
           {dirty && (
             <p className="mb-2 flex items-center gap-1.5 text-xxs font-medium text-amber-700">
               <TriangleAlert size={13} />
-              {vi
-                ? "Hãy lưu thay đổi trước khi xem danh sách xác nhận."
-                : "请先保存更改，再查看确认列表。"}
+              {d.unsavedChangesWarning}
             </p>
           )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -222,7 +216,7 @@ export function BulkIssueConfigurationModal({
               disabled={busy}
               className="h-9 w-full sm:w-auto rounded-lg border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-40"
             >
-              {vi ? "Hủy" : "取消"}
+              {d.cancel}
             </button>
             <button
               type="button"
@@ -231,13 +225,7 @@ export function BulkIssueConfigurationModal({
               className="inline-flex h-9 w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-sky-300 bg-white px-3.5 text-xs font-bold text-sky-800 hover:bg-sky-50 active:scale-[0.98] transition-all disabled:opacity-40"
             >
               <Save size={14} />
-              {saving
-                ? vi
-                  ? "Đang lưu…"
-                  : "保存中…"
-                : vi
-                  ? "Lưu cấu hình"
-                  : "保存配置"}
+              {saving ? d.saving : d.saveConfig}
             </button>
             <button
               type="button"
@@ -246,13 +234,7 @@ export function BulkIssueConfigurationModal({
               className="inline-flex h-9 w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg bg-sky-700 px-4 text-xs font-bold text-white hover:bg-sky-800 active:scale-[0.98] transition-all disabled:opacity-40"
             >
               <ArrowRight size={14} />
-              {previewing
-                ? vi
-                  ? "Đang lập danh sách…"
-                  : "正在生成列表…"
-                : vi
-                  ? "Xuất hóa đơn theo cấu hình"
-                  : "按配置开具发票"}
+              {previewing ? d.generatingList : d.issueWithConfig}
             </button>
           </div>
         </footer>

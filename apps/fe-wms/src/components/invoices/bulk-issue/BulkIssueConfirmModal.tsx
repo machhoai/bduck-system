@@ -1,16 +1,23 @@
 "use client";
 
+import type { InvoiceBulkIssuePreview } from "@bduck/shared-types";
 import {
   AlertTriangle,
   ChevronDown,
   Eye,
+  FileSpreadsheet,
   LoaderCircle,
   PackageCheck,
   X,
 } from "lucide-react";
-import type { InvoiceBulkIssuePreview } from "@bduck/shared-types";
+import { useState } from "react";
+
 import { useBulkIssueMisaPreview } from "@/hooks/useBulkIssueMisaPreview";
+import { downloadInvoiceBulkIssueExcel } from "@/utils/invoiceBulkIssueExcel";
+import { showToast } from "@/utils/toast";
+
 import { BulkIssueSummaryCard } from "./BulkIssueSummaryCard";
+import { bulkIssueTranslations } from "./bulkIssueTranslations";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -34,18 +41,35 @@ export function BulkIssueConfirmModal({
   onConfirm: () => void;
 }) {
   const summary = preview.summary;
-  const vi = lang === "vi";
+  const d = bulkIssueTranslations[lang];
+  const [exportingExcel, setExportingExcel] = useState(false);
   const { previewingInvoiceId, previewInvoice } = useBulkIssueMisaPreview(
     preview,
     lang,
   );
+
+  const handleExportExcel = async () => {
+    if (exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      await showToast.promise(downloadInvoiceBulkIssueExcel(preview), {
+        loading: d.exportingExcel,
+        success: d.exportExcelSuccess,
+        error: d.exportExcelError,
+        successDescription: d.exportExcelSuccessDescription,
+        errorDescription: d.exportExcelErrorDescription,
+      });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
 
   return (
     <div
       className="fixed inset-0 z-[9998] flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-xs sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={vi ? "Xác nhận xuất hóa đơn" : "确认批量开票"}
+      aria-label={d.confirmModalTitle}
     >
       <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-slate-50 shadow-2xl sm:max-h-[90vh] sm:max-w-5xl sm:rounded-2xl animate-in slide-in-from-bottom-5 duration-200">
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pt-3 pb-4">
@@ -55,24 +79,20 @@ export function BulkIssueConfirmModal({
               MISA meInvoice
             </p>
             <h3 className="mt-0.5 text-base font-bold text-slate-950">
-              {vi ? "Kiểm tra danh sách trước khi xuất" : "开票前核对列表"}
+              {d.confirmModalSubtitle}
             </h3>
             <p className="mt-0.5 text-xs text-slate-500">
               {preview.business_date} ·{" "}
               {preview.selection_mode === "ALL"
-                ? vi
-                  ? "Tất cả đơn trong ngày"
-                  : "当日全部订单"
-                : vi
-                  ? "Các đơn đã chọn"
-                  : "已选订单"}
+                ? d.allOrdersToday
+                : d.selectedOrders}
             </p>
           </div>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
-            aria-label={vi ? "Đóng" : "关闭"}
+            aria-label={d.close}
           >
             <X size={18} />
           </button>
@@ -81,20 +101,20 @@ export function BulkIssueConfirmModal({
         <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-4">
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <BulkIssueSummaryCard
-              label={vi ? "Số lượng hóa đơn" : "发票数量"}
+              label={d.invoiceCount}
               value={summary.eligible_count}
               strong
             />
             <BulkIssueSummaryCard
-              label={vi ? "Tiền trước thuế" : "税前金额"}
+              label={d.amountBeforeTax}
               value={money.format(summary.total_amount_without_vat)}
             />
             <BulkIssueSummaryCard
-              label={vi ? "Tổng VAT" : "增值税合计"}
+              label={d.totalVat}
               value={money.format(summary.total_vat_amount)}
             />
             <BulkIssueSummaryCard
-              label={vi ? "Tiền sau thuế" : "税后总额"}
+              label={d.amountAfterTax}
               value={money.format(summary.total_amount)}
               strong
             />
@@ -105,15 +125,13 @@ export function BulkIssueConfirmModal({
               <PackageCheck className="text-sky-700" size={16} />
               <div>
                 <h4 className="text-xs font-bold text-slate-900">
-                  {vi
-                    ? "Tổng số lượng theo sản phẩm đã đổi tên"
-                    : "按重命名商品汇总数量"}
+                  {d.productSummaryTitle}
                 </h4>
                 <p className="text-xxs text-slate-500">
-                  {summary.product_line_count}{" "}
-                  {vi ? "dòng sản phẩm" : "个商品行"} ·{" "}
-                  {quantity.format(summary.product_quantity)}{" "}
-                  {vi ? "sản phẩm" : "件商品"}
+                  {d.productSummarySubtitle(
+                    summary.product_line_count,
+                    quantity.format(summary.product_quantity),
+                  )}
                 </p>
               </div>
             </div>
@@ -122,16 +140,16 @@ export function BulkIssueConfirmModal({
                 <thead className="bg-slate-50 text-xxs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-3 py-2 font-semibold">
-                      {vi ? "Sản phẩm" : "商品"}
+                      {d.productCol}
                     </th>
                     <th className="px-3 py-2 font-semibold">
-                      {vi ? "Đơn vị" : "单位"}
+                      {d.unitCol}
                     </th>
                     <th className="px-3 py-2 text-right font-semibold">
-                      {vi ? "Số lượng" : "数量"}
+                      {d.quantityCol}
                     </th>
                     <th className="px-3 py-2 text-right font-semibold">
-                      {vi ? "Hóa đơn" : "发票"}
+                      {d.invoicesCol}
                     </th>
                   </tr>
                 </thead>
@@ -159,8 +177,7 @@ export function BulkIssueConfirmModal({
 
           <section>
             <h4 className="mb-2 text-xs font-bold text-slate-900">
-              {vi ? "Danh sách hóa đơn xác nhận" : "待确认发票列表"} (
-              {preview.invoices.length})
+              {d.invoiceListTitle(preview.invoices.length)}
             </h4>
             <div className="grid gap-2">
               {preview.invoices.map((invoice, index) => (
@@ -177,8 +194,7 @@ export function BulkIssueConfirmModal({
                         {invoice.order_number ?? invoice.source_order_id}
                       </p>
                       <p className="mt-0.5 text-xxs text-slate-500">
-                        {invoice.payment_time} · {invoice.products.length}{" "}
-                        {vi ? "sản phẩm" : "个商品"}
+                        {invoice.payment_time} · {d.productsCount(invoice.products.length)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -206,12 +222,8 @@ export function BulkIssueConfirmModal({
                         <Eye size={13} />
                       )}
                       {previewingInvoiceId === invoice.source_order_document_id
-                        ? vi
-                          ? "Đang tạo…"
-                          : "生成中…"
-                        : vi
-                          ? "Xem trước MISA"
-                          : "MISA 预览"}
+                        ? d.generatingPreview
+                        : d.misaPreviewBtn}
                     </button>
                     <ChevronDown
                       className="shrink-0 text-slate-400 transition group-open:rotate-180"
@@ -235,7 +247,7 @@ export function BulkIssueConfirmModal({
                     ))}
                     <div className="mt-1 flex justify-end gap-3 border-t border-slate-100 pt-2 text-xxs text-slate-500">
                       <span>
-                        {vi ? "Trước thuế" : "税前"}{" "}
+                        {d.beforeTaxShort}{" "}
                         {money.format(invoice.total_amount_without_vat)}
                       </span>
                       <span>VAT {money.format(invoice.total_vat_amount)}</span>
@@ -250,10 +262,7 @@ export function BulkIssueConfirmModal({
             <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 shrink-0" size={15} />
               <span>
-                {summary.excluded_count}{" "}
-                {vi
-                  ? "đơn không đủ điều kiện sẽ được bỏ qua. Kiểm tra go-live và chống xuất trùng vẫn được giữ."
-                  : "个不符合条件的订单将被跳过，启用时间和防重复检查仍然有效。"}
+                {d.excludedInvoicesWarning(summary.excluded_count)}
               </span>
             </div>
           )}
@@ -265,14 +274,27 @@ export function BulkIssueConfirmModal({
             onClick={onCancel}
             className="h-9 w-full sm:w-auto rounded-lg border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all"
           >
-            {vi ? "Quay lại" : "返回"}
+            {d.back}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleExportExcel()}
+            disabled={exportingExcel}
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100 active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:w-auto"
+          >
+            {exportingExcel ? (
+              <LoaderCircle className="animate-spin" size={14} />
+            ) : (
+              <FileSpreadsheet size={14} />
+            )}
+            {exportingExcel ? d.exportingExcel : d.exportExcel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="h-9 w-full sm:w-auto rounded-lg bg-sky-700 px-4 text-xs font-bold text-white hover:bg-sky-800 active:scale-[0.98] transition-all"
           >
-            {vi ? "Xác nhận và tiếp tục OTP" : "确认并继续 OTP"}
+            {d.confirmAndContinueOtp}
           </button>
         </footer>
       </div>

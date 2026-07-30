@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+
 import type {
+  InvoiceBulkIssueInvoiceLine,
   InvoiceBulkIssueInvoiceSummary,
   InvoiceBulkIssueExcludedOrder,
   InvoiceBulkIssueProductSummary,
@@ -7,6 +9,7 @@ import type {
   InvoiceCalculatedLine,
   MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import {
   addDecimal,
   decimalToNumber,
@@ -15,6 +18,9 @@ import {
 } from "./invoiceDecimal.js";
 import { applyInvoiceDisplayMapping } from "./invoiceDisplayMapping.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
+
+const stringValue = (value: unknown, fallback = "") =>
+  typeof value === "string" ? value : fallback;
 
 export const bulkIssueRunId = (
   warehouseId: string,
@@ -188,7 +194,29 @@ export const buildBulkIssueInvoiceSummaries = (
       ? (calculation.lines as InvoiceCalculatedLine[])
       : [];
     const products = summarizeProducts(lines, config);
+    const invoiceLines: InvoiceBulkIssueInvoiceLine[] = lines
+      .filter(invoiceLineShouldAppearInIssuedInvoice)
+      .map((sourceLine) => {
+        const line = applyInvoiceDisplayMapping(sourceLine, config);
+        return {
+          line_number: line.line_number,
+          item_code: line.item_code,
+          item_name: line.item_name ?? "—",
+          unit_name: line.unit_name,
+          quantity: Number(line.quantity ?? 0),
+          unit_price: Number(line.unit_price ?? 0),
+          vat_rate_name: line.vat_rate_name,
+          vat_rate: line.vat_rate,
+          amount_without_vat: line.amount_without_vat,
+          vat_amount: line.vat_amount,
+          total_amount: line.total_amount,
+        };
+      });
     const documentId = String(document.id);
+    const buyer =
+      document.buyer && typeof document.buyer === "object"
+        ? (document.buyer as Record<string, unknown>)
+        : {};
 
     for (const product of products) {
       const key = `${product.item_name}\u0000${product.unit_name ?? ""}`;
@@ -219,12 +247,25 @@ export const buildBulkIssueInvoiceSummaries = (
       revision: Number(document.revision),
       source_payload_hash: String(document.source_payload_hash),
       payment_time: String(document.payment_time),
+      buyer: {
+        full_name: stringValue(buyer.full_name, config.default_buyer_name),
+        legal_name: stringValue(buyer.legal_name),
+        tax_code: stringValue(buyer.tax_code),
+        address: stringValue(buyer.address, config.default_buyer_address),
+        phone_number: stringValue(buyer.phone_number),
+        email: stringValue(buyer.email),
+      },
+      payment_method_name: stringValue(
+        document.payment_method_name,
+        config.default_payment_method_name,
+      ),
       total_amount_without_vat: Number(
         calculation.total_amount_without_vat ?? 0,
       ),
       total_vat_amount: Number(calculation.total_vat_amount ?? 0),
       total_amount: Number(calculation.total_amount ?? 0),
       products,
+      lines: invoiceLines,
     };
   });
 
