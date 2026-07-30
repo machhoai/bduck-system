@@ -95,10 +95,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenApprovals}
                             title={labels.approvalInboxTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-blue-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-2xs transition-all hover:bg-blue-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-blue-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-2xs transition-all hover:bg-blue-50 active:scale-95 cursor-pointer"
                         >
                             <ClipboardCheck size={14} />
-                            <span>{labels.approvalInboxTitle}</span>
+                            <span className="hidden md:block">{labels.approvalInboxTitle}</span>
                         </button>
                     )}
                     {canReassign && (
@@ -106,10 +106,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenUnavailable}
                             title={labels.approvalUnavailableTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-amber-700 shadow-2xs transition-all hover:bg-amber-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-amber-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-amber-700 shadow-2xs transition-all hover:bg-amber-50 active:scale-95 cursor-pointer"
                         >
                             <UserRoundX size={14} />
-                            <span>{labels.approvalUnavailableTitle}</span>
+                            <span className="hidden md:block">{labels.approvalUnavailableTitle}</span>
                         </button>
                     )}
                     {canManageApproval && (
@@ -117,10 +117,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenPolicy}
                             title={labels.leavePolicyTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
                         >
                             <BookOpenCheck size={14} />
-                            <span>{labels.leavePolicyTitle}</span>
+                            <span className="hidden md:block">{labels.leavePolicyTitle}</span>
                         </button>
                     )}
                     {canReadAll && (
@@ -128,10 +128,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenCompanyRequests}
                             title={labels.companyLeaveRequestsTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
                         >
                             <Users size={14} />
-                            <span>{labels.companyLeaveRequestsTitle}</span>
+                            <span className="hidden md:block">{labels.companyLeaveRequestsTitle}</span>
                         </button>
                     )}
                     {canAdjustBalance && (
@@ -139,10 +139,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenBalanceAdjustment}
                             title={labels.leaveBalanceAdjustmentTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-violet-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-violet-700 shadow-2xs transition-all hover:bg-violet-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-violet-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-violet-700 shadow-2xs transition-all hover:bg-violet-50 active:scale-95 cursor-pointer"
                         >
                             <Scale size={14} />
-                            <span>{labels.leaveBalanceAdjustmentTitle}</span>
+                            <span className="hidden md:block">{labels.leaveBalanceAdjustmentTitle}</span>
                         </button>
                     )}
                     {canManageApproval && (
@@ -150,10 +150,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenApprovalConfig}
                             title={labels.approvalConfigTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
                         >
                             <Settings2 size={14} />
-                            <span>{labels.approvalConfigTitle}</span>
+                            <span className="hidden md:block">{labels.approvalConfigTitle}</span>
                         </button>
                     )}
                     {canManageHolidays && (
@@ -161,10 +161,10 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenHolidays}
                             title={labels.manageCompanyHolidays}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
                         >
                             <CalendarCog size={14} />
-                            <span>{labels.manageCompanyHolidays}</span>
+                            <span className="hidden md:block">{labels.manageCompanyHolidays}</span>
                         </button>
                     )}
                     {canImportHistory && (
@@ -172,20 +172,20 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenImport}
                             title={labels.leaveImportTitle}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-50 active:scale-95 cursor-pointer"
+                            className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-emerald-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-50 active:scale-95 cursor-pointer"
                         >
                             <FileUp size={14} />
-                            <span>{labels.leaveImportTitle}</span>
+                            <span className="hidden md:block">{labels.leaveImportTitle}</span>
                         </button>
                     )}
                     <button
                         type="button"
                         onClick={onOpenHistory}
                         title={labels.viewRequestHistory}
-                        className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+                        className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
                     >
                         <History size={14} />
-                        <span>{labels.viewRequestHistory}</span>
+                        <span className="hidden md:block">{labels.viewRequestHistory}</span>
                     </button>
                 </div>
             )}
