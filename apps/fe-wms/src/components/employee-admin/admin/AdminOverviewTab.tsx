@@ -4,11 +4,11 @@ import type { LeaveRequestType } from "@bduck/shared-types";
 import { LeaveRequestType as LeaveRequestTypeValue } from "@bduck/shared-types";
 import { BriefcaseBusiness, IdCard, UserRound } from "lucide-react";
 import { useState } from "react";
+
 import { EmployeeSelfContractPanel } from "@/components/employees/EmployeeSelfContractPanel";
-import { buildAdminProfileFields, formatMaybeDate } from "./adminOverviewUtils";
+import { isEmployeeContractsFeatureEnabled } from "@/lib/employeeContractFeatureFlag";
+
 import { ActionButton, EmptyState, InfoPill } from "./AdminOverviewParts";
-import { LeaveBalanceCard } from "./LeaveBalanceCard";
-import { AdminRequestPanel } from "./AdminRequestPanel";
 import {
     AdminOverviewSheets,
     type AdminOverviewSheetKey,
@@ -18,7 +18,9 @@ import type {
     AdminOverviewTabProps,
     ExtendedEmployeeProfile,
 } from "./AdminOverviewTab.types";
-import { isEmployeeContractsFeatureEnabled } from "@/lib/employeeContractFeatureFlag";
+import { buildAdminProfileFields, formatMaybeDate } from "./adminOverviewUtils";
+import { AdminRequestPanel } from "./AdminRequestPanel";
+import { LeaveBalanceCard } from "./LeaveBalanceCard";
 
 export function AdminOverviewTab({
     labels,
@@ -87,6 +89,7 @@ export function AdminOverviewTab({
         emptyLabel,
     );
     const appointments = extendedProfile?.appointment_history || [];
+
     if (loading) {
         return (
             <AdminOverviewSkeleton leaveFeatureEnabled={leaveFeatureEnabled} />
@@ -97,29 +100,33 @@ export function AdminOverviewTab({
         <div
             className={
                 leaveFeatureEnabled
-                    ? "grid gap-3 lg:grid-cols-[0.8fr_1.2fr] lg:gap-4"
-                    : "grid gap-3 lg:gap-4"
+                    ? "grid gap-4 lg:grid-cols-12 lg:gap-5"
+                    : "grid gap-4"
             }
         >
-            <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
+            {/* Left Column (5 cols) */}
+            <div className="flex flex-col gap-4 min-w-0 lg:col-span-5">
+                {/* Personal Profile Section Card */}
                 <section
                     data-employee-admin-animate
-                    className="rounded-[28px] border border-white/80 bg-white p-4 shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:p-5 lg:shadow-none"
+                    className="rounded-2xl border border-[var(--color-border-subtle)] bg-white p-4 shadow-xs lg:p-5"
                 >
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-[10px] font-medium text-[var(--color-text-muted)] tracking-wider">
-                                {labels.personalInfo}
-                            </p>
-                            <h2 className="truncate text-base font-semibold text-[var(--color-text-primary)]">
-                                {profile?.full_name || labels.employeeProfile}
-                            </h2>
-                        </div>
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
-                            <IdCard size={18} />
+                    {/* Standardized Section Header */}
+                    <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-3">
+                        <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+                                <IdCard size={15} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold tracking-wider text-[var(--color-text-primary)]">
+                                    {profile?.full_name ||
+                                        labels.employeeProfile}
+                                </h3>
+                            </div>
                         </div>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 lg:hidden">
+
+                    <div className="mt-3.5 grid grid-cols-2 gap-2 lg:hidden">
                         {profileFields.slice(0, 4).map((field) => (
                             <InfoPill
                                 key={field.label}
@@ -128,7 +135,7 @@ export function AdminOverviewTab({
                             />
                         ))}
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:hidden">
+                    <div className="mt-3.5 grid gap-2 sm:grid-cols-2 lg:hidden">
                         <ActionButton
                             icon={<UserRound size={16} />}
                             label={labels.viewFullProfile}
@@ -140,7 +147,7 @@ export function AdminOverviewTab({
                             onClick={() => setActiveSheet("appointments")}
                         />
                     </div>
-                    <div className="mt-4 hidden lg:grid lg:grid-cols-2 lg:gap-2.5">
+                    <div className="mt-3.5 hidden lg:grid lg:grid-cols-2 lg:gap-2.5">
                         {profileFields.map((field) => (
                             <InfoPill
                                 key={field.label}
@@ -150,23 +157,32 @@ export function AdminOverviewTab({
                         ))}
                     </div>
                 </section>
+
                 {profile && isEmployeeContractsFeatureEnabled ? (
                     <EmployeeSelfContractPanel profile={profile} />
                 ) : null}
+
+                {/* Appointment History Section Card */}
                 <section
                     data-employee-admin-animate
-                    className="hidden lg:block rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-white p-5"
+                    className="hidden lg:block rounded-2xl border border-[var(--color-border-subtle)] bg-white p-5 shadow-xs"
                 >
-                    <div className="flex items-center gap-2 border-b border-[var(--color-border-soft)] pb-3">
-                        <BriefcaseBusiness
-                            size={16}
-                            className="text-[var(--color-brand-primary)] shrink-0"
-                        />
-                        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                            {labels.appointmentHistory || "Lịch sử bổ nhiệm"}
-                        </h3>
+                    {/* Standardized Section Header */}
+                    <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-3">
+                        <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+                                <BriefcaseBusiness size={15} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold tracking-wider text-[var(--color-text-primary)]">
+                                    {labels.appointmentHistory ||
+                                        "Lịch sử bổ nhiệm"}
+                                </h3>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-4">
+
+                    <div className="mt-3.5">
                         {appointments.length > 0 ? (
                             <div className="grid grid-cols-2 gap-3">
                                 {appointments.map((item, index) => (
@@ -175,12 +191,12 @@ export function AdminOverviewTab({
                                             item.id ||
                                             `${item.title || "appointment"}-${index}`
                                         }
-                                        className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3"
+                                        className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3"
                                     >
                                         <p className="text-xs font-semibold text-[var(--color-text-primary)]">
                                             {item.title || emptyLabel}
                                         </p>
-                                        <p className="mt-1 text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-wider">
+                                        <p className="mt-1 text-[10px] text-[var(--color-text-muted)] font-medium tracking-wider">
                                             {item.department || emptyLabel}
                                         </p>
                                         <p className="mt-2 text-[10px] font-medium text-[var(--color-text-secondary)]">
@@ -202,8 +218,10 @@ export function AdminOverviewTab({
                     </div>
                 </section>
             </div>
+
+            {/* Right Column (7 cols) */}
             {leaveFeatureEnabled && (
-                <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
+                <div className="flex flex-col gap-4 min-w-0 lg:col-span-7">
                     <LeaveBalanceCard
                         labels={labels}
                         summary={leaveBalance}
@@ -212,13 +230,11 @@ export function AdminOverviewTab({
                         canView={canViewLeaveBalance}
                         canRequest={canCreateLeaveRequest}
                         onHistory={() => setActiveSheet("leaveHistory")}
+                        onUsedLeave={() => setActiveSheet("requestHistory")}
                         onRequest={() => setActiveSheet("request")}
                     />
                     <AdminRequestPanel
                         labels={labels}
-                        requests={leaveRequests}
-                        loading={leaveRequestsLoading}
-                        error={leaveRequestsError}
                         canCreate={canCreateLeaveRequest}
                         canManageHolidays={canManageHolidays}
                         canApprove={canApproveLeave}
@@ -248,11 +264,10 @@ export function AdminOverviewTab({
                         onOpenBalanceAdjustment={() =>
                             setActiveSheet("leaveBalanceAdjustment")
                         }
-                        onSubmit={onSubmitLeaveRequest}
-                        onCancel={onCancelLeaveRequest}
                     />
                 </div>
             )}
+
             {leaveFeatureEnabled && (
                 <AdminOverviewSheets
                     activeSheet={activeSheet}

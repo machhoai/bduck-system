@@ -17,7 +17,7 @@ Ngày cập nhật: 20/07/2026
 - Preflight trả mã lỗi theo field, phân biệt `NEEDS_TAX_CONFIGURATION`, `NEEDS_REVIEW` và `READY_FOR_REVIEW`.
 - Chặn phát hành đơn trước go-live nhưng vẫn lưu và cho phép dùng trong đối chiếu.
 - Chặn hóa đơn rỗng hoặc có từ 200 dòng trở lên; 199 dòng vẫn hợp lệ.
-- So sánh tuyệt đối tiền trước thuế, VAT và tổng thanh toán giữa HKAPI với kết quả tính sau rounding.
+- Dùng kết quả tính và làm tròn của WMS làm nguồn tiền phát hành; không chặn preflight do chênh lệch tiền với HKAPI/JoyWorld.
 
 ## Dữ liệu projection bổ sung
 
@@ -49,7 +49,7 @@ API chi tiết kiểm tra lại `warehouse_id` ở repository, ngoài permission
 - Phương thức thanh toán đã được mapping.
 - Có 1–199 dòng hàng.
 - Mã hàng, tên hàng, đơn vị tính, số lượng, đơn giá và VAT hợp lệ.
-- Calculation chạy được và khớp source ở cấp dòng/master.
+- Calculation của WMS chạy được; tiền nguồn HKAPI/JoyWorld chỉ được lưu để tra cứu, không dùng để chặn preflight.
 
 Các kiểm tra phụ thuộc draft/job như `expected_revision`, `RefID` uniqueness, issue job đang hoạt động và thứ tự ngày trong series sẽ được bổ sung ở Giai đoạn 4 vì các entity đó chưa tồn tại trong Giai đoạn 2.
 

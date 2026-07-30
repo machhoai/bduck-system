@@ -138,10 +138,6 @@ test("preflight allows a complete post-go-live order", () => {
   const result = preflightInvoiceSourceOrder({
     lines,
     calculation,
-    amount_decimal_digits: 0,
-    source_amount_without_vat: 100_000,
-    source_vat_amount: 10_000,
-    source_total_amount: 110_000,
     payment_time: new Date("2026-07-20T03:00:00.000Z"),
     mapped_payment_method: "Tiền mặt",
     store_config_exists: true,
@@ -153,6 +149,50 @@ test("preflight allows a complete post-go-live order", () => {
     account_enabled: true,
     account_last_test_succeeded: true,
   });
+  assert.equal(result.status, InvoicePreparationStatus.READY_TO_ISSUE);
+  assert.equal(result.issue_eligible, true);
+  assert.deepEqual(result.issues, []);
+});
+
+test("preflight uses WMS totals without reconciling JoyWorld monetary values", () => {
+  const lines = [
+    baseLine({
+      line_number: 1,
+      unit_price: 129_000,
+      source_amount_without_vat: 117_272.73,
+      source_vat_amount: 11_727.27,
+      source_total_amount: 129_000,
+    }),
+    baseLine({
+      line_number: 2,
+      source_item_id: "sku-2",
+      item_code: "sku-2",
+      unit_price: 249_000,
+      source_amount_without_vat: 226_363.64,
+      source_vat_amount: 22_636.36,
+      source_total_amount: 249_000,
+    }),
+  ];
+  const calculation = calculateInvoice(lines, true, option);
+  assert.ok(calculation);
+  assert.equal(calculation.total_amount_without_vat, 343_637);
+  assert.equal(calculation.total_vat_amount, 34_363);
+
+  const result = preflightInvoiceSourceOrder({
+    lines,
+    calculation,
+    payment_time: new Date("2026-07-20T03:00:00.000Z"),
+    mapped_payment_method: "Tiền mặt",
+    store_config_exists: true,
+    store_config_enabled: true,
+    price_includes_vat: true,
+    inv_series: "1C26TAA",
+    go_live_at: new Date("2026-07-20T02:00:00.000Z"),
+    account_exists: true,
+    account_enabled: true,
+    account_last_test_succeeded: true,
+  });
+
   assert.equal(result.status, InvoicePreparationStatus.READY_TO_ISSUE);
   assert.equal(result.issue_eligible, true);
   assert.deepEqual(result.issues, []);
@@ -180,10 +220,6 @@ test("preflight ignores zero-priced products and rejects invoices containing onl
     preflightInvoiceSourceOrder({
       lines,
       calculation: calculateInvoice(calculationLines, false, option),
-      amount_decimal_digits: 0,
-      source_amount_without_vat: calculationLines.length ? 100_000 : 0,
-      source_vat_amount: calculationLines.length ? 10_000 : 0,
-      source_total_amount: calculationLines.length ? 110_000 : 0,
       payment_time: new Date("2026-07-20T03:00:00.000Z"),
       mapped_payment_method: "Tiền mặt",
       store_config_exists: true,
@@ -210,10 +246,6 @@ test("preflight blocks pre-go-live orders and missing VAT configuration", () => 
   const result = preflightInvoiceSourceOrder({
     lines,
     calculation: null,
-    amount_decimal_digits: 0,
-    source_amount_without_vat: 100_000,
-    source_vat_amount: 10_000,
-    source_total_amount: 110_000,
     payment_time: new Date("2026-07-19T03:00:00.000Z"),
     mapped_payment_method: "Tiền mặt",
     store_config_exists: true,
@@ -237,10 +269,6 @@ test("preflight accepts 199 lines and rejects 200 lines", () => {
     return preflightInvoiceSourceOrder({
       lines,
       calculation: calculateInvoice(lines, false, option),
-      amount_decimal_digits: 0,
-      source_amount_without_vat: null,
-      source_vat_amount: null,
-      source_total_amount: null,
       payment_time: new Date("2026-07-20T03:00:00.000Z"),
       mapped_payment_method: "Tiền mặt",
       store_config_exists: true,

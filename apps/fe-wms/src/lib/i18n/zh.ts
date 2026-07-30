@@ -167,6 +167,7 @@ const zh: Dictionary = {
       effectiveDate: "生效日期",
       probationEndDate: "试用结束日期",
       reason: "原因",
+      reasonPlaceholder: "请输入状态变更的详细原因...",
       submit: "记录状态转换",
       historyTitle: "状态转换历史",
       emptyHistory: "暂无状态转换历史。",

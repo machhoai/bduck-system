@@ -5,20 +5,11 @@ import {
   type InvoicePreflightResult,
   type InvoiceSourceOrderLine,
 } from "@bduck/shared-types";
-import {
-  compareDecimal,
-  parseDecimal,
-  roundDecimal,
-} from "./invoiceDecimal.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 
 export interface InvoicePreflightInput {
   lines: InvoiceSourceOrderLine[];
   calculation: InvoiceCalculationResult | null;
-  amount_decimal_digits: number;
-  source_amount_without_vat: number | null;
-  source_vat_amount: number | null;
-  source_total_amount: number | null;
   payment_time: Date | null;
   mapped_payment_method: string | null;
   store_config_exists: boolean;
@@ -37,15 +28,6 @@ const issue = (
   message: string,
   severity: "ERROR" | "WARNING" = "ERROR",
 ): InvoicePreflightIssue => ({ code, path, message, severity });
-
-const moneyMatches = (
-  left: number,
-  right: number,
-  digits: number,
-): boolean => compareDecimal(
-  roundDecimal(parseDecimal(left), digits),
-  roundDecimal(parseDecimal(right), digits),
-) === 0;
 
 export const preflightInvoiceSourceOrder = (
   input: InvoicePreflightInput,
@@ -111,45 +93,6 @@ export const preflightInvoiceSourceOrder = (
 
   if (!input.calculation && invoiceLines.length > 0) {
     issues.push(issue("CALCULATION_UNAVAILABLE", "calculation", "Không thể tính hóa đơn do dữ liệu dòng hàng chưa đầy đủ."));
-  }
-
-  if (input.calculation) {
-    input.calculation.lines
-      .filter(invoiceLineShouldAppearInIssuedInvoice)
-      .forEach((line, index) => {
-        const sourceEntry = invoiceLines[index];
-        if (!sourceEntry) return;
-        const { line: source, sourceIndex } = sourceEntry;
-        if (
-          source.source_amount_without_vat !== null
-          && !moneyMatches(source.source_amount_without_vat, line.amount_without_vat, input.amount_decimal_digits)
-        ) {
-          issues.push(issue("LINE_AMOUNT_MISMATCH", `items.${sourceIndex}.amount_without_vat`, "Thành tiền trước thuế không khớp dữ liệu nguồn."));
-        }
-        if (
-          source.source_vat_amount !== null
-          && !moneyMatches(source.source_vat_amount, line.vat_amount, input.amount_decimal_digits)
-        ) {
-          issues.push(issue("LINE_VAT_MISMATCH", `items.${sourceIndex}.vat_amount`, "Tiền thuế của dòng không khớp dữ liệu nguồn."));
-        }
-        if (
-          source.source_total_amount !== null
-          && !moneyMatches(source.source_total_amount, line.total_amount, input.amount_decimal_digits)
-        ) {
-          issues.push(issue("LINE_TOTAL_MISMATCH", `items.${sourceIndex}.total_amount`, "Tổng tiền của dòng không khớp dữ liệu nguồn."));
-        }
-      });
-
-    const masterComparisons: Array<[number | null, number, string, string]> = [
-      [input.source_amount_without_vat, input.calculation.total_amount_without_vat, "MASTER_AMOUNT_MISMATCH", "Tổng trước thuế không khớp dữ liệu nguồn."],
-      [input.source_vat_amount, input.calculation.total_vat_amount, "MASTER_VAT_MISMATCH", "Tổng tiền thuế không khớp dữ liệu nguồn."],
-      [input.source_total_amount, input.calculation.total_amount, "MASTER_TOTAL_MISMATCH", "Tổng thanh toán không khớp dữ liệu nguồn."],
-    ];
-    for (const [source, calculated, code, message] of masterComparisons) {
-      if (source !== null && !moneyMatches(source, calculated, input.amount_decimal_digits)) {
-        issues.push(issue(code, "calculation", message));
-      }
-    }
   }
 
   const taxConfigurationMissing = issues.some((item) =>

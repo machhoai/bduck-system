@@ -142,10 +142,13 @@ export const uploadEmployeeContractPdf = async (
   contractId: string,
   file: File,
   fallbackMessage: string,
+  idempotencyScope?: string,
 ): Promise<EmployeeContractDocumentMutationResult> => {
   const intentInput: CreateEmployeeContractDocumentUploadIntentInput = {
     original_file_name: file.name,
-    idempotency_key: createContractIdempotencyKey("contract-pdf-intent"),
+    idempotency_key: idempotencyScope
+      ? `${idempotencyScope}-intent`
+      : createContractIdempotencyKey("contract-pdf-intent"),
     action_time: new Date(),
   };
   const signedIntent = await contractFetch<EmployeeContractSignedUploadIntent>(
@@ -170,7 +173,9 @@ export const uploadEmployeeContractPdf = async (
     throw new Error(fallbackMessage);
   }
   const finalizeInput: FinalizeEmployeeContractDocumentUploadInput = {
-    idempotency_key: createContractIdempotencyKey("contract-pdf-finalize"),
+    idempotency_key: idempotencyScope
+      ? `${idempotencyScope}-finalize`
+      : createContractIdempotencyKey("contract-pdf-finalize"),
     action_time: new Date(),
   };
   return contractFetch<EmployeeContractDocumentMutationResult>(

@@ -279,19 +279,34 @@ export function MetricCard({
     icon: Icon,
     label,
     value,
+    onClick,
+    className,
+    iconBg,
+    iconColor,
 }: {
     icon: LucideIcon;
     label: string;
     value: number;
+    onClick?: () => void;
+    className?: string;
+    iconBg?: string;
+    iconColor?: string;
 }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col justify-between min-w-0 rounded-2xl border border-white/80 bg-white p-2.5 sm:p-3 shadow-xs lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-subtle)] lg:shadow-none"
+            onClick={onClick}
+            className={`flex flex-col justify-between min-w-0 rounded-2xl border border-white/80 bg-white p-2.5 sm:p-3 shadow-xs lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-subtle)] lg:shadow-none ${
+                onClick ? "cursor-pointer hover:border-[var(--color-brand-primary)] hover:shadow-xs active:scale-[0.98] transition-all" : ""
+            } ${className || ""}`}
         >
             <div className="flex items-center justify-between gap-1">
-                <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+                <span
+                    className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl ${
+                        iconBg || "bg-[var(--color-brand-primary-muted)]"
+                    } ${iconColor || "text-[var(--color-brand-primary)]"}`}
+                >
                     <Icon size={14} className="sm:hidden" />
                     <Icon size={17} className="hidden sm:block" />
                 </span>

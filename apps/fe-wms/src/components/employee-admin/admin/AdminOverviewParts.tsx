@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface DetailField {
@@ -25,7 +25,11 @@ export function DetailGrid({ fields }: { fields: DetailField[] }) {
     return (
         <div className="grid gap-2 sm:grid-cols-2">
             {fields.map((field) => (
-                <InfoPill key={field.label} label={field.label} value={field.value} />
+                <InfoPill
+                    key={field.label}
+                    label={field.label}
+                    value={field.value}
+                />
             ))}
         </div>
     );
@@ -35,26 +39,51 @@ export function MetricTile({
     label,
     value,
     tone = "default",
+    actionLabel,
+    onClick,
 }: {
     label: string;
     value: string;
     tone?: "default" | "success" | "warning";
+    actionLabel?: string;
+    onClick?: () => void;
 }) {
     const toneClass =
         tone === "success"
             ? "text-[#257a3e]"
             : tone === "warning"
-                ? "text-[#936000]"
-                : "text-[var(--color-text-primary)]";
+              ? "text-[#936000]"
+              : "text-[var(--color-text-primary)]";
 
-    return (
-        <div className="rounded-2xl bg-[var(--color-surface-card)] p-3 text-center">
+    const content = (
+        <>
             <p className={`text-2xl font-semibold tabular-nums ${toneClass}`}>
                 {value}
             </p>
             <p className="mt-1 text-[10px] font-medium uppercase text-[var(--color-text-muted)] tracking-wider">
                 {label}
             </p>
+        </>
+    );
+
+    return onClick ? (
+        <button
+            aria-label={actionLabel || label}
+            className="relative rounded-2xl bg-[var(--color-surface-card)] p-3 text-center transition-all hover:bg-[var(--color-brand-primary-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-primary)] active:scale-[0.98]"
+            onClick={onClick}
+            title={actionLabel}
+            type="button"
+        >
+            <ArrowUpRight
+                aria-hidden="true"
+                className="absolute right-2 top-2 text-[var(--color-text-muted)]"
+                size={12}
+            />
+            {content}
+        </button>
+    ) : (
+        <div className="rounded-2xl bg-[var(--color-surface-card)] p-3 text-center">
+            {content}
         </div>
     );
 }
@@ -115,7 +144,9 @@ export function EmptyState({ title, hint }: { title: string; hint: string }) {
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                 {title}
             </p>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{hint}</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                {hint}
+            </p>
         </div>
     );
 }

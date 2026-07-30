@@ -6,9 +6,10 @@ import {
   type LeaveApprovalTask,
   type LeaveRequest,
 } from "@bduck/shared-types";
-import { CalendarDays, FileClock, XCircle } from "lucide-react";
 import { gooeyToast } from "goey-toast";
+import { CalendarDays, FileClock, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
+
 import { EmptyState } from "./AdminOverviewParts";
 import { LeaveApprovalTimeline } from "./LeaveApprovalTimeline";
 import { LeaveRequestFilters } from "./LeaveRequestFilters";
@@ -43,7 +44,6 @@ interface LeaveRequestHistoryProps {
   approvalTasks?: LeaveApprovalTask[];
   loading: boolean;
   error: string | null;
-  compact?: boolean;
   canCreate: boolean;
   onSubmit: (requestId: string) => Promise<unknown>;
   onCancel: (requestId: string, reason: string) => Promise<unknown>;
@@ -55,7 +55,6 @@ export function LeaveRequestHistory({
   approvalTasks = [],
   loading,
   error,
-  compact = false,
   canCreate,
   onSubmit,
   onCancel,
@@ -74,9 +73,6 @@ export function LeaveRequestHistory({
       ),
     [requests, statusFilter, typeFilter],
   );
-  const visibleRequests = compact
-    ? filteredRequests.slice(0, 3)
-    : filteredRequests;
 
   const runSubmit = async (requestId: string) => {
     if (busyId) return;
@@ -155,21 +151,19 @@ export function LeaveRequestHistory({
 
   return (
     <div className="space-y-2">
-      {!compact && (
-        <LeaveRequestFilters
-          labels={labels}
-          status={statusFilter}
-          type={typeFilter}
-          statusLabels={statusKeys}
-          typeLabels={typeKeys}
-          onStatusChange={setStatusFilter}
-          onTypeChange={setTypeFilter}
-        />
-      )}
-      {visibleRequests.length === 0 && (
+      <LeaveRequestFilters
+        labels={labels}
+        status={statusFilter}
+        type={typeFilter}
+        statusLabels={statusKeys}
+        typeLabels={typeKeys}
+        onStatusChange={setStatusFilter}
+        onTypeChange={setTypeFilter}
+      />
+      {filteredRequests.length === 0 && (
         <EmptyState title={labels.noRequests} hint={labels.noFilterResults} />
       )}
-      {visibleRequests.map((request) => {
+      {filteredRequests.map((request) => {
         const cancellable =
           request.status === LeaveRequestStatus.DRAFT ||
           request.status === LeaveRequestStatus.PENDING_APPROVAL;
@@ -212,7 +206,7 @@ export function LeaveRequestHistory({
               </span>
             </div>
 
-            {!compact && request.status !== LeaveRequestStatus.DRAFT && (
+            {request.status !== LeaveRequestStatus.DRAFT && (
               <div className="mt-3 border-t border-[var(--color-border-soft)] pt-3">
                 <LeaveApprovalTimeline
                   labels={labels}

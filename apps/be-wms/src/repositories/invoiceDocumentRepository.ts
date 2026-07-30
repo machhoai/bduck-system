@@ -1,4 +1,9 @@
+import {
+  InvoiceDocumentStatus,
+  type InvoicePreflightIssue,
+} from "@bduck/shared-types";
 import { db } from "../config/firebase.js";
+import { validationStateWithoutSourceMoneyComparison } from "../services/invoiceDocumentPolicy.js";
 
 const documents = db.collection("invoice_documents");
 const sourceOrders = db.collection("invoice_source_orders");
@@ -116,6 +121,43 @@ export const invoiceDocumentRepository = {
       if (documentSnapshot.exists) {
         const current = documentSnapshot.data() as Record<string, unknown>;
         assertScopedDocument(current, String(value.warehouse_id));
+        const currentIssues = Array.isArray(current.validation_issues)
+          ? (current.validation_issues as InvoicePreflightIssue[])
+          : [];
+        const refreshedValidation = validationStateWithoutSourceMoneyComparison(
+          current.status as InvoiceDocumentStatus,
+          currentIssues,
+        );
+        if (refreshedValidation) {
+          const now = new Date();
+          const refreshed = {
+            ...current,
+            status: refreshedValidation.status,
+            issue_eligible: refreshedValidation.issueEligible,
+            validation_issues: refreshedValidation.issues,
+            revision: Number(current.revision ?? 1) + 1,
+            updated_by: value.updated_by,
+            updated_at: now,
+          };
+          transaction.update(documentRef, {
+            status: refreshed.status,
+            issue_eligible: refreshed.issue_eligible,
+            validation_issues: refreshed.validation_issues,
+            revision: refreshed.revision,
+            updated_by: refreshed.updated_by,
+            updated_at: refreshed.updated_at,
+          });
+          transaction.create(
+            documentRef.collection("revisions").doc(String(refreshed.revision)),
+            revisionSnapshot(refreshed),
+          );
+          transaction.update(sourceRef, {
+            invoice_document_id: documentRef.id,
+            invoice_document_status: refreshed.status,
+            updated_at: now,
+          });
+          return { created: false, document: refreshed };
+        }
         if (
           source.invoice_document_id !== documentRef.id ||
           source.invoice_document_status !== current.status

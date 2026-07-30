@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  EMPLOYEE_CONTRACT_PDF_MAX_BYTES,
   EmployeeContractType,
   formatContractDisplayDate,
   getNextContractLocalDate,
@@ -8,6 +9,7 @@ import {
   type EmployeeContract,
   type LocalDate,
 } from "@bduck/shared-types";
+import { Paperclip } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ContractDateField } from "./ContractDateField";
@@ -22,6 +24,9 @@ export interface EmployeeContractDraftValues {
   start_date: LocalDate;
   end_date: LocalDate | null;
   notes: string | null;
+  pdf_file: File | null;
+  submission_id: string;
+  action_time: Date;
 }
 
 interface EmployeeContractFormSheetProps {
@@ -29,6 +34,7 @@ interface EmployeeContractFormSheetProps {
   mode: EmployeeContractFormMode;
   contract: EmployeeContract | null;
   labels: EmployeeContractLabels;
+  canManageDocuments: boolean;
   onClose: () => void;
   onSubmit: (values: EmployeeContractDraftValues) => Promise<void>;
 }
@@ -41,6 +47,7 @@ export function EmployeeContractFormSheet({
   mode,
   contract,
   labels,
+  canManageDocuments,
   onClose,
   onSubmit,
 }: EmployeeContractFormSheetProps) {
@@ -51,7 +58,12 @@ export function EmployeeContractFormSheet({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
+  const [submissionActionTime, setSubmissionActionTime] = useState<Date | null>(
+    null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -71,7 +83,10 @@ export function EmployeeContractFormSheet({
       mode === "edit" ? formatContractDisplayDate(contract?.end_date) : "",
     );
     setNotes(mode === "edit" ? contract?.notes || "" : "");
+    setPdfFile(null);
     setDateError(null);
+    setSubmissionId(crypto.randomUUID());
+    setSubmissionActionTime(null);
     setIsSubmitting(false);
   }, [contract, isOpen, mode]);
 
@@ -81,11 +96,18 @@ export function EmployeeContractFormSheet({
     renew: labels.form.renewTitle,
   }[mode];
   const indefinite = contractType === EmployeeContractType.INDEFINITE;
+  const canUploadPdf = canManageDocuments && mode !== "edit";
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsedStart = parseContractDisplayDate(startDate);
     const parsedEnd = indefinite ? null : parseContractDisplayDate(endDate);
+    const validPdf =
+      !pdfFile ||
+      ((pdfFile.type === "application/pdf" ||
+        pdfFile.name.toLocaleLowerCase().endsWith(".pdf")) &&
+        pdfFile.size > 0 &&
+        pdfFile.size <= EMPLOYEE_CONTRACT_PDF_MAX_BYTES);
     if (
       !contractNumber.trim() ||
       !parsedStart ||
@@ -103,8 +125,14 @@ export function EmployeeContractFormSheet({
       );
       return;
     }
+    if (!validPdf) {
+      setDateError(labels.documents.invalidFile);
+      return;
+    }
     setDateError(null);
     setIsSubmitting(true);
+    const actionTime = submissionActionTime ?? new Date();
+    setSubmissionActionTime(actionTime);
     try {
       await onSubmit({
         contract_number: contractNumber.trim(),
@@ -112,6 +140,9 @@ export function EmployeeContractFormSheet({
         start_date: parsedStart,
         end_date: parsedEnd,
         notes: notes.trim() || null,
+        pdf_file: canUploadPdf ? pdfFile : null,
+        submission_id: submissionId,
+        action_time: actionTime,
       });
     } finally {
       setIsSubmitting(false);
@@ -191,6 +222,27 @@ export function EmployeeContractFormSheet({
             className="min-h-24 w-full rounded-xl border border-[var(--color-border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
           />
         </label>
+        {canUploadPdf ? (
+          <label className="block rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-3">
+            <span className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
+              <Paperclip size={14} />
+              {labels.documents.title}
+            </span>
+            <input
+              key={submissionId}
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(event) => {
+                setDateError(null);
+                setPdfFile(event.target.files?.[0] ?? null);
+              }}
+              className="mt-2 block w-full text-xs text-[var(--color-text-secondary)] file:mr-3 file:rounded-full file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-blue-700"
+            />
+            <span className="mt-1.5 block text-xxs text-[var(--color-text-muted)]">
+              {pdfFile ? pdfFile.name : labels.documents.uploadHint}
+            </span>
+          </label>
+        ) : null}
         <button
           type="submit"
           disabled={isSubmitting}

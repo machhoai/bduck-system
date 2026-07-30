@@ -28,8 +28,9 @@ import type {
   SubmitLeaveRequestInput,
   UpsertCompanyHolidayInput,
 } from "@bduck/shared-types";
-import { authenticatedFetch } from "@/utils/authenticatedFetch";
+
 import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -57,6 +58,9 @@ const leaveFetch = async <T>(
 
 export const fetchMyLeaveRequests = (fallbackMessage: string) =>
   leaveFetch<LeaveRequest[]>("/me/requests", fallbackMessage);
+
+export const fetchMyLeaveBalance = (fallbackMessage: string) =>
+  leaveFetch<LeaveBalanceSummary>("/me/balance", fallbackMessage);
 
 export const fetchCompanyLeavePolicy = (fallbackMessage: string) =>
   leaveFetch<LeavePolicy | null>("/policy", fallbackMessage);

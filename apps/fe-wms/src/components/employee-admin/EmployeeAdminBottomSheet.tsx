@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import type { ReactNode } from "react";
+
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
 interface EmployeeAdminBottomSheetProps {
@@ -21,6 +22,7 @@ export function EmployeeAdminBottomSheet({
     onClose,
 }: EmployeeAdminBottomSheetProps) {
     const [isMobile, setIsMobile] = useState(false);
+    const titleId = useId();
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -28,6 +30,15 @@ export function EmployeeAdminBottomSheet({
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
+
+    useEffect(() => {
+        if (!open) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose, open]);
 
     if (isMobile) {
         return (
@@ -60,11 +71,19 @@ export function EmployeeAdminBottomSheet({
             />
 
             {/* Dialog container */}
-            <div className="relative z-50 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div
+                aria-labelledby={titleId}
+                aria-modal="true"
+                className="relative z-50 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+                role="dialog"
+            >
                 {/* Header */}
                 <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
                     <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                        <h2
+                            className="text-base font-semibold text-[var(--color-text-primary)]"
+                            id={titleId}
+                        >
                             {title}
                         </h2>
                         {description && (
@@ -84,9 +103,7 @@ export function EmployeeAdminBottomSheet({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-5">
-                    {children}
-                </div>
+                <div className="flex-1 overflow-y-auto p-5">{children}</div>
             </div>
         </div>
     );

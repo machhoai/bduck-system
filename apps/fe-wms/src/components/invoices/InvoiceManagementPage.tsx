@@ -507,21 +507,29 @@ export default function InvoiceManagementPage() {
                 </div>
             </header>
 
-            <nav className="flex gap-1 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white p-1" aria-label="Invoice views">
-                {invoiceViews.map(([value, label]) => (
-                    <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                            setView(value);
-                            if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
-                        }}
-                        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-                    >
-                        {label}
-                    </button>
-                ))}
+            <nav className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-white shadow-2xs" aria-label="Invoice views">
+                {invoiceViews.map(([value, label], index) => {
+                    const isLastOdd = index === invoiceViews.length - 1 && invoiceViews.length % 2 !== 0;
+                    return (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => {
+                                setView(value);
+                                if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
+                            }}
+                            className={`flex items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-semibold transition ${isLastOdd ? "col-span-2 sm:col-span-1" : ""
+                                } ${view === value
+                                    ? "bg-slate-900 text-white shadow-2xs"
+                                    : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 sm:bg-transparent"
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
             </nav>
+
 
             {view !== "CONFIG" && error && (
                 <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
@@ -719,11 +727,10 @@ export default function InvoiceManagementPage() {
                                 {filteredOrders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${
-                                            selectedIssueIds.includes(order.id)
-                                                ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
-                                                : "border-slate-200/90 hover:border-sky-300"
-                                        }`}
+                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${selectedIssueIds.includes(order.id)
+                                            ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
+                                            : "border-slate-200/90 hover:border-sky-300"
+                                            }`}
                                     >
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center justify-between">
                                             <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -903,7 +910,7 @@ function OrderReviewSheet({
             title={order.order_number ?? order.source_order_id}
             defaultSnap="full"
             mobileBreakpoint="lg"
-            desktopClassName="lg:fixed lg:inset-y-0 lg:right-0 lg:top-0 lg:w-[620px] lg:max-w-full lg:rounded-l-2xl lg:rounded-r-none lg:border-l lg:border-t-0 lg:shadow-2xl"
+            desktopClassName="lg:fixed lg:inset-y-0 lg:left-auto lg:right-0 lg:top-0 lg:h-full lg:max-h-none lg:w-[620px] lg:max-w-full lg:rounded-l-2xl lg:rounded-r-none lg:border-l lg:border-t-0 lg:shadow-2xl"
             contentClassName="flex-1 overflow-y-auto px-4 pb-8 space-y-5"
         >
             <div className="pt-2">
@@ -979,7 +986,7 @@ function OrderReviewSheet({
                             (item, index) => (
                                 <div
                                     key={`${item.line_number}-${index}`}
-                                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs"
+                                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs max-w-full"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0 flex-1">

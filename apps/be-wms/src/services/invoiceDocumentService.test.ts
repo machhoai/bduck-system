@@ -13,6 +13,7 @@ import { calculateInvoice } from "./invoiceCalculationService.js";
 import {
   invoiceFinancialFingerprint,
   statusAfterInvoiceEdit,
+  validationStateWithoutSourceMoneyComparison,
 } from "./invoiceDocumentPolicy.js";
 import { invoiceDocumentUpdateSchema } from "./invoiceDocumentSchemas.js";
 import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
@@ -111,6 +112,32 @@ test("draft edits remain ready to issue without an approval state", () => {
   assert.deepEqual(financial, {
     status: InvoiceDocumentStatus.READY_TO_ISSUE,
     financiallyEdited: true,
+  });
+});
+
+test("legacy JoyWorld money mismatches no longer block an existing draft", () => {
+  const result = validationStateWithoutSourceMoneyComparison(
+    InvoiceDocumentStatus.NEEDS_CORRECTION,
+    [
+      {
+        code: "MASTER_AMOUNT_MISMATCH",
+        path: "calculation",
+        message: "Tổng trước thuế không khớp dữ liệu nguồn.",
+        severity: "ERROR",
+      },
+      {
+        code: "MASTER_VAT_MISMATCH",
+        path: "calculation",
+        message: "Tổng tiền thuế không khớp dữ liệu nguồn.",
+        severity: "ERROR",
+      },
+    ],
+  );
+
+  assert.deepEqual(result, {
+    status: InvoiceDocumentStatus.READY_TO_ISSUE,
+    issueEligible: true,
+    issues: [],
   });
 });
 

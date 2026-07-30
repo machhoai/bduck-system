@@ -1,9 +1,9 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 
 type SnapPoint = "collapsed" | "half" | "full";
 
@@ -72,14 +72,18 @@ export function BottomSheet({
             return undefined;
         }
 
-        const mediaQuery = window.matchMedia("(min-width: 768px)");
+        const mediaQuery = window.matchMedia(
+            mobileBreakpoint === "lg"
+                ? "(min-width: 1024px)"
+                : "(min-width: 768px)",
+        );
         const syncDesktopLayout = () => setIsDesktopLayout(mediaQuery.matches);
 
         syncDesktopLayout();
         mediaQuery.addEventListener("change", syncDesktopLayout);
 
         return () => mediaQuery.removeEventListener("change", syncDesktopLayout);
-    }, [desktopClassName]);
+    }, [desktopClassName, mobileBreakpoint]);
 
     const getHeightPx = useCallback(() => {
         if (!sheetRef.current) return 0;
@@ -237,6 +241,9 @@ export function BottomSheet({
 
             <div
                 ref={sheetRef}
+                aria-label={onClose ? title : undefined}
+                aria-modal={onClose ? true : undefined}
+                role={onClose ? "dialog" : undefined}
                 style={{
                     height: isDesktopLayout
                         ? "100%"
@@ -253,7 +260,13 @@ export function BottomSheet({
             >
                 {/* Drag handle & Header */}
                 <div
-                    className={`flex flex-shrink-0 cursor-grab touch-none items-center justify-between px-4 pb-1.5 pt-2 active:cursor-grabbing border-b border-[var(--color-border-subtle)] ${desktopClassName ? "md:hidden" : ""}`}
+                    className={`flex flex-shrink-0 cursor-grab touch-none items-center justify-between px-4 pb-1.5 pt-2 active:cursor-grabbing border-b border-[var(--color-border-subtle)] ${
+                        desktopClassName
+                            ? mobileBreakpoint === "lg"
+                                ? "lg:hidden"
+                                : "md:hidden"
+                            : ""
+                    }`}
                     onPointerDown={handleDragStart}
                     onPointerMove={handleDragMove}
                     onPointerUp={handleDragEnd}

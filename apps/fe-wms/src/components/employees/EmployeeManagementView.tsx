@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
+  CalendarClock,
   IdCard,
   Plus,
   Search,
@@ -60,6 +61,7 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
   const [warehouseFilter, setWarehouseFilter] = useState("ALL");
   const [selectedDetailProfile, setSelectedDetailProfile] =
     useState<EmployeeProfile | null>(null);
+  const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
 
   const warehouseById = useMemo(
     () => new Map(props.warehouses.map((item) => [item.id, item])),
@@ -172,7 +174,13 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
       </header>
 
       {/* Metric cards */}
-      <section className="grid grid-cols-3 gap-2.5">
+      <section
+        className={`grid gap-2.5 ${
+          isEmployeeContractsFeatureEnabled
+            ? "grid-cols-2 sm:grid-cols-4"
+            : "grid-cols-3"
+        }`}
+      >
         <MetricCard
           icon={IdCard}
           label={labels.metrics.total}
@@ -188,23 +196,30 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
           label={labels.metrics.linked}
           value={stats.linked}
         />
+        {isEmployeeContractsFeatureEnabled && (
+          <MetricCard
+            icon={CalendarClock}
+            label={contractLabels.expiry.title}
+            value={expiring.contracts.length}
+            onClick={() => setIsExpiryModalOpen(true)}
+            iconBg={
+              expiring.contracts.length > 0
+                ? "bg-amber-100"
+                : undefined
+            }
+            iconColor={
+              expiring.contracts.length > 0
+                ? "text-amber-700"
+                : undefined
+            }
+            className={
+              expiring.contracts.length > 0
+                ? "border-amber-300/80 bg-amber-50/40 hover:border-amber-400"
+                : undefined
+            }
+          />
+        )}
       </section>
-
-      {isEmployeeContractsFeatureEnabled ? (
-        <EmployeeContractExpiryPanel
-          contracts={expiring.contracts}
-          profiles={profileSummaryById}
-          labels={contractLabels}
-          isLoading={expiring.isLoading}
-          error={expiring.error}
-          onOpenEmployee={(profileId) =>
-            setSelectedDetailProfile(
-              props.profiles.find((profile) => profile.id === profileId) ??
-                null,
-            )
-          }
-        />
-      ) : null}
 
       {/* Main content panel & filters */}
       <section className="flex flex-col gap-3 lg:shadow-none">
@@ -372,6 +387,25 @@ export function EmployeeManagementView(props: EmployeeManagementViewProps) {
         onDelete={props.onDelete}
         onManageEmployment={props.onManageEmployment}
       />
+
+      {/* Contract Expiry Modal */}
+      {isEmployeeContractsFeatureEnabled && (
+        <EmployeeContractExpiryPanel
+          isOpen={isExpiryModalOpen}
+          onClose={() => setIsExpiryModalOpen(false)}
+          contracts={expiring.contracts}
+          profiles={profileSummaryById}
+          labels={contractLabels}
+          isLoading={expiring.isLoading}
+          error={expiring.error}
+          onOpenEmployee={(profileId) =>
+            setSelectedDetailProfile(
+              props.profiles.find((profile) => profile.id === profileId) ??
+                null,
+            )
+          }
+        />
+      )}
     </div>
   );
 }

@@ -210,11 +210,6 @@ const buildSourceOrder = (
   const preflight = preflightInvoiceSourceOrder({
     lines: normalizedItems,
     calculation,
-    amount_decimal_digits:
-      storeConfig?.option_user_defined.amount_oc_decimal_digits ?? 0,
-    source_amount_without_vat: amountBeforeTax,
-    source_vat_amount: taxMoney,
-    source_total_amount: realMoney,
     payment_time: paymentDate,
     mapped_payment_method: mappedPaymentMethod,
     store_config_exists: Boolean(storeConfig),

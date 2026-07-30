@@ -288,13 +288,7 @@ const validationForEditedDraft = (
   storeConfig: MeInvoiceStoreConfig,
   account: StoredMeInvoiceAccount,
 ) => {
-  const comparisonFreeItems = items.map((item) => ({
-    ...item,
-    source_amount_without_vat: null,
-    source_vat_amount: null,
-    source_total_amount: null,
-  }));
-  const invoiceItems = comparisonFreeItems.filter(
+  const invoiceItems = items.filter(
     invoiceLineShouldAppearInIssuedInvoice,
   );
   const calculation =
@@ -306,13 +300,8 @@ const validationForEditedDraft = (
           storeConfig.option_user_defined,
         );
   const preflight = preflightInvoiceSourceOrder({
-    lines: comparisonFreeItems,
+    lines: items,
     calculation,
-    amount_decimal_digits:
-      storeConfig.option_user_defined.amount_oc_decimal_digits,
-    source_amount_without_vat: null,
-    source_vat_amount: null,
-    source_total_amount: null,
     payment_time: parseJoyworldDate(paymentTime),
     mapped_payment_method: paymentMethodName,
     store_config_exists: true,
