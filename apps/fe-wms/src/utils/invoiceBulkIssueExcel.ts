@@ -30,29 +30,147 @@ const vatRate = (line: ExportLine) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const productKey = (itemName: string, unitName: string | null) =>
+  `${itemName}\u0000${unitName ?? ""}`;
+
+const buildReferenceUnitPrices = (preview: InvoiceBulkIssuePreview) => {
+  const references = new Map<string, number[]>();
+  const addReference = (
+    itemName: string,
+    unitName: string | null,
+    quantity: number,
+    amountWithoutVat: number,
+  ) => {
+    if (quantity <= 0 || amountWithoutVat < 0) return;
+    const key = productKey(itemName, unitName);
+    const values = references.get(key) ?? [];
+    values.push(amountWithoutVat / quantity);
+    references.set(key, values);
+  };
+
+  preview.invoices.forEach((invoice) => {
+    if (invoice.lines?.length) {
+      invoice.lines.forEach((line) =>
+        addReference(
+          line.item_name,
+          line.unit_name,
+          line.quantity,
+          line.amount_without_vat,
+        ),
+      );
+      return;
+    }
+
+    if (invoice.products.length === 1) {
+      const product = invoice.products[0];
+      addReference(
+        product.item_name,
+        product.unit_name,
+        product.quantity,
+        invoice.total_amount_without_vat,
+      );
+    }
+  });
+
+  return new Map(
+    [...references.entries()].map(([key, values]) => {
+      const sorted = [...values].sort((left, right) => left - right);
+      return [key, sorted[Math.floor(sorted.length / 2)]];
+    }),
+  );
+};
+
 const fallbackLines = (
   invoice: InvoiceBulkIssuePreview["invoices"][number],
-): ExportLine[] =>
-  invoice.products.map((product) => {
-    const isOnlyProduct = invoice.products.length === 1;
-    const quantity = product.quantity;
-    const amountWithoutVat = isOnlyProduct
-      ? invoice.total_amount_without_vat
-      : null;
+  referenceUnitPrices: Map<string, number>,
+): ExportLine[] => {
+  const products = invoice.products.map((product) => ({
+    product,
+    referenceUnitPrice: referenceUnitPrices.get(
+      productKey(product.item_name, product.unit_name),
+    ),
+  }));
+  const referencedTotal = products.reduce(
+    (total, item) =>
+      total +
+      (item.referenceUnitPrice === undefined
+        ? 0
+        : item.referenceUnitPrice * item.product.quantity),
+    0,
+  );
+  const referencesFitInvoice =
+    referencedTotal <= invoice.total_amount_without_vat;
+  const amountsWithoutVat = products.map((item) =>
+    referencesFitInvoice && item.referenceUnitPrice !== undefined
+      ? Math.round(item.referenceUnitPrice * item.product.quantity)
+      : null,
+  );
+  const unresolvedIndexes = amountsWithoutVat
+    .map((amount, index) => (amount === null ? index : -1))
+    .filter((index) => index >= 0);
+  let remainingBeforeVat =
+    invoice.total_amount_without_vat -
+    amountsWithoutVat.reduce<number>(
+      (total, amount) => total + (amount === null ? 0 : amount),
+      0,
+    );
+  let unresolvedQuantity = unresolvedIndexes.reduce(
+    (total, index) => total + products[index].product.quantity,
+    0,
+  );
+
+  unresolvedIndexes.forEach((productIndex, unresolvedIndex) => {
+    const quantity = products[productIndex].product.quantity;
+    const isLastUnresolved = unresolvedIndex === unresolvedIndexes.length - 1;
+    const amount = isLastUnresolved
+      ? remainingBeforeVat
+      : Math.round(
+          unresolvedQuantity > 0
+            ? (remainingBeforeVat * quantity) / unresolvedQuantity
+            : 0,
+        );
+    amountsWithoutVat[productIndex] = amount;
+    remainingBeforeVat -= amount;
+    unresolvedQuantity -= quantity;
+  });
+
+  if (products.length > 0 && unresolvedIndexes.length === 0) {
+    amountsWithoutVat[products.length - 1] =
+      (amountsWithoutVat[products.length - 1] ?? 0) + remainingBeforeVat;
+  }
+
+  let remainingTotal = invoice.total_amount;
+  const vatRatio =
+    invoice.total_amount_without_vat !== 0
+      ? invoice.total_vat_amount / invoice.total_amount_without_vat
+      : 0;
+  return products.map((item, index) => {
+    const { product } = item;
+    const amountWithoutVat = amountsWithoutVat[index] ?? 0;
+    const isLast = index === products.length - 1;
+    const totalAmount = isLast
+      ? remainingTotal
+      : amountWithoutVat + Math.round(amountWithoutVat * vatRatio);
+
+    remainingTotal -= totalAmount;
+
     return {
       item_name: product.item_name,
       unit_name: product.unit_name,
-      quantity,
+      quantity: product.quantity,
       unit_price:
-        isOnlyProduct && quantity !== 0
-          ? invoice.total_amount_without_vat / quantity
+        product.quantity !== 0 ? amountWithoutVat / product.quantity : 0,
+      vat_rate_name:
+        invoice.total_amount_without_vat !== 0
+          ? `${vatRatio * 100}%`
           : null,
-      vat_rate_name: null,
-      vat_rate: null,
+      vat_rate:
+        invoice.total_amount_without_vat !== 0 ? vatRatio * 100 : 0,
       amount_without_vat: amountWithoutVat,
-      total_amount: isOnlyProduct ? invoice.total_amount : null,
+      total_amount: totalAmount,
     };
   });
+};
 
 const border: Partial<ExcelJS.Borders> = {
   top: { style: "thin", color: { argb: "FFD9D9E8" } },
@@ -229,9 +347,12 @@ export function buildInvoiceBulkIssueWorkbook(
     cell.border = border;
   });
 
+  const referenceUnitPrices = buildReferenceUnitPrices(preview);
   preview.invoices.forEach((invoice, invoiceIndex) => {
     const lines =
-      invoice.lines?.length > 0 ? invoice.lines : fallbackLines(invoice);
+      invoice.lines?.length > 0
+        ? invoice.lines
+        : fallbackLines(invoice, referenceUnitPrices);
     lines.forEach((line, lineIndex) => {
       const row = sheet.addRow({
         invoiceIndex: invoiceIndex + 1,
