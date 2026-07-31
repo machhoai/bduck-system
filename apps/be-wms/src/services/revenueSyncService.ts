@@ -20,24 +20,27 @@
  *   ...
  * ]}}
  *
- * total_revenue = Σ realMoney (thực thu) across all days in the month
+ * total_revenue = Σ shopRealMoney/totalMoney (doanh thu sau hoàn tiền) across all days in the month
  *
  * COLLECTION SCHEMA (revenue_sync/{period}):
  * {
  *   period: "2026-06",
- *   total_revenue: number,       // Σ realMoney (tổng thực thu cả tháng)
+ *   total_revenue: number,       // Tổng doanh thu sau hoàn tiền cả tháng
  *   shop_real_money: number,     // totalMoney from shop summary (last day)
  *   refund_money: number,        // refundMoney from shop summary
- *   daily_breakdown: Record<string, number>,  // { "2026-06-01": 5000000, ... }
+ *   daily_breakdown: Record<string, number>,  // Doanh thu sau hoàn tiền theo ngày
  *   sync_time: Timestamp,
  *   synced_by: string,
  * }
  * ═══════════════════════════════════════════════════════════════
  */
 
-import { db } from "../config/firebase.js";
-import { FieldValue } from "firebase-admin/firestore";
 import { AuditAction } from "@bduck/shared-types";
+import { FieldValue } from "firebase-admin/firestore";
+
+import { db } from "../config/firebase.js";
+
+import { logAudit } from "./auditService.js";
 import {
   getJoyworldToken,
   getRevenueData,
@@ -49,7 +52,7 @@ import {
   getOpenApiShopSummary,
 } from "./openApiRevenueService.js";
 import { LANDMARK_81_WAREHOUSE_ID } from "./revenueDashboardService.js";
-import { logAudit } from "./auditService.js";
+import { getNetShopRevenue, getShopRefundMoney } from "./revenueNetCalculation.js";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -57,6 +60,7 @@ import { logAudit } from "./auditService.js";
 
 const COLLECTION = "revenue_sync";
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+const CALCULATION_VERSION = 2;
 
 // ─────────────────────────────────────────────
 // Types
@@ -65,6 +69,7 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 export interface RevenueSyncDoc {
   period: string;
   warehouse_id: string;
+  calculation_version?: number;
   total_revenue: number;
   shop_real_money: number;
   refund_money: number;
@@ -100,6 +105,38 @@ function isStale(syncTime: FirebaseFirestore.Timestamp | null): boolean {
   return elapsed > STALE_THRESHOLD_MS;
 }
 
+function daysInRange(startDate: string, endDate: string): string[] {
+  const days: string[] = [];
+  const cursor = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  while (cursor <= end) {
+    days.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`,
+    );
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+async function mapLimit<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+async function fetchShopSummariesByDate(token: string, days: string[]): Promise<Record<string, unknown>> {
+  const responses = await mapLimit(days, 5, (day) => getShopSummary(token, day));
+  return Object.fromEntries(days.map((day, index) => [day, responses[index]]));
+}
+
 /**
  * Parse JoyWorld revenue response.
  *
@@ -112,7 +149,8 @@ function isStale(syncTime: FirebaseFirestore.Timestamp | null): boolean {
  *   totalMoney: "...", shopRealMoney: "...", refundMoney: "...", ...
  * }}
  *
- * total_revenue = Σ realMoney from dataXs (thực thu cả tháng)
+ * total_revenue = sum of shopRealMoney/totalMoney from daily shop summaries.
+ * The revenue report's realMoney is retained only as a fallback.
  */
 function parseRevenueResponse(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -120,6 +158,7 @@ function parseRevenueResponse(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   summaryRes: any,
   period: string,
+  shopSummariesByDate: Record<string, unknown> = {},
 ): Omit<RevenueSyncDoc, "sync_time" | "synced_by" | "warehouse_id"> {
   // ── Parse daily breakdown from dataXs ──
   const dailyBreakdown: Record<string, number> = {};
@@ -140,12 +179,17 @@ function parseRevenueResponse(
     }
   }
 
+  for (const [forDate, summary] of Object.entries(shopSummariesByDate)) {
+    const netRevenue = getNetShopRevenue(summary);
+    if (netRevenue !== null) dailyBreakdown[forDate] = netRevenue;
+  }
+  if (Object.keys(shopSummariesByDate).length > 0) {
+    totalRevenue = Object.values(dailyBreakdown).reduce((sum, value) => sum + value, 0);
+  }
+
   // ── Parse shop summary ──
-  const sd = summaryRes?.data;
-  const shopRealMoney = sd
-    ? parseFloat(sd.totalMoney) || parseFloat(sd.shopRealMoney) || 0
-    : 0;
-  const refundMoney = sd ? parseFloat(sd.refundMoney) || 0 : 0;
+  const shopRealMoney = getNetShopRevenue(summaryRes) ?? 0;
+  const refundMoney = getShopRefundMoney(summaryRes);
 
   // Use totalRevenue from daily sum; fallback to shopRealMoney for single-day
   if (totalRevenue === 0 && shopRealMoney > 0) {
@@ -183,34 +227,51 @@ export async function syncRevenueForPeriod(
   // Check staleness
   if (existingSnap.exists) {
     const existing = existingSnap.data() as RevenueSyncDoc;
-    if (!isStale(existing.sync_time)) {
+    if (existing.calculation_version === CALCULATION_VERSION && !isStale(existing.sync_time)) {
       return { synced: false, data: existing };
     }
   }
 
   // Fetch from JoyWorld
   const useOpenApi = await hasEnabledOpenApiConfig(warehouseId);
-  const token = useOpenApi ? null : await getJoyworldToken();
+  let token: string | null = null;
+  try {
+    token = await getJoyworldToken();
+  } catch (error) {
+    if (!useOpenApi) throw error;
+    console.warn("[revenueSync] Legacy JoyWorld token unavailable; using report revenue fallback.");
+  }
   const { startDate, endDate } = getMonthDateRange(period);
+  const today = new Date();
+  const todayText = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const summaryEndDate = endDate < todayText ? endDate : todayText;
+  const summaryDays = summaryEndDate >= startDate ? daysInRange(startDate, summaryEndDate) : [];
 
-  // Call both APIs in parallel:
+  // Call the report and daily net shop summaries in parallel:
   // - getRevenueData: daily breakdown for the entire month (realMoney per day)
-  // - getShopSummary: summary for last day (totalMoney = thực thu)
-  const [revenueRes, summaryRes] = await Promise.all([
+  // - getShopSummary: authoritative net revenue after refunds for each day
+  const shopSummariesPromise: Promise<Record<string, unknown>> = token
+    ? fetchShopSummariesByDate(token, summaryDays)
+    : Promise.resolve({});
+  const [revenueRes, shopSummariesByDate] = await Promise.all([
     useOpenApi
       ? getOpenApiRevenueData(warehouseId, startDate, endDate)
       : getRevenueData(token as string, startDate, endDate),
-    useOpenApi
-      ? getOpenApiShopSummary(warehouseId, endDate)
-      : getShopSummary(token as string, endDate),
+    shopSummariesPromise,
   ]);
+  const latestSummaryDay = summaryDays.at(-1);
+  const latestSummary = latestSummaryDay
+    ? shopSummariesByDate[latestSummaryDay]
+      ?? (useOpenApi ? await getOpenApiShopSummary(warehouseId, latestSummaryDay) : null)
+    : null;
 
-  const parsed = parseRevenueResponse(revenueRes, summaryRes, period);
+  const parsed = parseRevenueResponse(revenueRes, latestSummary, period, shopSummariesByDate);
 
   // Upsert to Firestore
   const docData: Record<string, unknown> = {
     ...parsed,
     warehouse_id: warehouseId,
+    calculation_version: CALCULATION_VERSION,
     sync_time: FieldValue.serverTimestamp(),
     synced_by: userId,
   };

@@ -1,5 +1,8 @@
 import { FieldValue } from "firebase-admin/firestore";
+
 import { db } from "../config/firebase.js";
+import { warehouseRepository } from "../repositories/warehouseRepository.js";
+
 import {
   getCashierSummary,
   getCoinStatistics,
@@ -8,6 +11,7 @@ import {
   getOrderGoodsList,
   getOrderList,
   getRevenueData,
+  getShopSummary,
   getStoreBalance,
 } from "./joyworldService.js";
 import { hasEnabledOpenApiConfig } from "./openApiConfigService.js";
@@ -15,7 +19,7 @@ import {
   getOpenApiGoodsStatistics,
   getOpenApiRevenueData,
 } from "./openApiRevenueService.js";
-import { warehouseRepository } from "../repositories/warehouseRepository.js";
+import { getNetShopRevenue } from "./revenueNetCalculation.js";
 
 export const LANDMARK_81_WAREHOUSE_ID = "2fa83576-277f-483e-8c52-2ec85b9a8cff";
 
@@ -183,6 +187,7 @@ interface MemberSnapshot {
 
 const DASHBOARD_COLLECTION = "revenue_dashboards";
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+const CACHE_VERSION = 2;
 const REVENUE_KEYS = ["realMoney", "shopRealMoney", "totalMoney", "salesMoney", "amount", "money"];
 
 export function getRevenueDashboardCacheKey(params: RevenueDashboardParams): string {
@@ -266,7 +271,7 @@ async function fetchRevenueDashboardData(
   const selectedDays = daysBetween(normalized.startDate, normalized.endDate);
   const comparisonDays = daysBetween(normalized.comparison.startDate, normalized.comparison.endDate);
   const chartDays = daysBetween(chartWindow.startDate, chartWindow.endDate);
-  const coinDays = Array.from(new Set([...selectedDays, ...comparisonDays, ...chartDays]));
+  const dashboardDays = Array.from(new Set([...selectedDays, ...comparisonDays, ...chartDays]));
 
   const [
     selectedRevenue,
@@ -277,6 +282,7 @@ async function fetchRevenueDashboardData(
     selectedMembers,
     comparisonMembers,
     chartRevenue,
+    shopSummariesByDate,
     chartOrders,
     coinStatsByDate,
     goodsResponses,
@@ -290,14 +296,15 @@ async function fetchRevenueDashboardData(
     token ? getStoreBalance(token, normalized.startDate, normalized.endDate) : emptyResponse(),
     token ? getStoreBalance(token, normalized.comparison.startDate, normalized.comparison.endDate) : emptyResponse(),
     getRevenueDataForWarehouse(warehouseId, token, chartWindow.startDate, chartWindow.endDate),
+    fetchShopSummariesByDate(token, dashboardDays),
     fetchChartOrderSummaries(token, chartWindow),
-    fetchCoinStatsByDate(token, coinDays),
+    fetchCoinStatsByDate(token, dashboardDays),
     fetchDailyResponses(selectedDays, (day) => getGoodsStatisticsForWarehouse(warehouseId, token, day)),
     token ? fetchDailyResponses(selectedDays, (day) => getCashierSummary(token, day)) : [],
   ]);
 
-  const selectedRevenueTotal = sumRevenue(selectedRevenue, normalized);
-  const comparisonRevenueTotal = sumRevenue(comparisonRevenue, normalized.comparison);
+  const selectedRevenueTotal = sumRevenue(selectedRevenue, normalized, shopSummariesByDate);
+  const comparisonRevenueTotal = sumRevenue(comparisonRevenue, normalized.comparison, shopSummariesByDate);
   const selectedOrderCount = uniqueOrderCount(selectedOrderRows) || selectedOrders.orderCount;
   const comparisonOrderCount = comparisonOrders.orderCount;
   const selectedAverageOrderValue = selectedOrderCount > 0 ? selectedRevenueTotal / selectedOrderCount : 0;
@@ -315,6 +322,7 @@ async function fetchRevenueDashboardData(
     normalized,
     chartWindow,
     revenueResponse: chartRevenue,
+    shopSummariesByDate,
     orderSummaries: chartOrders,
     coinStatsByDate,
   });
@@ -530,6 +538,15 @@ async function fetchCoinStatsByDate(token: string | null, days: string[]): Promi
   return Object.fromEntries(days.map((day, index) => [day, parseCoinStat(responses[index])]));
 }
 
+async function fetchShopSummariesByDate(
+  token: string | null,
+  days: string[],
+): Promise<Record<string, JsonRecord>> {
+  if (!token) return {};
+  const responses = await mapLimit(days, 5, (day) => getShopSummary(token, day));
+  return Object.fromEntries(days.map((day, index) => [day, responses[index]]));
+}
+
 async function fetchDailyResponses<T>(days: string[], fetcher: (day: string) => Promise<T>): Promise<T[]> {
   return mapLimit(days, 5, fetcher);
 }
@@ -553,12 +570,13 @@ function buildChartPoints(args: {
   normalized: NormalizedRange;
   chartWindow: DateRange;
   revenueResponse: JsonRecord;
+  shopSummariesByDate: Record<string, JsonRecord>;
   orderSummaries: Record<string, number>;
   coinStatsByDate: Record<string, CoinStat>;
 }): RevenueChartPoint[] {
-  const { params, normalized, chartWindow, revenueResponse, orderSummaries, coinStatsByDate } = args;
+  const { params, normalized, chartWindow, revenueResponse, shopSummariesByDate, orderSummaries, coinStatsByDate } = args;
   const highlighted = new Set(normalized.highlightedDates);
-  const dailyRevenue = revenueByDate(revenueResponse);
+  const dailyRevenue = revenueByDate(revenueResponse, shopSummariesByDate);
 
   if (params.mode === "year") {
     const year = chartWindow.startDate.slice(0, 4);
@@ -763,20 +781,33 @@ function parseLatestMemberSnapshot(response: JsonRecord): MemberSnapshot {
   };
 }
 
-function sumRevenue(response: JsonRecord, range: DateRange): number {
-  const byDate = revenueByDate(response);
-  const values = daysBetween(range.startDate, range.endDate).map((day) => byDate[day] ?? 0);
+function sumRevenue(
+  response: JsonRecord,
+  range: DateRange,
+  shopSummariesByDate: Record<string, JsonRecord>,
+): number {
+  const byDate = revenueByDate(response, shopSummariesByDate);
+  const days = daysBetween(range.startDate, range.endDate);
+  const values = days.map((day) => byDate[day] ?? 0);
   const total = values.reduce((sum, value) => sum + value, 0);
-  if (total > 0) return total;
+  const hasShopSummary = days.some((day) => getNetShopRevenue(shopSummariesByDate[day]) !== null);
+  if (hasShopSummary || total > 0) return total;
   return sumRows(extractRows(response), REVENUE_KEYS);
 }
 
-function revenueByDate(response: JsonRecord): Record<string, number> {
+function revenueByDate(
+  response: JsonRecord,
+  shopSummariesByDate: Record<string, JsonRecord> = {},
+): Record<string, number> {
   const result: Record<string, number> = {};
   for (const row of extractRows(response)) {
     const date = getDateField(row);
     if (!date) continue;
     result[date] = (result[date] ?? 0) + firstNumber(row, REVENUE_KEYS);
+  }
+  for (const [date, summary] of Object.entries(shopSummariesByDate)) {
+    const netRevenue = getNetShopRevenue(summary);
+    if (netRevenue !== null) result[date] = netRevenue;
   }
   return result;
 }
@@ -906,7 +937,7 @@ function emptyCoinStat(): CoinStat {
 }
 
 function buildCacheKey(warehouseId: string, mode: RevenueDateMode, range: DateRange): string {
-  return `${warehouseId}_${mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `v${CACHE_VERSION}_${warehouseId}_${mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 async function hydrateDashboardRows(

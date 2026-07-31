@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, onSnapshot, type Timestamp } from "firebase/firestore";
-import { createDetailedApiError, getDetailedErrorMessage } from "@/utils/apiError";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { auth, db } from "@/lib/firebase";
+import { createDetailedApiError, getDetailedErrorMessage } from "@/utils/apiError";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const REVENUE_REFRESH_INTERVAL_SECONDS = 60;
 const REVENUE_REFRESH_INTERVAL_MS = REVENUE_REFRESH_INTERVAL_SECONDS * 1000;
+const REVENUE_DASHBOARD_CACHE_VERSION = 2;
 
 export type RevenueDateMode = "today" | "date" | "month" | "year" | "custom";
 export type RevenueCompareMode = "none" | "previous" | "date" | "month" | "year" | "custom";
@@ -668,7 +670,7 @@ function buildDashboardQuery(filter: RevenueDashboardFilter, warehouseId = DEFAU
 
 function getRevenueDashboardCacheKey(filter: RevenueDashboardFilter, warehouseId = DEFAULT_WAREHOUSE_ID): string {
   const range = normalizeRange(filter);
-  return `${warehouseId}_${filter.mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `v${REVENUE_DASHBOARD_CACHE_VERSION}_${warehouseId}_${filter.mode}_${range.startDate}_${range.endDate}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 function normalizeRange(filter: RevenueDashboardFilter): { startDate: string; endDate: string } {
