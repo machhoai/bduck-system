@@ -37,7 +37,7 @@ export function BulkIssueProgressCard({
     const onlyRejected = progress.total === 0 && retryCandidates.length > 0;
 
     return (
-        <div className="mt-2.5">
+        <div className="mt-2.5 pl-1">
             <div className="flex items-center justify-between gap-2.5">
                 <p className="text-xs font-bold text-slate-900">
                     {onlyRejected
@@ -80,7 +80,7 @@ export function BulkIssueProgressCard({
                 </p>
             )}
             {retryCandidates.length > 0 && (
-                <div className="mt-2.5">
+                <div className="mt-2.5 ">
                     <div className="flex items-start gap-2">
                         <TriangleAlert
                             className="mt-0.5 shrink-0 text-amber-700"
@@ -109,25 +109,26 @@ export function BulkIssueProgressCard({
                                     </span>
                                 )}
                             </div>
-                            <button
-                                type="button"
-                                disabled={!canRetry || retrying || loadingRetryCandidates}
-                                onClick={onRetry}
-                                className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-800 px-2.5 text-xs font-bold text-white hover:bg-amber-900 disabled:opacity-45"
-                            >
-                                {retrying ? (
-                                    <RefreshCw className="animate-spin" size={13} />
-                                ) : (
-                                    <ShieldCheck size={13} />
-                                )}
-                                {retrying
-                                    ? d.retryChecking
-                                    : d.retryRejectedButton(retryCandidates.length)}
-                            </button>
-                            <p className="mt-1.5 flex items-center gap-1 text-xxs text-amber-800">
-                                <ShieldCheck size={12} /> {d.retrySafetyNote}
-                            </p>
+
                         </div>
+                        <button
+                            type="button"
+                            disabled={!canRetry || retrying || loadingRetryCandidates}
+                            onClick={onRetry}
+                            className="mt-2 inline-flex w-full h-8 items-center gap-1.5 rounded-md bg-amber-800 px-2.5 text-xs font-bold text-white hover:bg-amber-900 disabled:opacity-45"
+                        >
+                            {retrying ? (
+                                <RefreshCw className="animate-spin" size={13} />
+                            ) : (
+                                <ShieldCheck size={13} />
+                            )}
+                            {retrying
+                                ? d.retryChecking
+                                : d.retryRejectedButton(retryCandidates.length)}
+                        </button>
+                        <p className="mt-1.5 flex items-center gap-1 text-xxs text-amber-800">
+                            {d.retrySafetyNote}
+                        </p>
                     </div>
                 </div>
             )}
