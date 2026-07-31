@@ -2778,8 +2778,7 @@ const vi = {
             notes: "Ghi chú",
             linkAccount: "Liên kết tài khoản có sẵn",
             unlinked: "Chưa liên kết",
-            createAccountWithProfile:
-                "Tạo tài khoản đăng nhập đi kèm hồ sơ này",
+            createAccountWithProfile: "Tạo tài khoản đăng nhập đi kèm hồ sơ này",
             accountEmail: "Email tài khoản",
             accountStatus: "Trạng thái tài khoản",
             employmentTimeline: "Mốc thời gian lao động",

@@ -206,14 +206,14 @@ export function InvoiceBulkIssuePanel({
                             {d.selectedOrdersCount(selectedIds.length)} · {d.eligibleOrdersCount(eligibleCount)}
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex md:flex-col gap-1.5">
                         <button
                             type="button"
                             disabled={
                                 !canIssue || selectedIds.length === 0 || display.loadingConfig || previewing || issuing
                             }
                             onClick={() => void display.startConfiguration("SELECTED")}
-                            className="inline-flex h-9 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-3 text-sm font-semibold text-white disabled:opacity-40 hover:bg-sky-800"
+                            className="flex-1 h-9 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-3 text-sm font-semibold text-white disabled:opacity-40 hover:bg-sky-800"
                         >
                             <Send size={14} /> {d.issueSelectedBtn}
                         </button>
@@ -223,7 +223,7 @@ export function InvoiceBulkIssuePanel({
                                 !canIssue || eligibleCount === 0 || display.loadingConfig || previewing || issuing
                             }
                             onClick={() => void display.startConfiguration("ALL")}
-                            className="inline-flex h-9 w-fit items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 text-sm font-semibold text-sky-800 disabled:opacity-40 hover:bg-slate-50"
+                            className="flex-1 h-9 w-fit items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 text-sm font-semibold text-sky-800 disabled:opacity-40 hover:bg-slate-50"
                         >
                             {display.loadingConfig || previewing ? (
                                 <RefreshCw className="animate-spin" size={14} />
