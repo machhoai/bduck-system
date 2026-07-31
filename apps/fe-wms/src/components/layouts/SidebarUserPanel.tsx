@@ -13,7 +13,8 @@ export default function SidebarUserPanel({
 }: SidebarUserPanelProps) {
   const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
-  const permissions = useUserStore((s) => s.permissions);
+  const roleIds = useUserStore((s) => s.roleIds);
+  const roleAssignments = useUserStore((s) => s.roleAssignments);
 
   if (!user) return null;
 
@@ -25,13 +26,20 @@ export default function SidebarUserPanel({
       .slice(0, 2)
       .toUpperCase() || "?";
 
-  const scopes = Object.keys(permissions);
-  const isGlobal = scopes.includes("global");
-  const roleName = isGlobal
-    ? t.roles.ADMIN
-    : scopes.length > 0
-      ? t.roles.WAREHOUSE_STAFF
-      : "";
+  const assignedRoleNames = Array.from(
+    new Set(
+      roleAssignments
+        .map((assignment) => assignment.role_name?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  );
+  const legacyRoleNames = roleIds
+    .map((roleId) => (t.roles as Record<string, string>)[roleId])
+    .filter((name): name is string => Boolean(name));
+  const roleName = (assignedRoleNames.length
+    ? assignedRoleNames
+    : legacyRoleNames
+  ).join(" · ");
 
   return (
     <Link

@@ -6,6 +6,7 @@ import {
   resolveLoginEmail,
 } from "../../services/authService.js";
 import { getUserWarehouseRoles } from "../../repositories/userRepository.js";
+import { roleRepository } from "../../repositories/roleRepository.js";
 import {
   findUserFacilityAccessGrants,
   getUserAccessMetadata,
@@ -39,6 +40,22 @@ const loadClientAccessSnapshot = async (userId: string) => {
     metadata.active_version_id,
   );
   return { metadata, grants };
+};
+
+const attachRoleNames = async (
+  assignments: Awaited<ReturnType<typeof getUserWarehouseRoles>>,
+) => {
+  const assignedRoles = await roleRepository.findByIds(
+    assignments.map((assignment) => assignment.role_id),
+  );
+  const roleNamesById = new Map(
+    assignedRoles.map((role) => [role.id, role.name]),
+  );
+
+  return assignments.map((assignment) => ({
+    ...assignment,
+    role_name: roleNamesById.get(assignment.role_id),
+  }));
 };
 
 const loginIdentifierSchema = z.object({
@@ -117,7 +134,10 @@ export const sessionLogin = async (req: Request, res: Response) => {
 
     // Create the session; effective permissions arrive through user_access.
     const sessionResult = await createSessionLogin(idToken);
-    const access = await loadClientAccessSnapshot(sessionResult.user.id);
+    const [access, roles] = await Promise.all([
+      loadClientAccessSnapshot(sessionResult.user.id),
+      attachRoleNames(sessionResult.roles),
+    ]);
 
     // Set HttpOnly cookie
     res.cookie(
@@ -133,7 +153,7 @@ export const sessionLogin = async (req: Request, res: Response) => {
       success: true,
       data: {
         user: sessionResult.user,
-        roles: sessionResult.roles,
+        roles,
         access,
       },
       messages: {
@@ -192,7 +212,9 @@ export const currentSession = async (req: Request, res: Response) => {
       getUserWarehouseRoles(user.id),
       loadClientAccessSnapshot(user.id),
     ]);
-    const roles = activeRoleAssignments(roleAssignments, new Date());
+    const roles = await attachRoleNames(
+      activeRoleAssignments(roleAssignments, new Date()),
+    );
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({
       success: true,

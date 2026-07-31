@@ -128,11 +128,28 @@ export const useUserStore = create<UserState>()((set, get) => ({
     }),
 
   setRoleAssignments: (roleAssignments) =>
-    set({
-      roleAssignments,
-      roleIds: Array.from(
-        new Set(roleAssignments.map((assignment) => assignment.role_id)),
-      ),
+    set((state) => {
+      const existingRoleNames = new Map(
+        state.roleAssignments.flatMap((assignment) =>
+          assignment.role_name
+            ? [[assignment.role_id, assignment.role_name] as const]
+            : [],
+        ),
+      );
+      const enrichedAssignments = roleAssignments.map((assignment) => ({
+        ...assignment,
+        role_name:
+          assignment.role_name ?? existingRoleNames.get(assignment.role_id),
+      }));
+
+      return {
+        roleAssignments: enrichedAssignments,
+        roleIds: Array.from(
+          new Set(
+            enrichedAssignments.map((assignment) => assignment.role_id),
+          ),
+        ),
+      };
     }),
 
   beginAccessRefresh: (accessVersion, activeAccessVersionId) =>

@@ -55,6 +55,8 @@ export interface UserWarehouseRole {
     user_id: string; // FK → users
     warehouse_id: string | null; // FK → warehouses (nullable = global)
     role_id: string; // FK → roles
+    /** Assigned role label included in current-user session read models. */
+    role_name?: string;
     assigned_by: string; // FK → users
     valid_from: string; // DATE
     valid_until: string | null; // DATE, nullable
