@@ -474,7 +474,7 @@ export default function InvoiceManagementPage() {
             </header>
 
             <nav
-                className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-full border border-[var(--color-border-subtle)] bg-white shadow-2xs"
+                className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-3xl md:rounded-full border border-[var(--color-border-subtle)] bg-white shadow-2xs"
                 aria-label="Invoice views"
             >
                 {invoiceViews.map(([value, label], index) => {
@@ -488,13 +488,11 @@ export default function InvoiceManagementPage() {
                                 if (value === "RECONCILIATION" || value === "MISA")
                                     setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                             }}
-                            className={`flex items-center justify-center rounded-full px-3 py-2 text-center text-xs font-semibold transition ${
-                                isLastOdd ? "col-span-2 sm:col-span-1" : ""
-                            } ${
-                                view === value
+                            className={`flex items-center justify-center rounded-full px-3 py-2 text-center text-xs font-semibold transition ${isLastOdd ? "col-span-2 sm:col-span-1" : ""
+                                } ${view === value
                                     ? "bg-slate-900 text-white shadow-2xs"
                                     : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 sm:bg-transparent"
-                            }`}
+                                }`}
                         >
                             {label}
                         </button>
@@ -635,11 +633,10 @@ export default function InvoiceManagementPage() {
                                 {filteredOrders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${
-                                            selectedIssueIds.includes(order.id)
+                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${selectedIssueIds.includes(order.id)
                                                 ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
                                                 : "border-slate-200/90 hover:border-sky-300"
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center justify-between">
                                             <div className="flex items-start gap-3 min-w-0 flex-1">
