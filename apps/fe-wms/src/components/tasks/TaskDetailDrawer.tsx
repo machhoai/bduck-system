@@ -33,6 +33,7 @@ import {
     Barcode,
     Ruler,
     ShieldAlert,
+    MapPin,
 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 import type { ApprovalRecord } from "@bduck/shared-types";
@@ -406,7 +407,11 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                     />
                                     <Field
                                         icon={Warehouse}
-                                        label={t.tasks.detail.warehouse}
+                                        label={
+                                            isExport
+                                                ? t.tasks.detail.sourceWarehouse
+                                                : t.tasks.detail.destinationWarehouse
+                                        }
                                         value={warehouseName || voucher.warehouse_id}
                                     />
                                     {isExport ? (
@@ -515,6 +520,20 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                                             <> × {formatCurrency(item.unit_price)}đ</>
                                                         )}
                                                     </div>
+                                                    {item.warehouse_location_name && (
+                                                        <div className="mt-1.5 flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
+                                                            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                                            <span>
+                                                                {isExport
+                                                                    ? t.tasks.detail.exportCounter
+                                                                    : t.tasks.detail.importCounter}
+                                                                :{" "}
+                                                                <span className="font-medium text-[var(--color-text-primary)]">
+                                                                    {item.warehouse_location_name}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

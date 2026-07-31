@@ -555,7 +555,13 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                             <Field icon={Hash} label={t.tasks.detail.voucherNumber} value={voucher.voucher_number} />
                             <Field
                                 icon={Warehouse}
-                                label={t.tasks.detail.warehouse}
+                                label={
+                                    entityType === "IMPORT_VOUCHER"
+                                        ? t.tasks.detail.destinationWarehouse
+                                        : entityType === "EXPORT_VOUCHER"
+                                          ? t.tasks.detail.sourceWarehouse
+                                          : t.tasks.detail.warehouse
+                                }
                                 value={warehouseName || voucher.warehouse_id}
                             />
                             {entityType === "EXPORT_VOUCHER" ? (

@@ -81,12 +81,12 @@ export function BulkIssueProgressCard({
             )}
             {retryCandidates.length > 0 && (
                 <div className="mt-2.5 ">
-                    <div className="flex items-start gap-2">
-                        <TriangleAlert
-                            className="mt-0.5 shrink-0 text-amber-700"
-                            size={15}
-                        />
+                    <div className="flex flex-col items-start gap-2">
                         <div className="min-w-0 flex-1">
+                            <TriangleAlert
+                                className="mt-0.5 shrink-0 text-amber-700"
+                                size={15}
+                            />
                             <p className="text-xs font-bold text-amber-950">
                                 {d.misaRejectedTitle(retryCandidates.length)}
                             </p>

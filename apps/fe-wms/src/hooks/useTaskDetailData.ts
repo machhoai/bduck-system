@@ -22,8 +22,7 @@ import {
     getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { ApprovalRecord, ENTITY_COLLECTIONS, ProcessEntityType } from "@bduck/shared-types";
-import type { ImportVoucher } from "@bduck/shared-types";
+import type { ApprovalRecord, ImportVoucher } from "@bduck/shared-types";
 
 /** Enriched item with product details resolved */
 export interface EnrichedVoucherItem {
@@ -38,6 +37,8 @@ export interface EnrichedVoucherItem {
     unit_price: number;
     condition: string;
     notes: string | null;
+    warehouse_location_id: string | null;
+    warehouse_location_name: string | null;
 }
 
 interface TaskDetailState {
@@ -139,6 +140,9 @@ export function useTaskDetailData(approval: ApprovalRecord): TaskDetailState {
                     let productCode = "";
                     let barcode: string | null = null;
                     let unit = "";
+                    const warehouseLocationId =
+                        (item.warehouse_location_id as string) || null;
+                    let warehouseLocationName = warehouseLocationId;
 
                     if (item.product_id) {
                         try {
@@ -155,6 +159,20 @@ export function useTaskDetailData(approval: ApprovalRecord): TaskDetailState {
                         }
                     }
 
+                    if (warehouseLocationId) {
+                        try {
+                            const locationSnap = await getDoc(
+                                doc(db, "warehouse_locations", warehouseLocationId),
+                            );
+                            if (locationSnap.exists()) {
+                                warehouseLocationName =
+                                    locationSnap.data()?.name || warehouseLocationId;
+                            }
+                        } catch {
+                            // Keep the location ID visible when its name cannot be resolved
+                        }
+                    }
+
                     return {
                         id: item.id as string,
                         product_id: (item.product_id as string) || "",
@@ -168,6 +186,8 @@ export function useTaskDetailData(approval: ApprovalRecord): TaskDetailState {
                         unit_price: (item.unit_price as number) || 0,
                         condition: (item.condition as string) || "",
                         notes: (item.notes as string) || null,
+                        warehouse_location_id: warehouseLocationId,
+                        warehouse_location_name: warehouseLocationName,
                     };
                 }),
             );
