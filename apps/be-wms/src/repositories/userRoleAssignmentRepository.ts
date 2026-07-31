@@ -1,4 +1,5 @@
 import type { UserWarehouseRole } from "@bduck/shared-types";
+
 import { db } from "../config/firebase.js";
 
 const USER_ROLES_COLLECTION = "user_warehouse_roles";
@@ -54,6 +55,21 @@ export const findActiveUserIdsByRoleId = async (
       }),
     ),
   ).sort();
+};
+
+export const getRoleAssignmentsByRoleIds = async (
+  roleIds: readonly string[],
+): Promise<UserWarehouseRole[]> => {
+  const ids = Array.from(new Set(roleIds.filter(Boolean)));
+  const assignments: UserWarehouseRole[] = [];
+  for (let index = 0; index < ids.length; index += 30) {
+    const snapshot = await db
+      .collection(USER_ROLES_COLLECTION)
+      .where("role_id", "in", ids.slice(index, index + 30))
+      .get();
+    assignments.push(...snapshot.docs.map(mapAssignment));
+  }
+  return assignments;
 };
 
 export const replaceUserWarehouseRoles = async (

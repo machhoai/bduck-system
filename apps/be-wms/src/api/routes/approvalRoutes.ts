@@ -11,6 +11,7 @@
  */
 
 import { Router, type Router as ExpressRouter } from "express";
+
 import {
   getPendingApprovals,
   getApprovalTimeline,
@@ -18,6 +19,7 @@ import {
   rejectHandler,
   cancelHandler,
   forceCancelHandler,
+  restartApprovalHandler,
 } from "../controllers/approvalController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 
@@ -28,6 +30,7 @@ router.use(requireAuth);
 router.get("/pending", getPendingApprovals);
 router.post("/:entityType/:entityId/cancel", cancelHandler);
 router.post("/:entityType/:entityId/force-cancel", forceCancelHandler);
+router.post("/:entityType/:entityId/restart", restartApprovalHandler);
 router.get("/:entityType/:entityId", getApprovalTimeline);
 router.post("/:id/approve", approveHandler);
 router.post("/:id/reject", rejectHandler);

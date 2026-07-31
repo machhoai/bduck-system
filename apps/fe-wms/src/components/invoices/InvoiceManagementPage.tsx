@@ -1,10 +1,6 @@
 "use client";
 
-import {
-    InvoiceDocumentStatus,
-    InvoiceOrderSyncPurpose,
-    InvoicePreparationStatus,
-} from "@bduck/shared-types";
+import { InvoiceDocumentStatus, InvoiceOrderSyncPurpose, InvoicePreparationStatus } from "@bduck/shared-types";
 import {
     AlertTriangle,
     CheckCircle2,
@@ -20,11 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import {
-    invoiceApi,
-    type InvoiceSourceOrderView,
-    type InvoiceSyncResult,
-} from "@/api/invoiceApi";
+import { invoiceApi, type InvoiceSourceOrderView, type InvoiceSyncResult } from "@/api/invoiceApi";
 import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
@@ -43,8 +35,7 @@ const copy = {
     vi: {
         eyebrow: "MISA meInvoice",
         title: "Quản lý hóa đơn",
-        subtitle:
-            "Đồng bộ toàn bộ đơn trong ngày, kiểm tra số liệu và xem trước trước khi phát hành.",
+        subtitle: "Đồng bộ toàn bộ đơn trong ngày, kiểm tra số liệu và xem trước trước khi phát hành.",
         store: "Cửa hàng",
         date: "Ngày giao dịch",
         purpose: "Mục đích đồng bộ",
@@ -82,8 +73,7 @@ const copy = {
         unchanged: "Không đổi",
         retry: "Thử lại",
         syncFailed: "Đồng bộ hóa đơn thất bại",
-        syncDescription:
-            "Toàn bộ đơn hàng trong ngày đã được lưu và tính lại preflight.",
+        syncDescription: "Toàn bộ đơn hàng trong ngày đã được lưu và tính lại preflight.",
         previewReady: "Đã tạo bản xem trước",
         previewFailed: "Không thể xem trước hóa đơn",
         matchedMisa: "Khớp MISA",
@@ -172,10 +162,7 @@ const money = new Intl.NumberFormat("vi-VN", {
 });
 
 const statusStyle = (status: InvoicePreparationStatus) => {
-    if (
-        status === InvoicePreparationStatus.READY_TO_ISSUE ||
-        status === InvoicePreparationStatus.READY_FOR_REVIEW
-    ) {
+    if (status === InvoicePreparationStatus.READY_TO_ISSUE || status === InvoicePreparationStatus.READY_FOR_REVIEW) {
         return "border-emerald-200 bg-emerald-50 text-emerald-700";
     }
     if (status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION) {
@@ -204,14 +191,8 @@ const statusLabel = (status: InvoicePreparationStatus, lang: "vi" | "zh") => {
     return values[lang][status] ?? status;
 };
 
-const documentStatusLabel = (
-    status: InvoiceDocumentStatus,
-    lang: "vi" | "zh",
-) => {
-    const values: Record<
-        "vi" | "zh",
-        Partial<Record<InvoiceDocumentStatus, string>>
-    > = {
+const documentStatusLabel = (status: InvoiceDocumentStatus, lang: "vi" | "zh") => {
+    const values: Record<"vi" | "zh", Partial<Record<InvoiceDocumentStatus, string>>> = {
         vi: {
             NEEDS_TAX_CONFIGURATION: "Draft thiếu cấu hình thuế",
             NEEDS_CORRECTION: "Draft cần chỉnh dữ liệu",
@@ -219,6 +200,8 @@ const documentStatusLabel = (
             NEEDS_SECOND_REVIEW: "Draft cũ — sẵn sàng phát hành",
             READY_TO_ISSUE: "Draft sẵn sàng phát hành",
             REJECTED: "Draft đã từ chối",
+            RETRYABLE_ERROR: "MISA đang được thử lại",
+            MANUAL_RECONCILIATION: "Tạm dừng để kiểm tra an toàn",
         },
         zh: {
             NEEDS_TAX_CONFIGURATION: "草稿缺少税务配置",
@@ -227,6 +210,8 @@ const documentStatusLabel = (
             NEEDS_SECOND_REVIEW: "旧草稿 — 可开票",
             READY_TO_ISSUE: "草稿可开票",
             REJECTED: "草稿已拒绝",
+            RETRYABLE_ERROR: "正在重试 MISA",
+            MANUAL_RECONCILIATION: "已暂停以安全检查",
         },
     };
     return values[lang][status] ?? status;
@@ -250,17 +235,15 @@ export default function InvoiceManagementPage() {
     const hasPermission = useUserStore((state) => state.hasPermission);
     const [view, setView] = useState<InvoiceView>(() => {
         const value = initialQueryValue("tab");
-        return value === "ISSUED" || value === "RECONCILIATION" || value === "MISA" || value === "CONFIG" ? value : "PENDING";
+        return value === "ISSUED" || value === "RECONCILIATION" || value === "MISA" || value === "CONFIG"
+            ? value
+            : "PENDING";
     });
-    const [selectedStoreId, setSelectedStoreId] = useState(() =>
-        initialQueryValue("store"),
-    );
+    const [selectedStoreId, setSelectedStoreId] = useState(() => initialQueryValue("store"));
     const activeStoreId = stores.some((store) => store.id === selectedStoreId)
         ? selectedStoreId
         : (stores[0]?.id ?? "");
-    const [businessDate, setBusinessDate] = useState(() =>
-        initialQueryValue("date", todayInVietnam()),
-    );
+    const [businessDate, setBusinessDate] = useState(() => initialQueryValue("date", todayInVietnam()));
     const [purpose, setPurpose] = useState<InvoiceOrderSyncPurpose>(() =>
         initialQueryValue("purpose") === InvoiceOrderSyncPurpose.RECONCILIATION
             ? InvoiceOrderSyncPurpose.RECONCILIATION
@@ -269,19 +252,14 @@ export default function InvoiceManagementPage() {
     const [orders, setOrders] = useState<InvoiceSourceOrderView[]>([]);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
-    const [selectedOrder, setSelectedOrder] =
-        useState<InvoiceSourceOrderView | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<InvoiceSourceOrderView | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [syncResult, setSyncResult] = useState<InvoiceSyncResult | null>(null);
     const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
     const [query, setQuery] = useState(() => initialQueryValue("q"));
-    const [statusFilter, setStatusFilter] = useState<
-        "ALL" | InvoicePreparationStatus
-    >(() => {
+    const [statusFilter, setStatusFilter] = useState<"ALL" | InvoicePreparationStatus>(() => {
         const value = initialQueryValue("status");
-        return Object.values(InvoicePreparationStatus).includes(
-            value as InvoicePreparationStatus,
-        )
+        return Object.values(InvoicePreparationStatus).includes(value as InvoicePreparationStatus)
             ? (value as InvoicePreparationStatus)
             : "ALL";
     });
@@ -297,19 +275,12 @@ export default function InvoiceManagementPage() {
         setLoading(true);
         setError(null);
         try {
-            const nextOrders = await invoiceApi.listSourceOrders(
-                activeStoreId,
-                businessDate,
-            );
+            const nextOrders = await invoiceApi.listSourceOrders(activeStoreId, businessDate);
             if (generation === loadGeneration.current) setOrders(nextOrders);
         } catch (loadError) {
             if (generation !== loadGeneration.current) return;
             setOrders([]);
-            setError(
-                loadError instanceof Error
-                    ? loadError.message
-                    : "Unable to load invoices.",
-            );
+            setError(loadError instanceof Error ? loadError.message : "Unable to load invoices.");
         } finally {
             if (generation === loadGeneration.current) setLoading(false);
         }
@@ -340,11 +311,7 @@ export default function InvoiceManagementPage() {
         setOrDelete("q", query.trim());
         setOrDelete("tab", view, "PENDING");
         const next = params.toString();
-        window.history.replaceState(
-            null,
-            "",
-            `${window.location.pathname}${next ? `?${next}` : ""}`,
-        );
+        window.history.replaceState(null, "", `${window.location.pathname}${next ? `?${next}` : ""}`);
     }, [activeStoreId, businessDate, purpose, query, statusFilter, view]);
 
     const handleSync = async () => {
@@ -353,27 +320,20 @@ export default function InvoiceManagementPage() {
         setError(null);
         setSyncResult(null);
         try {
-            const operation = invoiceApi
-                .syncSourceOrders(activeStoreId, businessDate, purpose)
-                .then(async (result) => {
-                    setSyncResult(result);
-                    await loadOrders();
-                    return result;
-                });
+            const operation = invoiceApi.syncSourceOrders(activeStoreId, businessDate, purpose).then(async (result) => {
+                setSyncResult(result);
+                await loadOrders();
+                return result;
+            });
             await showToast.promise(operation, {
                 loading: d.syncing,
                 success: d.syncDone,
                 error: d.syncFailed,
                 successDescription: d.syncDescription,
-                errorDescription: (toastError) =>
-                    toastError instanceof Error ? toastError.message : d.syncFailed,
+                errorDescription: (toastError) => (toastError instanceof Error ? toastError.message : d.syncFailed),
             });
         } catch (syncError) {
-            setError(
-                syncError instanceof Error
-                    ? syncError.message
-                    : "Unable to sync invoices.",
-            );
+            setError(syncError instanceof Error ? syncError.message : "Unable to sync invoices.");
         } finally {
             setSyncing(false);
         }
@@ -382,24 +342,17 @@ export default function InvoiceManagementPage() {
     const stats = useMemo(
         () => ({
             total: orders.length,
-            ready: orders.filter(
-                (order) =>
-                    [
-                        InvoicePreparationStatus.READY_TO_ISSUE,
-                        InvoicePreparationStatus.READY_FOR_REVIEW,
-                    ].includes(order.preflight.status),
+            ready: orders.filter((order) =>
+                [InvoicePreparationStatus.READY_TO_ISSUE, InvoicePreparationStatus.READY_FOR_REVIEW].includes(
+                    order.preflight.status,
+                ),
             ).length,
-            tax: orders.filter(
-                (order) =>
-                    order.preflight.status ===
-                    InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION,
-            ).length,
-            review: orders.filter(
-                (order) =>
-                    [
-                        InvoicePreparationStatus.NEEDS_CORRECTION,
-                        InvoicePreparationStatus.NEEDS_REVIEW,
-                    ].includes(order.preflight.status),
+            tax: orders.filter((order) => order.preflight.status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION)
+                .length,
+            review: orders.filter((order) =>
+                [InvoicePreparationStatus.NEEDS_CORRECTION, InvoicePreparationStatus.NEEDS_REVIEW].includes(
+                    order.preflight.status,
+                ),
             ).length,
         }),
         [orders],
@@ -408,14 +361,11 @@ export default function InvoiceManagementPage() {
     const filteredOrders = useMemo(() => {
         const normalizedQuery = query.trim().toLocaleLowerCase(lang);
         return orders.filter((order) => {
-            if (statusFilter !== "ALL" && order.preflight.status !== statusFilter)
-                return false;
+            if (statusFilter !== "ALL" && order.preflight.status !== statusFilter) return false;
             if (!normalizedQuery) return true;
             return [order.order_number, order.source_order_id, order.customer_name]
                 .filter(Boolean)
-                .some((value) =>
-                    String(value).toLocaleLowerCase(lang).includes(normalizedQuery),
-                );
+                .some((value) => String(value).toLocaleLowerCase(lang).includes(normalizedQuery));
         });
     }, [lang, orders, query, statusFilter]);
 
@@ -424,6 +374,7 @@ export default function InvoiceManagementPage() {
             ? hasPermission("invoices.prepare", activeStoreId)
             : hasPermission("invoices.reconcile", activeStoreId);
     const canBulkIssue = hasPermission("invoices.bulk_issue", activeStoreId);
+    const canRetryIssue = hasPermission("invoices.retry", activeStoreId);
     const canConfigure = hasPermission("invoices.config", activeStoreId);
     const invoiceViews: Array<[InvoiceView, string]> = [
         ["PENDING", lang === "vi" ? "Chờ phát hành" : "Pending"],
@@ -434,9 +385,7 @@ export default function InvoiceManagementPage() {
             ? ([["CONFIG", lang === "vi" ? "Cấu hình" : "Configuration"]] as Array<[InvoiceView, string]>)
             : []),
     ];
-    const selectableIssueIds = filteredOrders
-        .filter(canSelectForBulkIssue)
-        .map((order) => order.id);
+    const selectableIssueIds = filteredOrders.filter(canSelectForBulkIssue).map((order) => order.id);
     const selectedEligibleIds = selectedIssueIds.filter((id) =>
         orders.some((order) => order.id === id && canSelectForBulkIssue(order)),
     );
@@ -444,22 +393,15 @@ export default function InvoiceManagementPage() {
 
     const toggleIssueId = (id: string) => {
         setSelectedIssueIds((current) =>
-            current.includes(id)
-                ? current.filter((value) => value !== id)
-                : [...current, id],
+            current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
         );
     };
 
     if (!storesLoading && stores.length === 0) {
         return (
             <div className="flex min-h-72 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-6 text-center">
-                <ReceiptText
-                    className="mb-3 text-[var(--color-text-muted)]"
-                    size={40}
-                />
-                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {d.noStore}
-                </p>
+                <ReceiptText className="mb-3 text-[var(--color-text-muted)]" size={40} />
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">{d.noStore}</p>
             </div>
         );
     }
@@ -468,13 +410,13 @@ export default function InvoiceManagementPage() {
         <div className="flex w-full flex-col gap-3 pb-4">
             <header className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
                 <div className="border-b border-[var(--color-border-subtle)] bg-[linear-gradient(120deg,#0f172a,#163a5f)] px-3 py-4 text-white sm:px-4">
-                    <p className="text-xxs font-semibold uppercase tracking-[0.18em] text-sky-200">
-                        {d.eyebrow}
-                    </p>
+                    <p className="text-xxs font-semibold uppercase tracking-[0.18em] text-sky-200">{d.eyebrow}</p>
                     <h1 className="mt-0.5 text-lg font-bold">{d.title}</h1>
                     <p className="mt-0.5 max-w-[60%] text-xs text-slate-300">{d.subtitle}</p>
                 </div>
-                <div className={`grid gap-2 p-2.5 ${view === "CONFIG" ? "sm:grid-cols-[minmax(220px,420px)]" : "sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end"}`}>
+                <div
+                    className={`grid gap-2 p-2.5 ${view === "CONFIG" ? "sm:grid-cols-[minmax(220px,420px)]" : "sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_minmax(260px,1fr)_auto] lg:items-end"}`}
+                >
                     <Field label={d.store}>
                         <select
                             value={activeStoreId}
@@ -488,48 +430,53 @@ export default function InvoiceManagementPage() {
                             ))}
                         </select>
                     </Field>
-                    {view !== "CONFIG" && <Field label={d.date}>
-                        <input
-                            type="date"
-                            value={businessDate}
-                            onChange={(event) => setBusinessDate(event.target.value)}
-                            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
-                        />
-                    </Field>}
-                    {view !== "CONFIG" && <Field label={d.purpose}>
-                        <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-1">
-                            {[
-                                [InvoiceOrderSyncPurpose.ISSUE, d.issue],
-                                [InvoiceOrderSyncPurpose.RECONCILIATION, d.reconciliation],
-                            ].map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    onClick={() => setPurpose(value as InvoiceOrderSyncPurpose)}
-                                    className={`h-8 rounded-sm px-2 text-xs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </Field>}
-                    {view !== "CONFIG" && <button
-                        type="button"
-                        onClick={handleSync}
-                        disabled={!canSync || syncing || !activeStoreId}
-                        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {syncing ? (
-                            <LoaderCircle className="animate-spin" size={14} />
-                        ) : (
-                            <RefreshCw size={14} />
-                        )}
-                        {syncing ? d.syncing : d.sync}
-                    </button>}
+                    {view !== "CONFIG" && (
+                        <Field label={d.date}>
+                            <input
+                                type="date"
+                                value={businessDate}
+                                onChange={(event) => setBusinessDate(event.target.value)}
+                                className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none focus:border-[var(--color-brand-primary)]"
+                            />
+                        </Field>
+                    )}
+                    {view !== "CONFIG" && (
+                        <Field label={d.purpose}>
+                            <div className="grid grid-cols-2 rounded-[var(--radius-md)] bg-slate-100 p-1">
+                                {[
+                                    [InvoiceOrderSyncPurpose.ISSUE, d.issue],
+                                    [InvoiceOrderSyncPurpose.RECONCILIATION, d.reconciliation],
+                                ].map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setPurpose(value as InvoiceOrderSyncPurpose)}
+                                        className={`h-8 rounded-sm px-2 text-xs font-semibold transition ${purpose === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </Field>
+                    )}
+                    {view !== "CONFIG" && (
+                        <button
+                            type="button"
+                            onClick={handleSync}
+                            disabled={!canSync || syncing || !activeStoreId}
+                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-brand-primary)] px-3 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {syncing ? <LoaderCircle className="animate-spin" size={14} /> : <RefreshCw size={14} />}
+                            {syncing ? d.syncing : d.sync}
+                        </button>
+                    )}
                 </div>
             </header>
 
-            <nav className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-full border border-[var(--color-border-subtle)] bg-white shadow-2xs" aria-label="Invoice views">
+            <nav
+                className="grid grid-cols-2 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:items-center rounded-full border border-[var(--color-border-subtle)] bg-white shadow-2xs"
+                aria-label="Invoice views"
+            >
                 {invoiceViews.map(([value, label], index) => {
                     const isLastOdd = index === invoiceViews.length - 1 && invoiceViews.length % 2 !== 0;
                     return (
@@ -538,20 +485,22 @@ export default function InvoiceManagementPage() {
                             type="button"
                             onClick={() => {
                                 setView(value);
-                                if (value === "RECONCILIATION" || value === "MISA") setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
+                                if (value === "RECONCILIATION" || value === "MISA")
+                                    setPurpose(InvoiceOrderSyncPurpose.RECONCILIATION);
                             }}
-                            className={`flex items-center justify-center rounded-full px-3 py-2 text-center text-xs font-semibold transition ${isLastOdd ? "col-span-2 sm:col-span-1" : ""
-                                } ${view === value
+                            className={`flex items-center justify-center rounded-full px-3 py-2 text-center text-xs font-semibold transition ${
+                                isLastOdd ? "col-span-2 sm:col-span-1" : ""
+                            } ${
+                                view === value
                                     ? "bg-slate-900 text-white shadow-2xs"
                                     : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 sm:bg-transparent"
-                                }`}
+                            }`}
                         >
                             {label}
                         </button>
                     );
                 })}
             </nav>
-
 
             {view !== "CONFIG" && error && (
                 <ErrorNotificationCard
@@ -563,28 +512,21 @@ export default function InvoiceManagementPage() {
                 />
             )}
             {view !== "CONFIG" && syncResult && (
-                <SyncResultCard
-                    d={d}
-                    onDismiss={() => setSyncResult(null)}
-                    syncResult={syncResult}
-                />
+                <SyncResultCard d={d} onDismiss={() => setSyncResult(null)} syncResult={syncResult} />
             )}
 
             {view === "CONFIG" ? (
-                <InvoiceConfigurationPanel
-                    warehouseId={activeStoreId}
-                    canConfigure={canConfigure}
-                    lang={lang}
-                />
+                <InvoiceConfigurationPanel warehouseId={activeStoreId} canConfigure={canConfigure} lang={lang} />
             ) : view === "PENDING" ? (
                 <>
-                    {canBulkIssue && (
+                    {(canBulkIssue || canRetryIssue) && (
                         <InvoiceBulkIssuePanel
                             warehouseId={activeStoreId}
                             businessDate={businessDate}
                             selectedIds={selectedEligibleIds}
                             eligibleCount={dailyEligibleCount}
                             canIssue={canBulkIssue}
+                            canRetry={canRetryIssue}
                             lang={lang}
                             onIssued={() => setSelectedIssueIds([])}
                             onCompleted={() => void loadOrders()}
@@ -592,23 +534,9 @@ export default function InvoiceManagementPage() {
                     )}
 
                     <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                        <StatCard
-                            label={d.total}
-                            value={stats.total}
-                            icon={<ReceiptText size={15} />}
-                        />
-                        <StatCard
-                            label={d.ready}
-                            value={stats.ready}
-                            icon={<ShieldCheck size={15} />}
-                            tone="success"
-                        />
-                        <StatCard
-                            label={d.tax}
-                            value={stats.tax}
-                            icon={<FileWarning size={15} />}
-                            tone="warning"
-                        />
+                        <StatCard label={d.total} value={stats.total} icon={<ReceiptText size={15} />} />
+                        <StatCard label={d.ready} value={stats.ready} icon={<ShieldCheck size={15} />} tone="success" />
+                        <StatCard label={d.tax} value={stats.tax} icon={<FileWarning size={15} />} tone="warning" />
                         <StatCard
                             label={d.review}
                             value={stats.review}
@@ -633,9 +561,7 @@ export default function InvoiceManagementPage() {
                             </div>
                             <select
                                 value={statusFilter}
-                                onChange={(event) =>
-                                    setStatusFilter(event.target.value as typeof statusFilter)
-                                }
+                                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
                                 className="h-8 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-2.5 text-xs font-semibold outline-none"
                             >
                                 <option value="ALL">{d.all}</option>
@@ -650,7 +576,10 @@ export default function InvoiceManagementPage() {
                         {loading ? (
                             <div className="p-3 space-y-2 animate-pulse" aria-label={d.loading}>
                                 {[...Array(4)].map((_, i) => (
-                                    <div key={i} className="flex h-12 items-center gap-4 rounded-xl bg-slate-100/70 px-4 border border-slate-200/50">
+                                    <div
+                                        key={i}
+                                        className="flex h-12 items-center gap-4 rounded-xl bg-slate-100/70 px-4 border border-slate-200/50"
+                                    >
                                         <div className="h-4 w-32 rounded bg-slate-200" />
                                         <div className="h-4 w-24 rounded bg-slate-200" />
                                         <div className="h-4 w-16 rounded bg-slate-200" />
@@ -661,12 +590,8 @@ export default function InvoiceManagementPage() {
                         ) : filteredOrders.length === 0 ? (
                             <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
                                 <ReceiptText size={30} className="mb-2.5 text-slate-300" />
-                                <p className="text-xs font-semibold text-[var(--color-text-primary)]">
-                                    {d.empty}
-                                </p>
-                                <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">
-                                    {d.emptyHint}
-                                </p>
+                                <p className="text-xs font-semibold text-[var(--color-text-primary)]">{d.empty}</p>
+                                <p className="mt-0.5 text-xxs text-[var(--color-text-muted)]">{d.emptyHint}</p>
                             </div>
                         ) : (
                             <div className="flex flex-col gap-2.5 p-3">
@@ -677,15 +602,11 @@ export default function InvoiceManagementPage() {
                                                 type="checkbox"
                                                 checked={
                                                     selectableIssueIds.length > 0 &&
-                                                    selectableIssueIds.every((id) =>
-                                                        selectedIssueIds.includes(id),
-                                                    )
+                                                    selectableIssueIds.every((id) => selectedIssueIds.includes(id))
                                                 }
                                                 onChange={() => {
                                                     setSelectedIssueIds(
-                                                        selectableIssueIds.every((id) =>
-                                                            selectedIssueIds.includes(id),
-                                                        )
+                                                        selectableIssueIds.every((id) => selectedIssueIds.includes(id))
                                                             ? []
                                                             : selectableIssueIds,
                                                     );
@@ -714,10 +635,11 @@ export default function InvoiceManagementPage() {
                                 {filteredOrders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${selectedIssueIds.includes(order.id)
-                                            ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
-                                            : "border-slate-200/90 hover:border-sky-300"
-                                            }`}
+                                        className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${
+                                            selectedIssueIds.includes(order.id)
+                                                ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
+                                                : "border-slate-200/90 hover:border-sky-300"
+                                        }`}
                                     >
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center justify-between">
                                             <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -744,9 +666,7 @@ export default function InvoiceManagementPage() {
                                                             {order.order_number ?? order.source_order_id}
                                                         </span>
                                                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-medium">
-                                                            {order.mapped_payment_method ??
-                                                                order.payment_method ??
-                                                                "—"}
+                                                            {order.mapped_payment_method ?? order.payment_method ?? "—"}
                                                         </span>
                                                     </div>
                                                     <p
@@ -800,10 +720,7 @@ export default function InvoiceManagementPage() {
                                                     </span>
                                                     {order.invoice_document_status && (
                                                         <span className="text-xs font-semibold text-slate-500">
-                                                            {documentStatusLabel(
-                                                                order.invoice_document_status,
-                                                                lang,
-                                                            )}
+                                                            {documentStatusLabel(order.invoice_document_status, lang)}
                                                         </span>
                                                     )}
                                                 </div>
@@ -829,10 +746,7 @@ export default function InvoiceManagementPage() {
                             order={selectedOrder}
                             lang={lang}
                             labels={d}
-                            canPrepare={hasPermission(
-                                "invoices.prepare",
-                                selectedOrder.warehouse_id,
-                            )}
+                            canPrepare={hasPermission("invoices.prepare", selectedOrder.warehouse_id)}
                             onChanged={loadOrders}
                             onClose={() => setSelectedOrder(null)}
                         />
@@ -858,13 +772,7 @@ export default function InvoiceManagementPage() {
     );
 }
 
-function Field({
-    label,
-    children,
-}: {
-    label: string;
-    children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <label className="grid gap-1">
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -891,9 +799,7 @@ function OrderReviewSheet({
     onClose: () => void;
 }) {
     const [isDesktop, setIsDesktop] = useState(() =>
-        typeof window !== "undefined"
-            ? window.matchMedia("(min-width: 1024px)").matches
-            : false,
+        typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false,
     );
 
     useEffect(() => {
@@ -924,120 +830,95 @@ function OrderReviewSheet({
     }, [isDesktop, onClose]);
 
     const content = (
-            <div className="pt-2">
-                <p className="text-xxs font-semibold uppercase tracking-wider text-slate-400">
-                    {labels.detail} · {order.payment_time ?? "—"}
-                </p>
+        <div className="pt-2">
+            <p className="text-xxs font-semibold uppercase tracking-wider text-slate-400">
+                {labels.detail} · {order.payment_time ?? "—"}
+            </p>
 
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                    <MoneyCell
-                        label={labels.beforeTax}
-                        value={
-                            order.calculation?.total_amount_without_vat ??
-                            order.amount_before_tax ??
-                            0
-                        }
-                    />
-                    <MoneyCell
-                        label={labels.vat}
-                        value={
-                            order.calculation?.total_vat_amount ?? order.tax_money ?? 0
-                        }
-                    />
-                    <MoneyCell
-                        label={labels.totalMoney}
-                        value={order.calculation?.total_amount ?? order.real_money ?? 0}
-                        strong
-                    />
-                </div>
-
-                <section className="mt-5">
-                    <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                            {labels.issues}
-                        </h3>
-                        <span
-                            className={`rounded-full border px-2.5 py-0.5 text-xxs font-semibold ${statusStyle(order.preflight.status)}`}
-                        >
-                            {statusLabel(order.preflight.status, lang)}
-                        </span>
-                    </div>
-                    {order.preflight.issues.length === 0 ? (
-                        <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-3 text-xs font-medium text-emerald-800">
-                            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" /> {labels.noIssues}
-                        </div>
-                    ) : (
-                        <div className="mt-2 grid gap-2">
-                            {order.preflight.issues.map((item, index) => (
-                                <div
-                                    key={`${item.code}-${index}`}
-                                    className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3"
-                                >
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
-                                        <AlertTriangle size={14} className="shrink-0" /> {item.code}
-                                    </div>
-                                    <p className="mt-1 text-xs text-amber-900 leading-snug">
-                                        {item.message}
-                                    </p>
-                                    <p className="mt-1 font-mono text-[10px] text-amber-700 break-all">
-                                        {item.path}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-
-                <section className="mt-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                        {labels.sourceItems} ({order.normalized_items.length})
-                    </h3>
-                    <div className="mt-2 grid gap-2">
-                        {(order.calculation?.lines ?? order.normalized_items).map(
-                            (item, index) => (
-                                <div
-                                    key={`${item.line_number}-${index}`}
-                                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs max-w-full"
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-xs font-bold text-slate-900">
-                                                {item.item_name ?? "—"}
-                                            </p>
-                                            <p className="mt-0.5 font-mono text-xxs text-slate-400">
-                                                {item.item_code ?? item.source_item_id ?? "—"}
-                                            </p>
-                                        </div>
-                                        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xxs font-bold text-slate-700">
-                                            {item.vat_rate_name ?? "VAT ?"}
-                                        </span>
-                                    </div>
-                                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-600 border-t border-slate-100 pt-2">
-                                        <span className="font-medium text-slate-500">
-                                            {item.quantity ?? 0} {item.unit_name ?? "—"} × {money.format(item.unit_price ?? 0)}
-                                        </span>
-                                        {"total_amount" in item &&
-                                            typeof item.total_amount === "number" && (
-                                                <span className="font-bold text-slate-900 tabular-nums">
-                                                    {money.format(item.total_amount)}
-                                                </span>
-                                            )}
-                                    </div>
-                                </div>
-                            ),
-                        )}
-                    </div>
-                </section>
-
-                <div className="mt-5 border-t border-slate-200/80 pt-4">
-                    <InvoiceDraftWorkflow
-                        order={order}
-                        lang={lang}
-                        canPrepare={canPrepare}
-                        onChanged={onChanged}
-                    />
-                </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+                <MoneyCell
+                    label={labels.beforeTax}
+                    value={order.calculation?.total_amount_without_vat ?? order.amount_before_tax ?? 0}
+                />
+                <MoneyCell label={labels.vat} value={order.calculation?.total_vat_amount ?? order.tax_money ?? 0} />
+                <MoneyCell
+                    label={labels.totalMoney}
+                    value={order.calculation?.total_amount ?? order.real_money ?? 0}
+                    strong
+                />
             </div>
+
+            <section className="mt-5">
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">{labels.issues}</h3>
+                    <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xxs font-semibold ${statusStyle(order.preflight.status)}`}
+                    >
+                        {statusLabel(order.preflight.status, lang)}
+                    </span>
+                </div>
+                {order.preflight.issues.length === 0 ? (
+                    <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-3 text-xs font-medium text-emerald-800">
+                        <CheckCircle2 size={16} className="shrink-0 text-emerald-600" /> {labels.noIssues}
+                    </div>
+                ) : (
+                    <div className="mt-2 grid gap-2">
+                        {order.preflight.issues.map((item, index) => (
+                            <div
+                                key={`${item.code}-${index}`}
+                                className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3"
+                            >
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                                    <AlertTriangle size={14} className="shrink-0" /> {item.code}
+                                </div>
+                                <p className="mt-1 text-xs text-amber-900 leading-snug">{item.message}</p>
+                                <p className="mt-1 font-mono text-[10px] text-amber-700 break-all">{item.path}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section className="mt-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    {labels.sourceItems} ({order.normalized_items.length})
+                </h3>
+                <div className="mt-2 grid gap-2">
+                    {(order.calculation?.lines ?? order.normalized_items).map((item, index) => (
+                        <div
+                            key={`${item.line_number}-${index}`}
+                            className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs max-w-full"
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs font-bold text-slate-900">{item.item_name ?? "—"}</p>
+                                    <p className="mt-0.5 font-mono text-xxs text-slate-400">
+                                        {item.item_code ?? item.source_item_id ?? "—"}
+                                    </p>
+                                </div>
+                                <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xxs font-bold text-slate-700">
+                                    {item.vat_rate_name ?? "VAT ?"}
+                                </span>
+                            </div>
+                            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-600 border-t border-slate-100 pt-2">
+                                <span className="font-medium text-slate-500">
+                                    {item.quantity ?? 0} {item.unit_name ?? "—"} × {money.format(item.unit_price ?? 0)}
+                                </span>
+                                {"total_amount" in item && typeof item.total_amount === "number" && (
+                                    <span className="font-bold text-slate-900 tabular-nums">
+                                        {money.format(item.total_amount)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <div className="mt-5 border-t border-slate-200/80 pt-4">
+                <InvoiceDraftWorkflow order={order} lang={lang} canPrepare={canPrepare} onChanged={onChanged} />
+            </div>
+        </div>
     );
 
     if (!isDesktop) {
@@ -1068,18 +949,14 @@ function OrderReviewSheet({
             <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
                 <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
                     <div className="min-w-0 flex-1">
-                        <p className="text-micro font-bold uppercase tracking-wider text-sky-700">
-                            {labels.detail}
-                        </p>
+                        <p className="text-micro font-bold uppercase tracking-wider text-sky-700">{labels.detail}</p>
                         <h2
                             id="invoice-order-detail-title"
                             className="mt-0.5 truncate text-base font-bold text-slate-950"
                         >
                             {order.order_number ?? order.source_order_id}
                         </h2>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                            {order.payment_time ?? "—"}
-                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">{order.payment_time ?? "—"}</p>
                     </div>
                     <button
                         type="button"
@@ -1090,9 +967,7 @@ function OrderReviewSheet({
                         <X size={19} />
                     </button>
                 </header>
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8">
-                    {content}
-                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8">{content}</div>
             </div>
         </div>,
         document.body,
@@ -1118,11 +993,7 @@ function StatCard({
     };
     return (
         <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-3">
-            <span
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${tones[tone]}`}
-            >
-                {icon}
-            </span>
+            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${tones[tone]}`}>{icon}</span>
             <div>
                 <p className="text-xl font-bold tabular-nums text-slate-900">{value}</p>
                 <p className="text-xs text-slate-500">{label}</p>
@@ -1131,46 +1002,20 @@ function StatCard({
     );
 }
 
-function MoneyCell({
-    label,
-    value,
-    strong = false,
-}: {
-    label: string;
-    value: number;
-    strong?: boolean;
-}) {
+function MoneyCell({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
     return (
-        <div
-            className={`rounded-lg p-3 ${strong ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-900"}`}
-        >
-            <p
-                className={`text-[11px] ${strong ? "text-slate-300" : "text-slate-500"}`}
-            >
-                {label}
-            </p>
-            <p className="mt-1 text-sm font-bold tabular-nums sm:text-base">
-                {money.format(value)}
-            </p>
+        <div className={`rounded-lg p-3 ${strong ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-900"}`}>
+            <p className={`text-[11px] ${strong ? "text-slate-300" : "text-slate-500"}`}>{label}</p>
+            <p className="mt-1 text-sm font-bold tabular-nums sm:text-base">{money.format(value)}</p>
         </div>
     );
 }
 
-function MobileMoney({
-    label,
-    value,
-    strong = false,
-}: {
-    label: string;
-    value: number;
-    strong?: boolean;
-}) {
+function MobileMoney({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
     return (
         <div className={strong ? "text-slate-900" : "text-slate-600"}>
             <p className="truncate text-[10px] text-slate-400">{label}</p>
-            <p className="mt-0.5 truncate font-bold tabular-nums">
-                {money.format(value)}
-            </p>
+            <p className="mt-0.5 truncate font-bold tabular-nums">{money.format(value)}</p>
         </div>
     );
 }
@@ -1186,7 +1031,7 @@ function ErrorNotificationCard({
     loading: boolean;
     onRetry: () => void;
     onDismiss?: () => void;
-    d: typeof copy["vi"] | typeof copy["zh"];
+    d: (typeof copy)["vi"] | (typeof copy)["zh"];
 }) {
     return (
         <div className="relative overflow-hidden rounded-2xl border border-rose-200/80 bg-gradient-to-r from-rose-50/95 via-rose-50/50 to-white p-3.5 shadow-xs transition-all">
@@ -1197,16 +1042,12 @@ function ErrorNotificationCard({
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-rose-950">
-                                {d.errorTitle}
-                            </h4>
+                            <h4 className="text-sm font-bold text-rose-950">{d.errorTitle}</h4>
                             <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
                                 Error
                             </span>
                         </div>
-                        <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">
-                            {error}
-                        </p>
+                        <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">{error}</p>
                     </div>
                 </div>
 
@@ -1243,7 +1084,7 @@ function SyncResultCard({
 }: {
     syncResult: InvoiceSyncResult;
     onDismiss?: () => void;
-    d: typeof copy["vi"] | typeof copy["zh"];
+    d: (typeof copy)["vi"] | (typeof copy)["zh"];
 }) {
     const reco = syncResult.reconciliation?.summary;
 
@@ -1259,16 +1100,12 @@ function SyncResultCard({
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-slate-900">
-                                {d.syncDone}
-                            </h4>
+                            <h4 className="text-sm font-bold text-slate-900">{d.syncDone}</h4>
                             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold tabular-nums text-emerald-800">
                                 {syncResult.order_count} {d.order}
                             </span>
                         </div>
-                        <p className="text-xs text-slate-500">
-                            {d.syncDescription}
-                        </p>
+                        <p className="text-xs text-slate-500">{d.syncDescription}</p>
                     </div>
                 </div>
 
@@ -1312,37 +1149,19 @@ function SyncResultCard({
                         <span className="text-xxs font-bold uppercase tracking-wider text-slate-600">
                             {d.syncDetailsTitle}
                         </span>
-                        <span className="text-xxs font-semibold text-emerald-700">
-                            MISA meInvoice
-                        </span>
+                        <span className="text-xxs font-semibold text-emerald-700">MISA meInvoice</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                        <ReconciliationTile
-                            label={d.matchedMisa}
-                            value={reco.matched_count}
-                            tone="emerald"
-                        />
-                        <ReconciliationTile
-                            label={d.misaReturned}
-                            value={reco.misa_invoice_count}
-                            tone="sky"
-                        />
-                        <ReconciliationTile
-                            label={d.notIssued}
-                            value={reco.source_not_in_misa_count}
-                            tone="slate"
-                        />
+                        <ReconciliationTile label={d.matchedMisa} value={reco.matched_count} tone="emerald" />
+                        <ReconciliationTile label={d.misaReturned} value={reco.misa_invoice_count} tone="sky" />
+                        <ReconciliationTile label={d.notIssued} value={reco.source_not_in_misa_count} tone="slate" />
                         <ReconciliationTile
                             label={d.mismatches}
                             value={reco.mismatch_count + reco.misa_not_in_source_count}
                             tone="rose"
                         />
-                        <ReconciliationTile
-                            label={d.unlinked}
-                            value={reco.unscoped_misa_count}
-                            tone="amber"
-                        />
+                        <ReconciliationTile label={d.unlinked} value={reco.unscoped_misa_count} tone="amber" />
                     </div>
                 </div>
             )}
@@ -1404,14 +1223,10 @@ function ReconciliationTile({
             className={`flex flex-col justify-between rounded-lg border p-2 transition-all shadow-2xs ${style.border} ${style.bg}`}
         >
             <div className="flex items-center justify-between gap-1">
-                <span className="truncate text-xxs font-semibold text-slate-600">
-                    {label}
-                </span>
+                <span className="truncate text-xxs font-semibold text-slate-600">{label}</span>
                 <span className={`size-1.5 rounded-full shrink-0 ${style.indicator}`} />
             </div>
-            <p className={`mt-1.5 text-base font-bold tabular-nums ${style.num}`}>
-                {value}
-            </p>
+            <p className={`mt-1.5 text-base font-bold tabular-nums ${style.num}`}>{value}</p>
         </div>
     );
 }

@@ -18,3 +18,25 @@ export const invoiceIssueItemParamsSchema = z.object({
 export const invoiceIssueJobScopeSchema = z.object({
   warehouse_id: z.string().trim().min(1),
 });
+
+export const listInvoiceIssueRetryCandidatesSchema = z.object({
+  warehouse_id: z.string().trim().min(1),
+  business_date: z.iso.date(),
+});
+
+export const retryInvoiceIssueItemsSchema = z.object({
+  warehouse_id: z.string().trim().min(1),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/u),
+  items: z
+    .array(
+      z.object({
+        job_id: z.string().trim().min(1),
+        item_id: z.string().trim().min(1),
+      }),
+    )
+    .min(1)
+    .max(300),
+});

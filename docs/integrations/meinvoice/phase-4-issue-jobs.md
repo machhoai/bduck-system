@@ -38,6 +38,16 @@ Item đi qua các trạng thái:
 
 Nhánh lỗi gồm `RETRYABLE_ERROR` và `MANUAL_RECONCILIATION`. Chỉ lỗi được xác định chắc chắn là chưa tạo hóa đơn mới được retry publish. Mọi lỗi mơ hồ sau submit đều chỉ gọi status bằng `RefID`.
 
+## Retry hóa đơn bị MISA từ chối
+
+- UI hiển thị trạng thái thân thiện `MISA đã từ chối — có thể thử lại` thay cho mã kỹ thuật.
+- `GET /api/invoices/issues/retry-candidates` chỉ trả các item có lỗi rõ ràng trong `publishInvoiceResult`, không có `TransactionID`, số hóa đơn hoặc mã hóa đơn.
+- `POST /api/invoices/issues/retry` yêu cầu quyền `invoices.retry` và OTP, hỗ trợ nhiều job nhưng chỉ requeue đúng các item lỗi được chọn.
+- Trước khi requeue, backend tra trạng thái MISA bằng `RefID`. Nếu MISA đã có bất kỳ dấu vết phát hành nào, toàn bộ lần retry bị chặn.
+- Retry giữ nguyên payload snapshot, `RefID` và registry chống trùng; chỉ cập nhật `SignType` từ cấu hình cửa hàng đã được lưu và xác minh.
+- Với lỗi `CallSignServiceFail`, backend yêu cầu hình thức ký đã được đổi (ví dụ HSM `2` sang máy tính tiền `5`) trước khi cho retry.
+- Timeout, lỗi mạng, response không đầy đủ, hóa đơn đã xóa hoặc trường hợp mơ hồ vẫn không được publish lại.
+
 Job tổng hợp thành `QUEUED`, `PROCESSING`, `COMPLETED`, `PARTIAL`, `FAILED` hoặc `CANCELLED` từ counters được cập nhật cùng transaction với item.
 
 ## Cấu hình hạ tầng

@@ -1,17 +1,22 @@
 import { createHash } from "node:crypto";
+
 import {
   InvoiceDocumentStatus,
   InvoiceIssueItemStatus,
   InvoiceOrderMatchStatus,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
 export const issueJobId = (
   warehouseId: string,
   actorId: string,
   idempotencyKey: string,
-) => createHash("sha256").update(`${warehouseId}:${actorId}:${idempotencyKey}`).digest("hex");
+) =>
+  createHash("sha256")
+    .update(`${warehouseId}:${actorId}:${idempotencyKey}`)
+    .digest("hex");
 
 export const invoiceLaneId = (accountId: string, invSeries: string) =>
   createHash("sha256").update(`${accountId}:${invSeries}`).digest("hex");
@@ -19,9 +24,7 @@ export const invoiceLaneId = (accountId: string, invSeries: string) =>
 export const sameInvoiceDocumentSet = (left: string[], right: string[]) => {
   if (left.length !== right.length) return false;
   const sortedRight = [...right].sort();
-  return [...left]
-    .sort()
-    .every((value, index) => value === sortedRight[index]);
+  return [...left].sort().every((value, index) => value === sortedRight[index]);
 };
 
 export interface InvoiceIssueCandidateIssue {
@@ -55,34 +58,58 @@ export const validateInvoiceIssueCandidate = (
     InvoiceDocumentStatus.READY_TO_ISSUE,
   ];
   if (!allowedStatuses.includes(document.status as InvoiceDocumentStatus)) {
-    issues.push({ code: "DOCUMENT_NOT_READY", message: "Draft is not ready to issue." });
+    issues.push({
+      code: "DOCUMENT_NOT_READY",
+      message: "Draft is not ready to issue.",
+    });
   }
   if (document.issue_eligible !== true || !document.calculation) {
-    issues.push({ code: "DOCUMENT_NOT_ELIGIBLE", message: "Draft did not pass validation." });
+    issues.push({
+      code: "DOCUMENT_NOT_ELIGIBLE",
+      message: "Draft did not pass validation.",
+    });
   }
   if (
     sourceOrder.source_payload_hash !== document.source_payload_hash ||
     sourceOrder.is_deleted === true
   ) {
-    issues.push({ code: "SOURCE_STALE", message: "Source order changed after review." });
+    issues.push({
+      code: "SOURCE_STALE",
+      message: "Source order changed after review.",
+    });
   }
   if (sourceOrder.match_status === InvoiceOrderMatchStatus.MATCHED) {
-    issues.push({ code: "SOURCE_ALREADY_INVOICED", message: "Order is already matched to an invoice." });
+    issues.push({
+      code: "SOURCE_ALREADY_INVOICED",
+      message: "Order is already matched to an invoice.",
+    });
   }
   if (document.active_issue_job_id) {
-    issues.push({ code: "ACTIVE_ISSUE_JOB", message: "Draft already belongs to an active issue job." });
+    issues.push({
+      code: "ACTIVE_ISSUE_JOB",
+      message: "Draft already belongs to an active issue job.",
+    });
   }
   const paymentTime = dateValue(document.payment_time);
   if (!config.go_live_at || !paymentTime || paymentTime < config.go_live_at) {
-    issues.push({ code: "BEFORE_GO_LIVE", message: "Payment happened before invoice go-live." });
+    issues.push({
+      code: "BEFORE_GO_LIVE",
+      message: "Payment happened before invoice go-live.",
+    });
   }
   return issues;
 };
 
 export type InvoiceFailureDecision =
-  | { status: InvoiceIssueItemStatus.PENDING_CONFIRMATION; retryAfterMs: number }
+  | {
+      status: InvoiceIssueItemStatus.PENDING_CONFIRMATION;
+      retryAfterMs: number;
+    }
   | { status: InvoiceIssueItemStatus.RETRYABLE_ERROR; retryAfterMs: number }
-  | { status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION; retryAfterMs: null };
+  | {
+      status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION;
+      retryAfterMs: null;
+    };
 
 const AMBIGUOUS_CODES = new Set([
   "TIMEOUT",
@@ -126,7 +153,8 @@ export const classifyInvoiceIssueFailure = (
   }
   if (
     (code && RETRYABLE_CODES.has(code)) ||
-    (error instanceof MeInvoiceApiError && (error.httpStatus === 401 || error.httpStatus === 429))
+    (error instanceof MeInvoiceApiError &&
+      (error.httpStatus === 401 || error.httpStatus === 429))
   ) {
     return {
       status: InvoiceIssueItemStatus.RETRYABLE_ERROR,
@@ -141,3 +169,27 @@ export const classifyInvoiceIssueFailure = (
 
 export const statusIsIssued = (publishStatus: number, isDeleted: boolean) =>
   publishStatus === 1 && !isDeleted;
+
+export const isExplicitMisaRejection = (
+  item: Record<string, unknown>,
+): boolean => {
+  if (item.status !== InvoiceIssueItemStatus.MANUAL_RECONCILIATION)
+    return false;
+  if (
+    typeof item.misa_error_code !== "string" ||
+    !item.misa_error_code.trim()
+  ) {
+    return false;
+  }
+  if (item.transaction_id || item.invoice_number || item.invoice_code)
+    return false;
+  if (item.retry_eligible === true) return true;
+
+  // Backward compatibility for item-level MISA errors recorded before
+  // retry_eligible existed. These are explicit per-invoice rejections from
+  // publishInvoiceResult, not ambiguous transport failures.
+  return (
+    typeof item.last_error === "string" &&
+    item.last_error.startsWith("MISA item error:")
+  );
+};

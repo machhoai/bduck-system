@@ -79,6 +79,8 @@ export interface InvoiceIssueJobItem {
   invoice_code: string | null;
   misa_error_code: string | null;
   last_error: string | null;
+  retry_eligible: boolean;
+  retry_count: number;
   created_at: Date;
   updated_at: Date;
   completed_at: Date | null;
@@ -510,6 +512,9 @@ export interface InvoiceDocument {
   calculation_version: string;
   ref_id: string | null;
   prepared_payload_hash: string | null;
+  issue_retry_eligible?: boolean;
+  last_issue_error_code?: string | null;
+  last_issue_error?: string | null;
   edited_by: string | null;
   edited_at: Date | null;
   reviewed_by: string | null;

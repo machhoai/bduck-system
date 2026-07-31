@@ -8,12 +8,13 @@ import { getGuideTourName } from "../../../config/tours";
 import { useUnifiedVouchers } from "../../../hooks/useUnifiedVouchers";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
+import { EditImportVoucherModal } from "../import-vouchers/EditImportVoucherModal";
+import ImportVoucherSkeleton from "../import-vouchers/ImportVoucherSkeleton";
 import UnifiedCreateTab from "./UnifiedCreateTab";
 import UnifiedHistoryTab from "./UnifiedHistoryTab";
 import UnifiedInProgressTab from "./UnifiedInProgressTab";
 import { IonIcon } from "@/components/ui/IonIcon";
 import { playForward, checkmarkCircle, time } from "ionicons/icons";
-import ImportVoucherSkeleton from "../import-vouchers/ImportVoucherSkeleton";
 
 type TabId = "create" | "inProgress" | "history";
 type VoucherType = "IMPORT" | "EXPORT" | "TRANSFER";
@@ -99,6 +100,9 @@ export default function VouchersPage() {
     const [cloneData, setCloneData] = useState<Record<string, unknown> | null>(
         null,
     );
+    const [editData, setEditData] = useState<Record<string, unknown> | null>(
+        null,
+    );
     const { activeVouchers, completedVouchers, loading } = useUnifiedVouchers();
 
     useEffect(() => {
@@ -131,6 +135,11 @@ export default function VouchersPage() {
     const handleCloneToCreate = (voucherData: Record<string, unknown>) => {
         setActiveTab("create");
         setCloneData(voucherData);
+    };
+
+    const handleEditImportVoucher = (voucherData: Record<string, unknown>) => {
+        if (voucherData.type !== "IMPORT") return;
+        setEditData(voucherData);
     };
 
     const handleTabSwitch = (tabId: TabId) => {
@@ -258,6 +267,7 @@ export default function VouchersPage() {
                             vouchers={activeVouchers}
                             initialTypeFilter={prefillVoucherType}
                             onClone={handleCloneToCreate}
+                            onEdit={handleEditImportVoucher}
                         />
                     )}
 
@@ -270,6 +280,13 @@ export default function VouchersPage() {
                     )}
                 </div>
             </div>
+
+            {editData && (
+                <EditImportVoucherModal
+                    editData={editData}
+                    onClose={() => setEditData(null)}
+                />
+            )}
         </div>
     );
 }

@@ -1,28 +1,29 @@
-import {
-  type InvoiceBulkIssueDisplayConfig,
-  type InvoiceBulkIssuePreview,
-  type InvoiceBulkIssueRun,
-  type InvoiceBulkSelectionMode,
+import type {
   InvoiceOrderSyncPurpose,
-  type InvoiceSkuMapping,
-  type InvoiceTaxRateSource,
-  type InvoiceVatRateName,
-  type InvoiceDailyControlSummary,
-  type InvoiceLedgerEntry,
-  type InvoiceReconciliationCaseStatus,
-  type InvoiceReconciliationCaseType,
-  type InvoiceIssueJobCounts,
-  type InvoiceIssueItemStatus,
-  type InvoiceIssueJobStatus,
-  type InvoiceDocument,
-  type InvoiceDocumentRevisionSummary,
-  type InvoiceDraftBuyer,
-  type InvoiceSourceOrder,
-  type InvoiceSourceOrderLine,
-  type MeInvoiceOptionUserDefined,
-  type MeInvoiceSignType,
-  type MeInvoiceStoreConfig,
+  InvoiceBulkIssueDisplayConfig,
+  InvoiceBulkIssuePreview,
+  InvoiceBulkIssueRun,
+  InvoiceBulkSelectionMode,
+  InvoiceSkuMapping,
+  InvoiceTaxRateSource,
+  InvoiceVatRateName,
+  InvoiceDailyControlSummary,
+  InvoiceLedgerEntry,
+  InvoiceReconciliationCaseStatus,
+  InvoiceReconciliationCaseType,
+  InvoiceIssueJobCounts,
+  InvoiceIssueItemStatus,
+  InvoiceIssueJobStatus,
+  InvoiceDocument,
+  InvoiceDocumentRevisionSummary,
+  InvoiceDraftBuyer,
+  InvoiceSourceOrder,
+  InvoiceSourceOrderLine,
+  MeInvoiceOptionUserDefined,
+  MeInvoiceSignType,
+  MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
@@ -73,7 +74,10 @@ export interface InvoiceSyncResult {
   } | null;
 }
 
-export type InvoiceLedgerEntryView = Omit<InvoiceLedgerEntry, "last_reconciled_at"> & {
+export type InvoiceLedgerEntryView = Omit<
+  InvoiceLedgerEntry,
+  "last_reconciled_at"
+> & {
   last_reconciled_at: string | null;
 };
 
@@ -254,6 +258,20 @@ export interface InvoiceIssueJobView {
   items: InvoiceIssueJobItemView[];
 }
 
+export interface InvoiceIssueRetryCandidate {
+  job_id: string;
+  item_id: string;
+  invoice_document_id: string;
+  order_number: string | null;
+  misa_error_code: string;
+  message: string;
+}
+
+export interface InvoiceIssueRetryResult {
+  retried_count: number;
+  retried_items: Array<{ job_id: string; item_id: string }>;
+}
+
 export type InvoiceBulkIssueRunView = Omit<
   InvoiceBulkIssueRun,
   "action_time" | "sync_time" | "created_at" | "updated_at"
@@ -340,10 +358,11 @@ export const invoiceApi = {
       config_fingerprint: string;
       action_time: string;
     },
-  ) => request<InvoiceBulkIssueRunView>("/api/invoices/bulk-issues", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }),
+  ) =>
+    request<InvoiceBulkIssueRunView>("/api/invoices/bulk-issues", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   getBulkIssueDisplayConfig: (warehouseId: string, businessDate: string) => {
     const query = new URLSearchParams({
@@ -508,34 +527,84 @@ export const invoiceApi = {
     );
   },
 
+  listIssueRetryCandidates: (warehouseId: string, businessDate: string) => {
+    const query = new URLSearchParams({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+    });
+    return request<InvoiceIssueRetryCandidate[]>(
+      `/api/invoices/issues/retry-candidates?${query.toString()}`,
+    );
+  },
+
+  retryRejectedIssueItems: (
+    warehouseId: string,
+    otp: string,
+    items: Array<{ job_id: string; item_id: string }>,
+  ) =>
+    request<InvoiceIssueRetryResult>("/api/invoices/issues/retry", {
+      method: "POST",
+      body: JSON.stringify({
+        warehouse_id: warehouseId,
+        otp,
+        items,
+      }),
+    }),
+
   listLedger: (warehouseId: string, businessDate: string) => {
-    const query = new URLSearchParams({ warehouse_id: warehouseId, business_date: businessDate });
-    return request<InvoiceLedgerEntryView[]>(`/api/invoices/ledger?${query.toString()}`);
+    const query = new URLSearchParams({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+    });
+    return request<InvoiceLedgerEntryView[]>(
+      `/api/invoices/ledger?${query.toString()}`,
+    );
   },
 
   listMisaInvoices: (warehouseId: string, businessDate: string) => {
-    const query = new URLSearchParams({ warehouse_id: warehouseId, business_date: businessDate });
-    return request<MisaInvoiceListResult>(`/api/invoices/misa-invoices?${query.toString()}`);
+    const query = new URLSearchParams({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+    });
+    return request<MisaInvoiceListResult>(
+      `/api/invoices/misa-invoices?${query.toString()}`,
+    );
   },
 
   listReconciliationCases: (warehouseId: string, businessDate: string) => {
-    const query = new URLSearchParams({ warehouse_id: warehouseId, business_date: businessDate });
-    return request<InvoiceReconciliationCaseView[]>(`/api/invoices/reconciliation-cases?${query.toString()}`);
+    const query = new URLSearchParams({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+    });
+    return request<InvoiceReconciliationCaseView[]>(
+      `/api/invoices/reconciliation-cases?${query.toString()}`,
+    );
   },
 
   resolveReconciliationCase: (id: string, warehouseId: string, note: string) =>
-    request<InvoiceReconciliationCaseView>(`/api/invoices/reconciliation-cases/${id}/resolve`, {
-      method: "POST",
-      body: JSON.stringify({ warehouse_id: warehouseId, note }),
-    }),
+    request<InvoiceReconciliationCaseView>(
+      `/api/invoices/reconciliation-cases/${id}/resolve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ warehouse_id: warehouseId, note }),
+      },
+    ),
 
   viewPublishedInvoice: (id: string, warehouseId: string) => {
     const query = new URLSearchParams({ warehouse_id: warehouseId });
-    return request<{ url: string; expires_in_seconds: number }>(`/api/invoices/ledger/${id}/view?${query.toString()}`);
+    return request<{ url: string; expires_in_seconds: number }>(
+      `/api/invoices/ledger/${id}/view?${query.toString()}`,
+    );
   },
 
-  downloadPublishedInvoice: (id: string, warehouseId: string, type: "Pdf" | "Xml") => {
+  downloadPublishedInvoice: (
+    id: string,
+    warehouseId: string,
+    type: "Pdf" | "Xml",
+  ) => {
     const query = new URLSearchParams({ warehouse_id: warehouseId, type });
-    return request<InvoiceDownloadResult>(`/api/invoices/ledger/${id}/download?${query.toString()}`);
+    return request<InvoiceDownloadResult>(
+      `/api/invoices/ledger/${id}/download?${query.toString()}`,
+    );
   },
 };

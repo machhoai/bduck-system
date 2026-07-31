@@ -37,6 +37,7 @@ interface UnifiedInProgressTabProps {
   vouchers: UnifiedVoucher[];
   initialTypeFilter?: string;
   onClone: (data: Record<string, unknown>) => void;
+  onEdit?: (data: Record<string, unknown>) => void;
 }
 
 const TYPE_CONFIG: Record<
@@ -154,6 +155,7 @@ export default function UnifiedInProgressTab({
   vouchers,
   initialTypeFilter,
   onClone,
+  onEdit,
 }: UnifiedInProgressTabProps) {
   const { t, lang } = useTranslation();
   const misc = MISC_COMPONENT_TEXT[lang === "zh" ? "zh" : "vi"];
@@ -570,6 +572,7 @@ export default function UnifiedInProgressTab({
           voucher={selectedVoucher.raw as any}
           onClose={() => setSelectedVoucher(null)}
           onClone={onClone}
+          onEdit={selectedVoucher.type === "IMPORT" ? onEdit : undefined}
         />
       )}
 

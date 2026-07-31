@@ -1,11 +1,17 @@
+import { randomUUID } from "crypto";
+
 import {
   AuditAction,
   ExportVoucherStatus,
   type ExportVoucher,
   type ExportVoucherItem,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+
 import { db } from "../config/firebase.js";
+import * as approvalRepository from "../repositories/approvalRepository.js";
+import { getUserById } from "../repositories/userRepository.js";
+
+import { prepareApprovalsForEntity } from "./approvalPreparationService.js";
 import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
@@ -78,6 +84,18 @@ export const createExportVoucher = async (
   const actionTime = input.action_time ? new Date(input.action_time) : now;
   const voucherId = randomUUID();
   const voucherNumber = generateVoucherNumber();
+  const creator = await getUserById(userId);
+  const approvalPlan = await prepareApprovalsForEntity({
+    entityType: "EXPORT_VOUCHER",
+    entityId: voucherId,
+    warehouseId: input.warehouse_id,
+    creatorId: userId,
+    displayInfo: {
+      voucher_number: voucherNumber,
+      creator_name: creator?.full_name || creator?.email || undefined,
+    },
+    options: { config },
+  });
 
   const voucher: ExportVoucher = {
     id: voucherId,
@@ -127,6 +145,9 @@ export const createExportVoucher = async (
       item,
     );
   }
+  if (approvalPlan.mode === "RECORDS") {
+    approvalRepository.stageCreateBatch(batch, approvalPlan.records);
+  }
   await batch.commit();
 
   // Audit (ISO 9001)
@@ -141,34 +162,10 @@ export const createExportVoucher = async (
     action_time: actionTime,
   });
 
-  // Trigger approval chain
-  try {
-    // Resolve creator name for denormalization
-    let creatorName: string | undefined;
-    try {
-      const userDoc = await db.collection("users").doc(userId).get();
-      if (userDoc.exists) {
-        const u = userDoc.data();
-        creatorName = u?.full_name || u?.email || undefined;
-      }
-    } catch {
-      // Non-critical
-    }
-
-    const approvals = await approvalService.createApprovalsForEntity(
-      "EXPORT_VOUCHER",
-      voucherId,
-      voucher.warehouse_id,
-      userId,
-      { voucher_number: voucherNumber, creator_name: creatorName },
-    );
-
-    if (approvals.length === 0) {
+  await approvalService.completePreparedApprovals(approvalPlan);
+  if (approvalPlan.mode !== "RECORDS") {
       // No chain â†’ auto-advance (includes ATP pre-check)
-      await onApprovalCompleted(voucherId, "SYSTEM_AUTO_APPROVE");
-    }
-  } catch (error) {
-    console.error("[exportVoucherService] Approval creation failed:", error);
+    await onApprovalCompleted(voucherId, "SYSTEM_AUTO_APPROVE");
   }
 
   return voucher;

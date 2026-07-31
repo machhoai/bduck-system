@@ -1,3 +1,9 @@
+import type {
+  ApprovalScopeMode,
+  ProcessConfig,
+  ProcessEntityType,
+  StepOption,
+} from "@bduck/shared-types";
 import {
   ClipboardCheck,
   ClipboardList,
@@ -10,11 +16,7 @@ import {
   ScanBarcode,
   type LucideIcon,
 } from "lucide-react";
-import type {
-  ProcessConfig,
-  ProcessEntityType,
-  StepOption,
-} from "@bduck/shared-types";
+
 import {
   PROCESS_CONFIG_ENTITY_TEXT,
   PROCESS_CONFIG_STEP_TEXT,
@@ -91,6 +93,35 @@ export const DEFAULT_STEP_OPTION: StepOption = {
 };
 
 export const TEXT = PROCESS_CONFIG_TEXT;
+
+const BASE_PROCESS_SCOPES: ApprovalScopeMode[] = [
+  "ENTITY_WAREHOUSE",
+  "GLOBAL",
+];
+const TRANSFER_PROCESS_SCOPES: ApprovalScopeMode[] = [
+  "ENTITY_WAREHOUSE",
+  "SOURCE_WAREHOUSE",
+  "DESTINATION_WAREHOUSE",
+  "GLOBAL",
+];
+
+export function getProcessScopeOptions(
+  entityType: ProcessEntityType,
+): readonly ApprovalScopeMode[] {
+  return entityType === "TRANSFER_ORDER" || entityType === "TRANSFER_INTRA"
+    ? TRANSFER_PROCESS_SCOPES
+    : BASE_PROCESS_SCOPES;
+}
+
+export function normalizeProcessScope(
+  entityType: ProcessEntityType,
+  scope?: ApprovalScopeMode,
+): ApprovalScopeMode {
+  const candidate = scope ?? "ENTITY_WAREHOUSE";
+  return getProcessScopeOptions(entityType).includes(candidate)
+    ? candidate
+    : "ENTITY_WAREHOUSE";
+}
 
 export function getConfigSummary(config?: ProcessConfig) {
   if (!config) {

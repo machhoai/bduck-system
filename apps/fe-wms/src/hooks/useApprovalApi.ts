@@ -47,7 +47,13 @@ async function approvalApi<T>(
   }
 
   if (method !== "GET") {
-    emitDataMutation(["pending_approvals", "import_vouchers", "audit_logs"]);
+    emitDataMutation([
+      "pending_approvals",
+      "import_vouchers",
+      "export_vouchers",
+      "transfer_orders",
+      "audit_logs",
+    ]);
   }
 
   return body.data as T;
@@ -112,6 +118,17 @@ export async function forceCancelApproval(
   otp?: string,
 ): Promise<void> {
   return approvalApi(`/${entityType}/${entityId}/force-cancel`, "POST", { reason, otp });
+}
+
+export async function restartApproval(
+  entityType: string,
+  entityId: string,
+  reason: string,
+): Promise<{ attempt: number }> {
+  return approvalApi(`/${entityType}/${entityId}/restart`, "POST", {
+    reason,
+    action_time: new Date().toISOString(),
+  });
 }
 
 // ─────────────────────────────────────────────

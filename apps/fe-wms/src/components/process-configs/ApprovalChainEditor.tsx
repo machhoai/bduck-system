@@ -1,30 +1,32 @@
 "use client";
 
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import type {
   ApprovalLevel,
   ApprovalScopeMode,
+  ProcessEntityType,
   Role,
 } from "@bduck/shared-types";
-import type { Locale, TEXT } from "./processConfigMeta";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+
 import { formatApprovalLevelLabel } from "@/lib/i18n/componentTranslations";
+
+import type { Locale, TEXT } from "./processConfigMeta";
+import {
+  getProcessScopeOptions,
+  normalizeProcessScope,
+} from "./processConfigMeta";
 
 type Copy = (typeof TEXT)[Locale];
 
 type Props = {
   chain: ApprovalLevel[];
   roles: Pick<Role, "id" | "name">[];
+  entityType: ProcessEntityType;
   disabled: boolean;
   copy: Copy;
   onChange: (chain: ApprovalLevel[]) => void;
 };
 
-const SCOPE_OPTIONS: ApprovalScopeMode[] = [
-  "ENTITY_WAREHOUSE",
-  "SOURCE_WAREHOUSE",
-  "DESTINATION_WAREHOUSE",
-  "GLOBAL",
-];
 const MAX_APPROVAL_LEVELS = 3;
 
 function getScopeLabel(copy: Copy, scope: ApprovalScopeMode) {
@@ -72,10 +74,12 @@ function ToggleButton({
 export function ApprovalChainEditor({
   chain,
   roles,
+  entityType,
   disabled,
   copy,
   onChange,
 }: Props) {
+  const scopeOptions = getProcessScopeOptions(entityType);
   const updateLevel = (index: number, updated: ApprovalLevel) => {
     onChange(
       chain.map((level, itemIndex) => (itemIndex === index ? updated : level)),
@@ -246,7 +250,10 @@ export function ApprovalChainEditor({
                     {copy.approvalScope}
                   </span>
                   <select
-                    value={level.approval_scope ?? "ENTITY_WAREHOUSE"}
+                    value={normalizeProcessScope(
+                      entityType,
+                      level.approval_scope,
+                    )}
                     disabled={disabled}
                     onChange={(event) =>
                       updateLevel(index, {
@@ -260,7 +267,7 @@ export function ApprovalChainEditor({
                     }
                     className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] disabled:bg-[var(--color-neutral-50)] sm:h-8 sm:text-sm"
                   >
-                    {SCOPE_OPTIONS.map((scope) => (
+                    {scopeOptions.map((scope) => (
                       <option key={scope} value={scope}>
                         {getScopeLabel(copy, scope)}
                       </option>

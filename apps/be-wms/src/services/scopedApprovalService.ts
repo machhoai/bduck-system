@@ -1,12 +1,19 @@
 import type { ApprovalRecord, ProcessEntityType } from "@bduck/shared-types";
+
+import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import * as approvalRepo from "../repositories/approvalRepository.js";
 import { getUserWarehouseRoles } from "../repositories/userRoleAssignmentRepository.js";
-import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
+
+import { assertCreatorCancelFacilityAccess } from "./approvalCancelPolicy.js";
+import {
+  loadApprovalRestartContext,
+  restartApprovalFlow,
+} from "./approvalRestartService.js";
+import * as approvalService from "./approvalService.js";
 import {
   authorizationError,
   type AuthorizationService,
 } from "./authorization/index.js";
-import * as approvalService from "./approvalService.js";
 import { canActOnApprovalRecord, type ScopedUser } from "./scopedRoleAccess.js";
 
 const approvalFacilityId = (record: ApprovalRecord): string | null =>
@@ -190,8 +197,9 @@ export const cancelByCreator = async (
   authorization: AuthorizationService,
 ): Promise<void> => {
   const records = await approvalRepo.findByEntity(entityType, entityId);
-  if (records.length > 0)
-    assertApprovalAccess(records[0], authorization, false);
+  if (records.length > 0) {
+    assertCreatorCancelFacilityAccess(records[0], authorization);
+  }
   await approvalService.cancelByCreator(
     entityType,
     entityId,
@@ -213,4 +221,29 @@ export const forceCancel = async (
   const facilityId = records[0].warehouse_id;
   authorization.assert("vouchers.force_cancel", facilityId);
   await approvalService.forceCancel(entityType, entityId, userId, reason);
+};
+
+export const restartApproval = async (
+  entityType: ProcessEntityType,
+  entityId: string,
+  user: AuthenticatedRequestUser,
+  reason: string,
+  actionTime: Date,
+  authorization: AuthorizationService,
+) => {
+  const context = await loadApprovalRestartContext(entityType, entityId);
+  const facilityId = context.entity.warehouseId;
+  const isCreator = context.entity.creatorId === user.id;
+  if (!isCreator || !authorization.can("vouchers.write", facilityId)) {
+    authorization.assert("vouchers.force_cancel", facilityId);
+  }
+
+  return restartApprovalFlow(
+    entityType,
+    entityId,
+    user.id,
+    reason,
+    actionTime,
+    context,
+  );
 };

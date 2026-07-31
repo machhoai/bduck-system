@@ -5,15 +5,22 @@
  * Provides default configs when none exist.
  */
 
-import { z } from "zod";
 import type {
   ProcessConfig,
   ProcessEntityType,
   ApprovalLevel,
   StepOption,
 } from "@bduck/shared-types";
+import { z } from "zod";
+
 import * as repo from "../repositories/processConfigRepository.js";
 import { roleRepository } from "../repositories/roleRepository.js";
+
+import { assertRolesHaveActiveGlobalAssignments } from "./processConfigGlobalRoleService.js";
+import {
+  assertProcessConfigScopesAllowed,
+  collectGlobalRoleIds,
+} from "./processConfigScopePolicy.js";
 
 // ─────────────────────────────────────────────
 // ZOD SCHEMAS — Input validation (LUẬT THÉP)
@@ -190,7 +197,7 @@ const DEFAULT_CHAINS: Partial<Record<ProcessEntityType, ApprovalLevel[]>> = {
       required: false,
       enabled: false,
       min_approvers: 1,
-      approval_scope: "GLOBAL",
+      approval_scope: "ENTITY_WAREHOUSE",
       allow_global_fallback: false,
     },
   ],
@@ -212,7 +219,7 @@ const DEFAULT_CHAINS: Partial<Record<ProcessEntityType, ApprovalLevel[]>> = {
       required: false,
       enabled: false,
       min_approvers: 1,
-      approval_scope: "GLOBAL",
+      approval_scope: "ENTITY_WAREHOUSE",
       allow_global_fallback: false,
     },
   ],
@@ -234,7 +241,7 @@ const DEFAULT_CHAINS: Partial<Record<ProcessEntityType, ApprovalLevel[]>> = {
       required: false,
       enabled: false,
       min_approvers: 1,
-      approval_scope: "GLOBAL",
+      approval_scope: "ENTITY_WAREHOUSE",
       allow_global_fallback: false,
     },
   ],
@@ -389,6 +396,21 @@ export async function updateConfig(
     };
     throw err;
   }
+
+  const effectiveApprovalChain =
+    input.approval_chain ?? existing.approval_chain;
+  const effectiveStepOptions = input.step_options ?? existing.step_options;
+  assertProcessConfigScopesAllowed(
+    existing.entity_type,
+    effectiveApprovalChain,
+    effectiveStepOptions,
+  );
+  await assertRolesHaveActiveGlobalAssignments(
+    collectGlobalRoleIds({
+      approvalChain: effectiveApprovalChain,
+      stepOptions: effectiveStepOptions,
+    }),
+  );
 
   const updateData: Partial<
     Pick<

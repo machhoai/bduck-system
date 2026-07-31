@@ -1,28 +1,15 @@
 "use client";
 
 import {
-    AlertTriangle,
-    Eye,
-    FileEdit,
-    History,
-    LoaderCircle,
-    Plus,
-    Save,
-    Trash2,
-    XCircle,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import {
     InvoiceDocumentStatus,
     type InvoiceDraftBuyer,
     type InvoiceSourceOrderLine,
     type InvoiceVatRateName,
 } from "@bduck/shared-types";
-import {
-    invoiceApi,
-    type InvoiceDocumentView,
-    type InvoiceSourceOrderView,
-} from "@/api/invoiceApi";
+import { AlertTriangle, Eye, FileEdit, History, LoaderCircle, Plus, Save, Trash2, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { invoiceApi, type InvoiceDocumentView, type InvoiceSourceOrderView } from "@/api/invoiceApi";
 import { showToast } from "@/utils/toast";
 
 const copy = {
@@ -33,8 +20,7 @@ const copy = {
         preparing: "Đang tạo bản nháp…",
         loadError: "Không thể tải bản nháp hóa đơn.",
         revision: "Revision",
-        sourceStale:
-            "Dữ liệu HKAPI đã thay đổi. Hãy đồng bộ lại và tạo revision mới.",
+        sourceStale: "Dữ liệu HKAPI đã thay đổi. Hãy đồng bộ lại và tạo revision mới.",
         rebase: "Cập nhật draft từ HKAPI",
         buyer: "Thông tin người mua",
         fullName: "Tên người mua",
@@ -60,8 +46,7 @@ const copy = {
         saving: "Đang lưu…",
         saveSuccess: "Đã lưu revision mới",
         saveDescription: "Số liệu đã được tính lại ở backend.",
-        financial:
-            "Revision có thay đổi tài chính. Hệ thống đã ghi audit và draft vẫn có thể phát hành ngay.",
+        financial: "Revision có thay đổi tài chính. Hệ thống đã ghi audit và draft vẫn có thể phát hành ngay.",
         preview: "Xem trước trên MISA",
         previewing: "Đang tạo preview…",
         previewReady: "Đã tạo bản xem trước",
@@ -116,14 +101,7 @@ const copy = {
     },
 } as const;
 
-const vatRates: InvoiceVatRateName[] = [
-    "0%",
-    "5%",
-    "8%",
-    "10%",
-    "KCT",
-    "KKKNT",
-];
+const vatRates: InvoiceVatRateName[] = ["0%", "5%", "8%", "10%", "KCT", "KKKNT"];
 
 const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
     vi: {
@@ -138,7 +116,7 @@ const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
         PENDING_CONFIRMATION: "Chờ xác nhận",
         ISSUED: "Đã phát hành",
         RETRYABLE_ERROR: "Có thể thử lại",
-        MANUAL_RECONCILIATION: "Cần đối soát",
+        MANUAL_RECONCILIATION: "Tạm dừng để kiểm tra an toàn",
         POST_ISSUE_REVIEW: "Kiểm tra sau phát hành",
         REJECTED: "Đã từ chối",
         CANCELLED: "Đã hủy",
@@ -156,7 +134,7 @@ const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
         PENDING_CONFIRMATION: "待确认",
         ISSUED: "已开具",
         RETRYABLE_ERROR: "可重试",
-        MANUAL_RECONCILIATION: "需人工核对",
+        MANUAL_RECONCILIATION: "已暂停以安全检查",
         POST_ISSUE_REVIEW: "开票后检查",
         REJECTED: "已拒绝",
         CANCELLED: "已取消",
@@ -211,9 +189,7 @@ export function InvoiceDraftWorkflow({
     const [draft, setDraft] = useState<EditableDraft | null>(null);
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(Boolean(order.invoice_document_id));
-    const [working, setWorking] = useState<
-        "prepare" | "save" | "preview" | null
-    >(null);
+    const [working, setWorking] = useState<"prepare" | "save" | "preview" | null>(null);
     const [error, setError] = useState<string | null>(null);
     const generation = useRef(0);
 
@@ -257,25 +233,18 @@ export function InvoiceDraftWorkflow({
         setWorking("prepare");
         setError(null);
         try {
-            const operation = invoiceApi.prepareDocument(
-                order.id,
-                order.warehouse_id,
-                order.source_payload_hash,
-            );
+            const operation = invoiceApi.prepareDocument(order.id, order.warehouse_id, order.source_payload_hash);
             const value = await showToast.promise(operation, {
                 loading: d.preparing,
                 success: d.prepare,
                 error: d.loadError,
                 successDescription: d.saveDescription,
-                errorDescription: (toastError) =>
-                    toastError instanceof Error ? toastError.message : d.loadError,
+                errorDescription: (toastError) => (toastError instanceof Error ? toastError.message : d.loadError),
             });
             setCurrentDocument(value);
             await onChanged();
         } catch (prepareError) {
-            setError(
-                prepareError instanceof Error ? prepareError.message : d.loadError,
-            );
+            setError(prepareError instanceof Error ? prepareError.message : d.loadError);
         } finally {
             setWorking(null);
         }
@@ -302,8 +271,7 @@ export function InvoiceDraftWorkflow({
                 success: d.saveSuccess,
                 error: d.loadError,
                 successDescription: d.saveDescription,
-                errorDescription: (toastError) =>
-                    toastError instanceof Error ? toastError.message : d.loadError,
+                errorDescription: (toastError) => (toastError instanceof Error ? toastError.message : d.loadError),
             });
             setCurrentDocument(value);
             await onChanged();
@@ -332,14 +300,12 @@ export function InvoiceDraftWorkflow({
                 success: d.previewReady,
                 error: d.previewFailed,
                 successDescription: d.previewExpires,
-                errorDescription: (toastError) =>
-                    toastError instanceof Error ? toastError.message : d.previewFailed,
+                errorDescription: (toastError) => (toastError instanceof Error ? toastError.message : d.previewFailed),
             });
             const url = new URL(result.url);
             if (
                 url.protocol !== "https:" ||
-                (url.hostname !== "meinvoice.vn" &&
-                    !url.hostname.endsWith(".meinvoice.vn"))
+                (url.hostname !== "meinvoice.vn" && !url.hostname.endsWith(".meinvoice.vn"))
             ) {
                 throw new Error(d.previewFailed);
             }
@@ -347,9 +313,7 @@ export function InvoiceDraftWorkflow({
             else window.open(url.toString(), "_blank", "noopener,noreferrer");
         } catch (previewError) {
             previewWindow?.close();
-            setError(
-                previewError instanceof Error ? previewError.message : d.previewFailed,
-            );
+            setError(previewError instanceof Error ? previewError.message : d.previewFailed);
         } finally {
             setWorking(null);
         }
@@ -366,12 +330,14 @@ export function InvoiceDraftWorkflow({
             InvoiceDocumentStatus.REJECTED,
         ].includes(document.status),
     );
-    const sourceStale =
-        document?.source_payload_hash !== order.source_payload_hash;
+    const sourceStale = document?.source_payload_hash !== order.source_payload_hash;
 
     if (loading) {
         return (
-            <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 animate-pulse" aria-label={d.preparing}>
+            <div
+                className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 animate-pulse"
+                aria-label={d.preparing}
+            >
                 <div className="h-4 w-32 rounded bg-slate-200" />
                 <div className="grid grid-cols-3 gap-2">
                     <div className="h-10 rounded bg-slate-200" />
@@ -395,11 +361,7 @@ export function InvoiceDraftWorkflow({
                     disabled={!canPrepare || working !== null}
                     className="mt-2 inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white disabled:opacity-45"
                 >
-                    {working === "prepare" ? (
-                        <LoaderCircle className="animate-spin" size={14} />
-                    ) : (
-                        <Plus size={14} />
-                    )}
+                    {working === "prepare" ? <LoaderCircle className="animate-spin" size={14} /> : <Plus size={14} />}
                     {working === "prepare" ? d.preparing : d.prepare}
                 </button>
             </section>
@@ -416,9 +378,25 @@ export function InvoiceDraftWorkflow({
                     </p>
                 </div>
                 <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xxs font-bold text-slate-700">
-                    {statusCopy[lang][document.status]}
+                    {document.status === InvoiceDocumentStatus.MANUAL_RECONCILIATION && document.issue_retry_eligible
+                        ? lang === "vi"
+                            ? "MISA từ chối — có thể thử lại"
+                            : "MISA 已拒绝 — 可重试"
+                        : statusCopy[lang][document.status]}
                 </span>
             </div>
+
+            {document.status === InvoiceDocumentStatus.MANUAL_RECONCILIATION && (
+                <Notice tone={document.issue_retry_eligible ? "warning" : "danger"} icon={<AlertTriangle size={13} />}>
+                    {document.issue_retry_eligible
+                        ? lang === "vi"
+                            ? `MISA đã từ chối trước khi phát hành${document.last_issue_error_code ? ` (${document.last_issue_error_code})` : ""}. Hãy sửa cấu hình rồi dùng “Thử lại hóa đơn lỗi” ở đầu trang.`
+                            : `MISA 在开具前拒绝了发票${document.last_issue_error_code ? ` (${document.last_issue_error_code})` : ""}。修正配置后，请使用页面顶部的“重试失败发票”。`
+                        : lang === "vi"
+                          ? "Hệ thống chưa xác định chắc chắn MISA đã phát hành hay chưa nên đã tạm dừng để tránh tạo hóa đơn trùng."
+                          : "系统无法确认 MISA 是否已开具，因此已暂停以避免重复发票。"}
+                </Notice>
+            )}
 
             {sourceStale && (
                 <>
@@ -475,9 +453,9 @@ export function InvoiceDraftWorkflow({
                                     setDraft((current) =>
                                         current
                                             ? {
-                                                ...current,
-                                                buyer: { ...current.buyer, [key]: value },
-                                            }
+                                                  ...current,
+                                                  buyer: { ...current.buyer, [key]: value },
+                                              }
                                             : current,
                                     )
                                 }
@@ -488,36 +466,30 @@ export function InvoiceDraftWorkflow({
                         label={d.payment}
                         value={draft.payment_method_name}
                         onChange={(value) =>
-                            setDraft((current) =>
-                                current ? { ...current, payment_method_name: value } : current,
-                            )
+                            setDraft((current) => (current ? { ...current, payment_method_name: value } : current))
                         }
                     />
 
                     <div>
                         <div className="flex items-center justify-between">
-                            <p className="text-xxs font-semibold uppercase tracking-wide text-slate-500">
-                                {d.items}
-                            </p>
+                            <p className="text-xxs font-semibold uppercase tracking-wide text-slate-500">{d.items}</p>
                             <button
                                 type="button"
                                 onClick={() =>
                                     setDraft((current) =>
                                         current
                                             ? {
-                                                ...current,
-                                                items: [
-                                                    ...current.items,
-                                                    emptyLine(
-                                                        Math.max(
-                                                            0,
-                                                            ...current.items.map(
-                                                                (item) => item.line_number,
-                                                            ),
-                                                        ) + 1,
-                                                    ),
-                                                ],
-                                            }
+                                                  ...current,
+                                                  items: [
+                                                      ...current.items,
+                                                      emptyLine(
+                                                          Math.max(
+                                                              0,
+                                                              ...current.items.map((item) => item.line_number),
+                                                          ) + 1,
+                                                      ),
+                                                  ],
+                                              }
                                             : current,
                                     )
                                 }
@@ -536,55 +508,41 @@ export function InvoiceDraftWorkflow({
                                         <DraftField
                                             label={d.itemCode}
                                             value={item.item_code ?? ""}
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "item_code", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "item_code", value)}
                                         />
                                         <DraftField
                                             label={d.itemName}
                                             value={item.item_name ?? ""}
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "item_name", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "item_name", value)}
                                         />
                                     </div>
                                     <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-6">
                                         <DraftField
                                             label={d.unit}
                                             value={item.unit_name ?? ""}
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "unit_name", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "unit_name", value)}
                                         />
                                         <NumberField
                                             label={d.quantity}
                                             value={item.quantity}
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "quantity", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "quantity", value)}
                                         />
                                         <NumberField
                                             label={d.unitPrice}
                                             value={item.unit_price}
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "unit_price", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "unit_price", value)}
                                         />
                                         <NumberField
                                             label={d.discountRate}
                                             value={item.discount_rate}
                                             nullable
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "discount_rate", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "discount_rate", value)}
                                         />
                                         <NumberField
                                             label={d.discountAmount}
                                             value={item.discount_amount}
                                             nullable
-                                            onChange={(value) =>
-                                                updateItem(setDraft, index, "discount_amount", value)
-                                            }
+                                            onChange={(value) => updateItem(setDraft, index, "discount_amount", value)}
                                         />
                                         <label className="grid gap-0.5 text-xxs font-semibold text-slate-500">
                                             {d.vat}
@@ -613,11 +571,11 @@ export function InvoiceDraftWorkflow({
                                                 setDraft((current) =>
                                                     current
                                                         ? {
-                                                            ...current,
-                                                            items: current.items.filter(
-                                                                (_, itemIndex) => itemIndex !== index,
-                                                            ),
-                                                        }
+                                                              ...current,
+                                                              items: current.items.filter(
+                                                                  (_, itemIndex) => itemIndex !== index,
+                                                              ),
+                                                          }
                                                         : current,
                                                 )
                                             }
@@ -668,19 +626,10 @@ export function InvoiceDraftWorkflow({
                         <div className="mt-2 grid grid-cols-3 gap-2">
                             <Metric
                                 label="Trước thuế"
-                                value={formatMoney(
-                                    document.calculation.total_amount_without_vat,
-                                )}
+                                value={formatMoney(document.calculation.total_amount_without_vat)}
                             />
-                            <Metric
-                                label="VAT"
-                                value={formatMoney(document.calculation.total_vat_amount)}
-                            />
-                            <Metric
-                                label="Tổng"
-                                value={formatMoney(document.calculation.total_amount)}
-                                strong
-                            />
+                            <Metric label="VAT" value={formatMoney(document.calculation.total_vat_amount)} />
+                            <Metric label="Tổng" value={formatMoney(document.calculation.total_amount)} strong />
                         </div>
                     )}
                     {document.validation_issues.length > 0 && (
@@ -704,9 +653,7 @@ export function InvoiceDraftWorkflow({
                         <button
                             type="button"
                             onClick={() => setEditing(true)}
-                            disabled={
-                                !canPrepare || !editable || sourceStale || working !== null
-                            }
+                            disabled={!canPrepare || !editable || sourceStale || working !== null}
                             className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 disabled:opacity-45 hover:bg-slate-50"
                         >
                             <FileEdit size={14} /> {d.edit}
@@ -714,12 +661,7 @@ export function InvoiceDraftWorkflow({
                         <button
                             type="button"
                             onClick={() => void handlePreview()}
-                            disabled={
-                                !canPrepare ||
-                                !document.issue_eligible ||
-                                sourceStale ||
-                                working !== null
-                            }
+                            disabled={!canPrepare || !document.issue_eligible || sourceStale || working !== null}
                             className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-2.5 text-xs font-bold text-white disabled:opacity-45 hover:brightness-95"
                         >
                             {working === "preview" ? (
@@ -747,11 +689,7 @@ export function InvoiceDraftWorkflow({
                                 <span>
                                     #{revision.revision} · {statusCopy[lang][revision.status]}
                                 </span>
-                                <span>
-                                    {revision.edited_by
-                                        ? `${d.editedBy}: ${revision.edited_by}`
-                                        : "—"}
-                                </span>
+                                <span>{revision.edited_by ? `${d.editedBy}: ${revision.edited_by}` : "—"}</span>
                             </div>
                         ))}
                     </div>
@@ -770,24 +708,16 @@ function updateItem(
     setDraft((current) =>
         current
             ? {
-                ...current,
-                items: current.items.map((item, itemIndex) =>
-                    itemIndex === index ? { ...item, [key]: value } : item,
-                ),
-            }
+                  ...current,
+                  items: current.items.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, [key]: value } : item,
+                  ),
+              }
             : current,
     );
 }
 
-function DraftField({
-    label,
-    value,
-    onChange,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-}) {
+function DraftField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
     return (
         <label className="grid gap-0.5 text-xxs font-semibold text-slate-500">
             {label}
@@ -820,11 +750,7 @@ function NumberField({
                 step="any"
                 value={value ?? ""}
                 onChange={(event) =>
-                    onChange(
-                        event.target.value === "" && nullable
-                            ? null
-                            : Number(event.target.value),
-                    )
+                    onChange(event.target.value === "" && nullable ? null : Number(event.target.value))
                 }
                 className="h-8 min-w-0 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none focus:border-sky-500"
             />
@@ -842,37 +768,21 @@ function Notice({
     tone: "warning" | "danger";
 }) {
     const style =
-        tone === "danger"
-            ? "border-rose-200 bg-rose-50 text-rose-700"
-            : "border-amber-200 bg-amber-50 text-amber-800";
+        tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-800";
     return (
-        <div
-            className={`mt-2 flex items-start gap-1.5 rounded-lg border p-1.5 text-xxs ${style}`}
-        >
+        <div className={`mt-2 flex items-start gap-1.5 rounded-lg border p-1.5 text-xxs ${style}`}>
             {icon}
             <span>{children}</span>
         </div>
     );
 }
 
-function Metric({
-    label,
-    value,
-    strong = false,
-}: {
-    label: string;
-    value: string;
-    strong?: boolean;
-}) {
+function Metric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
     return (
         <div
             className={`min-w-0 rounded-md p-1.5 ${strong ? "bg-slate-900 text-white" : "bg-white text-slate-900 border border-slate-100"}`}
         >
-            <p
-                className={`truncate text-micro ${strong ? "text-slate-300" : "text-slate-400"}`}
-            >
-                {label}
-            </p>
+            <p className={`truncate text-micro ${strong ? "text-slate-300" : "text-slate-400"}`}>{label}</p>
             <p className="mt-0.5 truncate text-xs font-bold">{value || "—"}</p>
         </div>
     );

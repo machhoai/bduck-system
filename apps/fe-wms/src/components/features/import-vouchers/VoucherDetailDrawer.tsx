@@ -34,6 +34,7 @@ import {
     CheckCircle2,
     ClipboardSignature,
     HelpCircle,
+    RotateCcw,
 } from "lucide-react";
 import { useNextStep } from "nextstepjs";
 import { doc, collection, query as fsQuery, onSnapshot, getDoc } from "firebase/firestore";
@@ -43,7 +44,7 @@ import { gooeyToast } from "goey-toast";
 import { useTranslation } from "@/lib/i18n";
 import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
 import { useUserStore } from "@/stores/useUserStore";
-import { cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
+import { cancelApproval, forceCancelApproval, restartApproval } from "@/hooks/useApprovalApi";
 import { useProcessConfig } from "@/hooks/useProcessConfig";
 import type { ImportVoucher, ProcessEntityType } from "@bduck/shared-types";
 import AttachmentSection from "@/components/tasks/AttachmentSection";
@@ -188,6 +189,9 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
     const isPendingApproval = voucher.status === "PENDING_APPROVAL";
     const canCreatorCancel = isCreator && isPendingApproval;
     const canForceCancel = hasPermission("vouchers.force_cancel") && !TERMINAL_STATUSES.has(voucher.status);
+    const canRestartApproval =
+        ["PENDING_APPROVAL", "REJECTED", "CANCELLED"].includes(voucher.status) &&
+        (isCreator || hasPermission("vouchers.force_cancel"));
     const canEdit = isCreator && ["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(voucher.status) && !!onEdit;
 
     // ── Resolve creator + warehouse + legacy approver names ──
@@ -347,6 +351,8 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                 });
                 await promise;
                 onClose();
+            } catch (error) {
+                console.error("[VoucherDetailDrawer] creator cancel failed:", error);
             } finally {
                 setIsSubmitting(false);
             }
@@ -398,12 +404,44 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                 });
                 await promise;
                 onClose();
+            } catch (error) {
+                console.error("[VoucherDetailDrawer] force cancel failed:", error);
             } finally {
                 setIsSubmitting(false);
             }
         },
         [isSubmitting, cancelReason, entityType, voucher.id, onClose, t],
     );
+
+    const handleRestartApproval = useCallback(async () => {
+        if (isSubmitting) return;
+        if (!cancelReason.trim()) {
+            gooeyToast.error(t.tasks.selfApproval.restartReasonRequired, {
+                preset: "snappy",
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const promise = restartApproval(entityType, voucher.id, cancelReason);
+            gooeyToast.promise(promise, {
+                loading: t.tasks.selfApproval.restarting,
+                success: t.tasks.selfApproval.restartSuccess,
+                error: t.tasks.selfApproval.restartError,
+                description: {
+                    success: t.tasks.selfApproval.restartSuccessDesc,
+                    error: t.tasks.selfApproval.restartErrorDesc,
+                },
+            });
+            await promise;
+            onClose();
+        } catch (error) {
+            console.error("[VoucherDetailDrawer] approval restart failed:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [cancelReason, entityType, isSubmitting, onClose, t, voucher.id]);
 
     const statusKey = voucher.status as keyof typeof t.importVoucher.status;
     const statusLabel = t.importVoucher.status[statusKey] || voucher.status;
@@ -412,7 +450,7 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
     const totalValue = useMemo(() => items.reduce((sum, i) => sum + i.expected_quantity * i.unit_price, 0), [items]);
 
     const attachmentUrls = voucher.attachment_urls || [];
-    const showCancelSection = canCreatorCancel || canForceCancel;
+    const showCancelSection = canCreatorCancel || canForceCancel || canRestartApproval;
 
     return (
         <>
@@ -749,7 +787,11 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
                                     onChange={(e) => setCancelReason(e.target.value)}
                                     rows={2}
                                     placeholder={
-                                        canForceCancel && !canCreatorCancel
+                                        canRestartApproval &&
+                                        !canCreatorCancel &&
+                                        !canForceCancel
+                                            ? t.tasks.selfApproval.restartReason
+                                            : canForceCancel && !canCreatorCancel
                                             ? t.tasks.selfApproval.forceCancelReason
                                             : t.tasks.selfApproval.cancelReason
                                     }
@@ -758,6 +800,21 @@ export default function VoucherDetailDrawer({ voucher, onClose, onClone, onEdit 
 
                                 {/* Cancel buttons */}
                                 <div className="flex items-center gap-2">
+                                    {canRestartApproval && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRestartApproval}
+                                            disabled={isSubmitting || !cancelReason.trim()}
+                                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-brand-primary)] bg-[var(--color-brand-primary-muted)] px-4 py-3 text-sm font-semibold text-[var(--color-brand-primary)] transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <RotateCcw className="h-4 w-4" />
+                                            )}
+                                            {t.tasks.selfApproval.restartButton}
+                                        </button>
+                                    )}
                                     {canCreatorCancel && (
                                         <button
                                             type="button"

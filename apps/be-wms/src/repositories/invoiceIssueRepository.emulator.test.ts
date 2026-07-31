@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   InvoiceDocumentStatus,
   InvoiceIssueItemStatus,
@@ -128,6 +129,77 @@ test(
       status: InvoiceIssueItemStatus.CANCELLED,
       nextAttemptAt: null,
     });
+
+    await Promise.all([
+      db.collection("invoice_issue_jobs").doc(job2).update({
+        status: "FAILED",
+        counts: {
+          total: 1,
+          queued: 0,
+          processing: 0,
+          pending_confirmation: 0,
+          issued: 0,
+          retryable_error: 0,
+          manual_reconciliation: 1,
+          cancelled: 0,
+        },
+      }),
+      db
+        .collection("invoice_issue_jobs")
+        .doc(job2)
+        .collection("items")
+        .doc(document2)
+        .update({
+          status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+          misa_error_code: "CallSignServiceFail",
+          last_error: "MISA item error: CallSignServiceFail",
+          transaction_id: null,
+          invoice_number: null,
+          invoice_code: null,
+          retry_eligible: true,
+        }),
+      db.collection("invoice_documents").doc(document2).update({
+        status: InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+        active_issue_job_id: null,
+      }),
+      db.collection("invoice_source_orders").doc(document2).update({
+        invoice_document_status:
+          InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+      }),
+    ]);
+    const retryCandidates = await invoiceIssueRepository.listRetryCandidates(
+      [document2],
+      warehouse2,
+    );
+    assert.equal(retryCandidates.length, 1);
+    await invoiceIssueRepository.requeueRejectedItems({
+      jobId: job2,
+      warehouseId: warehouse2,
+      itemIds: [document2],
+      actorId: "phase4-test-retry",
+      accountId,
+      invSeries,
+      signType: 5,
+      invoiceWithCode: true,
+      invoiceCalculatingMachine: true,
+    });
+    const retried = (await invoiceIssueRepository.getJob(
+      job2,
+      warehouse2,
+    )) as (Record<string, unknown> & {
+      sign_type: number;
+      counts: {
+        queued: number;
+        manual_reconciliation: number;
+      };
+      items: Array<Record<string, unknown>>;
+    }) | null;
+    assert.equal(retried?.sign_type, 5);
+    assert.equal(retried?.counts.queued, 1);
+    assert.equal(retried?.counts.manual_reconciliation, 0);
+    assert.equal(retried?.items[0]?.status, InvoiceIssueItemStatus.QUEUED);
+    assert.equal(retried?.items[0]?.ref_id, ref2);
+    assert.equal(retried?.items[0]?.retry_count, 1);
 
     await assert.rejects(
       invoiceIssueRepository.createJob({

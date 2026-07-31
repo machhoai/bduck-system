@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import {
   AuditAction,
   TransferItemStatus,
@@ -7,26 +9,30 @@ import {
   type TransferOrder,
   type TransferOrderItem,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+
 import { db } from "../config/firebase.js";
+import * as approvalRepository from "../repositories/approvalRepository.js";
 import * as transferRepo from "../repositories/transferOrderRepository.js";
+import { getUserById } from "../repositories/userRepository.js";
+
+import { prepareApprovalsForEntity } from "./approvalPreparationService.js";
 import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { verifyMfa } from "./mfaService.js";
 import { getConfigForEntity } from "./processConfigService.js";
-import { onApprovalCompleted } from "./transferOrderStateService.js";
-import { executeIntraTransfer } from "./transferOrderIntraService.js";
-import type { CreateTransferOrderInput } from "./transferOrderSchemas.js";
-import {
-  createTransferError,
-  generateTransferOrderNumber,
-} from "./transferOrderSupport.js";
 import {
   assertTransferFacilities,
   assertTransferLocations,
   assertTransferWriteAccess,
 } from "./transferAccessPolicy.js";
+import { executeIntraTransfer } from "./transferOrderIntraService.js";
+import type { CreateTransferOrderInput } from "./transferOrderSchemas.js";
+import { onApprovalCompleted } from "./transferOrderStateService.js";
+import {
+  createTransferError,
+  generateTransferOrderNumber,
+} from "./transferOrderSupport.js";
 
 export async function createTransferOrder(
   input: CreateTransferOrderInput,
@@ -153,6 +159,23 @@ export async function createTransferOrder(
   }
 
   // ── INTER or INTRA without auto-approve: create and submit for approval ──
+  const creator = await getUserById(userId);
+  const approvalPlan = await prepareApprovalsForEntity({
+    entityType: "TRANSFER_ORDER",
+    entityId: orderId,
+    warehouseId: input.source_warehouse_id,
+    creatorId: userId,
+    displayInfo: {
+      voucher_number: orderNumber,
+      creator_name: creator?.full_name || creator?.email || undefined,
+    },
+    scopeInfo: {
+      sourceWarehouseId: input.source_warehouse_id,
+      destinationWarehouseId: input.destination_warehouse_id,
+    },
+    options: { config, configEntityType },
+  });
+
   const order: TransferOrder = {
     id: orderId,
     order_number: orderNumber,
@@ -197,38 +220,14 @@ export async function createTransferOrder(
   for (const item of orderItems) {
     batch.set(orderRef.collection("items").doc(item.id), item);
   }
+  if (approvalPlan.mode === "RECORDS") {
+    approvalRepository.stageCreateBatch(batch, approvalPlan.records);
+  }
   await batch.commit();
 
-  // Trigger approval chain
-  try {
-    // Resolve creator name for denormalization
-    let creatorName: string | undefined;
-    try {
-      const userDoc = await db.collection("users").doc(userId).get();
-      if (userDoc.exists) {
-        const u = userDoc.data();
-        creatorName = u?.full_name || u?.email || undefined;
-      }
-    } catch {
-      // Non-critical
-    }
-
-    const approvals = await approvalService.createApprovalsForEntity(
-      configEntityType,
-      orderId,
-      order.source_warehouse_id,
-      userId,
-      { voucher_number: orderNumber, creator_name: creatorName },
-      {
-        sourceWarehouseId: order.source_warehouse_id,
-        destinationWarehouseId: order.destination_warehouse_id,
-      },
-    );
-    if (approvals.length === 0 && !isIntra) {
-      await onApprovalCompleted(orderId, "SYSTEM_AUTO_APPROVE");
-    }
-  } catch (error) {
-    console.error("[transferOrderService] Approval creation failed:", error);
+  await approvalService.completePreparedApprovals(approvalPlan);
+  if (approvalPlan.mode !== "RECORDS" && !isIntra) {
+    await onApprovalCompleted(orderId, "SYSTEM_AUTO_APPROVE");
   }
 
   await logAudit({

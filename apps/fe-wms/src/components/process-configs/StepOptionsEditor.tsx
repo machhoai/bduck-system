@@ -1,10 +1,20 @@
 "use client";
 
+import type {
+  ApprovalScopeMode,
+  ProcessEntityType,
+  Role,
+  StepOption,
+  StepAssignmentMode,
+} from "@bduck/shared-types";
 import { BadgeCheck, UserRoundCog } from "lucide-react";
-import type { ApprovalScopeMode, Role, StepOption } from "@bduck/shared-types";
-import type { StepAssignmentMode } from "@bduck/shared-types";
+
 import type { EntityStepMeta, Locale, TEXT } from "./processConfigMeta";
-import { DEFAULT_STEP_OPTION } from "./processConfigMeta";
+import {
+  DEFAULT_STEP_OPTION,
+  getProcessScopeOptions,
+  normalizeProcessScope,
+} from "./processConfigMeta";
 
 type Copy = (typeof TEXT)[Locale];
 
@@ -12,17 +22,11 @@ type Props = {
   steps: EntityStepMeta[];
   stepOptions: Record<string, StepOption>;
   roles: Pick<Role, "id" | "name">[];
+  entityType: ProcessEntityType;
   locale: Locale;
   copy: Copy;
   onChange: (stepOptions: Record<string, StepOption>) => void;
 };
-
-const SCOPE_OPTIONS: ApprovalScopeMode[] = [
-  "ENTITY_WAREHOUSE",
-  "SOURCE_WAREHOUSE",
-  "DESTINATION_WAREHOUSE",
-  "GLOBAL",
-];
 
 function getScopeLabel(copy: Copy, scope: ApprovalScopeMode) {
   const labels: Record<ApprovalScopeMode, string> = {
@@ -38,10 +42,12 @@ export function StepOptionsEditor({
   steps,
   stepOptions,
   roles,
+  entityType,
   locale,
   copy,
   onChange,
 }: Props) {
+  const scopeOptions = getProcessScopeOptions(entityType);
   const updateStep = (stepKey: string, next: StepOption) => {
     onChange({ ...stepOptions, [stepKey]: next });
   };
@@ -140,7 +146,10 @@ export function StepOptionsEditor({
                             {copy.assignmentScope}
                           </span>
                           <select
-                            value={option.assignment_scope ?? "ENTITY_WAREHOUSE"}
+                            value={normalizeProcessScope(
+                              entityType,
+                              option.assignment_scope,
+                            )}
                             onChange={(event) =>
                               updateStep(step.key, {
                                 ...option,
@@ -153,7 +162,7 @@ export function StepOptionsEditor({
                             }
                             className="mt-1 h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-base text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)] sm:h-8 sm:text-sm"
                           >
-                            {SCOPE_OPTIONS.map((scope) => (
+                            {scopeOptions.map((scope) => (
                               <option key={scope} value={scope}>
                                 {getScopeLabel(copy, scope)}
                               </option>

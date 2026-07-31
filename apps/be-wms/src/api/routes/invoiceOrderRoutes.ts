@@ -1,10 +1,5 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
-import {
-  getInvoiceSourceOrderHandler,
-  listInvoiceSourceOrdersHandler,
-  previewInvoiceSourceOrderHandler,
-  syncInvoiceOrdersHandler,
-} from "../controllers/invoiceOrderSyncController.js";
+
 import {
   getInvoiceDocumentHandler,
   prepareInvoiceDocumentHandler,
@@ -17,11 +12,19 @@ import {
   createInvoiceIssueJobHandler,
   getInvoiceBulkDisplayConfigHandler,
   getInvoiceIssueJobHandler,
+  listInvoiceIssueRetryCandidatesHandler,
   previewInvoiceBulkIssueHandler,
   processInvoiceIssueItemHandler,
+  retryRejectedInvoiceIssueItemsHandler,
   saveInvoiceBulkDisplayConfigHandler,
   sweepInvoiceIssueItemsHandler,
 } from "../controllers/invoiceIssueController.js";
+import {
+  getInvoiceSourceOrderHandler,
+  listInvoiceSourceOrdersHandler,
+  previewInvoiceSourceOrderHandler,
+  syncInvoiceOrdersHandler,
+} from "../controllers/invoiceOrderSyncController.js";
 import {
   downloadPublishedInvoiceHandler,
   listInvoiceLedgerHandler,
@@ -48,7 +51,10 @@ router.post(
   processInvoiceIssueItemHandler,
 );
 router.post("/internal/issues/sweep", sweepInvoiceIssueItemsHandler);
-router.post("/internal/reconciliation/status-sweep", sweepIssuedInvoiceStatusesHandler);
+router.post(
+  "/internal/reconciliation/status-sweep",
+  sweepIssuedInvoiceStatusesHandler,
+);
 
 router.use(requireAuth);
 router.get(
@@ -80,6 +86,16 @@ router.post(
   "/issues",
   requirePermission("invoices.issue", bodyWarehouseId),
   createInvoiceIssueJobHandler,
+);
+router.get(
+  "/issues/retry-candidates",
+  requirePermission("invoices.retry", queryWarehouseId),
+  listInvoiceIssueRetryCandidatesHandler,
+);
+router.post(
+  "/issues/retry",
+  requirePermission("invoices.retry", bodyWarehouseId),
+  retryRejectedInvoiceIssueItemsHandler,
 );
 router.get(
   "/issues/:jobId",

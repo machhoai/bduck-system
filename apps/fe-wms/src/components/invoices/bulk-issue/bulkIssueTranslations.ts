@@ -59,7 +59,8 @@ export const bulkIssueTranslations = {
         generatingPreview: "Đang tạo…",
         misaPreviewBtn: "Xem trước MISA",
         beforeTaxShort: "Trước thuế",
-        excludedInvoicesWarning: (count: number) => `${count} đơn không đủ điều kiện sẽ được bỏ qua. Kiểm tra go-live và chống xuất trùng vẫn được giữ.`,
+        excludedInvoicesWarning: (count: number) =>
+            `${count} đơn không đủ điều kiện sẽ được bỏ qua. Kiểm tra go-live và chống xuất trùng vẫn được giữ.`,
         exportExcel: "Xuất Excel",
         exportingExcel: "Đang xuất Excel…",
         exportExcelSuccess: "Đã xuất file Excel",
@@ -73,12 +74,26 @@ export const bulkIssueTranslations = {
         // Progress Card
         progressCompleted: "Đã hoàn tất tiến trình MISA",
         progressProcessing: "MISA đang xử lý trực tiếp",
+        progressRejected: "Có hóa đơn bị MISA từ chối",
         statusIssued: "đã phát hành",
         statusSubmitting: "đang gửi",
         statusPendingMisa: "chờ MISA xác nhận",
         statusNeedsAttention: "cần đối soát",
+        statusPausedForSafety: "tạm dừng để kiểm tra",
         allProcessed: "Tất cả hóa đơn đã được xử lý.",
         noValidInvoices: "Không tìm thấy hóa đơn hợp lệ.",
+        misaRejectedTitle: (count: number) => `MISA đã từ chối ${count} hóa đơn`,
+        misaRejectedDescription:
+            "Các hóa đơn này chưa được phát hành. Bạn có thể thử lại sau khi đã sửa cấu hình MISA.",
+        retryRejectedButton: (count: number) => `Thử lại ${count} hóa đơn lỗi`,
+        retrySafetyNote: "Trước khi gửi lại, hệ thống kiểm tra RefID trên MISA và giữ nguyên mã chống trùng.",
+        retryChecking: "Đang kiểm tra chống trùng…",
+        retryStarted: "Đã bắt đầu thử lại",
+        retryFailed: "Không thể thử lại hóa đơn",
+        retryStartedDescription: (count: number) => `${count} hóa đơn bị từ chối đã được đưa lại vào hàng đợi.`,
+        retryOtpTitle: "Xác nhận thử lại hóa đơn lỗi",
+        retryOtpDescription: (count: number) =>
+            `Nhập OTP để kiểm tra RefID và gửi lại đúng ${count} hóa đơn bị MISA từ chối.`,
     },
     zh: {
         title: "批量开票",
@@ -140,7 +155,8 @@ export const bulkIssueTranslations = {
         generatingPreview: "生成中…",
         misaPreviewBtn: "MISA 预览",
         beforeTaxShort: "税前",
-        excludedInvoicesWarning: (count: number) => `${count} 个不符合条件的订单将被跳过，启用时间和防重复检查仍然有效。`,
+        excludedInvoicesWarning: (count: number) =>
+            `${count} 个不符合条件的订单将被跳过，启用时间和防重复检查仍然有效。`,
         exportExcel: "导出 Excel",
         exportingExcel: "正在导出 Excel…",
         exportExcelSuccess: "Excel 已导出",
@@ -154,13 +170,25 @@ export const bulkIssueTranslations = {
         // Progress Card
         progressCompleted: "MISA 处理已完成",
         progressProcessing: "MISA 实时处理中",
+        progressRejected: "存在被 MISA 拒绝的发票",
         statusIssued: "已开具",
         statusSubmitting: "正在提交",
         statusPendingMisa: "等待 MISA 确认",
         statusNeedsAttention: "需要对账",
+        statusPausedForSafety: "已暂停以安全检查",
         allProcessed: "所有发票均已处理。",
         noValidInvoices: "没有找到有效的发票。",
+        misaRejectedTitle: (count: number) => `MISA 已拒绝 ${count} 张发票`,
+        misaRejectedDescription: "这些发票尚未开具。修正 MISA 配置后可安全重试。",
+        retryRejectedButton: (count: number) => `重试 ${count} 张失败发票`,
+        retrySafetyNote: "重新提交前，系统会在 MISA 查询 RefID，并保留原防重标识。",
+        retryChecking: "正在检查重复风险…",
+        retryStarted: "已开始重试",
+        retryFailed: "无法重试发票",
+        retryStartedDescription: (count: number) => `${count} 张被拒发票已重新加入队列。`,
+        retryOtpTitle: "确认重试失败发票",
+        retryOtpDescription: (count: number) => `输入 OTP，以检查 RefID 并仅重试 ${count} 张被 MISA 拒绝的发票。`,
     },
 } as const;
 
-export type BulkIssueLabels = typeof bulkIssueTranslations[keyof typeof bulkIssueTranslations];
+export type BulkIssueLabels = (typeof bulkIssueTranslations)[keyof typeof bulkIssueTranslations];

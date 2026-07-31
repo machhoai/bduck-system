@@ -1,11 +1,17 @@
+import { randomUUID } from "crypto";
+
 import {
   AuditAction,
   ImportVoucherStatus,
   type ImportVoucher,
   type ImportVoucherItem,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+
 import { db } from "../config/firebase.js";
+import * as approvalRepository from "../repositories/approvalRepository.js";
+import { getUserById } from "../repositories/userRepository.js";
+
+import { prepareApprovalsForEntity } from "./approvalPreparationService.js";
 import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
@@ -77,6 +83,19 @@ export const createImportVoucher = async (
   const actionTime = input.action_time ? new Date(input.action_time) : now;
   const voucherId = randomUUID();
   const voucherNumber = generateVoucherNumber();
+  const creator = await getUserById(userId);
+  const creatorName = creator?.full_name || creator?.email || undefined;
+  const approvalPlan = await prepareApprovalsForEntity({
+    entityType: "IMPORT_VOUCHER",
+    entityId: voucherId,
+    warehouseId: input.warehouse_id,
+    creatorId: userId,
+    displayInfo: {
+      voucher_number: voucherNumber,
+      creator_name: creatorName,
+    },
+    options: { config },
+  });
 
   // ── 1. Build voucher document ──
   const voucher: ImportVoucher = {
@@ -85,7 +104,10 @@ export const createImportVoucher = async (
     warehouse_id: input.warehouse_id,
     supplier_name: input.supplier_name,
     purchase_order_id: input.purchase_order_id ?? null,
-    status: ImportVoucherStatus.PENDING_APPROVAL,
+    status:
+      approvalPlan.mode === "RECORDS"
+        ? ImportVoucherStatus.PENDING_APPROVAL
+        : ImportVoucherStatus.APPROVED,
     creator_id: userId,
     approver_id: null, // Self-Approval Block: assigned by approvalService
     approved_at: null,
@@ -127,6 +149,9 @@ export const createImportVoucher = async (
       item,
     );
   }
+  if (approvalPlan.mode === "RECORDS") {
+    approvalRepository.stageCreateBatch(batch, approvalPlan.records);
+  }
 
   await batch.commit();
 
@@ -142,40 +167,8 @@ export const createImportVoucher = async (
     action_time: actionTime,
   });
 
-  // ── 5. Create approval records (Fixed Pipeline) ──
-  try {
-    // Resolve creator name for denormalization
-    let creatorName: string | undefined;
-    try {
-      const userDoc = await db.collection("users").doc(userId).get();
-      if (userDoc.exists) {
-        const u = userDoc.data();
-        creatorName = u?.full_name || u?.email || undefined;
-      }
-    } catch {
-      // Non-critical: approval still works without name
-    }
-
-    const approvals = await approvalService.createApprovalsForEntity(
-      "IMPORT_VOUCHER",
-      voucherId,
-      voucher.warehouse_id,
-      userId,
-      { voucher_number: voucherNumber, creator_name: creatorName },
-    );
-
-    // If no approval chain configured → auto-advance to APPROVED
-    if (approvals.length === 0) {
-      await db.collection("import_vouchers").doc(voucherId).update({
-        status: ImportVoucherStatus.APPROVED,
-        updated_at: new Date(),
-      });
-    }
-  } catch (error) {
-    // Log but don't fail the voucher creation.
-    // Approval records can be re-created manually.
-    console.error("[importVoucherService] Approval creation failed:", error);
-  }
+  // ── 5. Dispatch notifications/audit after the atomic write succeeds ──
+  await approvalService.completePreparedApprovals(approvalPlan);
 
   return voucher;
 };

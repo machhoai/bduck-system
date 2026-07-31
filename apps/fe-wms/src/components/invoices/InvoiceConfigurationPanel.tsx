@@ -1,35 +1,10 @@
 "use client";
 
-import {
-  AlertTriangle,
-  BadgeCheck,
-  BadgePercent,
-  CalendarClock,
-  CheckCircle2,
-  CreditCard,
-  LoaderCircle,
-  Plus,
-  RefreshCw,
-  Ruler,
-  Save,
-  Settings2,
-  Store,
-  Trash2,
-  UserRound,
-} from "lucide-react";
+import { MeInvoiceSignType, type InvoiceTaxRateSource, type InvoiceVatRateName, type MeInvoiceOptionUserDefined } from "@bduck/shared-types";
+import { AlertTriangle, BadgeCheck, BadgePercent, CalendarClock, CheckCircle2, CreditCard, LoaderCircle, Plus, RefreshCw, Ruler, Save, Settings2, Store, Trash2, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  MeInvoiceSignType,
-  type InvoiceTaxRateSource,
-  type InvoiceVatRateName,
-  type MeInvoiceOptionUserDefined,
-} from "@bduck/shared-types";
-import {
-  invoiceApi,
-  type MeInvoiceAccountOption,
-  type MeInvoiceStoreConfigPayload,
-  type MeInvoiceStoreConfigView,
-} from "@/api/invoiceApi";
+
+import { invoiceApi, type MeInvoiceAccountOption, type MeInvoiceStoreConfigPayload, type MeInvoiceStoreConfigView } from "@/api/invoiceApi";
 import { showToast } from "@/utils/toast";
 
 type Language = "vi" | "zh";
@@ -114,15 +89,16 @@ const vietnamDateTimeInput = (value: string | null): string => {
     minute: "2-digit",
     hourCycle: "h23",
   }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value ?? "";
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
   return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 };
 
 const toForm = (config: MeInvoiceStoreConfigView): ConfigForm => {
-  const paymentMappings = Object.entries(config.payment_method_mapping ?? {}).map(
-    ([source, target], index) => ({ id: `mapping-${index}`, source, target }),
-  );
+  const paymentMappings = Object.entries(config.payment_method_mapping ?? {}).map(([source, target], index) => ({
+    id: `mapping-${index}`,
+    source,
+    target,
+  }));
   return {
     meinvoice_account_id: config.meinvoice_account_id,
     inv_series: config.inv_series,
@@ -139,10 +115,7 @@ const toForm = (config: MeInvoiceStoreConfigView): ConfigForm => {
     default_buyer_name: config.default_buyer_name,
     default_buyer_address: config.default_buyer_address,
     enabled: config.enabled,
-    payment_mappings:
-      paymentMappings.length > 0
-        ? paymentMappings
-        : [{ id: "mapping-new", source: "", target: "" }],
+    payment_mappings: paymentMappings.length > 0 ? paymentMappings : [{ id: "mapping-new", source: "", target: "" }],
     sku_mapping: config.sku_mapping,
     item_name_mapping: config.item_name_mapping,
     item_unit_mapping: config.item_unit_mapping ?? {},
@@ -164,17 +137,14 @@ const inputClass =
 const copy = {
   vi: {
     title: "Cấu hình hóa đơn",
-    subtitle:
-      "Thiết lập giá trị mặc định và chính sách phát hành cho từng cửa hàng.",
+    subtitle: "Thiết lập giá trị mặc định và chính sách phát hành cho từng cửa hàng.",
     loadError: "Không thể tải cấu hình hóa đơn.",
     noPermission: "Bạn không có quyền cấu hình hóa đơn cho cửa hàng này.",
     saveError: "Không thể lưu cấu hình.",
     saved: "Đã lưu cấu hình",
-    savedDescription:
-      "Cấu hình đang ở trạng thái tắt. Bạn có thể xác minh trước khi bật.",
+    savedDescription: "Cấu hình đang ở trạng thái tắt. Bạn có thể xác minh trước khi bật.",
     applied: "Đã áp dụng cấu hình",
-    appliedDescription:
-      "Cấu hình đã được lưu và xác minh với MISA. Hãy đồng bộ lại đơn để áp dụng giá trị mới.",
+    appliedDescription: "Cấu hình đã được lưu và xác minh với MISA. Hãy đồng bộ lại đơn để áp dụng giá trị mới.",
     required: "Vui lòng điền đủ tài khoản MISA, ký hiệu, cửa hàng, ĐVT, phương thức thanh toán, VAT và go-live.",
   },
   zh: {
@@ -191,15 +161,7 @@ const copy = {
   },
 } as const;
 
-export function InvoiceConfigurationPanel({
-  warehouseId,
-  canConfigure,
-  lang,
-}: {
-  warehouseId: string;
-  canConfigure: boolean;
-  lang: Language;
-}) {
+export function InvoiceConfigurationPanel({ warehouseId, canConfigure, lang }: { warehouseId: string; canConfigure: boolean; lang: Language }) {
   const d = copy[lang];
   const [config, setConfig] = useState<MeInvoiceStoreConfigView | null>(null);
   const [accountOptions, setAccountOptions] = useState<MeInvoiceAccountOption[]>([]);
@@ -213,10 +175,7 @@ export function InvoiceConfigurationPanel({
     setLoading(true);
     setError(null);
     try {
-      const [next, accounts] = await Promise.all([
-        invoiceApi.getStoreConfig(warehouseId),
-        invoiceApi.listStoreAccountOptions(warehouseId),
-      ]);
+      const [next, accounts] = await Promise.all([invoiceApi.getStoreConfig(warehouseId), invoiceApi.listStoreAccountOptions(warehouseId)]);
       setConfig(next);
       setAccountOptions(accounts);
       setForm(next ? toForm(next) : blankForm());
@@ -232,22 +191,29 @@ export function InvoiceConfigurationPanel({
   }, [loadConfig]);
 
   const status = useMemo(() => {
-    if (!config) return { label: lang === "vi" ? "Chưa cấu hình" : "Not configured", tone: "amber" };
+    if (!config)
+      return {
+        label: lang === "vi" ? "Chưa cấu hình" : "Not configured",
+        tone: "amber",
+      };
     if (!config.enabled) return { label: lang === "vi" ? "Đang tắt" : "Disabled", tone: "slate" };
-    if (!config.validated_at) return { label: lang === "vi" ? "Chưa xác minh" : "Not validated", tone: "amber" };
-    if (!config.go_live_at) return { label: lang === "vi" ? "Thiếu go-live" : "Missing go-live", tone: "rose" };
+    if (!config.validated_at)
+      return {
+        label: lang === "vi" ? "Chưa xác minh" : "Not validated",
+        tone: "amber",
+      };
+    if (!config.go_live_at)
+      return {
+        label: lang === "vi" ? "Thiếu go-live" : "Missing go-live",
+        tone: "rose",
+      };
     return { label: lang === "vi" ? "Sẵn sàng" : "Ready", tone: "emerald" };
   }, [config, lang]);
 
-  const setField = <K extends keyof ConfigForm>(key: K, value: ConfigForm[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
+  const setField = <K extends keyof ConfigForm>(key: K, value: ConfigForm[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const buildPayload = (enabled: boolean): MeInvoiceStoreConfigPayload => {
-    const paymentMethodMapping = Object.fromEntries(
-      form.payment_mappings
-        .map((item) => [item.source.trim(), item.target.trim()] as const)
-        .filter(([source, target]) => source && target),
-    );
+    const paymentMethodMapping = Object.fromEntries(form.payment_mappings.map((item) => [item.source.trim(), item.target.trim()] as const).filter(([source, target]) => source && target));
     return {
       meinvoice_account_id: form.meinvoice_account_id.trim(),
       inv_series: form.inv_series.trim().toUpperCase(),
@@ -279,15 +245,15 @@ export function InvoiceConfigurationPanel({
     const payload = buildPayload(form.enabled);
     return Boolean(
       payload.meinvoice_account_id &&
-        payload.inv_series &&
-        payload.seller_shop_code &&
-        payload.seller_shop_name &&
-        payload.default_buyer_name &&
-        payload.default_payment_method_name &&
-        payload.default_unit_name &&
-        payload.default_vat_rate_name &&
-        payload.go_live_at &&
-        payload.price_includes_vat !== null,
+      payload.inv_series &&
+      payload.seller_shop_code &&
+      payload.seller_shop_name &&
+      payload.default_buyer_name &&
+      payload.default_payment_method_name &&
+      payload.default_unit_name &&
+      payload.default_vat_rate_name &&
+      payload.go_live_at &&
+      payload.price_includes_vat !== null,
     );
   };
 
@@ -299,10 +265,7 @@ export function InvoiceConfigurationPanel({
     setSaving(true);
     setError(null);
     try {
-      const saved = await invoiceApi.saveStoreConfig(
-        warehouseId,
-        buildPayload(false),
-      );
+      const saved = await invoiceApi.saveStoreConfig(warehouseId, buildPayload(false));
       setConfig(saved);
       setForm(toForm(saved));
       showToast.success(d.saved, d.savedDescription);
@@ -345,11 +308,7 @@ export function InvoiceConfigurationPanel({
   };
 
   if (!canConfigure) {
-    return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-        {d.noPermission}
-      </div>
-    );
+    return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">{d.noPermission}</div>;
   }
 
   if (loading) {
@@ -371,15 +330,17 @@ export function InvoiceConfigurationPanel({
           <div>
             <div className="flex flex-wrap items-center gap-1.5">
               <h2 className="text-sm font-bold text-slate-950">{d.title}</h2>
-              <span className={`rounded-full px-2 py-0.5 text-xxs font-bold ${
-                status.tone === "emerald"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : status.tone === "rose"
-                    ? "bg-rose-100 text-rose-700"
-                    : status.tone === "amber"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-slate-100 text-slate-600"
-              }`}>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xxs font-bold ${
+                  status.tone === "emerald"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : status.tone === "rose"
+                      ? "bg-rose-100 text-rose-700"
+                      : status.tone === "amber"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-slate-100 text-slate-600"
+                }`}
+              >
                 {status.label}
               </span>
             </div>
@@ -420,10 +381,20 @@ export function InvoiceConfigurationPanel({
               <input className={inputClass} value={form.default_buyer_name} onChange={(event) => setField("default_buyer_name", event.target.value)} />
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Địa chỉ người mua" : "Buyer address"} className="sm:col-span-2" optional>
-              <input className={inputClass} value={form.default_buyer_address} onChange={(event) => setField("default_buyer_address", event.target.value)} placeholder={lang === "vi" ? "Để trống nếu không bắt buộc" : "Leave blank if optional"} />
+              <input
+                className={inputClass}
+                value={form.default_buyer_address}
+                onChange={(event) => setField("default_buyer_address", event.target.value)}
+                placeholder={lang === "vi" ? "Để trống nếu không bắt buộc" : "Leave blank if optional"}
+              />
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Phương thức thanh toán" : "Payment method"} icon={<CreditCard size={12} />}>
-              <input className={inputClass} value={form.default_payment_method_name} onChange={(event) => setField("default_payment_method_name", event.target.value)} placeholder="Tiền mặt/Chuyển khoản" />
+              <input
+                className={inputClass}
+                value={form.default_payment_method_name}
+                onChange={(event) => setField("default_payment_method_name", event.target.value)}
+                placeholder="Tiền mặt/Chuyển khoản"
+              />
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Đơn vị tính (ĐVT)" : "Unit"} icon={<Ruler size={12} />}>
               <input className={inputClass} value={form.default_unit_name} onChange={(event) => setField("default_unit_name", event.target.value)} placeholder="Cái" />
@@ -431,11 +402,19 @@ export function InvoiceConfigurationPanel({
             <ConfigField label={lang === "vi" ? "Thuế suất VAT" : "Default VAT"} icon={<BadgePercent size={12} />}>
               <select className={inputClass} value={form.default_vat_rate_name} onChange={(event) => setField("default_vat_rate_name", event.target.value as InvoiceVatRateName | "")}>
                 <option value="">{lang === "vi" ? "Chọn thuế suất" : "Select VAT"}</option>
-                {(["0%", "5%", "8%", "10%", "KCT", "KKKNT"] as const).map((value) => <option key={value} value={value}>{value}</option>)}
+                {(["0%", "5%", "8%", "10%", "KCT", "KKKNT"] as const).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Giá nguồn" : "Source price"}>
-              <select className={inputClass} value={form.price_includes_vat === null ? "" : String(form.price_includes_vat)} onChange={(event) => setField("price_includes_vat", event.target.value === "" ? null : event.target.value === "true")}>
+              <select
+                className={inputClass}
+                value={form.price_includes_vat === null ? "" : String(form.price_includes_vat)}
+                onChange={(event) => setField("price_includes_vat", event.target.value === "" ? null : event.target.value === "true")}
+              >
                 <option value="">{lang === "vi" ? "Chưa xác định" : "Not specified"}</option>
                 <option value="true">{lang === "vi" ? "Đã gồm VAT" : "VAT included"}</option>
                 <option value="false">{lang === "vi" ? "Chưa gồm VAT" : "VAT excluded"}</option>
@@ -452,16 +431,27 @@ export function InvoiceConfigurationPanel({
           <div className="grid gap-2.5 sm:grid-cols-2">
             <ConfigField label="Go-live" className="sm:col-span-2">
               <input type="datetime-local" className={inputClass} value={form.go_live_at} onChange={(event) => setField("go_live_at", event.target.value)} />
-              <p className="mt-0.5 text-xxs text-slate-500">{lang === "vi" ? "Múi giờ Việt Nam (UTC+7). Đơn trước mốc này chỉ dùng để đối chiếu." : "Vietnam time (UTC+7). Earlier orders are reconciliation-only."}</p>
+              <p className="mt-0.5 text-xxs text-slate-500">
+                {lang === "vi" ? "Múi giờ Việt Nam (UTC+7). Đơn trước mốc này chỉ dùng để đối chiếu." : "Vietnam time (UTC+7). Earlier orders are reconciliation-only."}
+              </p>
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Ký hiệu hóa đơn" : "Invoice series"}>
               <input className={`${inputClass} uppercase`} value={form.inv_series} onChange={(event) => setField("inv_series", event.target.value.toUpperCase())} placeholder="1C26MAA" />
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Hình thức ký" : "Sign type"}>
               <select className={inputClass} value={form.sign_type} onChange={(event) => setField("sign_type", Number(event.target.value) as MeInvoiceSignType)}>
-                <option value={MeInvoiceSignType.CALCULATING_MACHINE}>{lang === "vi" ? "Máy tính tiền" : "Cash register"}</option>
-                <option value={MeInvoiceSignType.HSM}>HSM</option>
+                <option value={MeInvoiceSignType.CALCULATING_MACHINE}>{lang === "vi" ? "Máy tính tiền (5) — không dùng HSM" : "Cash register (5) — no HSM"}</option>
+                <option value={MeInvoiceSignType.HSM}>{lang === "vi" ? "Chữ ký số HSM (2) — cần mua dịch vụ" : "HSM signature (2) — subscription required"}</option>
               </select>
+              <p className={`mt-1 text-xxs ${form.sign_type === MeInvoiceSignType.HSM ? "font-semibold text-amber-700" : "text-slate-500"}`}>
+                {form.sign_type === MeInvoiceSignType.HSM
+                  ? lang === "vi"
+                    ? "Chỉ chọn HSM khi tài khoản MISA đã mua và kích hoạt dịch vụ chữ ký số. Nếu không, MISA sẽ từ chối phát hành."
+                    : "Select HSM only when the MISA account has an active digital-signature subscription."
+                  : lang === "vi"
+                    ? "Phù hợp cho hóa đơn khởi tạo từ máy tính tiền; MISA không gọi dịch vụ ký HSM."
+                    : "For cash-register invoices; MISA will not call the HSM signing service."}
+              </p>
             </ConfigField>
             <ConfigField label={lang === "vi" ? "Nguồn thuế suất" : "VAT source"}>
               <select className={inputClass} value={form.tax_rate_source} onChange={(event) => setField("tax_rate_source", event.target.value as InvoiceTaxRateSource)}>
@@ -499,16 +489,21 @@ export function InvoiceConfigurationPanel({
                   {accountOptions.map((account) => (
                     <option key={account.id} value={account.id}>
                       {account.display_name} · {account.tax_code} · {account.environment}
-                      {!account.enabled || !account.last_test_succeeded
-                        ? lang === "vi" ? " · Chưa sẵn sàng" : " · Not ready"
-                        : ""}
+                      {!account.enabled || !account.last_test_succeeded ? (lang === "vi" ? " · Chưa sẵn sàng" : " · Not ready") : ""}
                     </option>
                   ))}
                 </select>
               ) : (
-                <input className={inputClass} value={form.meinvoice_account_id} onChange={(event) => setField("meinvoice_account_id", event.target.value)} placeholder={lang === "vi" ? "Chưa có tài khoản kết nối khả dụng" : "No connection account is available"} />
+                <input
+                  className={inputClass}
+                  value={form.meinvoice_account_id}
+                  onChange={(event) => setField("meinvoice_account_id", event.target.value)}
+                  placeholder={lang === "vi" ? "Chưa có tài khoản kết nối khả dụng" : "No connection account is available"}
+                />
               )}
-              <p className="mt-0.5 text-xxs text-slate-500">{lang === "vi" ? "Tài khoản phải được test kết nối và bật trước khi xác minh cấu hình cửa hàng." : "The account must be tested and enabled before validating the store configuration."}</p>
+              <p className="mt-0.5 text-xxs text-slate-500">
+                {lang === "vi" ? "Tài khoản phải được test kết nối và bật trước khi xác minh cấu hình cửa hàng." : "The account must be tested and enabled before validating the store configuration."}
+              </p>
             </ConfigField>
           </div>
         </ConfigCard>
@@ -521,14 +516,53 @@ export function InvoiceConfigurationPanel({
           <div className="space-y-1.5">
             {form.payment_mappings.map((mapping) => (
               <div key={mapping.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <input className={inputClass} value={mapping.source} onChange={(event) => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.map((item) => item.id === mapping.id ? { ...item, source: event.target.value } : item) }))} placeholder={lang === "vi" ? "Tên từ nguồn" : "Source name"} />
-                <input className={inputClass} value={mapping.target} onChange={(event) => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.map((item) => item.id === mapping.id ? { ...item, target: event.target.value } : item) }))} placeholder={lang === "vi" ? "Tên trên hóa đơn" : "Invoice name"} />
-                <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: current.payment_mappings.filter((item) => item.id !== mapping.id) }))} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" aria-label={lang === "vi" ? "Xóa ánh xạ" : "Remove mapping"}>
+                <input
+                  className={inputClass}
+                  value={mapping.source}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      payment_mappings: current.payment_mappings.map((item) => (item.id === mapping.id ? { ...item, source: event.target.value } : item)),
+                    }))
+                  }
+                  placeholder={lang === "vi" ? "Tên từ nguồn" : "Source name"}
+                />
+                <input
+                  className={inputClass}
+                  value={mapping.target}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      payment_mappings: current.payment_mappings.map((item) => (item.id === mapping.id ? { ...item, target: event.target.value } : item)),
+                    }))
+                  }
+                  placeholder={lang === "vi" ? "Tên trên hóa đơn" : "Invoice name"}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      payment_mappings: current.payment_mappings.filter((item) => item.id !== mapping.id),
+                    }))
+                  }
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  aria-label={lang === "vi" ? "Xóa ánh xạ" : "Remove mapping"}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => setForm((current) => ({ ...current, payment_mappings: [...current.payment_mappings, { id: crypto.randomUUID(), source: "", target: "" }] }))} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-dashed border-sky-300 px-2.5 text-xxs font-bold text-sky-700 hover:bg-sky-50">
+            <button
+              type="button"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  payment_mappings: [...current.payment_mappings, { id: crypto.randomUUID(), source: "", target: "" }],
+                }))
+              }
+              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-dashed border-sky-300 px-2.5 text-xxs font-bold text-sky-700 hover:bg-sky-50"
+            >
               <Plus size={13} /> {lang === "vi" ? "Thêm ánh xạ" : "Add mapping"}
             </button>
           </div>
@@ -540,13 +574,25 @@ export function InvoiceConfigurationPanel({
           <input type="checkbox" checked={form.enabled} onChange={(event) => setField("enabled", event.target.checked)} className="h-4.5 w-4.5 rounded accent-sky-700" />
           <span>
             <span className="block text-xs font-bold text-slate-900">{lang === "vi" ? "Bật cấu hình sau khi xác minh" : "Enable after validation"}</span>
-            <span className="block text-xxs text-slate-500">{lang === "vi" ? "Tắt tùy chọn này nếu chỉ muốn lưu cấu hình để kiểm tra sau." : "Turn this off to save a validated but inactive configuration."}</span>
+            <span className="block text-xxs text-slate-500">
+              {lang === "vi" ? "Tắt tùy chọn này nếu chỉ muốn lưu cấu hình để kiểm tra sau." : "Turn this off to save a validated but inactive configuration."}
+            </span>
           </span>
         </label>
-        <button type="button" onClick={() => void saveDraft()} disabled={saving} className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+        <button
+          type="button"
+          onClick={() => void saveDraft()}
+          disabled={saving}
+          className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
           <Save size={14} /> {lang === "vi" ? "Lưu nháp" : "Save draft"}
         </button>
-        <button type="button" onClick={() => void saveValidateAndApply()} disabled={saving} className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-sky-700 px-3 text-xs font-bold text-white hover:bg-sky-800 disabled:opacity-50">
+        <button
+          type="button"
+          onClick={() => void saveValidateAndApply()}
+          disabled={saving}
+          className="inline-flex h-8 w-fit items-center justify-center gap-1.5 rounded-md bg-sky-700 px-3 text-xs font-bold text-white hover:bg-sky-800 disabled:opacity-50"
+        >
           {saving ? <LoaderCircle className="animate-spin" size={14} /> : <BadgeCheck size={14} />}
           {lang === "vi" ? "Lưu & xác minh MISA" : "Save & validate MISA"}
         </button>
@@ -554,23 +600,17 @@ export function InvoiceConfigurationPanel({
 
       <div className="flex items-start gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xxs text-sky-800">
         <CheckCircle2 className="mt-0.5 shrink-0" size={13} />
-        <span>{lang === "vi" ? "Sau khi đổi ĐVT, VAT hoặc phương thức thanh toán, hãy đồng bộ lại ngày cần phát hành để hệ thống tính lại preflight và draft." : "After changing unit, VAT, or payment defaults, resync the issuing date so preflight and drafts are recalculated."}</span>
+        <span>
+          {lang === "vi"
+            ? "Sau khi đổi ĐVT, VAT hoặc phương thức thanh toán, hãy đồng bộ lại ngày cần phát hành để hệ thống tính lại preflight và draft."
+            : "After changing unit, VAT, or payment defaults, resync the issuing date so preflight and drafts are recalculated."}
+        </span>
       </div>
     </section>
   );
 }
 
-function ConfigCard({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
+function ConfigCard({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="mb-3.5 flex items-start gap-2.5">
@@ -585,19 +625,7 @@ function ConfigCard({
   );
 }
 
-function ConfigField({
-  label,
-  icon,
-  optional = false,
-  className = "",
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  optional?: boolean;
-  className?: string;
-  children: React.ReactNode;
-}) {
+function ConfigField({ label, icon, optional = false, className = "", children }: { label: string; icon?: React.ReactNode; optional?: boolean; className?: string; children: React.ReactNode }) {
   return (
     <label className={`grid content-start gap-1 ${className}`}>
       <span className="flex items-center gap-1.5 text-xxs font-bold text-slate-600">

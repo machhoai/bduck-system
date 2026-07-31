@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import type {
+    ApprovalLevel,
+    ProcessConfig,
+    ProcessEntityType,
+    StepOption,
+} from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
 import {
     AlertTriangle,
     Camera,
@@ -14,15 +20,8 @@ import {
     Store,
     Zap,
 } from "lucide-react";
-import { gooeyToast } from "goey-toast";
-import type {
-    ApprovalLevel,
-    ProcessConfig,
-    ProcessEntityType,
-    StepOption,
-} from "@bduck/shared-types";
-import { subscribeDataMutation } from "@/lib/dataInvalidation";
-import { useTranslation } from "@/lib/i18n";
+import { useCallback, useEffect, useState } from "react";
+
 import {
     fetchConfigByEntityType,
     seedProcessConfig,
@@ -30,17 +29,50 @@ import {
 } from "@/hooks/useApprovalApi";
 import { useRoles } from "@/hooks/useRoles";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { subscribeDataMutation } from "@/lib/dataInvalidation";
+import { useTranslation } from "@/lib/i18n";
+import { getDetailedErrorMessage } from "@/utils/apiError";
+
 import { ApprovalChainEditor } from "./ApprovalChainEditor";
-import { ProcessConfigSkeleton } from "./ProcessConfigSkeleton";
-import { StepOptionsEditor } from "./StepOptionsEditor";
 import {
     ENTITY_ORDER,
     TEXT,
     getConfigSummary,
     getEntityMeta,
     getEntitySteps,
+    normalizeProcessScope,
     type Locale,
 } from "./processConfigMeta";
+import { ProcessConfigSkeleton } from "./ProcessConfigSkeleton";
+import { StepOptionsEditor } from "./StepOptionsEditor";
+
+function normalizeApprovalChainScopes(
+    entityType: ProcessEntityType,
+    chain: ApprovalLevel[],
+): ApprovalLevel[] {
+    return chain.map((level) => ({
+        ...level,
+        approval_scope: normalizeProcessScope(entityType, level.approval_scope),
+    }));
+}
+
+function normalizeStepOptionScopes(
+    entityType: ProcessEntityType,
+    options: Record<string, StepOption>,
+): Record<string, StepOption> {
+    return Object.fromEntries(
+        Object.entries(options).map(([key, option]) => [
+            key,
+            {
+                ...option,
+                assignment_scope: normalizeProcessScope(
+                    entityType,
+                    option.assignment_scope,
+                ),
+            },
+        ]),
+    );
+}
 
 function StatTile({
     label,
@@ -231,20 +263,32 @@ function ConfigDetailPanel({
     const copy = TEXT[locale];
     const meta = getEntityMeta(config.entity_type);
     const Icon = meta.icon;
-    const [chain, setChain] = useState<ApprovalLevel[]>(config.approval_chain);
+    const [chain, setChain] = useState<ApprovalLevel[]>(() =>
+        normalizeApprovalChainScopes(config.entity_type, config.approval_chain),
+    );
     const [autoApprove, setAutoApprove] = useState(config.auto_approve);
     const [requireEvidence, setRequireEvidence] = useState(config.require_evidence ?? false);
     const [requireOtp, setRequireOtp] = useState(config.require_otp ?? false);
     const [stepOptions, setStepOptions] = useState<Record<string, StepOption>>(
-        config.step_options,
+        normalizeStepOptionScopes(config.entity_type, config.step_options),
     );
 
     useEffect(() => {
-        setChain(config.approval_chain);
+        setChain(
+            normalizeApprovalChainScopes(
+                config.entity_type,
+                config.approval_chain,
+            ),
+        );
         setAutoApprove(config.auto_approve);
         setRequireEvidence(config.require_evidence ?? false);
         setRequireOtp(config.require_otp ?? false);
-        setStepOptions(config.step_options);
+        setStepOptions(
+            normalizeStepOptionScopes(
+                config.entity_type,
+                config.step_options,
+            ),
+        );
     }, [config]);
 
     const steps = getEntitySteps(config.entity_type);
@@ -467,6 +511,7 @@ function ConfigDetailPanel({
                 <ApprovalChainEditor
                     chain={chain}
                     roles={roles}
+                    entityType={config.entity_type}
                     disabled={autoApprove}
                     copy={copy}
                     onChange={setChain}
@@ -476,6 +521,7 @@ function ConfigDetailPanel({
                     steps={steps}
                     stepOptions={stepOptions}
                     roles={roles}
+                    entityType={config.entity_type}
                     locale={locale}
                     copy={copy}
                     onChange={setStepOptions}
@@ -560,9 +606,6 @@ export function ProcessConfigWorkspace() {
         void loadSelectedWarehouseConfigs(selectedWarehouseId);
     }, [loadSelectedWarehouseConfigs, selectedWarehouseId]);
 
-    const selectedWarehouse = warehouses.find(
-        (warehouse) => warehouse.id === selectedWarehouseId,
-    );
     const configuredCount = selectedConfigs.filter(
         (config) => !config.id.startsWith("default_"),
     ).length;
@@ -618,21 +661,28 @@ export function ProcessConfigWorkspace() {
                 }
             };
 
-            await gooeyToast.promise(saveAction(), {
-                loading: copy.saving,
-                success: copy.saveSuccess,
-                error: copy.saveError,
-                description: {
-                    success: copy.saveSuccessDesc,
-                    error: copy.loadError,
-                },
-                action: {
-                    error: {
-                        label: copy.retry,
-                        onClick: () => void handleSave(config, payload),
+            try {
+                await gooeyToast.promise(saveAction(), {
+                    loading: copy.saving,
+                    success: copy.saveSuccess,
+                    error: copy.saveError,
+                    description: {
+                        success: copy.saveSuccessDesc,
+                        error: copy.loadError,
                     },
-                },
-            });
+                    action: {
+                        error: {
+                            label: copy.retry,
+                            onClick: () => void handleSave(config, payload),
+                        },
+                    },
+                });
+            } catch (error) {
+                gooeyToast.error(copy.saveError, {
+                    description: getDetailedErrorMessage(error, copy.loadError),
+                    preset: "snappy",
+                });
+            }
         },
         [
             copy.loadError,

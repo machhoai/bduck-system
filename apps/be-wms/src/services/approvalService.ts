@@ -20,15 +20,20 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-import { randomUUID } from "crypto";
-import { db } from "../config/firebase.js";
 import { AuditAction } from "@bduck/shared-types";
 import type {
   ProcessEntityType,
   ApprovalRecord,
-  ApprovalLevel,
 } from "@bduck/shared-types";
+
+import { db } from "../config/firebase.js";
 import * as approvalRepo from "../repositories/approvalRepository.js";
+
+import { assertApprovalCreator } from "./approvalCancelPolicy.js";
+import {
+  prepareApprovalsForEntity,
+  type PreparedApprovalPlan,
+} from "./approvalPreparationService.js";
 import { logAudit } from "./auditService.js";
 import { verifyMfa } from "./mfaService.js";
 import {
@@ -36,16 +41,15 @@ import {
   getConfigForEntity,
 } from "./processConfigService.js";
 import {
+  canActOnApprovalRecord,
+  type HasEffectiveRoleAtFacility,
+  type ScopedUser,
+} from "./scopedRoleAccess.js";
+import {
   notifyApprovalCompleted,
   notifyInitialApprovalTasks,
   notifyNextApprovalLevel,
 } from "./workflowNotificationService.js";
-import {
-  canActOnApprovalRecord,
-  resolveStepWarehouseId,
-  type HasEffectiveRoleAtFacility,
-  type ScopedUser,
-} from "./scopedRoleAccess.js";
 
 // ─────────────────────────────────────────────
 // ERROR HELPERS
@@ -94,125 +98,45 @@ export async function createApprovalsForEntity(
     configEntityType?: ProcessEntityType;
   },
 ): Promise<ApprovalRecord[]> {
-  const configEntityType = options?.configEntityType ?? entityType;
-  // ── Check auto_approve flag in ProcessConfig ──
-  const config = await getConfigForEntity(configEntityType, warehouseId);
+  const plan = await prepareApprovalsForEntity({
+    entityType,
+    entityId,
+    warehouseId,
+    creatorId,
+    displayInfo,
+    scopeInfo,
+    options,
+  });
+  if (plan.mode === "RECORDS") {
+    await approvalRepo.createBatch(plan.records);
+  }
+  await completePreparedApprovals(plan);
+  return plan.records;
+}
 
-  if (config?.auto_approve === true) {
-    console.log(
-      `[approvalService] auto_approve=true for ${configEntityType}. Skipping approval chain.`,
-    );
-
-    // Audit trail: explicitly record system auto-approve (ISO 9001)
+export async function completePreparedApprovals(
+  plan: PreparedApprovalPlan,
+): Promise<void> {
+  if (plan.mode === "AUTO_APPROVED") {
     await logAudit({
-      entity_type: entityType,
-      entity_id: entityId,
-      warehouse_id: warehouseId,
+      entity_type: plan.entityType,
+      entity_id: plan.entityId,
+      warehouse_id: plan.warehouseId,
       action: AuditAction.APPROVE,
       user_id: "SYSTEM_AUTO_APPROVE",
       old_value: { status: "CREATED" },
       new_value: {
         status: "AUTO_APPROVED",
         reason: "auto_approve enabled in ProcessConfig",
-        config_entity_type: configEntityType,
-        config_id: config.id,
+        config_entity_type: plan.configEntityType,
+        config_id: plan.configId,
       },
     });
-
-    return []; // Triggers auto-advance in importVoucherService
+    return;
   }
-
-  const chain = (
-    await getActiveApprovalChainForEntity(configEntityType, warehouseId)
-  ).filter((level) => {
-    if (
-      typeof options?.minLevel === "number" &&
-      level.level < options.minLevel
-    ) {
-      return false;
-    }
-    if (
-      typeof options?.maxLevel === "number" &&
-      level.level > options.maxLevel
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  console.log(
-    `[approvalService] createApprovalsForEntity: entityType=${entityType}, configEntityType=${configEntityType}, entityId=${entityId}, warehouseId=${warehouseId}, chainLength=${chain.length}`,
-  );
-
-  if (chain.length === 0) {
-    // No approval required — entity auto-advances
-    console.log(
-      `[approvalService] No approval chain found for ${entityType}. Auto-advancing.`,
-    );
-    return [];
+  if (plan.mode === "RECORDS") {
+    await notifyInitialApprovalTasks(plan.records);
   }
-
-  console.log(
-    `[approvalService] Approval chain:`,
-    chain.map((l) => ({ level: l.level, role_id: l.role_id, label: l.label })),
-  );
-
-  const existingRecords = await approvalRepo.findByEntity(entityType, entityId);
-  const approvalAttempt =
-    existingRecords.reduce(
-      (max, record) => Math.max(max, record.approval_attempt ?? 1),
-      0,
-    ) + 1;
-  const now = new Date();
-  const records: ApprovalRecord[] = [];
-
-  for (const level of chain) {
-    const approvalScope = level.approval_scope ?? "ENTITY_WAREHOUSE";
-    const approvalWarehouseId = resolveStepWarehouseId(
-      approvalScope,
-      warehouseId,
-      scopeInfo?.sourceWarehouseId,
-      scopeInfo?.destinationWarehouseId,
-    );
-    // Create min_approvers records per level (default 1)
-    const count = Math.max(level.min_approvers || 1, 1);
-    for (let i = 0; i < count; i++) {
-      records.push({
-        id: randomUUID(),
-        entity_type: entityType,
-        config_entity_type: configEntityType,
-        entity_id: entityId,
-        warehouse_id: warehouseId,
-        approval_warehouse_id: approvalWarehouseId,
-        approval_scope: approvalScope,
-        allow_global_fallback: level.allow_global_fallback === true,
-        level: level.level,
-        approval_attempt: approvalAttempt,
-        role_id: level.role_id,
-        status: "PENDING",
-        approver_id: null,
-        approved_at: null,
-        rejected_reason: null,
-        comments: null,
-        creator_id: creatorId,
-        action_time: now,
-        sync_time: now,
-        created_at: now,
-        // Denormalized display fields
-        voucher_number: displayInfo?.voucher_number ?? undefined,
-        creator_name: displayInfo?.creator_name ?? undefined,
-      });
-    }
-  }
-
-  await approvalRepo.createBatch(records);
-  console.log(
-    `[approvalService] Created ${records.length} pending_approval records for ${entityType}/${entityId}`,
-  );
-
-  await notifyInitialApprovalTasks(records);
-
-  return records;
 }
 
 // ─────────────────────────────────────────────
@@ -796,13 +720,7 @@ export async function cancelByCreator(
     (record) => (record.approval_attempt ?? 1) === currentAttempt,
   );
   const firstRecord = currentRecords[0] ?? allRecords[0];
-  if (firstRecord.creator_id !== creatorId) {
-    throw createError(
-      403,
-      "Chỉ người tạo lệnh mới có quyền hủy.",
-      "只有创建人才能撤销单据。",
-    );
-  }
+  assertApprovalCreator(firstRecord, creatorId);
 
   // ── OTP VERIFICATION (If required by config) ──
   const cancelConfig = await getConfigForEntity(

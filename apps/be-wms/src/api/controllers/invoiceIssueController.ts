@@ -1,11 +1,10 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
 import {
-  createInvoiceIssueJobSchema,
-  invoiceIssueItemParamsSchema,
-  invoiceIssueJobParamsSchema,
-  invoiceIssueJobScopeSchema,
-} from "../../services/invoiceIssueSchemas.js";
+  getInvoiceBulkDisplayConfig,
+  saveInvoiceBulkDisplayConfig,
+} from "../../services/invoiceBulkDisplayConfigService.js";
 import {
   createInvoiceBulkIssueSchema,
   invoiceBulkDisplayConfigQuerySchema,
@@ -17,18 +16,27 @@ import {
   previewInvoiceBulkIssue,
 } from "../../services/invoiceBulkIssueService.js";
 import {
-  getInvoiceBulkDisplayConfig,
-  saveInvoiceBulkDisplayConfig,
-} from "../../services/invoiceBulkDisplayConfigService.js";
+  createInvoiceIssueJobSchema,
+  invoiceIssueItemParamsSchema,
+  invoiceIssueJobParamsSchema,
+  invoiceIssueJobScopeSchema,
+  listInvoiceIssueRetryCandidatesSchema,
+  retryInvoiceIssueItemsSchema,
+} from "../../services/invoiceIssueSchemas.js";
 import {
   createInvoiceIssueJob,
   getInvoiceIssueJob,
+  listInvoiceIssueRetryCandidates,
   processInvoiceIssueItem,
+  retryRejectedInvoiceIssueItems,
   sweepInvoiceIssueItems,
 } from "../../services/invoiceIssueService.js";
-import { hasNonEmptySecret, securelyMatchesSecret } from "../../utils/secureSecret.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
+import {
+  hasNonEmptySecret,
+  securelyMatchesSecret,
+} from "../../utils/secureSecret.js";
 import {
   requireAuthenticatedRequestUser,
   requireRequestAuthorization,
@@ -37,7 +45,12 @@ import {
 const handleError = (res: Response, error: unknown) => {
   console.error("[invoiceIssueController]", error);
   if (error instanceof z.ZodError) {
-    return sendError(res, { vi: "Yêu cầu phát hành không hợp lệ.", zh: "开票请求无效。" }, 400, error.flatten());
+    return sendError(
+      res,
+      { vi: "Yêu cầu phát hành không hợp lệ.", zh: "开票请求无效。" },
+      400,
+      error.flatten(),
+    );
   }
   const known = error as {
     statusCode?: number;
@@ -59,17 +72,28 @@ const handleError = (res: Response, error: unknown) => {
 const assertWorker = (req: Request, res: Response) => {
   const secret = process.env.MEINVOICE_WORKER_SECRET;
   if (!hasNonEmptySecret(secret)) {
-    sendError(res, { vi: "Chưa cấu hình worker secret.", zh: "尚未配置工作器密钥。" }, 503);
+    sendError(
+      res,
+      { vi: "Chưa cấu hình worker secret.", zh: "尚未配置工作器密钥。" },
+      503,
+    );
     return false;
   }
   if (!securelyMatchesSecret(req.header("x-meinvoice-worker-secret"), secret)) {
-    sendError(res, { vi: "Worker không được xác thực.", zh: "工作器身份验证失败。" }, 401);
+    sendError(
+      res,
+      { vi: "Worker không được xác thực.", zh: "工作器身份验证失败。" },
+      401,
+    );
     return false;
   }
   return true;
 };
 
-export const createInvoiceIssueJobHandler = async (req: Request, res: Response) => {
+export const createInvoiceIssueJobHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const input = createInvoiceIssueJobSchema.parse(req.body);
     const data = await createInvoiceIssueJob(
@@ -78,13 +102,19 @@ export const createInvoiceIssueJobHandler = async (req: Request, res: Response) 
       requireRequestAuthorization(req),
       getAuditRequestMetadata(req),
     );
-    return sendSuccess(res, data, { vi: "Đã tạo job phát hành hóa đơn.", zh: "开票任务已创建。" });
+    return sendSuccess(res, data, {
+      vi: "Đã tạo job phát hành hóa đơn.",
+      zh: "开票任务已创建。",
+    });
   } catch (error) {
     return handleError(res, error);
   }
 };
 
-export const previewInvoiceBulkIssueHandler = async (req: Request, res: Response) => {
+export const previewInvoiceBulkIssueHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const input = previewInvoiceBulkIssueSchema.parse(req.body);
     const user = requireAuthenticatedRequestUser(req);
@@ -154,7 +184,10 @@ export const saveInvoiceBulkDisplayConfigHandler = async (
   }
 };
 
-export const createInvoiceBulkIssueHandler = async (req: Request, res: Response) => {
+export const createInvoiceBulkIssueHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const input = createInvoiceBulkIssueSchema.parse(req.body);
     const user = requireAuthenticatedRequestUser(req);
@@ -173,36 +206,105 @@ export const createInvoiceBulkIssueHandler = async (req: Request, res: Response)
   }
 };
 
-export const getInvoiceIssueJobHandler = async (req: Request, res: Response) => {
+export const getInvoiceIssueJobHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { jobId } = invoiceIssueJobParamsSchema.parse(req.params);
     const { warehouse_id } = invoiceIssueJobScopeSchema.parse(req.query);
-    const data = await getInvoiceIssueJob(jobId, warehouse_id, requireRequestAuthorization(req));
-    return sendSuccess(res, data, { vi: "Đã tải tiến độ phát hành.", zh: "已加载开票进度。" });
+    const data = await getInvoiceIssueJob(
+      jobId,
+      warehouse_id,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tải tiến độ phát hành.",
+      zh: "已加载开票进度。",
+    });
   } catch (error) {
     return handleError(res, error);
   }
 };
 
-export const processInvoiceIssueItemHandler = async (req: Request, res: Response) => {
+export const listInvoiceIssueRetryCandidatesHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = listInvoiceIssueRetryCandidatesSchema.parse(req.query);
+    const data = await listInvoiceIssueRetryCandidates(
+      input,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tải các hóa đơn bị MISA từ chối có thể thử lại.",
+      zh: "已加载可安全重试的 MISA 拒绝发票。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const retryRejectedInvoiceIssueItemsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = retryInvoiceIssueItemsSchema.parse(req.body);
+    const data = await retryRejectedInvoiceIssueItems(
+      input,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã kiểm tra RefID và đưa các hóa đơn bị từ chối vào hàng đợi thử lại.",
+      zh: "已检查 RefID，并将被拒发票重新加入队列。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const processInvoiceIssueItemHandler = async (
+  req: Request,
+  res: Response,
+) => {
   if (!assertWorker(req, res)) return;
   try {
     const { jobId, itemId } = invoiceIssueItemParamsSchema.parse(req.params);
     const data = await processInvoiceIssueItem(jobId, itemId);
     if (data.processed === false && data.reason === "LANE_BUSY") {
-      return sendError(res, { vi: "Lane đang bận; Cloud Tasks sẽ thử lại.", zh: "队列通道繁忙，将重试。" }, 409);
+      return sendError(
+        res,
+        {
+          vi: "Lane đang bận; Cloud Tasks sẽ thử lại.",
+          zh: "队列通道繁忙，将重试。",
+        },
+        409,
+      );
     }
-    return sendSuccess(res, data, { vi: "Đã xử lý item phát hành.", zh: "开票项目已处理。" });
+    return sendSuccess(res, data, {
+      vi: "Đã xử lý item phát hành.",
+      zh: "开票项目已处理。",
+    });
   } catch (error) {
     return handleError(res, error);
   }
 };
 
-export const sweepInvoiceIssueItemsHandler = async (req: Request, res: Response) => {
+export const sweepInvoiceIssueItemsHandler = async (
+  req: Request,
+  res: Response,
+) => {
   if (!assertWorker(req, res)) return;
   try {
     const data = await sweepInvoiceIssueItems();
-    return sendSuccess(res, data, { vi: "Đã quét phục hồi job phát hành.", zh: "已扫描恢复开票任务。" });
+    return sendSuccess(res, data, {
+      vi: "Đã quét phục hồi job phát hành.",
+      zh: "已扫描恢复开票任务。",
+    });
   } catch (error) {
     return handleError(res, error);
   }

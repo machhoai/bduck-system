@@ -11,8 +11,9 @@
  *   (entity_type, entity_id, level) — for per-voucher approval chain
  */
 
-import { db } from "../config/firebase.js";
 import type { ApprovalRecord, ProcessEntityType } from "@bduck/shared-types";
+
+import { db } from "../config/firebase.js";
 
 const COLLECTION = "pending_approvals";
 
@@ -25,13 +26,120 @@ const getApprovalAttempt = (record: Pick<ApprovalRecord, "approval_attempt">) =>
  */
 export async function createBatch(records: ApprovalRecord[]): Promise<void> {
   const batch = db.batch();
+  stageCreateBatch(batch, records);
+  await batch.commit();
+}
 
+export function stageCreateBatch(
+  batch: FirebaseFirestore.WriteBatch,
+  records: readonly ApprovalRecord[],
+): void {
   for (const record of records) {
     const ref = db.collection(COLLECTION).doc(record.id);
     batch.set(ref, record);
   }
+}
 
-  await batch.commit();
+export class ApprovalRestartConflictError extends Error {
+  constructor() {
+    super("APPROVAL_RESTART_CONFLICT");
+    this.name = "ApprovalRestartConflictError";
+  }
+}
+
+interface RestartAttemptInput {
+  entityCollection: string;
+  entityId: string;
+  expectedEntityStatus: string;
+  expectedAttempt: number;
+  expectedRecords: readonly ApprovalRecord[];
+  newRecords: readonly ApprovalRecord[];
+  actorId: string;
+  reason: string;
+  actionTime: Date;
+}
+
+/**
+ * Retire the current attempt, create its replacement and return the source
+ * entity to PENDING_APPROVAL in one optimistic Firestore transaction.
+ */
+export async function restartAttempt(
+  input: RestartAttemptInput,
+): Promise<void> {
+  const firstNewRecord = input.newRecords[0];
+  if (!firstNewRecord) throw new ApprovalRestartConflictError();
+
+  const entityRef = db.collection(input.entityCollection).doc(input.entityId);
+  const approvalQuery = db
+    .collection(COLLECTION)
+    .where("entity_type", "==", firstNewRecord.entity_type)
+    .where("entity_id", "==", input.entityId);
+
+  await db.runTransaction(async (transaction) => {
+    const [entityDocument, approvalSnapshot] = await Promise.all([
+      transaction.get(entityRef),
+      transaction.get(approvalQuery),
+    ]);
+    if (
+      !entityDocument.exists ||
+      entityDocument.get("status") !== input.expectedEntityStatus
+    ) {
+      throw new ApprovalRestartConflictError();
+    }
+
+    const persistedRecords = approvalSnapshot.docs.map(
+      (document) =>
+        ({ id: document.id, ...document.data() }) as ApprovalRecord,
+    );
+    const latestAttempt = persistedRecords.reduce(
+      (max, record) => Math.max(max, getApprovalAttempt(record)),
+      1,
+    );
+    const currentRecords = persistedRecords.filter(
+      (record) => getApprovalAttempt(record) === latestAttempt,
+    );
+    const expectedStatuses = new Map(
+      input.expectedRecords.map((record) => [record.id, record.status]),
+    );
+    const stateChanged =
+      latestAttempt !== input.expectedAttempt ||
+      currentRecords.length !== input.expectedRecords.length ||
+      currentRecords.some(
+        (record) => expectedStatuses.get(record.id) !== record.status,
+      );
+    if (
+      stateChanged ||
+      currentRecords.some((record) => record.status === "APPROVED")
+    ) {
+      throw new ApprovalRestartConflictError();
+    }
+
+    const now = new Date();
+    for (const record of currentRecords) {
+      const previousReason = record.rejected_reason?.trim();
+      transaction.update(db.collection(COLLECTION).doc(record.id), {
+        status: "CANCELLED",
+        approver_id: input.actorId,
+        approved_at: now,
+        rejected_reason: previousReason
+          ? `[RESTART] ${input.reason} | Previous: ${previousReason}`
+          : `[RESTART] ${input.reason}`,
+        action_time: input.actionTime,
+        sync_time: now,
+      });
+    }
+    for (const record of input.newRecords) {
+      transaction.set(db.collection(COLLECTION).doc(record.id), record);
+    }
+    transaction.update(entityRef, {
+      status: "PENDING_APPROVAL",
+      approver_id: null,
+      approved_at: null,
+      action_time: input.actionTime,
+      sync_time: now,
+      updated_at: now,
+    });
+  });
 }
 
 /**

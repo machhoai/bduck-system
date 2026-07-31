@@ -20,6 +20,7 @@ import { externalQueueApi } from "../../../api/externalQueueApi";
 import { useRoles } from "../../../hooks/useRoles";
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
+import { getDetailedErrorMessage } from "../../../utils/apiError";
 
 const SCOPE_OPTIONS: ApprovalScopeMode[] = ["ENTITY_WAREHOUSE", "GLOBAL"];
 
@@ -33,7 +34,7 @@ const emptyLevel = (level: 1 | 2): ApprovalLevel => ({
     required: false,
     enabled: false,
     min_approvers: 1,
-    approval_scope: level === 1 ? "ENTITY_WAREHOUSE" : "GLOBAL",
+    approval_scope: "ENTITY_WAREHOUSE",
     allow_global_fallback: false,
 });
 
@@ -395,6 +396,13 @@ export default function ExternalQueueApprovalConfigTab() {
             });
         } catch (error) {
             console.error("[ExternalQueueApprovalConfigTab] save failed", error);
+            gooeyToast.error(
+                approvalText.saveError || "Không thể lưu cấu hình cấp duyệt",
+                {
+                    description: getDetailedErrorMessage(error),
+                    preset: "snappy",
+                },
+            );
         } finally {
             setSaving(false);
         }

@@ -1,6 +1,7 @@
 import type { ProcessEntityType } from "@bduck/shared-types";
 import type { Request, Response } from "express";
 import { z } from "zod";
+
 import * as approvalService from "../../services/scopedApprovalService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
@@ -23,6 +24,10 @@ const cancelSchema = z.object({
 });
 const forceCancelSchema = z.object({
   reason: z.string().trim().min(1).max(1000),
+});
+const restartSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+  action_time: z.coerce.date().optional(),
 });
 
 const entityParams = (req: Request) => ({
@@ -167,6 +172,30 @@ export const forceCancelHandler = async (
     sendSuccess(res, null, {
       vi: "Đã hủy lệnh bằng quyền đặc biệt.",
       zh: "单据已强制撤销。",
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+export const restartApprovalHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const input = restartSchema.parse(req.body ?? {});
+    const { entityType, entityId } = entityParams(req);
+    const result = await approvalService.restartApproval(
+      entityType,
+      entityId,
+      requireAuthenticatedRequestUser(req),
+      input.reason,
+      input.action_time ?? new Date(),
+      requireRequestAuthorization(req),
+    );
+    sendSuccess(res, result, {
+      vi: "Đã khởi tạo lại luồng duyệt thành công.",
+      zh: "审批流程已成功重新初始化。",
     });
   } catch (error) {
     handleError(res, error);
