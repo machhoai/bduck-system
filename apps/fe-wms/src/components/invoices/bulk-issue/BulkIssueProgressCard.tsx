@@ -65,13 +65,43 @@ export function BulkIssueProgressCard({
                         <span>
                             {progress.queued + progress.submitting} {d.statusSubmitting}
                         </span>
-                        <span>
-                            {progress.pending + progress.retrying} {d.statusPendingMisa}
-                        </span>
+                        {progress.pendingWithMisaIdentity > 0 && (
+                            <span className="font-semibold text-amber-700">
+                                {progress.pendingWithMisaIdentity} {d.statusMisaReturnedIdentity}
+                            </span>
+                        )}
+                        {progress.pendingWithoutMisaIdentity > 0 && (
+                            <span className="font-semibold text-rose-700">
+                                {progress.pendingWithoutMisaIdentity} {d.statusPendingWithoutIdentity}
+                            </span>
+                        )}
+                        {progress.retrying > 0 && (
+                            <span>
+                                {progress.retrying} {d.statusPendingMisa}
+                            </span>
+                        )}
                         <span>
                             {progress.needsAttention} {d.statusPausedForSafety}
                         </span>
                     </div>
+                    {progress.pendingWithMisaIdentity > 0 && (
+                        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xxs leading-relaxed text-amber-900">
+                            <p className="font-bold">{d.statusMisaReturnedIdentity}</p>
+                            <p className="mt-0.5">{d.pendingIdentityExplanation}</p>
+                        </div>
+                    )}
+                    {progress.pendingWithoutMisaIdentity > 0 && (
+                        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xxs leading-relaxed text-rose-900">
+                            <p className="font-bold">{d.statusPendingWithoutIdentity}</p>
+                            <p className="mt-0.5">{d.pendingWithoutIdentityExplanation}</p>
+                        </div>
+                    )}
+                    {progress.overduePending > 0 && (
+                        <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xxs font-semibold leading-relaxed text-rose-700">
+                            <TriangleAlert className="mt-0.5 shrink-0" size={13} />
+                            {d.overduePendingWarning(progress.overduePending)}
+                        </p>
+                    )}
                 </>
             )}
             {progress.complete && progress.needsAttention === 0 && (

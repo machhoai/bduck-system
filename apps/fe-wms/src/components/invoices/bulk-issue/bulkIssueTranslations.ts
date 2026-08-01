@@ -78,8 +78,16 @@ export const bulkIssueTranslations = {
         statusIssued: "đã phát hành",
         statusSubmitting: "đang gửi",
         statusPendingMisa: "chờ MISA xác nhận",
+        statusMisaReturnedIdentity: "MISA đã trả số hóa đơn — đang hoàn tất đối soát",
+        statusPendingWithoutIdentity: "chưa nhận được kết quả phát hành từ MISA",
         statusNeedsAttention: "cần đối soát",
         statusPausedForSafety: "tạm dừng để kiểm tra",
+        pendingIdentityExplanation:
+            "Đã có TransactionID/số hóa đơn. Không phát hành lại; hệ thống cần hoàn tất cập nhật trạng thái ISSUED.",
+        pendingWithoutIdentityExplanation:
+            "Chưa có TransactionID hoặc số hóa đơn. Hệ thống phải kiểm tra RefID trước khi cho phép xử lý tiếp.",
+        overduePendingWarning: (count: number) =>
+            `${count} hóa đơn đã quá thời điểm kiểm tra lại dự kiến. Cần chạy recovery/đối soát, không xuất lại thủ công.`,
         allProcessed: "Tất cả hóa đơn đã được xử lý.",
         noValidInvoices: "Không tìm thấy hóa đơn hợp lệ.",
         misaRejectedTitle: (count: number) => `MISA đã từ chối ${count} hóa đơn`,
@@ -174,8 +182,16 @@ export const bulkIssueTranslations = {
         statusIssued: "已开具",
         statusSubmitting: "正在提交",
         statusPendingMisa: "等待 MISA 确认",
+        statusMisaReturnedIdentity: "MISA 已返回发票号 — 正在完成对账",
+        statusPendingWithoutIdentity: "尚未收到 MISA 的开具结果",
         statusNeedsAttention: "需要对账",
         statusPausedForSafety: "已暂停以安全检查",
+        pendingIdentityExplanation:
+            "已有 TransactionID/发票号。请勿重复开具；系统需要完成 ISSUED 状态更新。",
+        pendingWithoutIdentityExplanation:
+            "尚无 TransactionID 或发票号。继续处理前，系统必须先核验 RefID。",
+        overduePendingWarning: (count: number) =>
+            `${count} 张发票已超过预计复查时间。需要运行恢复/对账，请勿手动重复开具。`,
         allProcessed: "所有发票均已处理。",
         noValidInvoices: "没有找到有效的发票。",
         misaRejectedTitle: (count: number) => `MISA 已拒绝 ${count} 张发票`,

@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
 import { InvoiceIssueItemStatus } from "@bduck/shared-types";
+import { collection, onSnapshot } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+
 import { db } from "@/lib/firebase";
 
 interface ProgressItem {
   id: string;
   status: InvoiceIssueItemStatus;
+  transaction_id: string | null;
   invoice_number: string | null;
+  invoice_code: string | null;
+  misa_error_code: string | null;
   last_error: string | null;
+  next_attempt_at: Date | null;
 }
 
 export function useInvoiceBulkIssueProgress(jobIds: string[], lang: "vi" | "zh") {
@@ -31,8 +36,12 @@ export function useInvoiceBulkIssueProgress(jobIds: string[], lang: "vi" | "zh")
             return {
               id: document.id,
               status: value.status as InvoiceIssueItemStatus,
+              transaction_id: value.transaction_id ?? null,
               invoice_number: value.invoice_number ?? null,
+              invoice_code: value.invoice_code ?? null,
+              misa_error_code: value.misa_error_code ?? null,
               last_error: value.last_error ?? null,
+              next_attempt_at: value.next_attempt_at?.toDate?.() ?? null,
             };
           }),
         }));
@@ -54,12 +63,25 @@ export function useInvoiceBulkIssueProgress(jobIds: string[], lang: "vi" | "zh")
     const issued = count(InvoiceIssueItemStatus.ISSUED);
     const manual = count(InvoiceIssueItemStatus.MANUAL_RECONCILIATION);
     const cancelled = count(InvoiceIssueItemStatus.CANCELLED);
+    const pendingItems = items.filter(
+      (item) => item.status === InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+    );
+    const pendingWithMisaIdentity = pendingItems.filter(
+      (item) => item.transaction_id || item.invoice_number || item.invoice_code,
+    ).length;
+    const pendingWithoutMisaIdentity = pendingItems.length - pendingWithMisaIdentity;
+    const overduePending = pendingItems.filter(
+      (item) => item.next_attempt_at && item.next_attempt_at.getTime() < Date.now(),
+    ).length;
     return {
       total,
       issued,
       queued: count(InvoiceIssueItemStatus.QUEUED),
       submitting: count(InvoiceIssueItemStatus.SUBMITTING),
-      pending: count(InvoiceIssueItemStatus.PENDING_CONFIRMATION),
+      pending: pendingItems.length,
+      pendingWithMisaIdentity,
+      pendingWithoutMisaIdentity,
+      overduePending,
       retrying: count(InvoiceIssueItemStatus.RETRYABLE_ERROR),
       needsAttention: manual,
       cancelled,

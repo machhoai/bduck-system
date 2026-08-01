@@ -54,6 +54,11 @@ export type InvoiceSourceOrderView = Omit<
   source_sync_time: string;
   created_at: string;
   updated_at: string;
+  misa_transaction_id?: string | null;
+  misa_invoice_number?: string | null;
+  misa_invoice_code?: string | null;
+  misa_error_code?: string | null;
+  issue_retry_eligible?: boolean;
 };
 
 export interface InvoiceSyncResult {
@@ -207,6 +212,10 @@ export type InvoiceDocumentView = Omit<
   rejected_at: string | null;
   created_at: string;
   updated_at: string;
+  transaction_id?: string | null;
+  invoice_number?: string | null;
+  invoice_code?: string | null;
+  active_issue_job_id?: string | null;
   revisions: Array<
     Omit<InvoiceDocumentRevisionSummary, "created_at"> & {
       created_at: string;

@@ -12,6 +12,9 @@ import { useEffect, useRef, useState } from "react";
 import { invoiceApi, type InvoiceDocumentView, type InvoiceSourceOrderView } from "@/api/invoiceApi";
 import { showToast } from "@/utils/toast";
 
+import { getInvoiceStatusPresentation } from "./invoiceStatusPresentation";
+import { InvoiceStatusBadge, InvoiceStatusPanel } from "./InvoiceStatusView";
+
 const copy = {
     vi: {
         title: "Quy trình bản nháp",
@@ -102,45 +105,6 @@ const copy = {
 } as const;
 
 const vatRates: InvoiceVatRateName[] = ["0%", "5%", "8%", "10%", "KCT", "KKKNT"];
-
-const statusCopy: Record<"vi" | "zh", Record<InvoiceDocumentStatus, string>> = {
-    vi: {
-        SOURCE_SYNCED: "Đã đồng bộ nguồn",
-        NEEDS_TAX_CONFIGURATION: "Thiếu cấu hình thuế",
-        NEEDS_CORRECTION: "Cần chỉnh dữ liệu",
-        NEEDS_REVIEW: "Sẵn sàng phát hành (draft cũ)",
-        NEEDS_SECOND_REVIEW: "Sẵn sàng phát hành (draft cũ)",
-        READY_TO_ISSUE: "Sẵn sàng phát hành",
-        QUEUED: "Đang chờ",
-        SUBMITTING: "Đang gửi",
-        PENDING_CONFIRMATION: "Chờ xác nhận",
-        ISSUED: "Đã phát hành",
-        RETRYABLE_ERROR: "Có thể thử lại",
-        MANUAL_RECONCILIATION: "Tạm dừng để kiểm tra an toàn",
-        POST_ISSUE_REVIEW: "Kiểm tra sau phát hành",
-        REJECTED: "Đã từ chối",
-        CANCELLED: "Đã hủy",
-        CLOSED: "Đã đóng",
-    },
-    zh: {
-        SOURCE_SYNCED: "来源已同步",
-        NEEDS_TAX_CONFIGURATION: "缺少税务配置",
-        NEEDS_CORRECTION: "需要修正数据",
-        NEEDS_REVIEW: "可开票（旧草稿）",
-        NEEDS_SECOND_REVIEW: "可开票（旧草稿）",
-        READY_TO_ISSUE: "可开票",
-        QUEUED: "排队中",
-        SUBMITTING: "提交中",
-        PENDING_CONFIRMATION: "待确认",
-        ISSUED: "已开具",
-        RETRYABLE_ERROR: "可重试",
-        MANUAL_RECONCILIATION: "已暂停以安全检查",
-        POST_ISSUE_REVIEW: "开票后检查",
-        REJECTED: "已拒绝",
-        CANCELLED: "已取消",
-        CLOSED: "已关闭",
-    },
-};
 
 interface EditableDraft {
     buyer: InvoiceDraftBuyer;
@@ -331,6 +295,15 @@ export function InvoiceDraftWorkflow({
         ].includes(document.status),
     );
     const sourceStale = document?.source_payload_hash !== order.source_payload_hash;
+    const statusContext = document
+        ? {
+              transactionId: document.transaction_id,
+              invoiceNumber: document.invoice_number,
+              invoiceCode: document.invoice_code,
+              errorCode: document.last_issue_error_code,
+              retryEligible: document.issue_retry_eligible,
+          }
+        : undefined;
 
     if (loading) {
         return (
@@ -377,26 +350,10 @@ export function InvoiceDraftWorkflow({
                         {d.revision} {document.revision}
                     </p>
                 </div>
-                <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xxs font-bold text-slate-700">
-                    {document.status === InvoiceDocumentStatus.MANUAL_RECONCILIATION && document.issue_retry_eligible
-                        ? lang === "vi"
-                            ? "MISA từ chối — có thể thử lại"
-                            : "MISA 已拒绝 — 可重试"
-                        : statusCopy[lang][document.status]}
-                </span>
+                <InvoiceStatusBadge status={document.status} lang={lang} context={statusContext} />
             </div>
 
-            {document.status === InvoiceDocumentStatus.MANUAL_RECONCILIATION && (
-                <Notice tone={document.issue_retry_eligible ? "warning" : "danger"} icon={<AlertTriangle size={13} />}>
-                    {document.issue_retry_eligible
-                        ? lang === "vi"
-                            ? `MISA đã từ chối trước khi phát hành${document.last_issue_error_code ? ` (${document.last_issue_error_code})` : ""}. Hãy sửa cấu hình rồi dùng “Thử lại hóa đơn lỗi” ở đầu trang.`
-                            : `MISA 在开具前拒绝了发票${document.last_issue_error_code ? ` (${document.last_issue_error_code})` : ""}。修正配置后，请使用页面顶部的“重试失败发票”。`
-                        : lang === "vi"
-                          ? "Hệ thống chưa xác định chắc chắn MISA đã phát hành hay chưa nên đã tạm dừng để tránh tạo hóa đơn trùng."
-                          : "系统无法确认 MISA 是否已开具，因此已暂停以避免重复发票。"}
-                </Notice>
-            )}
+            <InvoiceStatusPanel status={document.status} lang={lang} context={statusContext} />
 
             {sourceStale && (
                 <>
@@ -687,7 +644,7 @@ export function InvoiceDraftWorkflow({
                                 className="flex items-center justify-between rounded-md bg-white px-2 py-1.5 text-xs text-slate-600"
                             >
                                 <span>
-                                    #{revision.revision} · {statusCopy[lang][revision.status]}
+                                    #{revision.revision} · {getInvoiceStatusPresentation(revision.status, lang).label}
                                 </span>
                                 <span>{revision.edited_by ? `${d.editedBy}: ${revision.edited_by}` : "—"}</span>
                             </div>

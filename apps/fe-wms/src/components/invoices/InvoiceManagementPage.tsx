@@ -29,6 +29,7 @@ import { InvoiceBulkIssuePanel } from "./bulk-issue/InvoiceBulkIssuePanel";
 import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
 import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
 import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
+import { InvoiceStatusBadge } from "./InvoiceStatusView";
 import { MisaInvoicePanel } from "./MisaInvoicePanel";
 
 const copy = {
@@ -186,32 +187,6 @@ const statusLabel = (status: InvoicePreparationStatus, lang: "vi" | "zh") => {
             [InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION]: "缺少税务配置",
             [InvoicePreparationStatus.NEEDS_REVIEW]: "需要处理",
             [InvoicePreparationStatus.NEEDS_CORRECTION]: "需要修正数据",
-        },
-    };
-    return values[lang][status] ?? status;
-};
-
-const documentStatusLabel = (status: InvoiceDocumentStatus, lang: "vi" | "zh") => {
-    const values: Record<"vi" | "zh", Partial<Record<InvoiceDocumentStatus, string>>> = {
-        vi: {
-            NEEDS_TAX_CONFIGURATION: "Draft thiếu cấu hình thuế",
-            NEEDS_CORRECTION: "Draft cần chỉnh dữ liệu",
-            NEEDS_REVIEW: "Draft cũ — sẵn sàng phát hành",
-            NEEDS_SECOND_REVIEW: "Draft cũ — sẵn sàng phát hành",
-            READY_TO_ISSUE: "Draft sẵn sàng phát hành",
-            REJECTED: "Draft đã từ chối",
-            RETRYABLE_ERROR: "MISA đang được thử lại",
-            MANUAL_RECONCILIATION: "Tạm dừng để kiểm tra an toàn",
-        },
-        zh: {
-            NEEDS_TAX_CONFIGURATION: "草稿缺少税务配置",
-            NEEDS_CORRECTION: "草稿需要修正数据",
-            NEEDS_REVIEW: "旧草稿 — 可开票",
-            NEEDS_SECOND_REVIEW: "旧草稿 — 可开票",
-            READY_TO_ISSUE: "草稿可开票",
-            REJECTED: "草稿已拒绝",
-            RETRYABLE_ERROR: "正在重试 MISA",
-            MANUAL_RECONCILIATION: "已暂停以安全检查",
         },
     };
     return values[lang][status] ?? status;
@@ -716,9 +691,17 @@ export default function InvoiceManagementPage() {
                                                         {statusLabel(order.preflight.status, lang)}
                                                     </span>
                                                     {order.invoice_document_status && (
-                                                        <span className="text-xs font-semibold text-slate-500">
-                                                            {documentStatusLabel(order.invoice_document_status, lang)}
-                                                        </span>
+                                                        <InvoiceStatusBadge
+                                                            status={order.invoice_document_status}
+                                                            lang={lang}
+                                                            context={{
+                                                                transactionId: order.misa_transaction_id,
+                                                                invoiceNumber: order.misa_invoice_number,
+                                                                invoiceCode: order.misa_invoice_code,
+                                                                errorCode: order.misa_error_code,
+                                                                retryEligible: order.issue_retry_eligible,
+                                                            }}
+                                                        />
                                                     )}
                                                 </div>
 
@@ -1004,15 +987,6 @@ function MoneyCell({ label, value, strong = false }: { label: string; value: num
         <div className={`rounded-lg p-3 ${strong ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-900"}`}>
             <p className={`text-[11px] ${strong ? "text-slate-300" : "text-slate-500"}`}>{label}</p>
             <p className="mt-1 text-sm font-bold tabular-nums sm:text-base">{money.format(value)}</p>
-        </div>
-    );
-}
-
-function MobileMoney({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
-    return (
-        <div className={strong ? "text-slate-900" : "text-slate-600"}>
-            <p className="truncate text-[10px] text-slate-400">{label}</p>
-            <p className="mt-0.5 truncate font-bold tabular-nums">{money.format(value)}</p>
         </div>
     );
 }
