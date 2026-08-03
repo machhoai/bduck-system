@@ -2373,7 +2373,7 @@ const zh: Dictionary = {
           },
           excel: {
             title: "通过 Excel 导入",
-            content: "使用模板批量添加商品、数量和源库位。",
+            content: "使用模板批量添加商品、数量、源库位和目标库位。",
           },
           catalog: {
             title: "选择调拨商品",
@@ -2381,7 +2381,7 @@ const zh: Dictionary = {
           },
           selectedItems: {
             title: "分配调拨数量",
-            content: "选择源库位和数量，不能超过 ATP。",
+            content: "为每行选择源库位、目标库位和数量，不能超过 ATP。",
           },
           summary: {
             title: "复核调拨单",

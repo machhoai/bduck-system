@@ -140,7 +140,7 @@ export interface TransferOrderItem {
     transfer_order_id: string; // FK → transfer_orders
     product_id: string; // FK → products
     source_location_id: string; // FK → warehouse_locations
-    destination_location_id: string | null; // FK → warehouse_locations (INTRA: required at create, INTER: set on receive)
+    destination_location_id: string | null; // FK → warehouse_locations (required when creating a transfer)
     quantity: number; // Requested transfer quantity
     received_quantity: number | null; // Actual received (set during receiving phase)
     status: TransferItemStatus;

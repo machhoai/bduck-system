@@ -170,6 +170,7 @@ export default function CreateTransferTab({
     const [items, setItems] = useState<TransferItemData[]>([]);
     const [showOtpModal, setShowOtpModal] = useState(false);
     const skipSourceClearForValueRef = useRef<string | null>(null);
+    const skipDestinationClearForValueRef = useRef<string | null>(null);
 
     const isIntra = transferType === "INTRA_WAREHOUSE";
 
@@ -202,12 +203,19 @@ export default function CreateTransferTab({
         const dataSource = editData || cloneData;
 
         const nextSourceWarehouseId = (dataSource?.source_warehouse_id as string) || (dataSource?.warehouse_id as string) || "";
-        skipSourceClearForValueRef.current = nextSourceWarehouseId;
+        const nextDestinationWarehouseId =
+            (dataSource?.destination_warehouse_id as string) || "";
+        skipSourceClearForValueRef.current =
+            nextSourceWarehouseId === sourceWarehouseId
+                ? null
+                : nextSourceWarehouseId;
+        skipDestinationClearForValueRef.current =
+            nextDestinationWarehouseId === destWarehouseId
+                ? null
+                : nextDestinationWarehouseId;
         setSourceWarehouseId(nextSourceWarehouseId);
         setTransferType(((dataSource?.transfer_type as string) || "INTER_WAREHOUSE") as TransferTypeValue);
-        setDestWarehouseId(
-            (dataSource?.destination_warehouse_id as string) || "",
-        );
+        setDestWarehouseId(nextDestinationWarehouseId);
         setNotes((dataSource?.notes as string) || "");
 
         if (Array.isArray(dataSource?.items)) {
@@ -243,13 +251,28 @@ export default function CreateTransferTab({
     }, [cloneData, editData]);
 
     useEffect(() => {
-        if (skipSourceClearForValueRef.current === sourceWarehouseId) {
-            skipSourceClearForValueRef.current = null;
+        if (skipSourceClearForValueRef.current) {
+            if (skipSourceClearForValueRef.current === sourceWarehouseId) {
+                skipSourceClearForValueRef.current = null;
+            }
             return;
         }
-        skipSourceClearForValueRef.current = null;
         setItems([]);
     }, [sourceWarehouseId]);
+
+    useEffect(() => {
+        if (skipDestinationClearForValueRef.current) {
+            if (
+                skipDestinationClearForValueRef.current === destWarehouseId
+            ) {
+                skipDestinationClearForValueRef.current = null;
+            }
+            return;
+        }
+        setItems((prev) =>
+            prev.map((item) => ({ ...item, destination_location_id: "" })),
+        );
+    }, [destWarehouseId]);
 
     const { locations: allLocations } = useWarehouseLocations();
     const { locations: srcLocations, loading: srcLocLoading } =
@@ -339,7 +362,7 @@ export default function CreateTransferTab({
                 const aggMap = new Map<string, number>();
                 for (const item of items) {
                     if (!item.product_id || item.quantity <= 0 || !item.source_location_id) return false;
-                    if (isIntra && !item.destination_location_id) return false;
+                    if (!item.destination_location_id) return false;
                     if (isIntra && item.source_location_id === item.destination_location_id) return false;
                     const key = `${item.product_id}:${item.source_location_id}`;
                     aggMap.set(key, (aggMap.get(key) || 0) + item.quantity);
@@ -426,6 +449,7 @@ export default function CreateTransferTab({
                 unitPrice: number;
                 notes: string;
                 locationCode: string;
+                destinationLocationCode: string;
             }[]
         ) => {
             setItems((prev) => {
@@ -477,19 +501,30 @@ export default function CreateTransferTab({
                     if (!resolvedSourceLocationId) continue;
                     usedKeys.add(`${item.productId}:${resolvedSourceLocationId}`);
 
+                    let resolvedDestinationLocationId = "";
+                    if (item.destinationLocationCode) {
+                        const code = item.destinationLocationCode.trim().toLowerCase();
+                        resolvedDestinationLocationId =
+                            dstLocations.find(
+                                (loc) =>
+                                    loc.code.toLowerCase() === code ||
+                                    loc.name.toLowerCase() === code,
+                            )?.id ?? "";
+                    }
+
                     newItems.push({
                         id: crypto.randomUUID(),
                         product_id: item.productId,
                         product_name: product.name,
                         source_location_id: resolvedSourceLocationId,
-                        destination_location_id: "",
+                        destination_location_id: resolvedDestinationLocationId,
                         quantity: item.quantity,
                     });
                 }
                 return [...prev, ...newItems];
             });
         },
-        [products, srcLocations, getLocationsForProduct, getAtp, getTotalAtpForProduct],
+        [products, srcLocations, dstLocations, getLocationsForProduct, getAtp, getTotalAtpForProduct],
     );
 
     const handleSwap = () => {
@@ -554,9 +589,7 @@ export default function CreateTransferTab({
                 items: items.map((item) => ({
                     product_id: item.product_id,
                     source_location_id: item.source_location_id,
-                    destination_location_id: isIntra
-                        ? item.destination_location_id
-                        : undefined,
+                    destination_location_id: item.destination_location_id,
                     quantity: item.quantity,
                 })),
                 action_time: new Date().toISOString(),
@@ -877,6 +910,7 @@ export default function CreateTransferTab({
                                     uploadedFiles={files}
                                     products={products}
                                     locations={srcLocations}
+                                    destinationLocations={dstLocations}
                                     onImport={bulkAddItems}
                                 />
                             </div>
@@ -1025,10 +1059,7 @@ export default function CreateTransferTab({
 
                                                 {/* Card Body */}
                                                 <div className="px-3 py-2.5">
-                                                    <div
-                                                        className={`grid gap-2 ${isIntra ? "sm:sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]"
-                                                            }`}
-                                                    >
+                                                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
                                                         <label className="block">
                                                             <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                                                                 {copy.quantity} *
@@ -1101,8 +1132,7 @@ export default function CreateTransferTab({
                                                             </select>
                                                         </label>
 
-                                                        {isIntra && (
-                                                            <label className="block">
+                                                        <label className="block">
                                                                 <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                                                                     {copy.destinationLocation} *
                                                                 </span>
@@ -1115,7 +1145,11 @@ export default function CreateTransferTab({
                                                                             e.target.value,
                                                                         )
                                                                     }
-                                                                    disabled={dstLocLoading || !sourceWarehouseId}
+                                                                    disabled={
+                                                                        dstLocLoading ||
+                                                                        !sourceWarehouseId ||
+                                                                        (!isIntra && !destWarehouseId)
+                                                                    }
                                                                     className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
                                                                 >
                                                                     <option value="">
@@ -1143,7 +1177,6 @@ export default function CreateTransferTab({
                                                                         </p>
                                                                     )}
                                                             </label>
-                                                        )}
                                                     </div>
 
                                                     {item.source_location_id &&
@@ -1201,9 +1234,7 @@ export default function CreateTransferTab({
                                                                 key={line.id}
                                                                 className="mt-2 rounded-[var(--radius-xs)] "
                                                             >
-                                                                <div
-                                                                    className={`grid gap-2 ${isIntra ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]"}`}
-                                                                >
+                                                                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
                                                                     <label className="block">
                                                                         <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                                                                             {copy.quantity} *
@@ -1272,8 +1303,7 @@ export default function CreateTransferTab({
                                                                         </select>
                                                                     </label>
 
-                                                                    {isIntra && (
-                                                                        <label className="block">
+                                                                    <label className="block">
                                                                             <span className="mb-0.5 block text-xxs font-semibold uppercase text-[var(--color-text-muted)]">
                                                                                 {copy.destinationLocation} *
                                                                             </span>
@@ -1288,7 +1318,8 @@ export default function CreateTransferTab({
                                                                                 }
                                                                                 disabled={
                                                                                     dstLocLoading ||
-                                                                                    !sourceWarehouseId
+                                                                                    !sourceWarehouseId ||
+                                                                                    (!isIntra && !destWarehouseId)
                                                                                 }
                                                                                 className="h-8 w-full rounded-[var(--radius-xs)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] px-2 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:opacity-50"
                                                                             >
@@ -1312,7 +1343,6 @@ export default function CreateTransferTab({
                                                                                     ))}
                                                                             </select>
                                                                         </label>
-                                                                    )}
 
                                                                     <button
                                                                         type="button"

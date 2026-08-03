@@ -53,9 +53,18 @@ interface VoucherExcelImportPanelProps {
   uploadedFiles: SelectedFile[];
   products: Product[];
   locations: WarehouseLocation[];
+  /** Vị trí kho đích; khi truyền vào panel sẽ dùng chế độ điều chuyển hai vị trí. */
+  destinationLocations?: WarehouseLocation[];
   /** Callback khi người dùng xác nhận thêm sản phẩm */
   onImport: (
-    items: { productId: string; quantity: number; unitPrice: number; notes: string; locationCode: string }[]
+    items: {
+      productId: string;
+      quantity: number;
+      unitPrice: number;
+      notes: string;
+      locationCode: string;
+      destinationLocationCode: string;
+    }[]
   ) => void;
 }
 
@@ -80,6 +89,7 @@ const EMPTY_MAPPING: VoucherColumnMapping = {
   unitPrice: null,
   notes: null,
   location: null,
+  destinationLocation: null,
 };
 
 // ─────────────────────────────────────────────
@@ -205,7 +215,13 @@ function MappingSlot({
 // RESULT TABLE (Phase 3)
 // ─────────────────────────────────────────────
 
-function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
+function ResultTable({
+  rows,
+  showDestinationLocation,
+}: {
+  rows: VoucherItemParseResult[];
+  showDestinationLocation: boolean;
+}) {
   const { lang } = useTranslation();
   const copy = EXCEL_PREVIEW_TEXT[lang === "zh" ? "zh" : "vi"];
   return (
@@ -218,7 +234,12 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
               <th className="px-3 py-2">{copy.status}</th>
               <th className="px-3 py-2">{copy.catalogProduct}</th>
               <th className="px-3 py-2">{copy.sku}</th>
-              <th className="px-3 py-2">{copy.location}</th>
+              <th className="px-3 py-2">
+                {showDestinationLocation ? copy.sourceLocation : copy.location}
+              </th>
+              {showDestinationLocation && (
+                <th className="px-3 py-2">{copy.destinationLocation}</th>
+              )}
               <th className="px-3 py-2 text-right">{copy.quantityShort}</th>
               <th className="px-3 py-2 text-right">{copy.unitPrice}</th>
               <th className="px-3 py-2">{copy.errorsWarnings}</th>
@@ -268,6 +289,11 @@ function ResultTable({ rows }: { rows: VoucherItemParseResult[] }) {
                   <td className="px-3 py-2 text-[var(--color-text-muted)]">
                     {row.parsedLocationCode || "—"}
                   </td>
+                  {showDestinationLocation && (
+                    <td className="px-3 py-2 text-[var(--color-text-muted)]">
+                      {row.parsedDestinationLocationCode || "—"}
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-right">{row.parsedQuantity ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
                     {row.parsedUnitPrice != null
@@ -309,11 +335,19 @@ export function VoucherExcelImportPanel({
   uploadedFiles,
   products,
   locations,
+  destinationLocations,
   onImport,
 }: VoucherExcelImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { lang } = useTranslation();
   const copy = VOUCHER_EXCEL_IMPORT_TEXT[lang === "zh" ? "zh" : "vi"];
+  const isTransferImport = destinationLocations !== undefined;
+  const requiredSlots = isTransferImport
+    ? (["productName", "quantity", "location", "destinationLocation"] as const)
+    : REQUIRED_SLOTS;
+  const optionalSlots = isTransferImport
+    ? (["sku", "unitPrice", "notes"] as const)
+    : OPTIONAL_SLOTS;
 
   const [phase, setPhase] = useState<PanelPhase>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -405,8 +439,7 @@ export function VoucherExcelImportPanel({
     setMapping((prev) => ({ ...prev, [slotKey]: null }));
   }, []);
 
-  const canParse =
-    mapping.productName !== null && mapping.quantity !== null;
+  const canParse = requiredSlots.every((slotKey) => mapping[slotKey] !== null);
 
   const handleParse = useCallback(async () => {
     if (!selectedFile || !canParse) return;
@@ -417,7 +450,11 @@ export function VoucherExcelImportPanel({
         selectedSheetIndex,
         mapping,
         startRow,
-        products
+        products,
+        {
+          requireSourceLocation: isTransferImport,
+          requireDestinationLocation: isTransferImport,
+        },
       );
       setParseResults(results);
       setPhase("preview");
@@ -430,7 +467,7 @@ export function VoucherExcelImportPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [copy, selectedFile, selectedSheetIndex, mapping, startRow, products, canParse]);
+  }, [copy, selectedFile, selectedSheetIndex, mapping, startRow, products, canParse, isTransferImport]);
 
   // ─── Bước 3: Import ───
 
@@ -445,6 +482,7 @@ export function VoucherExcelImportPanel({
         unitPrice: r.parsedUnitPrice ?? 0,
         notes: r.rawNotes,
         locationCode: r.parsedLocationCode,
+        destinationLocationCode: r.parsedDestinationLocationCode,
       }));
 
     if (validItems.length === 0) {
@@ -488,6 +526,7 @@ export function VoucherExcelImportPanel({
       await downloadVoucherExcelTemplate({
         products,
         locations,
+        destinationLocations,
         language: lang,
       });
       gooeyToast.success(copy.templateDownloaded);
@@ -499,7 +538,7 @@ export function VoucherExcelImportPanel({
     } finally {
       setIsDownloadingTemplate(false);
     }
-  }, [copy, lang, locations, products]);
+  }, [copy, destinationLocations, lang, locations, products]);
 
   const mappedKeys = Object.values(mapping).filter(Boolean) as string[];
 
@@ -719,12 +758,21 @@ export function VoucherExcelImportPanel({
                 {copy.systemFields}
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {[...REQUIRED_SLOTS, ...OPTIONAL_SLOTS].map((slotKey) => (
+                {[...requiredSlots, ...optionalSlots].map((slotKey) => (
                   <MappingSlot
                     key={slotKey}
                     slotKey={slotKey}
-                    label={copy.slots[slotKey as keyof typeof copy.slots]}
-                    required={SLOT_REQUIRED[slotKey]}
+                    label={
+                      slotKey === "location" && isTransferImport
+                        ? copy.slots.sourceLocation
+                        : copy.slots[slotKey as keyof typeof copy.slots]
+                    }
+                    required={
+                      SLOT_REQUIRED[slotKey] ||
+                      (isTransferImport &&
+                        (slotKey === "location" ||
+                          slotKey === "destinationLocation"))
+                    }
                     mappedCol={mapping[slotKey as keyof VoucherColumnMapping]}
                     columns={preview.columns}
                     dragOverSlot={dragOverSlot}
@@ -740,7 +788,9 @@ export function VoucherExcelImportPanel({
 
             {!canParse && (
               <p className="text-xs text-[var(--color-accent-warning)]">
-                ⚠ {copy.requiredMappingWarning}
+                ⚠ {isTransferImport
+                  ? copy.transferRequiredMappingWarning
+                  : copy.requiredMappingWarning}
               </p>
             )}
 
@@ -814,7 +864,10 @@ export function VoucherExcelImportPanel({
             </div>
 
             {/* Preview table */}
-            <ResultTable rows={parseResults} />
+            <ResultTable
+              rows={parseResults}
+              showDestinationLocation={isTransferImport}
+            />
 
             {/* Action */}
             <div className="flex justify-end">

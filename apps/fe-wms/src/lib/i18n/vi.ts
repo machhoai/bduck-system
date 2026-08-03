@@ -2323,7 +2323,7 @@ const vi = {
                     excel: {
                         title: "Nhập danh sách bằng Excel",
                         content:
-                            "Dùng file mẫu để thêm nhanh sản phẩm, số lượng và vị trí lấy hàng.",
+                            "Dùng file mẫu để thêm nhanh sản phẩm, số lượng, vị trí nguồn và vị trí đích.",
                     },
                     catalog: {
                         title: "Chọn hàng điều chuyển",
@@ -2333,7 +2333,7 @@ const vi = {
                     selectedItems: {
                         title: "Phân bổ hàng chuyển",
                         content:
-                            "Chọn vị trí nguồn và số lượng từng dòng; không được vượt ATP.",
+                            "Chọn vị trí nguồn, vị trí đích và số lượng từng dòng; không được vượt ATP.",
                     },
                     summary: {
                         title: "Rà soát lệnh điều chuyển",

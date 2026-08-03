@@ -27,6 +27,7 @@ interface TransferItemInput {
   id: string;
   product_id: string;
   quantity: number;
+  destination_location_id?: string | null;
 }
 
 interface Props {
@@ -77,7 +78,7 @@ export default function ReceiveTransferPanel({
           product_name: product?.name || orderItem.product_id,
           expected_quantity: orderItem.quantity,
           received_quantity: orderItem.quantity,
-          destination_location_id: "",
+          destination_location_id: orderItem.destination_location_id ?? "",
         };
       }),
     );

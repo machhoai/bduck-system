@@ -4,7 +4,7 @@ import { z } from "zod";
 const transferItemSchema = z.object({
   product_id: z.string().uuid(),
   source_location_id: z.string().uuid(),
-  destination_location_id: z.string().uuid().nullable().optional(),
+  destination_location_id: z.string().uuid(),
   quantity: z.number().int().positive(),
 });
 

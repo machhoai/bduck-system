@@ -73,16 +73,9 @@ export async function createTransferOrder(
       "跨库调拨：源仓库和目标仓库必须不同。",
     );
   }
-  // ── Validate: INTRA items must have destination_location_id ──
+  // ── INTRA source and destination locations must differ ──
   if (isIntra) {
     for (const item of input.items) {
-      if (!item.destination_location_id) {
-        throw createTransferError(
-          400,
-          "Điều chuyển trong kho: mỗi sản phẩm phải chọn vị trí đích.",
-          "库内调拨：每个产品必须选择目标库位。",
-        );
-      }
       if (item.source_location_id === item.destination_location_id) {
         throw createTransferError(
           400,
@@ -208,7 +201,7 @@ export async function createTransferOrder(
     transfer_order_id: orderId,
     product_id: item.product_id,
     source_location_id: item.source_location_id,
-    destination_location_id: item.destination_location_id ?? null,
+    destination_location_id: item.destination_location_id,
     quantity: item.quantity,
     received_quantity: null,
     status: TransferItemStatus.PENDING,

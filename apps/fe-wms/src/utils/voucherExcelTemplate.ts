@@ -11,10 +11,12 @@ type VoucherTemplateColumnKey =
   | "quantity"
   | "unitPrice"
   | "location"
+  | "destinationLocation"
   | "notes";
 
 type VoucherTemplateText = {
   fileName: string;
+  transferFileName: string;
   sheets: {
     data: string;
     guide: string;
@@ -22,6 +24,8 @@ type VoucherTemplateText = {
   };
   workbookTitle: string;
   workbookSubject: string;
+  sourceLocationLabel: string;
+  sourceLocationNote: string;
   columns: Record<
     VoucherTemplateColumnKey,
     {
@@ -38,6 +42,7 @@ type VoucherTemplateText = {
     invalidList: string;
     chooseProduct: string;
     chooseLocation: string;
+    chooseDestinationLocation: string;
     invalidQuantity: string;
     invalidUnitPrice: string;
   };
@@ -47,12 +52,14 @@ type VoucherTemplateText = {
     sectionHeader: string;
     instructionHeader: string;
     rows: Array<{ section: string; instruction: string }>;
+    transferLocations: { section: string; instruction: string };
     legendTitle: string;
     required: string;
     editable: string;
     calculated: string;
     noProducts: string;
     noLocations: string;
+    noDestinationLocations: string;
   };
   references: {
     productCode: string;
@@ -61,12 +68,15 @@ type VoucherTemplateText = {
     unitPrice: string;
     locationCode: string;
     locationName: string;
+    destinationLocationCode: string;
+    destinationLocationName: string;
   };
 };
 
 const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
   vi: {
     fileName: "mau-nhap-san-pham-vao-phieu.xlsx",
+    transferFileName: "mau-san-pham-dieu-chuyen-kho.xlsx",
     sheets: {
       data: "Nhap_san_pham",
       guide: "Huong_dan",
@@ -75,6 +85,9 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
     workbookTitle: "Mẫu nhập sản phẩm vào phiếu",
     workbookSubject:
       "Mẫu Excel có danh sách chọn sản phẩm và vị trí kho dành cho chức năng thêm sản phẩm",
+    sourceLocationLabel: "Vị trí nguồn *",
+    sourceLocationNote:
+      "Bắt buộc. Chọn mã vị trí lấy hàng đang hoạt động tại kho nguồn.",
     columns: {
       sku: {
         label: "SKU / Mã sản phẩm *",
@@ -105,6 +118,12 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
         note: "Không bắt buộc. Chọn mã vị trí đang hoạt động của kho hiện tại trong danh sách.",
         width: 24,
       },
+      destinationLocation: {
+        label: "Vị trí đích *",
+        note: "Bắt buộc với điều chuyển kho. Chọn mã vị trí đang hoạt động tại kho đích.",
+        width: 24,
+        required: true,
+      },
       notes: {
         label: "Ghi chú",
         note: "Không bắt buộc. Nhập nội dung ghi chú cho dòng sản phẩm.",
@@ -117,6 +136,7 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
       invalidList: "Vui lòng chọn một giá trị trong danh sách.",
       chooseProduct: "Chọn SKU / mã sản phẩm trong danh sách.",
       chooseLocation: "Chọn mã vị trí kho trong danh sách.",
+      chooseDestinationLocation: "Chọn mã vị trí đích trong danh sách.",
       invalidQuantity: "Số lượng phải là số nguyên lớn hơn 0.",
       invalidUnitPrice: "Đơn giá phải là số lớn hơn hoặc bằng 0.",
     },
@@ -173,6 +193,11 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
             "Sheet Danh_muc chứa dữ liệu nguồn cho các danh sách chọn và công thức. Không chỉnh sửa hoặc xóa dữ liệu trong sheet này.",
         },
       ],
+      transferLocations: {
+        section: "Vị trí điều chuyển",
+        instruction:
+          "Mỗi dòng điều chuyển phải chọn cả Vị trí nguồn và Vị trí đích. Hai danh sách được lấy lần lượt từ kho nguồn và kho đích đã chọn.",
+      },
       legendTitle: "Chú giải màu",
       required: "Đỏ nhạt: ô thuộc cột bắt buộc",
       editable: "Vàng nhạt: ô có thể nhập hoặc chọn",
@@ -181,6 +206,8 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
         "Chưa có sản phẩm trong danh mục tại thời điểm tải file. Hãy tải lại mẫu sau khi danh mục sản phẩm được tải.",
       noLocations:
         "Chưa có vị trí kho đang hoạt động tại thời điểm tải file. Hãy chọn kho hoặc tạo vị trí rồi tải lại mẫu.",
+      noDestinationLocations:
+        "Chưa có vị trí đích đang hoạt động. Hãy chọn kho đích hoặc tạo vị trí rồi tải lại mẫu.",
     },
     references: {
       productCode: "SKU / Mã sản phẩm",
@@ -189,10 +216,13 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
       unitPrice: "Đơn giá tham khảo",
       locationCode: "Mã vị trí kho",
       locationName: "Tên vị trí kho",
+      destinationLocationCode: "Mã vị trí đích",
+      destinationLocationName: "Tên vị trí đích",
     },
   },
   zh: {
     fileName: "单据产品导入模板.xlsx",
+    transferFileName: "仓库调拨产品导入模板.xlsx",
     sheets: {
       data: "产品导入",
       guide: "填写说明",
@@ -200,6 +230,8 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
     },
     workbookTitle: "单据产品导入模板",
     workbookSubject: "用于添加产品的 Excel 模板，包含产品和库位下拉选项",
+    sourceLocationLabel: "源库位 *",
+    sourceLocationNote: "必填。请选择源仓库中启用的拣货库位编码。",
     columns: {
       sku: {
         label: "SKU / 产品编码 *",
@@ -230,6 +262,12 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
         note: "选填。请从下拉列表中选择当前仓库的启用库位编码。",
         width: 24,
       },
+      destinationLocation: {
+        label: "目标库位 *",
+        note: "仓库调拨必填。请选择目标仓库中启用的库位编码。",
+        width: 24,
+        required: true,
+      },
       notes: {
         label: "备注",
         note: "选填。填写该产品行的备注。",
@@ -242,6 +280,7 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
       invalidList: "请从下拉列表中选择一个值。",
       chooseProduct: "请从列表中选择 SKU / 产品编码。",
       chooseLocation: "请从列表中选择库位编码。",
+      chooseDestinationLocation: "请从列表中选择目标库位编码。",
       invalidQuantity: "数量必须是大于 0 的整数。",
       invalidUnitPrice: "单价必须是大于或等于 0 的数字。",
     },
@@ -295,12 +334,19 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
             "“选项数据”工作表保存下拉列表和公式的数据源，请勿修改或删除其中的数据。",
         },
       ],
+      transferLocations: {
+        section: "调拨库位",
+        instruction:
+          "每条调拨明细都必须选择源库位和目标库位。两个下拉列表分别来自所选的源仓库和目标仓库。",
+      },
       legendTitle: "颜色说明",
       required: "浅红色：必填列单元格",
       editable: "浅黄色：可输入或选择的单元格",
       calculated: "浅蓝色：Excel 自动计算的单元格",
       noProducts: "下载时产品目录为空。产品目录加载完成后请重新下载模板。",
       noLocations: "下载时没有启用库位。请选择仓库或创建库位后重新下载模板。",
+      noDestinationLocations:
+        "目标仓库没有启用库位。请选择目标仓库或创建库位后重新下载模板。",
     },
     references: {
       productCode: "SKU / 产品编码",
@@ -309,6 +355,8 @@ const VOUCHER_TEMPLATE_TEXT: Record<Language, VoucherTemplateText> = {
       unitPrice: "参考单价",
       locationCode: "库位编码",
       locationName: "库位名称",
+      destinationLocationCode: "目标库位编码",
+      destinationLocationName: "目标库位名称",
     },
   },
 };
@@ -325,12 +373,14 @@ const TEMPLATE_COLUMNS: VoucherTemplateColumnKey[] = [
 export interface VoucherExcelTemplateOptions {
   products: Product[];
   locations: WarehouseLocation[];
+  destinationLocations?: WarehouseLocation[];
   language?: Language;
 }
 
 export function buildVoucherExcelTemplate({
   products,
   locations,
+  destinationLocations,
   language = "vi",
 }: VoucherExcelTemplateOptions): ExcelJS.Workbook {
   const text = VOUCHER_TEMPLATE_TEXT[language];
@@ -345,6 +395,16 @@ export function buildVoucherExcelTemplate({
         location.code.trim(),
     ),
   ).sort((left, right) => left.code.localeCompare(right.code));
+  const availableDestinationLocations = destinationLocations
+    ? uniqueByCode(
+        destinationLocations.filter(
+          (location) =>
+            !location.is_deleted &&
+            location.status === LocationStatus.ACTIVE &&
+            location.code.trim(),
+        ),
+      ).sort((left, right) => left.code.localeCompare(right.code))
+    : undefined;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "J-PULSE";
@@ -371,6 +431,7 @@ export function buildVoucherExcelTemplate({
     referenceSheet,
     availableProducts,
     availableLocations,
+    availableDestinationLocations,
     text,
   );
   addDefinedNames(
@@ -378,18 +439,21 @@ export function buildVoucherExcelTemplate({
     referenceSheet,
     availableProducts.length,
     availableLocations.length,
+    availableDestinationLocations?.length,
   );
   fillDataSheet(
     dataSheet,
     referenceSheet,
     availableProducts.length,
     availableLocations.length,
+    availableDestinationLocations?.length,
     text,
   );
   fillGuideSheet(
     guideSheet,
     availableProducts.length,
     availableLocations.length,
+    availableDestinationLocations?.length,
     text,
   );
 
@@ -409,7 +473,9 @@ export async function downloadVoucherExcelTemplate(
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = VOUCHER_TEMPLATE_TEXT[language].fileName;
+  link.download = options.destinationLocations
+    ? VOUCHER_TEMPLATE_TEXT[language].transferFileName
+    : VOUCHER_TEMPLATE_TEXT[language].fileName;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -428,6 +494,7 @@ function fillReferenceSheet(
   sheet: ExcelJS.Worksheet,
   products: Product[],
   locations: WarehouseLocation[],
+  destinationLocations: WarehouseLocation[] | undefined,
   text: VoucherTemplateText,
 ) {
   sheet.columns = [
@@ -437,12 +504,32 @@ function fillReferenceSheet(
     { header: text.references.unitPrice, key: "unitPrice", width: 20 },
     { header: text.references.locationCode, key: "locationCode", width: 24 },
     { header: text.references.locationName, key: "locationName", width: 36 },
+    ...(destinationLocations
+      ? [
+          {
+            header: text.references.destinationLocationCode,
+            key: "destinationLocationCode",
+            width: 24,
+          },
+          {
+            header: text.references.destinationLocationName,
+            key: "destinationLocationName",
+            width: 36,
+          },
+        ]
+      : []),
   ];
 
-  const maxRows = Math.max(products.length, locations.length, 1);
+  const maxRows = Math.max(
+    products.length,
+    locations.length,
+    destinationLocations?.length ?? 0,
+    1,
+  );
   for (let index = 0; index < maxRows; index += 1) {
     const product = products[index];
     const location = locations[index];
+    const destinationLocation = destinationLocations?.[index];
     sheet.addRow({
       productCode: product?.code ?? null,
       productName: product?.name ?? null,
@@ -450,6 +537,8 @@ function fillReferenceSheet(
       unitPrice: product?.unit_price ?? null,
       locationCode: location?.code ?? null,
       locationName: location?.name ?? null,
+      destinationLocationCode: destinationLocation?.code ?? null,
+      destinationLocationName: destinationLocation?.name ?? null,
     });
   }
 
@@ -457,7 +546,8 @@ function fillReferenceSheet(
   sheet.getColumn("A").numFmt = "@";
   sheet.getColumn("D").numFmt = "#,##0.00";
   sheet.getColumn("E").numFmt = "@";
-  sheet.autoFilter = { from: "A1", to: "F1" };
+  if (destinationLocations) sheet.getColumn("G").numFmt = "@";
+  sheet.autoFilter = { from: "A1", to: destinationLocations ? "H1" : "F1" };
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -474,6 +564,7 @@ function addDefinedNames(
   referenceSheet: ExcelJS.Worksheet,
   productCount: number,
   locationCount: number,
+  destinationLocationCount: number | undefined,
 ) {
   const quotedSheet = quoteSheetName(referenceSheet.name);
   const productEndRow = Math.max(2, productCount + 1);
@@ -487,6 +578,13 @@ function addDefinedNames(
     `${quotedSheet}!$E$2:$E$${locationEndRow}`,
     "VoucherLocationCodes",
   );
+  if (destinationLocationCount !== undefined) {
+    const destinationLocationEndRow = Math.max(2, destinationLocationCount + 1);
+    workbook.definedNames.add(
+      `${quotedSheet}!$G$2:$G$${destinationLocationEndRow}`,
+      "VoucherDestinationLocationCodes",
+    );
+  }
 }
 
 function fillDataSheet(
@@ -494,28 +592,42 @@ function fillDataSheet(
   referenceSheet: ExcelJS.Worksheet,
   productCount: number,
   locationCount: number,
+  destinationLocationCount: number | undefined,
   text: VoucherTemplateText,
 ) {
-  sheet.columns = TEMPLATE_COLUMNS.map((key) => ({
-    header: text.columns[key].label,
+  const isTransferTemplate = destinationLocationCount !== undefined;
+  const templateColumns: VoucherTemplateColumnKey[] = isTransferTemplate
+    ? ["sku", "productName", "quantity", "unitPrice", "location", "destinationLocation", "notes"]
+    : TEMPLATE_COLUMNS;
+
+  sheet.columns = templateColumns.map((key) => ({
+    header:
+      isTransferTemplate && key === "location"
+        ? text.sourceLocationLabel
+        : text.columns[key].label,
     key,
     width: text.columns[key].width,
   }));
 
   const headerRow = sheet.getRow(1);
   headerRow.height = 36;
-  TEMPLATE_COLUMNS.forEach((key, index) => {
+  templateColumns.forEach((key, index) => {
     const cell = headerRow.getCell(index + 1);
     const column = text.columns[key];
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = solidFill(column.required ? "FFDC2626" : "FF2563EB");
+    const isRequired =
+      column.required || (isTransferTemplate && key === "location");
+    cell.fill = solidFill(isRequired ? "FFDC2626" : "FF2563EB");
     cell.alignment = {
       horizontal: "center",
       vertical: "middle",
       wrapText: true,
     };
     cell.border = thinBorder("FFCBD5E1");
-    cell.note = column.note;
+    cell.note =
+      isTransferTemplate && key === "location"
+        ? text.sourceLocationNote
+        : column.note;
   });
 
   const quotedReferenceSheet = quoteSheetName(referenceSheet.name);
@@ -525,12 +637,17 @@ function fillDataSheet(
     const row = sheet.getRow(rowNumber);
     row.height = 23;
 
-    const skuCell = row.getCell(1);
-    const productNameCell = row.getCell(2);
-    const quantityCell = row.getCell(3);
-    const unitPriceCell = row.getCell(4);
-    const locationCell = row.getCell(5);
-    const notesCell = row.getCell(6);
+    const cellFor = (key: VoucherTemplateColumnKey) =>
+      row.getCell(templateColumns.indexOf(key) + 1);
+    const skuCell = cellFor("sku");
+    const productNameCell = cellFor("productName");
+    const quantityCell = cellFor("quantity");
+    const unitPriceCell = cellFor("unitPrice");
+    const locationCell = cellFor("location");
+    const destinationLocationCell = isTransferTemplate
+      ? cellFor("destinationLocation")
+      : null;
+    const notesCell = cellFor("notes");
 
     productNameCell.value = {
       formula:
@@ -575,9 +692,18 @@ function fillDataSheet(
       "VoucherLocationCodes",
       text.prompts.chooseLocation,
       text,
-      true,
+      !isTransferTemplate,
       locationCount > 0,
     );
+    if (destinationLocationCell) {
+      destinationLocationCell.dataValidation = listValidation(
+        "VoucherDestinationLocationCodes",
+        text.prompts.chooseDestinationLocation,
+        text,
+        false,
+        (destinationLocationCount ?? 0) > 0,
+      );
+    }
 
     [
       skuCell,
@@ -585,6 +711,7 @@ function fillDataSheet(
       quantityCell,
       unitPriceCell,
       locationCell,
+      ...(destinationLocationCell ? [destinationLocationCell] : []),
       notesCell,
     ].forEach((cell) => {
       cell.alignment = { vertical: "middle", wrapText: true };
@@ -596,14 +723,20 @@ function fillDataSheet(
     quantityCell.fill = solidFill("FFFFE4E6");
     unitPriceCell.fill = solidFill("FFFFFBEB");
     locationCell.fill = solidFill("FFFFFBEB");
+    if (destinationLocationCell) {
+      destinationLocationCell.fill = solidFill("FFFFE4E6");
+    }
     notesCell.fill = solidFill("FFFFFBEB");
   }
 
   sheet.getColumn(1).numFmt = "@";
   sheet.getColumn(3).numFmt = "#,##0";
   sheet.getColumn(4).numFmt = "#,##0.00";
-  sheet.getColumn(5).numFmt = "@";
-  sheet.autoFilter = { from: "A1", to: "F1" };
+  sheet.getColumn(templateColumns.indexOf("location") + 1).numFmt = "@";
+  if (isTransferTemplate) {
+    sheet.getColumn(templateColumns.indexOf("destinationLocation") + 1).numFmt = "@";
+  }
+  sheet.autoFilter = { from: "A1", to: isTransferTemplate ? "G1" : "F1" };
   sheet.pageSetup = {
     orientation: "landscape",
     fitToPage: true,
@@ -618,6 +751,7 @@ function fillGuideSheet(
   sheet: ExcelJS.Worksheet,
   productCount: number,
   locationCount: number,
+  destinationLocationCount: number | undefined,
   text: VoucherTemplateText,
 ) {
   sheet.columns = [{ width: 28 }, { width: 96 }];
@@ -645,7 +779,11 @@ function fillGuideSheet(
   sheet.getCell("B4").value = text.guide.instructionHeader;
   styleHeaderRow(sheet.getRow(4), "FF2563EB");
 
-  text.guide.rows.forEach((guideRow, index) => {
+  const guideRows =
+    destinationLocationCount === undefined
+      ? text.guide.rows
+      : [...text.guide.rows, text.guide.transferLocations];
+  guideRows.forEach((guideRow, index) => {
     const rowNumber = index + 5;
     const row = sheet.getRow(rowNumber);
     row.getCell(1).value = guideRow.section;
@@ -658,13 +796,17 @@ function fillGuideSheet(
     row.height = 42;
   });
 
-  let nextRow = text.guide.rows.length + 6;
+  let nextRow = guideRows.length + 6;
   if (productCount === 0) {
     addWarningRow(sheet, nextRow, text.guide.noProducts);
     nextRow += 1;
   }
   if (locationCount === 0) {
     addWarningRow(sheet, nextRow, text.guide.noLocations);
+    nextRow += 1;
+  }
+  if (destinationLocationCount === 0) {
+    addWarningRow(sheet, nextRow, text.guide.noDestinationLocations);
     nextRow += 1;
   }
 

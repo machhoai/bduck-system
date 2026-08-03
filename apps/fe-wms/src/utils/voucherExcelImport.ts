@@ -52,6 +52,8 @@ export interface VoucherColumnMapping {
   notes: string | null;
   /** Vị trí kho (tùy chọn, match theo code hoặc name) */
   location: string | null;
+  /** Vị trí đích (dùng cho điều chuyển kho) */
+  destinationLocation: string | null;
 }
 
 export interface VoucherItemParseResult {
@@ -65,6 +67,10 @@ export interface VoucherItemParseResult {
   rawLocation: string;
   /** Normalized location code for downstream matching */
   parsedLocationCode: string;
+  /** Raw destination location value from Excel (trimmed) */
+  rawDestinationLocation: string;
+  /** Normalized destination location code for downstream matching */
+  parsedDestinationLocationCode: string;
   matchedProduct: Product | null;
   parsedQuantity: number | null;
   parsedUnitPrice: number | null;
@@ -244,6 +250,10 @@ export async function parseVoucherRows(
   mapping: VoucherColumnMapping,
   startRow: number,
   products: Product[],
+  options: {
+    requireSourceLocation?: boolean;
+    requireDestinationLocation?: boolean;
+  } = {},
 ): Promise<VoucherItemParseResult[]> {
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
@@ -283,12 +293,20 @@ export async function parseVoucherRows(
     const rawUnitPrice = getCol(mapping.unitPrice);
     const rawNotes = getCol(mapping.notes);
     const rawLocation = getCol(mapping.location);
+    const rawDestinationLocation = getCol(mapping.destinationLocation);
 
     // Bỏ qua dòng rỗng hoàn toàn
     if (!rawName.trim() && !rawSku.trim() && !rawQuantity.trim()) return;
 
     const errors: string[] = [];
     const warnings: string[] = [];
+
+    if (options.requireSourceLocation && !rawLocation.trim()) {
+      errors.push("Thiếu Vị trí nguồn.");
+    }
+    if (options.requireDestinationLocation && !rawDestinationLocation.trim()) {
+      errors.push("Thiếu Vị trí đích.");
+    }
 
     // Match product: ưu tiên SKU
     let matchedProduct: Product | null = null;
@@ -346,6 +364,7 @@ export async function parseVoucherRows(
 
     // Location: just pass the raw trimmed value; matching happens in CreateVoucherTab
     const parsedLocationCode = rawLocation.trim();
+    const parsedDestinationLocationCode = rawDestinationLocation.trim();
 
     results.push({
       rowNumber: rowNum,
@@ -356,6 +375,8 @@ export async function parseVoucherRows(
       rawNotes,
       rawLocation,
       parsedLocationCode,
+      rawDestinationLocation,
+      parsedDestinationLocationCode,
       matchedProduct,
       parsedQuantity,
       parsedUnitPrice,

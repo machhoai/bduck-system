@@ -91,13 +91,6 @@ export async function updateTransferOrder(
   }
   if (isIntra) {
     for (const item of input.items) {
-      if (!item.destination_location_id) {
-        throw createTransferError(
-          400,
-          "Dieu chuyen trong kho: moi san pham phai chon vi tri dich.",
-          "库内调拨：每个产品必须选择目标库位。",
-        );
-      }
       if (item.source_location_id === item.destination_location_id) {
         throw createTransferError(
           400,
@@ -179,7 +172,7 @@ export async function updateTransferOrder(
     transfer_order_id: orderId,
     product_id: item.product_id,
     source_location_id: item.source_location_id,
-    destination_location_id: item.destination_location_id ?? null,
+    destination_location_id: item.destination_location_id,
     quantity: item.quantity,
     received_quantity: null,
     status: TransferItemStatus.PENDING,

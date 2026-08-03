@@ -299,6 +299,8 @@ export const EXCEL_PREVIEW_TEXT = {
     reason: "Nguyên nhân",
     catalogProduct: "Sản phẩm (catalog)",
     location: "Vị trí",
+    sourceLocation: "Vị trí nguồn",
+    destinationLocation: "Vị trí đích",
     quantityShort: "SL",
     unitPrice: "Đơn giá",
     errorsWarnings: "Lỗi / Cảnh báo",
@@ -330,6 +332,8 @@ export const EXCEL_PREVIEW_TEXT = {
     reason: "原因",
     catalogProduct: "产品（目录）",
     location: "库位",
+    sourceLocation: "源库位",
+    destinationLocation: "目标库位",
     quantityShort: "数量",
     unitPrice: "单价",
     errorsWarnings: "错误 / 警告",
@@ -388,6 +392,8 @@ export const VOUCHER_EXCEL_IMPORT_TEXT = {
     systemFields: "Thông tin hệ thống cần:",
     requiredMappingWarning:
       'Cần kéo ít nhất "Tên sản phẩm" và "Số lượng" vào slot.',
+    transferRequiredMappingWarning:
+      'Cần map "Tên sản phẩm", "Số lượng", "Vị trí nguồn" và "Vị trí đích".',
     readData: "Đọc dữ liệu",
     addValidItems: "Thêm {{count}} sản phẩm hợp lệ vào phiếu",
     stats: {
@@ -402,6 +408,8 @@ export const VOUCHER_EXCEL_IMPORT_TEXT = {
       sku: "SKU / Mã SP",
       unitPrice: "Đơn giá",
       location: "Vị trí kho",
+      sourceLocation: "Vị trí nguồn",
+      destinationLocation: "Vị trí đích",
       notes: "Ghi chú",
     },
   },
@@ -439,6 +447,8 @@ export const VOUCHER_EXCEL_IMPORT_TEXT = {
     fileColumns: "文件列 — 拖到下方槽位：",
     systemFields: "系统所需字段：",
     requiredMappingWarning: "请至少将“产品名称”和“数量”拖入槽位。",
+    transferRequiredMappingWarning:
+      "请映射“产品名称”、“数量”、“源库位”和“目标库位”。",
     readData: "读取数据",
     addValidItems: "将 {{count}} 个有效产品添加到单据",
     stats: {
@@ -453,6 +463,8 @@ export const VOUCHER_EXCEL_IMPORT_TEXT = {
       sku: "SKU / 产品编码",
       unitPrice: "单价",
       location: "库位",
+      sourceLocation: "源库位",
+      destinationLocation: "目标库位",
       notes: "备注",
     },
   },
