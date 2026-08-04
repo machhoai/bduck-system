@@ -1375,6 +1375,14 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
     await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
+    await assertFails(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
+    await assertFails(getDoc(doc(admin, "pos_orders", "local-order-1")));
+    await assertFails(
+      getDoc(doc(storeUser, "invoice_customer_requests", "request-1")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "invoice_customer_requests", "request-1")),
+    );
     await assertFails(getDoc(doc(storeUser, "invoice_issue_jobs", "job-1")));
     await assertSucceeds(
       getDoc(doc(storeUser, "invoice_issue_jobs/job-1/items", "item-d")),

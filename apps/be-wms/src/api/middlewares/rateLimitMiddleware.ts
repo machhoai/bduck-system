@@ -61,3 +61,25 @@ export const authSessionRateLimiter = createRateLimiter(
     120,
   ),
 );
+
+export const publicInvoiceReadRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_PUBLIC_INVOICE_READ_WINDOW_MS,
+    60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_PUBLIC_INVOICE_READ_MAX_REQUESTS,
+    60,
+  ),
+);
+
+export const publicInvoiceSubmitRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_PUBLIC_INVOICE_SUBMIT_WINDOW_MS,
+    15 * 60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_PUBLIC_INVOICE_SUBMIT_MAX_REQUESTS,
+    10,
+  ),
+);

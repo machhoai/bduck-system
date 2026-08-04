@@ -230,6 +230,13 @@ export enum InvoiceOrderMatchStatus {
   NOT_ISSUED = "NOT_ISSUED",
 }
 
+export type InvoiceSourceSystem = "JOYWORLD" | "JPOS";
+
+export type CustomerInvoiceRequestStatus =
+  | "AVAILABLE"
+  | "SUBMITTED"
+  | "LOCKED";
+
 export enum InvoiceReconciliationCaseStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -431,8 +438,11 @@ export interface MeInvoiceStoreConfig {
 export interface InvoiceSourceOrder {
   id: string;
   warehouse_id: string;
-  source_system: "JOYWORLD";
+  source_system: InvoiceSourceSystem;
   source_order_id: string;
+  local_order_id: string | null;
+  hk_order_number: string | null;
+  pos_order_status: string | null;
   source_payload_hash: string;
   business_date: string;
   source_create_time: string | null;
@@ -460,6 +470,8 @@ export interface InvoiceSourceOrder {
   match_status: InvoiceOrderMatchStatus;
   invoice_document_id: string | null;
   invoice_document_status: InvoiceDocumentStatus | null;
+  customer_invoice_request_status: CustomerInvoiceRequestStatus;
+  customer_invoice_request_submitted_at: Date | null;
   last_sync_run_id: string;
   is_deleted: boolean;
   created_at: Date;
@@ -491,9 +503,11 @@ export interface InvoiceDocument {
   legal_entity_id: string;
   meinvoice_account_id: string;
   source_order_document_id: string;
-  source_system: "JOYWORLD";
+  source_system: InvoiceSourceSystem;
   source_order_id: string;
   source_order_number: string | null;
+  local_order_id: string | null;
+  hk_order_number: string | null;
   source_payload_hash: string;
   source_action_time: Date | null;
   payment_time: string;
@@ -522,11 +536,30 @@ export interface InvoiceDocument {
   review_note: string | null;
   rejected_by: string | null;
   rejected_at: Date | null;
+  customer_invoice_request_id: string | null;
+  customer_invoice_request_submitted_at: Date | null;
   created_by: string;
   updated_by: string;
   is_deleted: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface CustomerInvoiceRequestCompany {
+  tax_code: string;
+  legal_name: string;
+  international_name: string;
+  short_name: string;
+  address: string;
+}
+
+export interface CustomerInvoiceRequestPublicView {
+  order_reference: string;
+  local_order_id: string;
+  hk_order_number: string | null;
+  payment_time: string;
+  status: CustomerInvoiceRequestStatus;
+  buyer: InvoiceDraftBuyer | null;
 }
 
 export interface InvoiceOrderSyncRun {

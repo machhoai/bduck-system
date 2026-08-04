@@ -13,12 +13,14 @@ import {
     ShieldCheck,
     X,
 } from "lucide-react";
+import { collection, onSnapshot, orderBy, query as firestoreQuery, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { invoiceApi, type InvoiceSourceOrderView, type InvoiceSyncResult } from "@/api/invoiceApi";
 import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
+import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 import { shortName } from "@/utils/name";
 import { showToast } from "@/utils/toast";
@@ -269,6 +271,46 @@ export default function InvoiceManagementPage() {
     }, [loadOrders]);
 
     useEffect(() => {
+        if (view === "CONFIG" || !activeStoreId || !businessDate) return;
+
+        let receivedInitialSnapshot = false;
+        let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+        const sourceOrdersQuery = firestoreQuery(
+            collection(db, "invoice_source_orders"),
+            where("warehouse_id", "==", activeStoreId),
+            where("business_date", "==", businessDate),
+            where("is_deleted", "==", false),
+            orderBy("source_action_time", "desc"),
+        );
+        const unsubscribe = onSnapshot(
+            sourceOrdersQuery,
+            () => {
+                if (!receivedInitialSnapshot) {
+                    receivedInitialSnapshot = true;
+                    return;
+                }
+                if (refreshTimer) clearTimeout(refreshTimer);
+                refreshTimer = setTimeout(() => void loadOrders(), 250);
+            },
+            (snapshotError) => {
+                console.warn("[InvoiceManagementPage] Realtime source order listener failed:", snapshotError);
+            },
+        );
+
+        return () => {
+            unsubscribe();
+            if (refreshTimer) clearTimeout(refreshTimer);
+        };
+    }, [activeStoreId, businessDate, loadOrders, view]);
+
+    useEffect(() => {
+        setSelectedOrder((current) => {
+            if (!current) return null;
+            return orders.find((order) => order.id === current.id) ?? current;
+        });
+    }, [orders]);
+
+    useEffect(() => {
         setSelectedIssueIds([]);
     }, [activeStoreId, businessDate]);
 
@@ -338,7 +380,13 @@ export default function InvoiceManagementPage() {
         return orders.filter((order) => {
             if (statusFilter !== "ALL" && order.preflight.status !== statusFilter) return false;
             if (!normalizedQuery) return true;
-            return [order.order_number, order.source_order_id, order.customer_name]
+            return [
+                order.order_number,
+                order.source_order_id,
+                order.local_order_id,
+                order.hk_order_number,
+                order.customer_name,
+            ]
                 .filter(Boolean)
                 .some((value) => String(value).toLocaleLowerCase(lang).includes(normalizedQuery));
         });
@@ -647,6 +695,23 @@ export default function InvoiceManagementPage() {
                                                     >
                                                         {shortName(order.customer_name) || order.source_order_id}
                                                     </p>
+                                                    {order.source_system === "JPOS" && (
+                                                        <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-medium text-slate-500">
+                                                            <span className="rounded bg-slate-100 px-1.5 py-0.5">
+                                                                Local: {order.local_order_id ?? "—"}
+                                                            </span>
+                                                            <span className="rounded bg-slate-100 px-1.5 py-0.5">
+                                                                HK: {order.hk_order_number ?? "—"}
+                                                            </span>
+                                                            {order.customer_invoice_request_status === "SUBMITTED" && (
+                                                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
+                                                                    {lang === "vi"
+                                                                        ? "Khách đã gửi thông tin hóa đơn"
+                                                                        : "客户已提交发票信息"}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {order.payment_time && (
                                                         <p className="mt-0.5 text-xs text-slate-400">
                                                             {order.payment_time}

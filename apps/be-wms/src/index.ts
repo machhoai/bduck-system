@@ -40,6 +40,7 @@ import fileTemplateBundleRoutes from "./api/routes/fileTemplateBundleRoutes.js";
 import processDocumentRoutes from "./api/routes/processDocumentRoutes.js";
 import meInvoiceConfigRoutes from "./api/routes/meInvoiceConfigRoutes.js";
 import invoiceOrderRoutes from "./api/routes/invoiceOrderRoutes.js";
+import customerInvoiceRequestRoutes from "./api/routes/customerInvoiceRequestRoutes.js";
 import dashboardRoutes from "./api/routes/dashboardRoutes.js";
 import {
   apiRateLimiter,
@@ -110,6 +111,7 @@ app.use("/api/file-template-bundles", fileTemplateBundleRoutes);
 app.use("/api/process-documents", processDocumentRoutes);
 app.use("/api/meinvoice", meInvoiceConfigRoutes);
 app.use("/api/invoices", invoiceOrderRoutes);
+app.use("/api/public/invoice-requests", customerInvoiceRequestRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
 app.use("/api", (req, res) => {
