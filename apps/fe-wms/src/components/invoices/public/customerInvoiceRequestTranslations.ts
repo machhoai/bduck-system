@@ -26,6 +26,10 @@ export const customerInvoiceRequestTranslations = {
     lockedTitle: "Hóa đơn đang được xử lý",
     lockedDescription:
       "Thông tin người mua đã được khóa vì hóa đơn đã vào quy trình phát hành.",
+    expiredTitle: "Yêu cầu đã hết hạn",
+    expiredDescription:
+      "Thời hạn cung cấp thông tin hóa đơn là trước 22:00 trong ngày thanh toán.",
+    expiredAt: "Hết hạn lúc",
     invalidLink: "Liên kết không hợp lệ",
     invalidLinkDescription:
       "Không tìm thấy đơn hàng hoặc đơn hàng chưa hoàn tất thanh toán.",
@@ -58,6 +62,9 @@ export const customerInvoiceRequestTranslations = {
     submittedBanner: "开票信息已接收。在发票进入处理流程前仍可修改。",
     lockedTitle: "发票正在处理中",
     lockedDescription: "发票已进入开具流程，购买方信息已锁定。",
+    expiredTitle: "申请已过期",
+    expiredDescription: "发票信息须在付款当日22:00前提交。",
+    expiredAt: "截止时间",
     invalidLink: "链接无效",
     invalidLinkDescription: "找不到订单或订单尚未完成付款。",
     retry: "重试",

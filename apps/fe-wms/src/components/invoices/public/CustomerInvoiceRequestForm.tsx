@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
   CheckCircle2,
+  Clock3,
   FileText,
   LockKeyhole,
   Search,
@@ -16,6 +17,7 @@ import type {
 } from "@bduck/shared-types";
 import {
   customerInvoiceRequestApi,
+  CustomerInvoiceRequestApiError,
   type CustomerInvoiceRequestSubmissionPayload,
 } from "@/api/customerInvoiceRequestApi";
 import { showToast } from "@/utils/toast";
@@ -129,6 +131,13 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("[CustomerInvoiceRequestForm] tax lookup failed", error);
+        if (
+          error instanceof CustomerInvoiceRequestApiError &&
+          error.code === "INVOICE_REQUEST_EXPIRED"
+        ) {
+          await loadRequest();
+          return;
+        }
         setLookupError(error instanceof Error ? error.message : d.noCompany);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);
@@ -139,7 +148,21 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [buyer.tax_code, d.noCompany, request?.status, token]);
+  }, [buyer.tax_code, d.noCompany, loadRequest, request?.status, token]);
+
+  useEffect(() => {
+    if (!request || request.status === "EXPIRED" || request.status === "LOCKED") return;
+    const remaining = new Date(request.expires_at).getTime() - Date.now();
+    if (remaining <= 0) {
+      setRequest((current) => current ? { ...current, status: "EXPIRED" } : current);
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setCompanies([]);
+      setRequest((current) => current ? { ...current, status: "EXPIRED" } : current);
+    }, remaining);
+    return () => window.clearTimeout(timeout);
+  }, [request]);
 
   const selectCompany = (company: CustomerInvoiceRequestCompany) => {
     resolvedTaxCode.current = company.tax_code;
@@ -185,6 +208,12 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
       idempotencyKey.current = null;
     } catch (error) {
       console.error("[CustomerInvoiceRequestForm] submit failed", error);
+      if (
+        error instanceof CustomerInvoiceRequestApiError &&
+        error.code === "INVOICE_REQUEST_EXPIRED"
+      ) {
+        await loadRequest();
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -231,7 +260,16 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
           </div>
         </header>
 
-        {request.status === "LOCKED" ? (
+        {request.status === "EXPIRED" ? (
+          <section className="mt-5 rounded-3xl border border-rose-200 bg-white p-7 text-center shadow-sm">
+            <Clock3 className="mx-auto size-10 text-rose-600" />
+            <h2 className="mt-4 text-xl font-bold text-slate-950">{d.expiredTitle}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{d.expiredDescription}</p>
+            <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              {d.expiredAt}: {new Date(request.expires_at).toLocaleString(lang === "vi" ? "vi-VN" : "zh-CN")}
+            </p>
+          </section>
+        ) : request.status === "LOCKED" ? (
           <section className="mt-5 rounded-3xl border border-amber-200 bg-white p-7 text-center shadow-sm">
             <LockKeyhole className="mx-auto size-10 text-amber-600" />
             <h2 className="mt-4 text-xl font-bold text-slate-950">{d.lockedTitle}</h2>

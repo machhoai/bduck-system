@@ -24,6 +24,11 @@ import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
 import { canEditInvoiceDocument } from "./invoiceDocumentPolicy.js";
 import { buildPosInvoiceSourceOrder, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
 import type { CustomerInvoiceRequestSubmission } from "./customerInvoiceRequestSchemas.js";
+import {
+  customerInvoiceRequestBusinessDate,
+  customerInvoiceRequestDeadline,
+  customerInvoiceRequestIsExpired,
+} from "./customerInvoiceRequestDeadline.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -34,19 +39,6 @@ const serviceError = (
   zh: string,
   code: string,
 ) => ({ statusCode, messages: { vi, zh }, data: { code } });
-
-const vietnamBusinessDate = (value: string): string => {
-  const date = new Date(value);
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const part = (type: string) =>
-    parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-};
 
 const loadPosOrder = async (token: string) => {
   const order = await posInvoiceOrderRepository.findByInvoiceRequestToken(token);
@@ -109,7 +101,9 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
   let source = await findSourceOrder(order);
   const { storeConfig, account } = await loadInvoiceConfig(order.warehouseId);
   if (!source) {
-    const businessDate = vietnamBusinessDate(order.paidAt ?? order.createdAt);
+    const businessDate = customerInvoiceRequestBusinessDate(
+      order.paidAt ?? order.createdAt,
+    );
     const write = buildPosInvoiceSourceOrder(
       order,
       businessDate,
@@ -182,9 +176,11 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
 };
 
 const publicStatus = (
+  paymentTime: string,
   source: JsonRecord | null,
   document: JsonRecord | null,
-): "AVAILABLE" | "SUBMITTED" | "LOCKED" => {
+): "AVAILABLE" | "SUBMITTED" | "EXPIRED" | "LOCKED" => {
+  if (customerInvoiceRequestIsExpired(paymentTime)) return "EXPIRED";
   if (
     document &&
     !canEditInvoiceDocument(document.status as InvoiceDocumentStatus)
@@ -201,12 +197,14 @@ const toPublicView = (
   source: JsonRecord | null,
   document: JsonRecord | null,
 ): CustomerInvoiceRequestPublicView => {
-  const status = publicStatus(source, document);
+  const paymentTime = order.paidAt ?? order.createdAt;
+  const status = publicStatus(paymentTime, source, document);
   return {
     order_reference: order.hkOrderNumber ?? order.localOrderId,
     local_order_id: order.localOrderId,
     hk_order_number: order.hkOrderNumber ?? null,
-    payment_time: order.paidAt ?? order.createdAt,
+    payment_time: paymentTime,
+    expires_at: customerInvoiceRequestDeadline(paymentTime).toISOString(),
     status,
     buyer:
       status === "SUBMITTED" && document?.buyer
@@ -227,15 +225,34 @@ export const getCustomerInvoiceRequest = async (token: string) => {
   return toPublicView(order, source, document);
 };
 
+export const assertCustomerInvoiceRequestAcceptsInput = (
+  view: CustomerInvoiceRequestPublicView,
+) => {
+  if (view.status !== "EXPIRED") return;
+  throw serviceError(
+    410,
+    "Thời hạn cung cấp thông tin hóa đơn đã kết thúc lúc 22:00 ngày thanh toán.",
+    "发票信息提交期限已于付款当日22:00结束。",
+    "INVOICE_REQUEST_EXPIRED",
+  );
+};
+
 export const submitCustomerInvoiceRequest = async (input: {
   token: string;
   submission: CustomerInvoiceRequestSubmission;
   ipAddress: string | null;
   deviceId: string | null;
 }) => {
+  const receivedAt = new Date();
   const order = await loadPosOrder(input.token);
+  const paymentTime = order.paidAt ?? order.createdAt;
+  if (customerInvoiceRequestIsExpired(paymentTime, receivedAt)) {
+    assertCustomerInvoiceRequestAcceptsInput(
+      toPublicView(order, null, null),
+    );
+  }
   const { source, document, sourceId } = await ensureSourceAndDocument(order);
-  const syncTime = new Date();
+  const syncTime = receivedAt;
   const actionTime = new Date(input.submission.action_time);
   if (
     actionTime.getTime() > syncTime.getTime() + 5 * 60 * 1_000 ||

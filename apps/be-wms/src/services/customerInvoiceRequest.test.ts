@@ -7,6 +7,10 @@ import {
   taxCodeSchema,
 } from "./customerInvoiceRequestSchemas.js";
 import {
+  customerInvoiceRequestDeadline,
+  customerInvoiceRequestIsExpired,
+} from "./customerInvoiceRequestDeadline.js";
+import {
   buildPosInvoiceSourceOrder,
   posOrderIsPaid,
 } from "./invoicePosOrderAdapter.js";
@@ -54,6 +58,40 @@ test("public request schemas only accept opaque tokens, complete tax codes and v
         email: "invoice@example.com",
       },
     }).success,
+    true,
+  );
+});
+
+test("invoice request expires exactly at 22:00 Vietnam time on the payment date", () => {
+  const paymentTime = "2026-08-04T03:30:00.000Z";
+  assert.equal(
+    customerInvoiceRequestDeadline(paymentTime).toISOString(),
+    "2026-08-04T15:00:00.000Z",
+  );
+  assert.equal(
+    customerInvoiceRequestIsExpired(
+      paymentTime,
+      new Date("2026-08-04T14:59:59.999Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    customerInvoiceRequestIsExpired(
+      paymentTime,
+      new Date("2026-08-04T15:00:00.000Z"),
+    ),
+    true,
+  );
+});
+
+test("a bill paid after 22:00 Vietnam time is expired immediately", () => {
+  const paymentTime = "2026-08-04T15:30:00.000Z";
+  assert.equal(
+    customerInvoiceRequestDeadline(paymentTime).toISOString(),
+    "2026-08-04T15:00:00.000Z",
+  );
+  assert.equal(
+    customerInvoiceRequestIsExpired(paymentTime, new Date(paymentTime)),
     true,
   );
 });

@@ -235,6 +235,7 @@ export type InvoiceSourceSystem = "JOYWORLD" | "JPOS";
 export type CustomerInvoiceRequestStatus =
   | "AVAILABLE"
   | "SUBMITTED"
+  | "EXPIRED"
   | "LOCKED";
 
 export enum InvoiceReconciliationCaseStatus {
@@ -558,6 +559,7 @@ export interface CustomerInvoiceRequestPublicView {
   local_order_id: string;
   hk_order_number: string | null;
   payment_time: string;
+  expires_at: string;
   status: CustomerInvoiceRequestStatus;
   buyer: InvoiceDraftBuyer | null;
 }

@@ -6,6 +6,7 @@ import {
   customerInvoiceTaxParamsSchema,
 } from "../../services/customerInvoiceRequestSchemas.js";
 import {
+  assertCustomerInvoiceRequestAcceptsInput,
   getCustomerInvoiceRequest,
   submitCustomerInvoiceRequest,
 } from "../../services/customerInvoiceRequestService.js";
@@ -67,7 +68,8 @@ export const lookupCustomerTaxCodeHandler = async (
 ) => {
   try {
     const { token, taxCode } = customerInvoiceTaxParamsSchema.parse(req.params);
-    await getCustomerInvoiceRequest(token);
+    const request = await getCustomerInvoiceRequest(token);
+    assertCustomerInvoiceRequestAcceptsInput(request);
     const data = await lookupVietQrTaxCode(taxCode);
     return sendSuccess(res, [data], {
       vi: "Đã tìm thấy thông tin doanh nghiệp.",
