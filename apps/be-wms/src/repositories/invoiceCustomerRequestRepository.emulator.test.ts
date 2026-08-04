@@ -1,6 +1,70 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { InvoiceDocumentStatus } from "@bduck/shared-types";
+import type { PosInvoiceOrderRecord } from "./posInvoiceOrderRepository.js";
+
+test(
+  "sparse JPOS orders are serialized into Firestore without undefined values",
+  { skip: !process.env.FIRESTORE_EMULATOR_HOST },
+  async () => {
+    const [
+      { db },
+      { invoiceOrderRepository, invoiceSourceOrderDocumentId },
+      { buildPosInvoiceSourceOrder },
+    ] = await Promise.all([
+      import("../config/firebase.js"),
+      import("./invoiceOrderRepository.js"),
+      import("../services/invoicePosOrderAdapter.js"),
+    ]);
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const warehouseId = `jpos-source-store-${suffix}`;
+    const localOrderId = `ORD-LOCAL-${suffix}`;
+    const source = buildPosInvoiceSourceOrder(
+      {
+        localOrderId,
+        hkOrderNumber: null,
+        warehouseId,
+        status: "LOCAL_PAID",
+        totalAmount: 110_000,
+        items: [
+          {
+            goodsId: "duck-001",
+            goodsName: "Vịt quay",
+            price: 110_000,
+            quantity: 1,
+          },
+        ],
+        createdAt: "2026-08-04T03:00:00.000Z",
+        paidAt: "2026-08-04T03:30:00.000Z",
+      } as PosInvoiceOrderRecord,
+      "2026-08-04",
+      null,
+      null,
+    );
+
+    const result = await invoiceOrderRepository.upsertOrders(
+      warehouseId,
+      `run-${suffix}`,
+      [source],
+      new Date("2026-08-04T03:31:00.000Z"),
+    );
+    const documentId = invoiceSourceOrderDocumentId(
+      warehouseId,
+      localOrderId,
+      "JPOS",
+    );
+    const payload = await db
+      .collection("invoice_source_order_payloads")
+      .doc(documentId)
+      .get();
+    const rawOrder = payload.data()?.latest_payload?.pos_order;
+
+    assert.equal(result.inserted_count, 1);
+    assert.equal(rawOrder.customerName, null);
+    assert.equal(rawOrder.customerPhone, null);
+    assert.equal(rawOrder.updatedAt, null);
+  },
+);
 
 test(
   "customer invoice submission atomically replaces buyer, records history and is idempotent",

@@ -101,22 +101,32 @@ const normalizeItems = (
     };
   });
 
+const safeRawItem = (item: Record<string, unknown>) => ({
+  goodsId: text(item.goodsId),
+  goodsName: text(item.goodsName),
+  price: number(item.price),
+  quantity: number(item.quantity),
+  unitPriceBeforeTax: number(item.unitPriceBeforeTax),
+  taxRate: number(item.taxRate),
+  taxAmount: number(item.taxAmount),
+});
+
 const safeRawOrder = (order: PosInvoiceOrderRecord) => ({
   localOrderId: order.localOrderId,
   hkOrderNumber: order.hkOrderNumber ?? null,
   warehouseId: order.warehouseId,
-  shopId: order.shopId,
+  shopId: number(order.shopId),
   status: order.status,
-  paymentMethod: order.paymentMethod,
-  paymentMethodId: order.paymentMethodId,
-  paymentMethodName: order.paymentMethodName,
-  totalAmount: order.totalAmount,
-  items: order.items,
-  customerName: order.customerName,
-  customerPhone: order.customerPhone,
+  paymentMethod: text(order.paymentMethod),
+  paymentMethodId: text(order.paymentMethodId),
+  paymentMethodName: text(order.paymentMethodName),
+  totalAmount: number(order.totalAmount),
+  items: (Array.isArray(order.items) ? order.items : []).map(safeRawItem),
+  customerName: text(order.customerName),
+  customerPhone: text(order.customerPhone),
   createdAt: order.createdAt,
-  paidAt: order.paidAt,
-  updatedAt: order.updatedAt,
+  paidAt: text(order.paidAt),
+  updatedAt: text(order.updatedAt),
 });
 
 export const posOrderIsPaid = (order: PosInvoiceOrderRecord): boolean =>

@@ -39,6 +39,19 @@ const paidOrder = (overrides: Partial<PosInvoiceOrderRecord> = {}) =>
     ...overrides,
   }) as PosInvoiceOrderRecord;
 
+const undefinedPaths = (value: unknown, path = "root"): string[] => {
+  if (value === undefined) return [path];
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      undefinedPaths(item, `${path}[${index}]`),
+    );
+  }
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, item]) =>
+    undefinedPaths(item, `${path}.${key}`),
+  );
+};
+
 test("public request schemas only accept opaque tokens, complete tax codes and valid buyer data", () => {
   assert.equal(invoiceRequestTokenSchema.safeParse("a".repeat(43)).success, true);
   assert.equal(invoiceRequestTokenSchema.safeParse("local-20260804-001").success, false);
@@ -59,6 +72,60 @@ test("public request schemas only accept opaque tokens, complete tax codes and v
       },
     }).success,
     true,
+  );
+});
+
+test("public invoice requests require a valid buyer email", () => {
+  const submission = {
+    idempotency_key: "f7d22cb8-9ba7-4a5b-b588-37ce672dc36f",
+    action_time: "2026-08-04T10:30:00.000+07:00",
+    buyer: {
+      full_name: "",
+      legal_name: "Công ty TNHH Vịt Vàng",
+      tax_code: "0312345678",
+      address: "Thành phố Hồ Chí Minh",
+      phone_number: "0901 234 567",
+      email: "invoice@example.com",
+    },
+  };
+
+  assert.equal(
+    customerInvoiceRequestSubmissionSchema.safeParse(submission).success,
+    true,
+  );
+  assert.equal(
+    customerInvoiceRequestSubmissionSchema.safeParse({
+      ...submission,
+      buyer: { ...submission.buyer, email: "" },
+    }).success,
+    false,
+  );
+  assert.equal(
+    customerInvoiceRequestSubmissionSchema.safeParse({
+      ...submission,
+      buyer: { ...submission.buyer, email: "not-an-email" },
+    }).success,
+    false,
+  );
+  assert.equal(
+    customerInvoiceRequestSubmissionSchema.safeParse({
+      ...submission,
+      buyer: { ...submission.buyer, email: "   " },
+    }).success,
+    false,
+  );
+  assert.equal(
+    customerInvoiceRequestSubmissionSchema.safeParse({
+      ...submission,
+      buyer: {
+        full_name: submission.buyer.full_name,
+        legal_name: submission.buyer.legal_name,
+        tax_code: submission.buyer.tax_code,
+        address: submission.buyer.address,
+        phone_number: submission.buyer.phone_number,
+      },
+    }).success,
+    false,
   );
 });
 
@@ -109,6 +176,21 @@ test("LOCAL_PAID JPOS orders stay addressable by local id before HK sync", () =>
   assert.equal(source.projection.real_money, 110_000);
   assert.equal(source.projection.tax_money, 10_000);
   assert.equal(source.projection.amount_before_tax, 100_000);
+});
+
+test("JPOS source writes contain no undefined Firestore values", () => {
+  const source = buildPosInvoiceSourceOrder(
+    paidOrder({ customerName: undefined, customerPhone: undefined }),
+    "2026-08-04",
+    null,
+    null,
+  );
+  const rawOrder = source.raw_payload.pos_order as Record<string, unknown>;
+
+  assert.deepEqual(undefinedPaths(source), []);
+  assert.equal(rawOrder.customerName, null);
+  assert.equal(rawOrder.customerPhone, null);
+  assert.equal(rawOrder.updatedAt, null);
 });
 
 test("JPOS projection keeps both local and HK identities after synchronization", () => {

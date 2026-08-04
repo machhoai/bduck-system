@@ -558,6 +558,7 @@ export interface CustomerInvoiceRequestPublicView {
   order_reference: string;
   local_order_id: string;
   hk_order_number: string | null;
+  total_amount: number;
   payment_time: string;
   expires_at: string;
   status: CustomerInvoiceRequestStatus;

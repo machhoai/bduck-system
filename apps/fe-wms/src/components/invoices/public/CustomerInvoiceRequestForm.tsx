@@ -37,6 +37,13 @@ const EMPTY_BUYER: InvoiceDraftBuyer = {
 };
 const TAX_CODE_PATTERN = /^\d{10}(?:-\d{3})?$/;
 
+const formatVnd = (value: number, language: CustomerInvoiceRequestLanguage) =>
+  new Intl.NumberFormat(language === "vi" ? "vi-VN" : "zh-CN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value);
+
 const getDeviceId = () => {
   const key = "j_pulse_invoice_request_device_id";
   const existing = window.localStorage.getItem(key);
@@ -254,8 +261,9 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
               <p className="mt-2 text-sm leading-6 text-blue-50">{d.subtitle}</p>
             </div>
           </div>
-          <div className="mt-6 grid gap-2 rounded-2xl bg-white/10 p-4 text-sm sm:grid-cols-2">
-            <div><span className="text-blue-100">{d.order}</span><strong className="mt-1 block font-mono text-white">{request.order_reference}</strong></div>
+          <div className="mt-6 grid gap-3 rounded-2xl bg-white/10 p-4 text-sm sm:grid-cols-3">
+            <div><span className="text-blue-100">{d.localOrder}</span><strong className="mt-1 block break-all font-mono text-white">{request.local_order_id}</strong></div>
+            <div><span className="text-blue-100">{d.amount}</span><strong className="mt-1 block text-white">{formatVnd(request.total_amount, lang)}</strong></div>
             <div><span className="text-blue-100">{d.paidAt}</span><strong className="mt-1 block text-white">{new Date(request.payment_time).toLocaleString(lang === "vi" ? "vi-VN" : "zh-CN")}</strong></div>
           </div>
         </header>
@@ -304,7 +312,7 @@ export default function CustomerInvoiceRequestForm({ token }: { token: string })
             <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-800">{d.address}</span><textarea required rows={3} value={buyer.address} onChange={(event) => setBuyer((current) => ({ ...current, address: event.target.value }))} className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" /></label>
             <Field label={`${d.buyerName} · ${d.optional}`} value={buyer.full_name} onChange={(value) => setBuyer((current) => ({ ...current, full_name: value }))} />
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label={`${d.email} · ${d.optional}`} type="email" value={buyer.email} onChange={(value) => setBuyer((current) => ({ ...current, email: value }))} />
+              <Field label={d.email} type="email" value={buyer.email} required onChange={(value) => setBuyer((current) => ({ ...current, email: value }))} />
               <Field label={`${d.phone} · ${d.optional}`} type="tel" value={buyer.phone_number} onChange={(value) => setBuyer((current) => ({ ...current, phone_number: value }))} />
             </div>
 

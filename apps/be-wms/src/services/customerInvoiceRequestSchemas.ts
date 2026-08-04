@@ -31,7 +31,7 @@ export const customerInvoiceRequestSubmissionSchema = z.object({
       .trim()
       .max(50)
       .regex(/^[0-9+().\- ]*$/),
-    email: z.union([z.literal(""), z.string().trim().email().max(255)]),
+    email: z.string().trim().email().max(255),
   }),
 });
 

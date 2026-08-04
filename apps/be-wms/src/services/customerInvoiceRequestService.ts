@@ -203,6 +203,7 @@ const toPublicView = (
     order_reference: order.hkOrderNumber ?? order.localOrderId,
     local_order_id: order.localOrderId,
     hk_order_number: order.hkOrderNumber ?? null,
+    total_amount: order.totalAmount,
     payment_time: paymentTime,
     expires_at: customerInvoiceRequestDeadline(paymentTime).toISOString(),
     status,

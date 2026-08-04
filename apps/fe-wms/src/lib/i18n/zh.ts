@@ -1697,6 +1697,7 @@ const zh: Dictionary = {
     detail: {
       title: "单据详情",
       notFound: "未找到单据信息",
+      orderType: "单据类型",
       voucherNumber: "单据编号",
       warehouse: "仓库",
       sourceWarehouse: "源仓库",

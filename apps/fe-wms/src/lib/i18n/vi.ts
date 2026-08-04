@@ -1603,6 +1603,7 @@ const vi = {
         detail: {
             title: "Chi tiết lệnh",
             notFound: "Không tìm thấy thông tin lệnh",
+            orderType: "Loại lệnh",
             voucherNumber: "Mã phiếu",
             warehouse: "Kho",
             sourceWarehouse: "Kho nguồn",

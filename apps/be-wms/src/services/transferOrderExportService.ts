@@ -1,23 +1,29 @@
+import { randomUUID } from "crypto";
+
 import {
   AuditAction,
-  ExportReferenceType,
-  ExportType,
   ExportVoucherStatus,
   TransferOrderStatus,
   type ExportVoucher,
   type ExportVoucherItem,
   type TransferOrder,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+
 import { db } from "../config/firebase.js";
+import { getUserById } from "../repositories/userRepository.js";
+
 import * as approvalService from "./approvalService.js";
 import { logAudit } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
-import { createTransferError } from "./transferOrderSupport.js";
 import {
   assertTransferWriteAccess,
   loadTransferOrder,
 } from "./transferAccessPolicy.js";
+import {
+  buildTransferExportApprovalDisplayInfo,
+  buildTransferExportVoucher,
+} from "./transferOrderExportPolicy.js";
+import { createTransferError } from "./transferOrderSupport.js";
 
 export async function createExportFromTransfer(
   orderId: string,
@@ -85,28 +91,14 @@ export async function createExportFromTransferInternal(
     ...additionalAttachmentUrls,
   ];
 
-  const exportVoucher: ExportVoucher = {
-    id: exportId,
-    voucher_number: exportNumber,
-    warehouse_id: order.source_warehouse_id,
-    export_type: ExportType.TRANSFER,
-    status: ExportVoucherStatus.PENDING_APPROVAL,
-    creator_id: order.creator_id,
-    approver_id: null,
-    approved_at: null,
-    reference_id: order.id,
-    reference_type: ExportReferenceType.TRANSFER_ORDER,
-    recipient_name: null,
-    recipient_department: null,
-    notes: `Lệnh xuất từ điều chuyển ${order.order_number}`,
-    attachment_urls: mergedAttachments,
-    action_time: now,
-    sync_time: now,
-    atp_deducted: false,
-    is_deleted: false,
-    created_at: now,
-    updated_at: now,
-  };
+  const exportVoucher = buildTransferExportVoucher({
+    order,
+    exportId,
+    exportNumber,
+    now,
+    attachmentUrls: mergedAttachments,
+  });
+  const creator = await getUserById(order.creator_id);
 
   const orderRef = db.collection("transfer_orders").doc(order.id);
   const transferItemsQuery = orderRef
@@ -171,7 +163,7 @@ export async function createExportFromTransferInternal(
       exportId,
       order.source_warehouse_id,
       order.creator_id,
-      undefined,
+      buildTransferExportApprovalDisplayInfo(exportVoucher, creator),
       {
         sourceWarehouseId: order.source_warehouse_id,
         destinationWarehouseId: order.destination_warehouse_id,
