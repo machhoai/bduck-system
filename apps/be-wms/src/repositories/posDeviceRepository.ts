@@ -95,7 +95,9 @@ export const posDeviceRepository = {
       .get();
     return snapshot.docs
       .map((document) => mapDevice(document.id, document.data()))
-      .sort((left, right) => right.updated_at.getTime() - left.updated_at.getTime());
+      .sort(
+        (left, right) => right.updated_at.getTime() - left.updated_at.getTime(),
+      );
   },
 
   async findById(id: string): Promise<PosDevice | null> {
@@ -152,7 +154,9 @@ export const posDeviceRepository = {
     const enrollmentRef = db
       .collection(POS_DEVICE_ENROLLMENTS_COLLECTION)
       .doc(input.enrollmentId);
-    const deviceRef = db.collection(POS_DEVICES_COLLECTION).doc(input.device.id);
+    const deviceRef = db
+      .collection(POS_DEVICES_COLLECTION)
+      .doc(input.device.id);
 
     return db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(enrollmentRef);
@@ -239,6 +243,67 @@ export const posDeviceRepository = {
         updated_at: current.updated_at,
       });
       transaction.create(auditRef, audit);
+      return current;
+    });
+  },
+
+  async transferWarehouse(
+    id: string,
+    warehouseId: string,
+    actorId: string,
+    context?: AuditContext,
+  ): Promise<PosDevice> {
+    const reference = db.collection(POS_DEVICES_COLLECTION).doc(id);
+    return db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (!snapshot.exists) throw new Error("POS_DEVICE_NOT_FOUND");
+      const previous = mapDevice(snapshot.id, snapshot.data() || {});
+      const now = new Date();
+      const current: PosDevice = {
+        ...previous,
+        warehouse_id: warehouseId,
+        updated_at: now,
+      };
+      const previousSafe = { ...previous } as Record<string, unknown>;
+      const currentSafe = { ...current } as Record<string, unknown>;
+      delete previousSafe.credential_hash;
+      delete currentSafe.credential_hash;
+
+      const sourceAudit = createAuditRecord({
+        entityType: "POS_DEVICE",
+        entityId: current.id,
+        warehouseId: previous.warehouse_id,
+        action: AuditAction.UPDATE,
+        actorId,
+        oldValue: previousSafe,
+        newValue: currentSafe,
+        notes: `Transferred POS device to warehouse ${warehouseId}`,
+        context,
+      });
+      const targetAudit = createAuditRecord({
+        entityType: "POS_DEVICE",
+        entityId: current.id,
+        warehouseId,
+        action: AuditAction.UPDATE,
+        actorId,
+        oldValue: previousSafe,
+        newValue: currentSafe,
+        notes: `Received POS device from warehouse ${previous.warehouse_id}`,
+        context,
+      });
+
+      transaction.update(reference, {
+        warehouse_id: warehouseId,
+        updated_at: now,
+      });
+      transaction.create(
+        db.collection("audit_logs").doc(sourceAudit.id),
+        sourceAudit,
+      );
+      transaction.create(
+        db.collection("audit_logs").doc(targetAudit.id),
+        targetAudit,
+      );
       return current;
     });
   },

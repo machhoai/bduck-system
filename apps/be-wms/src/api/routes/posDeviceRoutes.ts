@@ -7,9 +7,16 @@ import {
   getPosStoreOverviewHandler,
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
+  transferPosDeviceHandler,
 } from "../controllers/posDeviceController.js";
-import { getPosPaymentSettingsHandler, savePosPaymentSettingsHandler } from "../controllers/posPaymentSettingsController.js";
-import { getPosReceiptSettingsHandler, savePosReceiptSettingsHandler } from "../controllers/posReceiptSettingsController.js";
+import {
+  getPosPaymentSettingsHandler,
+  savePosPaymentSettingsHandler,
+} from "../controllers/posPaymentSettingsController.js";
+import {
+  getPosReceiptSettingsHandler,
+  savePosReceiptSettingsHandler,
+} from "../controllers/posReceiptSettingsController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { authRateLimiter } from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
@@ -39,6 +46,11 @@ router.patch(
   "/devices/:deviceId/status",
   requireAnyScopedPermission("pos.devices.manage"),
   changePosDeviceStatusHandler,
+);
+router.patch(
+  "/devices/:deviceId/warehouse",
+  requireAnyScopedPermission("pos.devices.manage"),
+  transferPosDeviceHandler,
 );
 router.get(
   "/stores/:warehouseId/receipt-settings",

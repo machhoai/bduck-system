@@ -1,9 +1,4 @@
-import {
-  createHash,
-  createHmac,
-  randomInt,
-  timingSafeEqual,
-} from "crypto";
+import { createHash, createHmac, randomInt, timingSafeEqual } from "crypto";
 
 import {
   ActiveStatus,
@@ -137,7 +132,8 @@ export const getPosStoreOverview = async (
   return {
     warehouse_id: warehouseId,
     active_devices: active.length,
-    revoked_devices: devices.filter((device) => device.status === "REVOKED").length,
+    revoked_devices: devices.filter((device) => device.status === "REVOKED")
+      .length,
     offline_devices: active.filter(
       (device) => (device.last_seen_at?.getTime() ?? 0) < offlineBoundary,
     ).length,
@@ -184,7 +180,10 @@ export const createPosEnrollment = async (input: {
       updated_at: now,
     };
     try {
-      await posDeviceRepository.createEnrollment(enrollment, input.auditMetadata);
+      await posDeviceRepository.createEnrollment(
+        enrollment,
+        input.auditMetadata,
+      );
       return {
         enrollment_id: enrollment.id,
         pairing_code: pairingCode,
@@ -274,6 +273,38 @@ export const changePosDeviceStatus = async (input: {
   const current = await posDeviceRepository.updateStatus(
     previous.id,
     input.status,
+    input.actorId,
+    input.auditMetadata,
+  );
+  return withoutCredential(current);
+};
+
+export const transferPosDevice = async (input: {
+  deviceId: string;
+  warehouseId: string;
+  actorId: string;
+  authorization: AuthorizationService;
+  auditMetadata?: AuditMetadata;
+}): Promise<Omit<PosDevice, "credential_hash">> => {
+  const previous = await posDeviceRepository.findById(input.deviceId);
+  if (!previous || previous.is_deleted) {
+    throw new PosDeviceError(404, {
+      vi: "Không tìm thấy máy POS.",
+      zh: "未找到 POS 设备。",
+    });
+  }
+
+  input.authorization.assert("pos.devices.manage", previous.warehouse_id);
+  input.authorization.assert("pos.devices.manage", input.warehouseId);
+  await assertStore(input.warehouseId);
+
+  if (previous.warehouse_id === input.warehouseId) {
+    return withoutCredential(previous);
+  }
+
+  const current = await posDeviceRepository.transferWarehouse(
+    previous.id,
+    input.warehouseId,
     input.actorId,
     input.auditMetadata,
   );

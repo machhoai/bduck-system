@@ -26,7 +26,12 @@ export const activatePosDeviceSchema = z.object({
   device_id: z.string().uuid(),
   device_credential: z.string().min(32).max(200),
   device_name: safeText(2, 80),
-  fingerprint: z.string().trim().min(16).max(256).regex(/^[A-Za-z0-9:_-]+$/),
+  fingerprint: z
+    .string()
+    .trim()
+    .min(16)
+    .max(256)
+    .regex(/^[A-Za-z0-9:_-]+$/),
   app_version: safeText(1, 30),
   operating_system: safeText(2, 100),
 });
@@ -39,4 +44,8 @@ export const openPosDeviceSessionSchema = z.object({
 
 export const changePosDeviceStatusSchema = z.object({
   status: z.enum(POS_DEVICE_STATUSES),
+});
+
+export const transferPosDeviceSchema = z.object({
+  warehouse_id: z.string().uuid(),
 });

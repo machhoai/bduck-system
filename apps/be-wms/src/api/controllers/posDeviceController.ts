@@ -8,6 +8,7 @@ import {
   openPosDeviceSessionSchema,
   posDeviceParamsSchema,
   posWarehouseParamsSchema,
+  transferPosDeviceSchema,
 } from "../../services/posDeviceSchemas.js";
 import {
   activatePosDevice,
@@ -17,6 +18,7 @@ import {
   listPosDevices,
   openPosDeviceSession,
   PosDeviceError,
+  transferPosDevice,
 } from "../../services/posDeviceService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -47,7 +49,10 @@ const handleError = (res: Response, error: unknown) => {
   }
   return sendError(
     res,
-    { vi: "Không thể xử lý yêu cầu quản lý POS.", zh: "无法处理 POS 管理请求。" },
+    {
+      vi: "Không thể xử lý yêu cầu quản lý POS.",
+      zh: "无法处理 POS 管理请求。",
+    },
     500,
   );
 };
@@ -180,6 +185,29 @@ export const changePosDeviceStatusHandler = async (
     return sendSuccess(res, device, {
       vi: status === "ACTIVE" ? "Đã mở khóa máy POS." : "Đã khóa máy POS.",
       zh: status === "ACTIVE" ? "POS 设备已解锁。" : "POS 设备已锁定。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const transferPosDeviceHandler = async (req: Request, res: Response) => {
+  try {
+    const { deviceId } = posDeviceParamsSchema.parse(req.params);
+    const { warehouse_id: warehouseId } = transferPosDeviceSchema.parse(
+      req.body,
+    );
+    const actor = requireAuthenticatedRequestUser(req);
+    const device = await transferPosDevice({
+      deviceId,
+      warehouseId,
+      actorId: actor.id,
+      authorization: requireRequestAuthorization(req),
+      auditMetadata: getAuditRequestMetadata(req),
+    });
+    return sendSuccess(res, device, {
+      vi: "Đã chuyển máy POS sang cửa hàng mới.",
+      zh: "POS 设备已转移到新门店。",
     });
   } catch (error) {
     return handleError(res, error);
