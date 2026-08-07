@@ -1313,6 +1313,15 @@
         { "fieldPath": "sync.retryCount", "order": "ASCENDING" }
       ],
       "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_devices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
     }
   ],
   "fieldOverrides": [

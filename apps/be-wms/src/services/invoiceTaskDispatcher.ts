@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+
 import { CloudTasksClient } from "@google-cloud/tasks";
 
 let client: CloudTasksClient | null = null;
@@ -28,11 +29,41 @@ export const cloudTasksConfigured = () => {
 const taskSegment = (value: string) =>
   `meinvoice-${createHash("sha256").update(value).digest("hex")}`;
 
+export const invoiceIssueTaskId = (input: {
+  jobId: string;
+  itemId: string;
+  attempt: number;
+  deduplicationKey?: string;
+}) =>
+  taskSegment(
+    [
+      input.jobId,
+      input.itemId,
+      `a${input.attempt}`,
+      input.deduplicationKey,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join("-"),
+  );
+
+/**
+ * Cloud Tasks receives second precision here. Round up so a retry cannot be
+ * dispatched before the Firestore `next_attempt_at` guard allows it to run.
+ */
+export const invoiceTaskScheduleTime = (scheduleAt: Date) => {
+  const milliseconds = scheduleAt.getTime();
+  if (!Number.isFinite(milliseconds)) {
+    throw new Error("MEINVOICE_TASK_SCHEDULE_TIME_INVALID");
+  }
+  return { seconds: Math.ceil(milliseconds / 1_000) };
+};
+
 export const dispatchInvoiceIssueItem = async (input: {
   jobId: string;
   itemId: string;
   attempt: number;
   scheduleAt?: Date;
+  deduplicationKey?: string;
 }) => {
   if (!cloudTasksConfigured()) return { mode: "SCHEDULER_FALLBACK" as const };
   const config = invoiceTaskConfig();
@@ -42,7 +73,7 @@ export const dispatchInvoiceIssueItem = async (input: {
     config.projectId,
     config.location,
     config.queue,
-    taskSegment(`${input.jobId}-${input.itemId}-a${input.attempt}`),
+    invoiceIssueTaskId(input),
   );
   const url = `${config.workerBaseUrl}/api/invoices/internal/issues/${encodeURIComponent(input.jobId)}/items/${encodeURIComponent(input.itemId)}/process`;
   try {
@@ -51,7 +82,7 @@ export const dispatchInvoiceIssueItem = async (input: {
       task: {
         name,
         scheduleTime: input.scheduleAt
-          ? { seconds: Math.floor(input.scheduleAt.getTime() / 1000) }
+          ? invoiceTaskScheduleTime(input.scheduleAt)
           : undefined,
         httpRequest: {
           httpMethod: "POST",

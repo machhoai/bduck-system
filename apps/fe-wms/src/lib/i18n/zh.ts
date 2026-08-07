@@ -17,6 +17,7 @@ const zh: Dictionary = {
     fileLibrary: "文件库",
     stockCount: "货物盘点",
     pos: "销售",
+    posManagement: "JPOS 管理",
     reports: "报表",
     users: "账号管理",
     employees: "员工管理",

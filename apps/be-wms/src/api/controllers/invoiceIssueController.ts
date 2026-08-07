@@ -275,6 +275,17 @@ export const processInvoiceIssueItemHandler = async (
   try {
     const { jobId, itemId } = invoiceIssueItemParamsSchema.parse(req.params);
     const data = await processInvoiceIssueItem(jobId, itemId);
+    if (data.processed === false && data.reason === "NOT_DUE") {
+      return sendError(
+        res,
+        {
+          vi: "Task đến trước thời điểm xử lý; Cloud Tasks sẽ giao lại.",
+          zh: "任务提前到达，Cloud Tasks 将重新投递。",
+        },
+        409,
+        { retry_at: data.retry_at },
+      );
+    }
     if (data.processed === false && data.reason === "LANE_BUSY") {
       return sendError(
         res,

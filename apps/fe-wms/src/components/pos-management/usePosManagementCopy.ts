@@ -1,0 +1,28 @@
+"use client";
+
+import { useTranslation } from "@/lib/i18n";
+
+const vi = {
+  scope: "Theo cửa hàng", searchStore: "Tìm cửa hàng", noStoreCode: "Chưa có mã", noStoreMatch: "Không có cửa hàng phù hợp.",
+  adminArea: "JPULSE · Vận hành cửa hàng", title: "Quản lý JPOS", subtitle: "Thiết bị, cấu hình, tài khoản, quyền và lịch sử được tách rõ theo từng cửa hàng.", trusted: "Thiết bị tin cậy + OTP", noStores: "Không có cửa hàng đang hoạt động trong phạm vi quản lý của bạn.", syncing: "Đang đồng bộ…",
+  overview: "Tổng quan", devices: "Thiết bị", settings: "Cấu hình", access: "Tài khoản & quyền", audit: "Lịch sử", activeDevices: "Máy đang hoạt động", offlineDevices: "Máy mất kết nối", configVersion: "Phiên bản cấu hình", heartbeat: "Heartbeat gần nhất", notCreated: "Chưa tạo", never: "Chưa có", noAccess: "Bạn chưa có quyền xem chức năng này tại cửa hàng đã chọn.",
+  deviceTitle: "Thiết bị đã đăng ký", deviceHint: "Chỉ thiết bị ACTIVE mới được truy cập JPOS.", createCode: "Tạo mã cài máy", codeCreated: "Đã tạo mã kích hoạt dùng một lần.", codeError: "Không thể tạo mã.", oneTimeCode: "Mã dùng một lần", expires: "hết hạn", copy: "Sao chép", device: "Máy POS", version: "Phiên bản", lastOnline: "Lần cuối online", status: "Trạng thái", actions: "Thao tác", noHeartbeat: "Chưa ghi nhận", lock: "Khóa", unlock: "Mở khóa", noDevices: "Chưa có máy POS nào. Tạo mã để cài máy đầu tiên.", refresh: "Làm mới", otpTitle: "Xác thực tạo mã cài máy", otpDescription: "Nhập OTP quản trị. Mã kích hoạt tạo ra chỉ dùng được một lần.", confirmAction: "Xác nhận", deviceChanged: "Đã cập nhật trạng thái máy POS.",
+  receiptTitle: "Cấu hình hóa đơn", receiptHint: "Áp dụng cho mọi máy JPOS thuộc cửa hàng này", saveConfig: "Lưu cấu hình", saving: "Đang lưu…", receiptSaved: "Đã đồng bộ cấu hình hóa đơn tới JPOS.", storeName: "Tên cửa hàng", hotline: "Hotline", address: "Địa chỉ in trên hóa đơn", paper: "Khổ giấy", theme: "Chủ đề", classic: "Mặc định", nationalDay: "Quốc khánh", tet: "Tết", tax: "Thuế mặc định (%)", thanks: "Lời cảm ơn", showLogo: "Hiện logo", showCashier: "Hiện thu ngân", showContact: "Hiện liên hệ", showItemTax: "Hiện thuế từng món", invoiceQr: "QR yêu cầu hóa đơn", themeMessage: "Thông điệp chủ đề",
+  paymentTitle: "QR chuyển khoản dự phòng", paymentHint: "Dùng khi PayOS không phản hồi; đơn vẫn được ghi nhận để đối soát.", savePayment: "Lưu thanh toán", paymentSaved: "Đã cập nhật QR chuyển khoản dự phòng.", bankBin: "BIN ngân hàng", accountNumber: "Số tài khoản", accountName: "Tên chủ tài khoản", enableFallback: "Bật phương án dự phòng khi PayOS lỗi",
+  accountTitle: "Tài khoản được đăng nhập JPOS", accountHint: "Gán vai trò theo đúng cửa hàng và cấp quyền pos.login. Tài khoản không có quyền này sẽ bị từ chối tại JPOS.", manageAccounts: "Quản lý tài khoản", roleTitle: "Phân quyền chức năng POS", roleHint: "Cấu hình bán hàng, xem đơn, xác nhận chuyển khoản, đóng ca, cài đặt và xử lý đồng bộ qua vai trò JPULSE.", manageRoles: "Quản lý vai trò POS", auditTitle: "Lịch sử thao tác POS", auditHint: "Mọi lần thanh toán, tạo mã, kích hoạt/khóa máy và thay đổi cấu hình đều được ghi audit bất biến theo cửa hàng.", openAudit: "Mở lịch sử đã lọc",
+};
+
+const zh: typeof vi = {
+  scope: "按门店", searchStore: "搜索门店", noStoreCode: "暂无编码", noStoreMatch: "没有匹配的门店。",
+  adminArea: "JPULSE · 门店运营", title: "JPOS 管理", subtitle: "按门店集中管理设备、配置、账号、权限和操作记录。", trusted: "可信设备 + OTP", noStores: "您的管理范围内没有营业门店。", syncing: "同步中…",
+  overview: "总览", devices: "设备", settings: "配置", access: "账号与权限", audit: "操作记录", activeDevices: "活跃设备", offlineDevices: "离线设备", configVersion: "配置版本", heartbeat: "最近心跳", notCreated: "未创建", never: "暂无", noAccess: "您无权查看所选门店的此功能。",
+  deviceTitle: "已登记设备", deviceHint: "只有 ACTIVE 设备可访问 JPOS。", createCode: "创建设备安装码", codeCreated: "一次性激活码已创建。", codeError: "无法创建激活码。", oneTimeCode: "一次性代码", expires: "到期", copy: "复制", device: "POS 设备", version: "版本", lastOnline: "最后在线", status: "状态", actions: "操作", noHeartbeat: "暂无记录", lock: "锁定", unlock: "解锁", noDevices: "暂无 POS 设备，请先创建安装码。", refresh: "刷新", otpTitle: "验证设备安装码", otpDescription: "请输入管理员 OTP。生成的激活码只能使用一次。", confirmAction: "确认", deviceChanged: "POS 设备状态已更新。",
+  receiptTitle: "小票配置", receiptHint: "应用于该门店所有 JPOS 设备", saveConfig: "保存配置", saving: "保存中…", receiptSaved: "小票配置已同步到 JPOS。", storeName: "门店名称", hotline: "热线", address: "小票地址", paper: "纸张规格", theme: "主题", classic: "默认", nationalDay: "国庆", tet: "春节", tax: "默认税率 (%)", thanks: "致谢语", showLogo: "显示 Logo", showCashier: "显示收银员", showContact: "显示联系方式", showItemTax: "显示商品税额", invoiceQr: "发票申请二维码", themeMessage: "主题文案",
+  paymentTitle: "备用转账二维码", paymentHint: "PayOS 无响应时启用，订单仍会保留以便对账。", savePayment: "保存支付配置", paymentSaved: "备用转账二维码已更新。", bankBin: "银行 BIN", accountNumber: "账号", accountName: "账户名称", enableFallback: "PayOS 失败时启用备用方案",
+  accountTitle: "可登录 JPOS 的账号", accountHint: "按门店分配角色并授予 pos.login；无此权限的账号将被 JPOS 拒绝。", manageAccounts: "管理账号", roleTitle: "POS 功能权限", roleHint: "通过 JPULSE 角色配置销售、订单、人工确认、交班、设置和重试同步权限。", manageRoles: "管理 POS 角色", auditTitle: "POS 操作记录", auditHint: "付款、创建设备码、设备启停和配置变更都会按门店写入不可变审计记录。", openAudit: "打开筛选后的记录",
+};
+
+export function usePosManagementCopy() {
+  const { lang } = useTranslation();
+  return lang === "zh" ? zh : vi;
+}

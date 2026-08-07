@@ -31,6 +31,10 @@ import {
   createInvoiceIssueJobSchema,
   retryInvoiceIssueItemsSchema,
 } from "./invoiceIssueSchemas.js";
+import {
+  invoiceIssueTaskId,
+  invoiceTaskScheduleTime,
+} from "./invoiceTaskDispatcher.js";
 import { MeInvoiceApiError, MeInvoiceClient } from "./meInvoiceClient.js";
 
 const response = (value: unknown, status = 200) =>
@@ -119,6 +123,37 @@ test("ambiguous timeout and duplicate RefID never trigger immediate republish", 
   const duplicate = classifyInvoiceIssueFailure("DuplicateInvoiceRefID", 1);
   assert.equal(timeout.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
   assert.equal(duplicate.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
+});
+
+test("Cloud Tasks schedule never rounds a retry before next_attempt_at", () => {
+  const nextAttemptAt = new Date("2026-08-06T16:16:55.681Z");
+  const scheduleTime = invoiceTaskScheduleTime(nextAttemptAt);
+  assert.equal(
+    new Date(scheduleTime.seconds * 1_000).toISOString(),
+    "2026-08-06T16:16:56.000Z",
+  );
+  assert.ok(scheduleTime.seconds * 1_000 >= nextAttemptAt.getTime());
+  assert.ok(scheduleTime.seconds * 1_000 - nextAttemptAt.getTime() < 1_000);
+});
+
+test("recovery sweep task IDs bypass completed-task tombstones safely", () => {
+  const base = { jobId: "job-1", itemId: "item-1", attempt: 2 };
+  const original = invoiceIssueTaskId(base);
+  const firstSweep = invoiceIssueTaskId({
+    ...base,
+    deduplicationKey: "sweep-100",
+  });
+  const duplicateFirstSweep = invoiceIssueTaskId({
+    ...base,
+    deduplicationKey: "sweep-100",
+  });
+  const nextSweep = invoiceIssueTaskId({
+    ...base,
+    deduplicationKey: "sweep-101",
+  });
+  assert.notEqual(firstSweep, original);
+  assert.equal(firstSweep, duplicateFirstSweep);
+  assert.notEqual(nextSweep, firstSweep);
 });
 
 test("only explicit per-item MISA rejections are eligible for manual retry", () => {

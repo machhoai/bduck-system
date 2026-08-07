@@ -262,8 +262,13 @@ export const invoiceIssueRepository = {
         return null;
       const nextAttempt =
         item.next_attempt_at?.toDate?.() ?? item.next_attempt_at;
-      if (nextAttempt instanceof Date && nextAttempt.getTime() > Date.now())
-        return null;
+      if (nextAttempt instanceof Date && nextAttempt.getTime() > Date.now()) {
+        return {
+          busy: false as const,
+          notDue: true as const,
+          nextAttemptAt: nextAttempt,
+        };
+      }
       const laneRef = lanes.doc(
         invoiceLaneId(job.meinvoice_account_id, job.inv_series),
       );
@@ -277,7 +282,7 @@ export const invoiceIssueRepository = {
         circuitOpenUntil instanceof Date &&
         circuitOpenUntil.getTime() > Date.now()
       ) {
-        return { busy: true as const };
+        return { busy: true as const, notDue: false as const };
       }
       if (
         lane &&
@@ -285,7 +290,7 @@ export const invoiceIssueRepository = {
         leaseExpires instanceof Date &&
         leaseExpires.getTime() > Date.now()
       ) {
-        return { busy: true as const };
+        return { busy: true as const, notDue: false as const };
       }
       const payloadSnap = await transaction.get(
         payloads.doc(`${jobId}__${itemId}`),
@@ -352,6 +357,7 @@ export const invoiceIssueRepository = {
       transaction.update(itemRef, update);
       return {
         busy: false as const,
+        notDue: false as const,
         job,
         item: { ...item, ...update },
         previousStatus: recoveringSubmission
@@ -693,6 +699,11 @@ export const invoiceIssueRepository = {
     );
     return snapshots
       .flatMap((snapshot) => snapshot.docs)
+      .sort((left, right) => {
+        const leftDue = left.data().next_attempt_at?.toMillis?.() ?? 0;
+        const rightDue = right.data().next_attempt_at?.toMillis?.() ?? 0;
+        return leftDue - rightDue;
+      })
       .slice(0, limit)
       .map((doc) => ({
         jobId: doc.ref.parent.parent!.id,

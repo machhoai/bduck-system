@@ -1,10 +1,24 @@
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import cookieParser from "cookie-parser";
+
+import { selectLocalFirebaseTarget } from "./api/middlewares/localFirebaseTargetMiddleware.js";
+import {
+  apiRateLimiter,
+  resolveTrustProxySetting,
+} from "./api/middlewares/rateLimitMiddleware.js";
+import approvalRoutes from "./api/routes/approvalRoutes.js";
+import attendanceRoutes from "./api/routes/attendanceRoutes.js";
 import auditLogRoutes from "./api/routes/auditLogRoutes.js";
 import authRoutes from "./api/routes/authRoutes.js";
 import categoryRoutes from "./api/routes/categoryRoutes.js";
+import employeeContractAutomationRoutes from "./api/routes/employeeContractAutomationRoutes.js";
+import employeeContractImportRoutes from "./api/routes/employeeContractImportRoutes.js";
+import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
+import expenseRoutes from "./api/routes/expenseRoutes.js";
+import exportVoucherRoutes from "./api/routes/exportVoucherRoutes.js";
+import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
 import inventoryRoutes from "./api/routes/inventoryRoutes.js";
 import locationRoutes from "./api/routes/locationRoutes.js";
 import locationSlotRoutes from "./api/routes/locationSlotRoutes.js";
@@ -14,12 +28,8 @@ import roleRoutes from "./api/routes/roleRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
 import officeScopeRoutes from "./api/routes/officeScopeRoutes.js";
-import importVoucherRoutes from "./api/routes/importVoucherRoutes.js";
-import exportVoucherRoutes from "./api/routes/exportVoucherRoutes.js";
-import approvalRoutes from "./api/routes/approvalRoutes.js";
 import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
-import expenseRoutes from "./api/routes/expenseRoutes.js";
 import revenueSyncRoutes from "./api/routes/revenueSyncRoutes.js";
 import reportRoutes from "./api/routes/reportRoutes.js";
 import notificationRoutes from "./api/routes/notificationRoutes.js";
@@ -30,10 +40,6 @@ import internalStockCountRoutes from "./api/routes/internalStockCountRoutes.js";
 import systemConfigRoutes from "./api/routes/systemConfigRoutes.js";
 import externalRoutes from "./api/routes/externalRoutes.js";
 import externalQueueRoutes from "./api/routes/externalQueueRoutes.js";
-import attendanceRoutes from "./api/routes/attendanceRoutes.js";
-import employeeProfileRoutes from "./api/routes/employeeProfileRoutes.js";
-import employeeContractImportRoutes from "./api/routes/employeeContractImportRoutes.js";
-import employeeContractAutomationRoutes from "./api/routes/employeeContractAutomationRoutes.js";
 import leaveRoutes from "./api/routes/leaveRoutes.js";
 import fileTemplateRoutes from "./api/routes/fileTemplateRoutes.js";
 import fileTemplateBundleRoutes from "./api/routes/fileTemplateBundleRoutes.js";
@@ -42,11 +48,7 @@ import meInvoiceConfigRoutes from "./api/routes/meInvoiceConfigRoutes.js";
 import invoiceOrderRoutes from "./api/routes/invoiceOrderRoutes.js";
 import customerInvoiceRequestRoutes from "./api/routes/customerInvoiceRequestRoutes.js";
 import dashboardRoutes from "./api/routes/dashboardRoutes.js";
-import {
-  apiRateLimiter,
-  resolveTrustProxySetting,
-} from "./api/middlewares/rateLimitMiddleware.js";
-import { selectLocalFirebaseTarget } from "./api/middlewares/localFirebaseTargetMiddleware.js";
+import posDeviceRoutes from "./api/routes/posDeviceRoutes.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -61,6 +63,9 @@ app.use(
     origin: process.env.BE_WMS_CORS_ORIGIN?.split(",") ?? [
       "http://localhost:3000",
       "http://app.wms.localhost",
+      "http://tauri.localhost",
+      "https://tauri.localhost",
+      "tauri://localhost",
     ],
     credentials: true,
   }),
@@ -113,6 +118,7 @@ app.use("/api/meinvoice", meInvoiceConfigRoutes);
 app.use("/api/invoices", invoiceOrderRoutes);
 app.use("/api/public/invoice-requests", customerInvoiceRequestRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/pos", posDeviceRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({

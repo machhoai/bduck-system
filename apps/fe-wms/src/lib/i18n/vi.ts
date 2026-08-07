@@ -15,6 +15,7 @@ const vi = {
         fileLibrary: "Thư viện tệp",
         stockCount: "Kiểm kê hàng hóa",
         pos: "Bán hàng",
+        posManagement: "Quản lý JPOS",
         reports: "Báo cáo",
         users: "Quản lý tài khoản",
         employees: "Quản lý nhân sự",
