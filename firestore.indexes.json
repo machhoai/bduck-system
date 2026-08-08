@@ -1295,6 +1295,15 @@
         { "fieldPath": "business_date", "order": "ASCENDING" }
       ],
       "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sync.retryCount", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
     }
   ],
   "fieldOverrides": [
@@ -1338,6 +1347,51 @@
           "queryScope": "COLLECTION_GROUP"
         }
       ]
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "remoteUid",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "mid",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "memberCode",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "phone",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "fullName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "birthDate",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "email",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "createdBy",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "updatedBy",
+      "indexes": []
     }
   ]
 }
