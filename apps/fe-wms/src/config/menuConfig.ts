@@ -5,6 +5,9 @@
  * ► Sidebar và BottomNav đều đọc từ config này → Single Source of Truth.
  * ► Khi thêm module mới, chỉ cần thêm 1 entry vào đây.
  */
+import { PERMISSION_REGISTRY } from "@bduck/shared-types";
+import type {
+    LucideIcon} from "lucide-react";
 import {
     ArrowRightLeft,
     Bell,
@@ -24,12 +27,11 @@ import {
     Settings,
     Users,
     Warehouse,
-    LucideIcon,
     FolderSymlink,
     ScanBarcode,
     ReceiptText,
+    MonitorSmartphone,
 } from "lucide-react";
-import { PERMISSION_REGISTRY } from "@bduck/shared-types";
 
 export interface MenuItem {
     id: string;
@@ -202,6 +204,18 @@ export const menuItems: MenuItem[] = [
         icon: Users,
         href: "/users",
         permissionsAny: userAccessReadPermissions,
+    },
+    {
+        id: "posManagement",
+        labelKey: "posManagement",
+        icon: MonitorSmartphone,
+        href: "/pos-management",
+        permissionsAny: [
+            "pos.devices.read",
+            "pos.settings.read",
+            "pos.access.manage",
+            "pos.audit.read",
+        ],
     },
     {
         id: "auditLogs",

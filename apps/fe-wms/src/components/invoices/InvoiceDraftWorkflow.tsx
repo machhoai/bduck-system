@@ -185,7 +185,12 @@ export function InvoiceDraftWorkflow({
         return () => {
             generation.current += 1;
         };
-    }, [d.loadError, order.invoice_document_id, order.warehouse_id]);
+    }, [
+        d.loadError,
+        order.customer_invoice_request_submitted_at,
+        order.invoice_document_id,
+        order.warehouse_id,
+    ]);
 
     const setCurrentDocument = (value: InvoiceDocumentView) => {
         setDocument(value);

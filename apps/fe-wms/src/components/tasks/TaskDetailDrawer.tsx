@@ -15,7 +15,8 @@
  * - Code < 300 lines
  */
 
-import { useState, useCallback, useMemo } from "react";
+import type { ApprovalRecord } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
 import {
     X,
     CheckCircle,
@@ -24,6 +25,8 @@ import {
     Package,
     PackagePlus,
     PackageMinus,
+    ArrowLeftRight,
+    Layers,
     Warehouse,
     User,
     Calendar,
@@ -35,22 +38,33 @@ import {
     ShieldAlert,
     MapPin,
 } from "lucide-react";
-import { gooeyToast } from "goey-toast";
-import type { ApprovalRecord } from "@bduck/shared-types";
-import { useTranslation } from "@/lib/i18n";
-import { useTaskDetailData } from "@/hooks/useTaskDetailData";
-import { approveRecord, rejectRecord, cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
-import { useProcessConfig } from "@/hooks/useProcessConfig";
-import { useUserStore } from "@/stores/useUserStore";
-import AttachmentSection from "./AttachmentSection";
-import { getStatusStyle } from "@/components/ui/StatusBadge";
+import { useState, useCallback, useMemo } from "react";
+
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { getStatusStyle } from "@/components/ui/StatusBadge";
+import { approveRecord, rejectRecord, cancelApproval, forceCancelApproval } from "@/hooks/useApprovalApi";
+import { useProcessConfig } from "@/hooks/useProcessConfig";
+import { useTaskDetailData } from "@/hooks/useTaskDetailData";
+import { useTranslation } from "@/lib/i18n";
+import { useUserStore } from "@/stores/useUserStore";
+
+import AttachmentSection from "./AttachmentSection";
+
 
 interface TaskDetailDrawerProps {
     approval: ApprovalRecord;
     isSelfCreated?: boolean;
     onClose: () => void;
+}
+
+interface TaskDetailVoucherFields {
+    voucher_number?: string;
+    order_number?: string;
+    source_warehouse_id?: string;
+    destination_warehouse_id?: string;
+    recipient_name?: string | null;
+    recipient_department?: string | null;
 }
 
 // ── Helpers ──
@@ -137,7 +151,22 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
 
     const isLoading = loadingVoucher;
 
-    const isExport = approval.entity_type === "EXPORT_VOUCHER";
+    const isExport = ["EXPORT_VOUCHER", "EXTERNAL_QUEUE_EXPORT"].includes(approval.entity_type);
+    const isTransfer = ["TRANSFER_ORDER", "TRANSFER_INTRA"].includes(approval.entity_type);
+    const entityTypeLabel = isExport
+        ? t.tasks.entityType.EXPORT_VOUCHER
+        : isTransfer
+          ? t.tasks.entityType.TRANSFER_ORDER
+          : approval.entity_type === "IMPORT_VOUCHER"
+            ? t.tasks.entityType.IMPORT_VOUCHER
+            : approval.entity_type;
+    const entityTypeStyle = isExport
+        ? "border-[var(--color-status-pending-border)] bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]"
+        : isTransfer
+          ? "border-[var(--color-status-intra-border)] bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]"
+          : "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]";
+    const taskVoucher = voucher as (typeof voucher & TaskDetailVoucherFields) | null;
+    const voucherNumber = isTransfer ? taskVoucher?.order_number : taskVoucher?.voucher_number;
     const canForceCancel = useMemo(() => {
         if (!voucher) return false;
         return hasPermission("vouchers.force_cancel") && !["CANCELLED", "COMPLETED"].includes(voucher.status);
@@ -145,11 +174,15 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
 
     const statusInfo = useMemo(() => {
         if (!voucher) return null;
-        const statusMap = isExport ? (t as any).exportVoucher?.status || {} : t.importVoucher.status;
+        const statusMap: Readonly<Record<string, string>> = isExport
+            ? t.exportVoucher.status
+            : isTransfer
+              ? t.transfer.status
+              : t.importVoucher.status;
         const label = statusMap[voucher.status as string] || voucher.status;
         const color = getStatusStyle(voucher.status);
         return { label, color };
-    }, [voucher, t, isExport]);
+    }, [voucher, t, isExport, isTransfer]);
 
     const totalValue = useMemo(
         () => items.reduce((sum, item) => sum + item.expected_quantity * item.unit_price, 0),
@@ -234,16 +267,12 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                 const promise = submitAction();
 
                 gooeyToast.promise(promise, {
-                    loading: (t.tasks as any).selfApproval?.cancelling ?? "Đang hủy lệnh...",
-                    success: (t.tasks as any).selfApproval?.cancelSuccess ?? "Đã hủy lệnh thành công",
-                    error: (t.tasks as any).selfApproval?.cancelError ?? "Không thể hủy lệnh",
+                    loading: t.tasks.selfApproval.cancelling,
+                    success: t.tasks.selfApproval.cancelSuccess,
+                    error: t.tasks.selfApproval.cancelError,
                     description: {
-                        success:
-                            (t.tasks as any).selfApproval?.cancelSuccessDesc ??
-                            "Lệnh đã được hủy và ghi nhận vào lịch sử.",
-                        error:
-                            (t.tasks as any).selfApproval?.cancelErrorDesc ??
-                            "Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+                        success: t.tasks.selfApproval.cancelSuccessDesc,
+                        error: t.tasks.selfApproval.cancelErrorDesc,
                     },
                     action: {
                         error: {
@@ -339,6 +368,8 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                         className={`flex items-center justify-between border-b px-4 py-4 ${
                             isExport
                                 ? "border-[var(--color-status-export-border)] bg-[var(--color-status-export-bg)]"
+                                : isTransfer
+                                  ? "border-[var(--color-status-intra-border)] bg-[var(--color-status-intra-bg)]"
                                 : "border-[var(--color-border-soft)]"
                         }`}
                     >
@@ -347,11 +378,15 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                 className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                                     isExport
                                         ? "bg-[var(--color-status-export-bg-muted)] text-[var(--color-status-export-text)]"
+                                        : isTransfer
+                                          ? "bg-[var(--color-status-intra-bg)] text-[var(--color-status-intra-text)]"
                                         : "bg-[var(--color-success-bg-muted)] text-[var(--color-success-text)]"
                                 }`}
                             >
                                 {isExport ? (
                                     <PackageMinus className="h-4.5 w-4.5" />
+                                ) : isTransfer ? (
+                                    <ArrowLeftRight className="h-4.5 w-4.5" />
                                 ) : (
                                     <PackagePlus className="h-4.5 w-4.5" />
                                 )}
@@ -361,7 +396,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                     {t.tasks.detail.title}
                                 </h2>
                                 <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                                    {voucher?.voucher_number || approval.entity_id?.slice(0, 12) + "..."}
+                                    {entityTypeLabel} · {voucherNumber || approval.entity_id?.slice(0, 12) + "..."}
                                 </p>
                             </div>
                         </div>
@@ -387,8 +422,20 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                             </div>
                         ) : (
                             <>
-                                {/* Status badge */}
-                                <div className="px-4 pt-5">
+                                {/* Entity type and status badges */}
+                                <div className="flex flex-wrap items-center gap-2 px-4 pt-5">
+                                    <span
+                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${entityTypeStyle}`}
+                                    >
+                                        {isTransfer ? (
+                                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                                        ) : isExport ? (
+                                            <PackageMinus className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <PackagePlus className="h-3.5 w-3.5" />
+                                        )}
+                                        {entityTypeLabel}
+                                    </span>
                                     {statusInfo && (
                                         <span
                                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.color}`}
@@ -401,31 +448,51 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                 {/* Fields — entity-type-aware */}
                                 <div className="px-4 pt-2">
                                     <Field
-                                        icon={Hash}
-                                        label={t.tasks.detail.voucherNumber}
-                                        value={voucher.voucher_number}
+                                        icon={Layers}
+                                        label={t.tasks.detail.orderType}
+                                        value={entityTypeLabel}
                                     />
                                     <Field
-                                        icon={Warehouse}
-                                        label={
-                                            isExport
-                                                ? t.tasks.detail.sourceWarehouse
-                                                : t.tasks.detail.destinationWarehouse
-                                        }
-                                        value={warehouseName || voucher.warehouse_id}
+                                        icon={Hash}
+                                        label={t.tasks.detail.voucherNumber}
+                                        value={voucherNumber}
                                     />
-                                    {isExport ? (
+                                    {isTransfer ? (
+                                        <>
+                                            <Field
+                                                icon={Warehouse}
+                                                label={t.tasks.detail.sourceWarehouse}
+                                                value={taskVoucher?.source_warehouse_id}
+                                            />
+                                            <Field
+                                                icon={Warehouse}
+                                                label={t.tasks.detail.destinationWarehouse}
+                                                value={taskVoucher?.destination_warehouse_id}
+                                            />
+                                        </>
+                                    ) : (
+                                        <Field
+                                            icon={Warehouse}
+                                            label={
+                                                isExport
+                                                    ? t.tasks.detail.sourceWarehouse
+                                                    : t.tasks.detail.destinationWarehouse
+                                            }
+                                            value={warehouseName || voucher.warehouse_id}
+                                        />
+                                    )}
+                                    {isTransfer ? null : isExport ? (
                                         <>
                                             <Field
                                                 icon={User}
                                                 label={t.tasks.detail.recipient}
-                                                value={(voucher as any).recipient_name}
+                                                value={taskVoucher?.recipient_name}
                                             />
-                                            {(voucher as any).recipient_department && (
+                                            {taskVoucher?.recipient_department && (
                                                 <Field
                                                     icon={Package}
                                                     label={t.tasks.detail.department}
-                                                    value={(voucher as any).recipient_department}
+                                                    value={taskVoucher.recipient_department}
                                                 />
                                             )}
                                         </>
@@ -568,11 +635,10 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                         <ShieldAlert className="h-5 w-5 flex-shrink-0 text-[var(--color-status-pending-icon)]" />
                                         <div>
                                             <p className="text-sm font-semibold text-[var(--color-status-pending-text)]">
-                                                {(t.tasks as any).selfApproval?.title ?? "Không thể tự phê duyệt"}
+                                                {t.tasks.selfApproval.title}
                                             </p>
                                             <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-status-pending-text)]">
-                                                {(t.tasks as any).selfApproval?.description ??
-                                                    "Theo quy định ISO 9001 (Segregation of Duties), người tạo lệnh không được phép tự phê duyệt lệnh của mình. Vui lòng chờ người khác duyệt."}
+                                                {t.tasks.selfApproval.description}
                                             </p>
                                         </div>
                                     </div>
@@ -580,9 +646,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                         value={cancelReason}
                                         onChange={(e) => setCancelReason(e.target.value)}
                                         rows={2}
-                                        placeholder={
-                                            (t.tasks as any).selfApproval?.cancelReason ?? "Lý do hủy (không bắt buộc)"
-                                        }
+                                        placeholder={t.tasks.selfApproval.cancelReason}
                                         className="w-full rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-neutral-50)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:bg-[var(--color-surface-input)] focus:ring-2 focus:ring-[var(--color-brand-primary-muted)]"
                                     />
                                     <button
@@ -596,7 +660,7 @@ export default function TaskDetailDrawer({ approval, isSelfCreated, onClose }: T
                                         ) : (
                                             <Ban className="h-4 w-4" />
                                         )}
-                                        {(t.tasks as any).selfApproval?.cancelButton ?? "Hủy lệnh"}
+                                        {t.tasks.selfApproval.cancelButton}
                                     </button>
                                     {canForceCancel && (
                                         <button

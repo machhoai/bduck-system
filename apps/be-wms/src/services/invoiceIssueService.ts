@@ -335,7 +335,14 @@ export const processInvoiceIssueItem = async (
 ) => {
   const owner = `worker:${randomUUID()}`;
   const claimed = await invoiceIssueRepository.claimItem(jobId, itemId, owner);
-  if (!claimed) return { processed: false, reason: "NOT_DUE_OR_TERMINAL" };
+  if (!claimed) return { processed: false, reason: "TERMINAL_OR_MISSING" };
+  if (claimed.notDue) {
+    return {
+      processed: false,
+      reason: "NOT_DUE",
+      retry_at: claimed.nextAttemptAt,
+    };
+  }
   if (claimed.busy) return { processed: false, reason: "LANE_BUSY" };
   const attempt = Number(claimed.item.attempt_count ?? 0);
   const previousStatus = claimed.previousStatus;
@@ -688,9 +695,13 @@ export const retryRejectedInvoiceIssueItems = async (
 export const sweepInvoiceIssueItems = async () => {
   const recoverable = await invoiceIssueRepository.listRecoverable(30);
   if (recoverable.length === 0) return { recovered: 0, mode: "EMPTY" };
+  const sweepDeduplicationKey = `sweep-${Math.floor(Date.now() / 60_000)}`;
   const results = [];
   for (const item of recoverable) {
-    const dispatched = await dispatchInvoiceIssueItem(item);
+    const dispatched = await dispatchInvoiceIssueItem({
+      ...item,
+      deduplicationKey: sweepDeduplicationKey,
+    });
     if (dispatched.mode === "SCHEDULER_FALLBACK") {
       results.push(await processInvoiceIssueItem(item.jobId, item.itemId));
     } else {

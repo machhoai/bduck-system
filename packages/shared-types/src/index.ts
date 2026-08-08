@@ -28,3 +28,4 @@ export * from './leave.js';
 export * from './leaveApproval.js';
 export * from './fileLibrary.js';
 export * from './invoices.js';
+export * from './pos.js';

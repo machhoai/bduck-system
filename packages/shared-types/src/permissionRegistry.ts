@@ -169,6 +169,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 18,
   },
   {
+    id: "pos",
+    label: { vi: "Quản lý POS", zh: "POS 管理" },
+    icon: "MonitorSmartphone",
+    order: 19,
+  },
+  {
     id: "attendance",
     label: { vi: "Chấm công", zh: "考勤" },
     icon: "CalendarCheck",
@@ -206,6 +212,116 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: {
       vi: "Cho phep xem va cap nhat cau hinh tich hop he thong theo cua hang.",
       zh: "允许查看并更新按门店划分的系统集成配置。",
+    },
+  },
+
+  // ── POS ──
+  {
+    key: "pos.login",
+    group: "pos",
+    label: { vi: "Đăng nhập JPOS", zh: "登录 JPOS" },
+    description: {
+      vi: "Cho phép tài khoản đăng nhập JPOS tại cửa hàng được phân quyền.",
+      zh: "允许账户登录获授权门店的 JPOS。",
+    },
+  },
+  {
+    key: "pos.sales.create",
+    group: "pos",
+    label: { vi: "Tạo giao dịch bán hàng", zh: "创建 POS 销售" },
+    description: {
+      vi: "Tạo đơn và hoàn tất thanh toán cơ bản trên JPOS.",
+      zh: "在 JPOS 创建订单并完成基础付款。",
+    },
+  },
+  {
+    key: "pos.orders.read",
+    group: "pos",
+    label: { vi: "Xem đơn hàng POS", zh: "查看 POS 订单" },
+    description: {
+      vi: "Xem lịch sử và chi tiết đơn hàng POS trong phạm vi cửa hàng.",
+      zh: "查看授权门店范围内的 POS 订单历史和详情。",
+    },
+  },
+  {
+    key: "pos.orders.retry_sync",
+    group: "pos",
+    label: { vi: "Thử lại đồng bộ đơn POS", zh: "重试 POS 订单同步" },
+    description: {
+      vi: "Đưa đơn POS lỗi trở lại hàng đợi đồng bộ.",
+      zh: "将失败的 POS 订单重新加入同步队列。",
+    },
+  },
+  {
+    key: "pos.payments.manual_confirm",
+    group: "pos",
+    label: { vi: "Xác nhận chuyển khoản thủ công", zh: "手动确认转账" },
+    description: {
+      vi: "Xác nhận giao dịch chuyển khoản sau khi đã đối chiếu thực tế.",
+      zh: "实际核对后手动确认转账交易。",
+    },
+  },
+  {
+    key: "pos.shift.close",
+    group: "pos",
+    label: { vi: "Kết ca POS", zh: "POS 交班结算" },
+    description: {
+      vi: "Xem và in báo cáo kết ca tại cửa hàng.",
+      zh: "查看并打印门店 POS 交班报告。",
+    },
+  },
+  {
+    key: "pos.settings.read",
+    group: "pos",
+    label: { vi: "Xem cấu hình POS", zh: "查看 POS 配置" },
+    description: {
+      vi: "Xem cấu hình thanh toán và in bill của cửa hàng.",
+      zh: "查看门店付款和小票配置。",
+    },
+  },
+  {
+    key: "pos.settings.manage",
+    group: "pos",
+    label: { vi: "Quản lý cấu hình POS", zh: "管理 POS 配置" },
+    description: {
+      vi: "Cập nhật cấu hình thanh toán và in bill theo cửa hàng.",
+      zh: "按门店更新付款和小票配置。",
+    },
+  },
+  {
+    key: "pos.devices.read",
+    group: "pos",
+    label: { vi: "Xem thiết bị POS", zh: "查看 POS 设备" },
+    description: {
+      vi: "Xem danh sách và trạng thái máy POS theo cửa hàng.",
+      zh: "查看按门店划分的 POS 设备及状态。",
+    },
+  },
+  {
+    key: "pos.devices.manage",
+    group: "pos",
+    label: { vi: "Quản lý thiết bị POS", zh: "管理 POS 设备" },
+    description: {
+      vi: "Tạo mã kích hoạt, đổi tên, khóa hoặc mở khóa máy POS.",
+      zh: "创建激活码、重命名、锁定或解锁 POS 设备。",
+    },
+  },
+  {
+    key: "pos.access.manage",
+    group: "pos",
+    label: { vi: "Quản lý quyền truy cập POS", zh: "管理 POS 访问权限" },
+    description: {
+      vi: "Quản lý tài khoản và quyền chức năng JPOS theo cửa hàng.",
+      zh: "按门店管理 JPOS 账户和功能权限。",
+    },
+  },
+  {
+    key: "pos.audit.read",
+    group: "pos",
+    label: { vi: "Xem nhật ký POS", zh: "查看 POS 日志" },
+    description: {
+      vi: "Xem thao tác, lỗi và lịch sử phục hồi của máy POS.",
+      zh: "查看 POS 操作、错误及恢复历史。",
     },
   },
   {

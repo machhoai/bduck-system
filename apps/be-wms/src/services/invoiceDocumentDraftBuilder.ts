@@ -79,9 +79,12 @@ export const buildInitialInvoiceDocument = (
     legal_entity_id: account.legal_entity_id,
     meinvoice_account_id: account.id,
     source_order_document_id: sourceOrderDocumentId,
-    source_system: "JOYWORLD",
+    source_system:
+      sourceOrder.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
     source_order_id: sourceOrderId,
     source_order_number: sourceOrder.order_number ?? null,
+    local_order_id: sourceOrder.local_order_id ?? null,
+    hk_order_number: sourceOrder.hk_order_number ?? null,
     source_payload_hash: sourcePayloadHash,
     source_action_time:
       asDate(sourceOrder.source_action_time) ?? parseJoyworldDate(paymentTime),
@@ -121,6 +124,8 @@ export const buildInitialInvoiceDocument = (
     review_note: null,
     rejected_by: null,
     rejected_at: null,
+    customer_invoice_request_id: null,
+    customer_invoice_request_submitted_at: null,
     created_by: actorId,
     updated_by: actorId,
     is_deleted: false,

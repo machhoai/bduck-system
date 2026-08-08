@@ -22,9 +22,10 @@ export interface SourceOrderWriteResult {
 export const invoiceSourceOrderDocumentId = (
   warehouseId: string,
   sourceOrderId: string,
+  sourceSystem: "JOYWORLD" | "JPOS" = "JOYWORLD",
 ) =>
   createHash("sha256")
-    .update(`${warehouseId}:JOYWORLD:${sourceOrderId}`)
+    .update(`${warehouseId}:${sourceSystem}:${sourceOrderId}`)
     .digest("hex");
 
 export const invoiceOrderRepository = {
@@ -54,7 +55,11 @@ export const invoiceOrderRepository = {
       const chunk = values.slice(cursor, cursor + WRITE_CHUNK_SIZE);
       const refs = chunk.map((value) =>
         orders.doc(
-          invoiceSourceOrderDocumentId(warehouseId, value.source_order_id),
+          invoiceSourceOrderDocumentId(
+            warehouseId,
+            value.source_order_id,
+            value.projection.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+          ),
         ),
       );
       const revisionRefs = chunk.map((value, index) =>
@@ -89,6 +94,14 @@ export const invoiceOrderRepository = {
             warehouse_id: warehouseId,
             ...value.projection,
             source_payload_hash: value.source_payload_hash,
+            customer_invoice_request_status:
+              previous?.customer_invoice_request_status ??
+              value.projection.customer_invoice_request_status ??
+              "AVAILABLE",
+            customer_invoice_request_submitted_at:
+              previous?.customer_invoice_request_submitted_at ??
+              value.projection.customer_invoice_request_submitted_at ??
+              null,
             last_sync_run_id: runId,
             source_sync_time: syncTime,
             updated_at: syncTime,
@@ -158,5 +171,20 @@ export const invoiceOrderRepository = {
     if (data.warehouse_id !== warehouseId || data.is_deleted === true)
       return null;
     return data;
+  },
+
+  async findByOrderNumber(orderNumber: string, warehouseId: string) {
+    const snapshot = await orders
+      .where("order_number", "==", orderNumber)
+      .limit(5)
+      .get();
+    const matches = snapshot.docs
+      .map((item) => item.data() as Record<string, unknown>)
+      .filter(
+        (item) =>
+          item.warehouse_id === warehouseId && item.is_deleted !== true,
+      );
+    if (matches.length > 1) throw new Error("DUPLICATE_HK_ORDER_NUMBER");
+    return matches[0] ?? null;
   },
 };

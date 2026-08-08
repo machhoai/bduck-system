@@ -10,6 +10,10 @@ import {
   invoiceSourceOrderDocumentId,
 } from "../repositories/invoiceOrderRepository.js";
 import {
+  posInvoiceOrderRepository,
+  type PosInvoiceOrderRecord,
+} from "../repositories/posInvoiceOrderRepository.js";
+import {
   meInvoiceConfigRepository,
   type StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
@@ -40,6 +44,7 @@ import {
   deriveAmountBeforeTax,
   parseJoyworldDate,
 } from "./invoiceOrderSyncUtils.js";
+import { syncPosInvoiceOrdersForDate } from "./invoicePosOrderSyncService.js";
 
 type JsonRecord = Record<string, unknown>;
 const PAGE_SIZE = 200;
@@ -160,15 +165,32 @@ const buildSourceOrder = (
   detailResponse: RevenueOverviewResponse,
   storeConfig: MeInvoiceStoreConfig | null,
   account: StoredMeInvoiceAccount | null,
+  linkedPosOrder: PosInvoiceOrderRecord | null,
 ) => {
   const detail = asRecord(detailResponse.data);
-  const sourceOrderId =
+  const joyworldOrderId =
     nullableString(order.orderId) ?? nullableString(order.id);
-  if (!sourceOrderId) throw new Error("JOYWORLD_ORDER_ID_MISSING");
+  if (!joyworldOrderId) throw new Error("JOYWORLD_ORDER_ID_MISSING");
+  const hkOrderNumber =
+    nullableString(detail.orderNumber ?? order.orderNumber) ??
+    nullableString(linkedPosOrder?.hkOrderNumber);
+  const localOrderId = nullableString(linkedPosOrder?.localOrderId);
+  const sourceOrderId = localOrderId ?? joyworldOrderId;
+  const sourceSystem = localOrderId ? "JPOS" : "JOYWORLD";
   const paymentTime = resolvePaymentTime(detail);
   const createTime =
     nullableString(detail.createTime) ?? nullableString(order.createTime);
-  const rawPayload = { order, goods, detail_response: detailResponse };
+  const rawPayload = {
+    order,
+    goods,
+    detail_response: detailResponse,
+    source_identity: {
+      source_system: sourceSystem,
+      local_order_id: localOrderId,
+      hk_order_number: hkOrderNumber,
+      joyworld_order_id: joyworldOrderId,
+    },
+  };
   const detailGoods = Array.isArray(detail.goodsInfo) ? detail.goodsInfo : [];
   const realMoney = nullableNumber(detail.realMoney ?? order.realMoney);
   const taxMoney = nullableNumber(detail.taxMoney ?? order.taxMoney);
@@ -228,14 +250,17 @@ const buildSourceOrder = (
     raw_payload: rawPayload,
     projection: {
       warehouse_id: warehouseId,
-      source_system: "JOYWORLD",
+      source_system: sourceSystem,
       source_order_id: sourceOrderId,
+      local_order_id: localOrderId,
+      hk_order_number: hkOrderNumber,
+      pos_order_status: linkedPosOrder?.status ?? null,
       business_date: businessDate,
       source_create_time: createTime,
       payment_time: paymentTime,
       source_action_time: parseJoyworldDate(paymentTime ?? createTime),
       source_status: nullableNumber(detail.status ?? order.status),
-      order_number: nullableString(detail.orderNumber ?? order.orderNumber),
+      order_number: hkOrderNumber,
       customer_name: nullableString(detail.realName ?? order.realName),
       payment_method: paymentMethod,
       mapped_payment_method: mappedPaymentMethod,
@@ -256,6 +281,8 @@ const buildSourceOrder = (
       preflight,
       mapping_version: INVOICE_MAPPING_VERSION,
       calculation_version: INVOICE_CALCULATION_VERSION,
+      customer_invoice_request_status: "AVAILABLE",
+      customer_invoice_request_submitted_at: null,
     },
   };
 };
@@ -301,6 +328,22 @@ export const syncInvoiceOrdersForDate = async (
   });
 
   try {
+    const posSync = await syncPosInvoiceOrdersForDate({
+      warehouseId: input.warehouse_id,
+      businessDate: input.business_date,
+      runId,
+      storeConfig,
+      account,
+      actorId,
+      createDrafts: input.purpose === InvoiceOrderSyncPurpose.ISSUE,
+    });
+    await invoiceOrderRepository.updateRun(runId, {
+      pos_order_count: posSync.orders.length,
+      pos_inserted_count: posSync.inserted_count,
+      pos_updated_count: posSync.updated_count,
+      pos_unchanged_count: posSync.unchanged_count,
+      pos_draft_created_count: posSync.draft_created_count,
+    });
     const token = await getJoyworldToken();
     const range = {
       startTime: `${input.business_date} 00:00:00`,
@@ -328,9 +371,21 @@ export const syncInvoiceOrdersForDate = async (
         return response;
       });
     });
+    const hkOrderNumbers = orderRows
+      .map((order, index) =>
+        nullableString(
+          asRecord(details[index].data).orderNumber ?? order.orderNumber,
+        ),
+      )
+      .filter((value): value is string => Boolean(value));
+    const posOrdersByHkNumber =
+      await posInvoiceOrderRepository.mapByHkOrderNumbers(hkOrderNumbers);
     const writes = orderRows.map((order, index) => {
       const orderId =
         nullableString(order.orderId) ?? nullableString(order.id) ?? "";
+      const hkOrderNumber = nullableString(
+        asRecord(details[index].data).orderNumber ?? order.orderNumber,
+      );
       return buildSourceOrder(
         input.warehouse_id,
         input.business_date,
@@ -339,6 +394,9 @@ export const syncInvoiceOrdersForDate = async (
         details[index],
         storeConfig,
         account,
+        hkOrderNumber
+          ? posOrdersByHkNumber.get(hkOrderNumber) ?? null
+          : null,
       );
     });
     const syncTime = new Date();
@@ -348,7 +406,7 @@ export const syncInvoiceOrdersForDate = async (
       writes,
       syncTime,
     );
-    let draftCreatedCount = 0;
+    let draftCreatedCount = posSync.draft_created_count;
     if (
       input.purpose === InvoiceOrderSyncPurpose.ISSUE &&
       storeConfig &&
@@ -371,6 +429,9 @@ export const syncInvoiceOrdersForDate = async (
             id: invoiceSourceOrderDocumentId(
               input.warehouse_id,
               write.source_order_id,
+              write.projection.source_system === "JPOS"
+                ? "JPOS"
+                : "JOYWORLD",
             ),
             ...write.projection,
             source_payload_hash: write.source_payload_hash,
@@ -380,21 +441,32 @@ export const syncInvoiceOrdersForDate = async (
           actorId,
         ),
       );
-      draftCreatedCount = prepared.filter(
+      draftCreatedCount += prepared.filter(
         (item) => item?.created === true,
       ).length;
     }
+    const orderCount = new Set(
+      [...posSync.writes, ...writes].map(
+        (write) => `${write.projection.source_system}:${write.source_order_id}`,
+      ),
+    ).size;
     const result = {
       id: runId,
       ...input,
-      order_count: writes.length,
+      order_count: orderCount,
       draft_created_count: draftCreatedCount,
+      pos_order_count: posSync.orders.length,
+      pos_counts: {
+        inserted_count: posSync.inserted_count,
+        updated_count: posSync.updated_count,
+        unchanged_count: posSync.unchanged_count,
+      },
       ...counts,
     };
     await invoiceOrderRepository.updateRun(runId, {
       status: InvoiceOrderSyncRunStatus.COMPLETED,
       ...counts,
-      order_count: writes.length,
+      order_count: orderCount,
       draft_created_count: draftCreatedCount,
       completed_at: syncTime,
     });

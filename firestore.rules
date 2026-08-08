@@ -419,7 +419,15 @@ service cloud.firestore {
 
     match /audit_logs/{docId} {
       allow read: if isSystemAdmin()
-        || hasResourceFacility('warehouse_id', 'audit.read');
+        || hasResourceFacility('warehouse_id', 'audit.read')
+        || (resource.data.entity_type in [
+              'POS_DEVICE',
+              'POS_DEVICE_ENROLLMENT',
+                'POS_RECEIPT_SETTINGS',
+                'POS_PAYMENT_SETTINGS',
+              'POS_ORDER'
+            ]
+          && hasResourceFacility('warehouse_id', 'pos.audit.read'));
       allow write: if false;
     }
 
@@ -572,6 +580,24 @@ service cloud.firestore {
       allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
       allow write: if false;
     }
+    // JPOS uses callable Functions for all order access. Keep opaque invoice
+    // request tokens server-only even though both applications share Firestore.
+    match /pos_orders/{orderId} {
+      allow read, write: if false;
+    }
+    // JPOS device credentials, pairing grants and configuration are backend-only.
+    match /pos_devices/{deviceId} {
+      allow read, write: if false;
+    }
+    match /pos_device_enrollments/{enrollmentId} {
+      allow read, write: if false;
+    }
+    match /pos_receipt_settings/{warehouseId} {
+      allow read, write: if false;
+    }
+    match /pos_payment_settings/{warehouseId} {
+      allow read, write: if false;
+    }
     match /invoice_source_order_payloads/{docId} {
       allow read, write: if false;
       match /revisions/{revisionId} {
@@ -585,6 +611,9 @@ service cloud.firestore {
     match /invoice_documents/{docId} {
       allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
       allow write: if false;
+    }
+    match /invoice_customer_requests/{docId} {
+      allow read, write: if false;
     }
     match /invoice_issue_jobs/{jobId} {
       allow read: if isSystemAdmin();

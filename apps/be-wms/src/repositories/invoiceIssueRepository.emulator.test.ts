@@ -104,7 +104,8 @@ test(
     const sharedLane = await invoiceIssueRepository.claimItem(job2, document2, "worker-b");
     assert.equal(sharedLane?.busy, true);
 
-    const laneId = (claim1 && !claim1.busy) ? claim1.laneId : "";
+    const laneId =
+      claim1 && !claim1.busy && !claim1.notDue ? claim1.laneId : "";
     await db.collection("invoice_queue_lanes").doc(laneId).update({
       lease_expires_at: new Date(Date.now() - 1_000),
     });
@@ -119,6 +120,18 @@ test(
       status: InvoiceIssueItemStatus.PENDING_CONFIRMATION,
       nextAttemptAt: new Date(Date.now() + 60_000),
     });
+
+    const earlyRetry = await invoiceIssueRepository.claimItem(
+      job1,
+      document1,
+      "worker-too-early",
+    );
+    assert.equal(earlyRetry?.busy, false);
+    assert.equal(earlyRetry?.notDue, true);
+    if (!earlyRetry || earlyRetry.busy || !earlyRetry.notDue) {
+      throw new Error("early retry was not deferred");
+    }
+    assert.ok(earlyRetry.nextAttemptAt.getTime() > Date.now());
 
     const afterRelease = await invoiceIssueRepository.claimItem(job2, document2, "worker-c");
     assert.equal(afterRelease?.busy, false);

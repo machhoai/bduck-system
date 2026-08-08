@@ -82,6 +82,11 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   STOCK_COUNT_SESSION: "stock_count_sessions",
   STOCK_COUNT_ITEM: "stock_count_items",
   NONCONFORMITY_REPORT: "nonconformity_reports",
+  POS_DEVICE: "pos_devices",
+  POS_DEVICE_ENROLLMENT: "pos_device_enrollments",
+  POS_RECEIPT_SETTINGS: "pos_receipt_settings",
+  POS_PAYMENT_SETTINGS: "pos_payment_settings",
+  POS_ORDER: "pos_orders",
 };
 
 const ENTITY_NAME_FIELDS = [
