@@ -8,6 +8,7 @@ import {
   openPosDeviceSessionSchema,
   posDeviceParamsSchema,
   posWarehouseParamsSchema,
+  savePosReceiptSettingsFromDeviceSchema,
   transferPosDeviceSchema,
   watchPosReceiptSettingsSchema,
 } from "../../services/posDeviceSchemas.js";
@@ -22,6 +23,7 @@ import {
 } from "../../services/posDeviceService.js";
 import {
   openPosDeviceSession,
+  savePosReceiptSettingsFromDevice,
   watchPosReceiptSettings,
 } from "../../services/posDeviceSessionService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
@@ -194,6 +196,28 @@ export const watchPosReceiptSettingsHandler = async (
     });
   } catch (error) {
     if (abortController.signal.aborted || res.writableEnded) return;
+    return handleError(res, error);
+  }
+};
+
+export const savePosReceiptSettingsFromDeviceHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = savePosReceiptSettingsFromDeviceSchema.parse(req.body);
+    const settings = await savePosReceiptSettingsFromDevice({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      appVersion: input.app_version,
+      value: input.receipt_settings,
+      auditMetadata: getAuditRequestMetadata(req),
+    });
+    return sendSuccess(res, settings, {
+      vi: "Đã đồng bộ cấu hình biên lai từ máy POS lên JPULSE.",
+      zh: "已将 POS 小票配置同步到 JPULSE。",
+    });
+  } catch (error) {
     return handleError(res, error);
   }
 };

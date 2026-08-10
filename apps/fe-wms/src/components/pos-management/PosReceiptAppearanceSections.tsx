@@ -23,7 +23,7 @@ export function PosReceiptPaperSection({ form, update }: { form: PosReceiptSetti
           return (
             <button key={profile.id} type="button" onClick={() => update("paper_size", profile.id)} className={`relative rounded-xl border p-3 text-left transition-colors ${selected ? "border-amber-500 bg-amber-50" : "border-slate-200 hover:border-amber-200"}`}>
               {selected && <span className="absolute right-2.5 top-2.5 flex size-5 items-center justify-center rounded-full bg-amber-500 text-white"><Check className="size-3" /></span>}
-              <span className="block text-sm font-black text-slate-900">{profile.id}</span>
+              <span className="block text-sm font-bold text-slate-900">{profile.id}</span>
               <span className="mt-1 block text-[11px] leading-relaxed text-slate-500">{lang === "zh" ? profile.zh : profile.vi}</span>
               <span className={`mt-3 block h-2.5 rounded-sm border-x-2 border-b border-slate-500 ${profile.id === "POS58" ? "w-[71%]" : profile.id === "POS80" ? "w-[98%]" : "w-full"}`} />
             </button>

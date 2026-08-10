@@ -7,6 +7,7 @@ import {
   getPosStoreOverviewHandler,
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
+  savePosReceiptSettingsFromDeviceHandler,
   transferPosDeviceHandler,
   watchPosReceiptSettingsHandler,
 } from "../controllers/posDeviceController.js";
@@ -30,6 +31,11 @@ router.post(
   "/devices/receipt-settings/watch",
   apiRateLimiter,
   watchPosReceiptSettingsHandler,
+);
+router.put(
+  "/devices/receipt-settings",
+  apiRateLimiter,
+  savePosReceiptSettingsFromDeviceHandler,
 );
 
 router.use(requireAuth);

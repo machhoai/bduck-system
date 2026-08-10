@@ -49,5 +49,33 @@ export function usePosManagement(
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!warehouseId || !access.settings) return;
+    let disposed = false;
+    const syncReceiptSettings = async () => {
+      try {
+        const nextSettings = await posManagementApi.getReceiptSettings(warehouseId);
+        if (disposed) return;
+        setSettings((current) =>
+          current?.version === nextSettings?.version ? current : nextSettings,
+        );
+      } catch {
+        // The regular refresh flow owns visible errors; background sync stays quiet.
+      }
+    };
+    const timer = window.setInterval(() => void syncReceiptSettings(), 10_000);
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") void syncReceiptSettings();
+    };
+    window.addEventListener("focus", syncWhenVisible);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", syncWhenVisible);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
+  }, [access.settings, warehouseId]);
+
   return { overview, devices, settings, paymentSettings, loading, error, refresh };
 }

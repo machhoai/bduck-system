@@ -1,6 +1,8 @@
 import { POS_DEVICE_STATUSES } from "@bduck/shared-types";
 import { z } from "zod";
 
+import { posReceiptSettingsSchema } from "./posReceiptSettingsSchemas.js";
+
 const safeText = (minimum: number, maximum: number) =>
   z
     .string()
@@ -45,6 +47,11 @@ export const openPosDeviceSessionSchema = z.object({
 export const watchPosReceiptSettingsSchema = openPosDeviceSessionSchema.extend({
   known_version: z.number().int().nonnegative().nullable(),
 });
+
+export const savePosReceiptSettingsFromDeviceSchema =
+  openPosDeviceSessionSchema.extend({
+    receipt_settings: posReceiptSettingsSchema,
+  });
 
 export const changePosDeviceStatusSchema = z.object({
   status: z.enum(POS_DEVICE_STATUSES),

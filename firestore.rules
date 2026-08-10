@@ -425,7 +425,8 @@ service cloud.firestore {
               'POS_DEVICE_ENROLLMENT',
                 'POS_RECEIPT_SETTINGS',
                 'POS_PAYMENT_SETTINGS',
-              'POS_ORDER'
+              'POS_ORDER',
+              'POS_MEMBER_COMPENSATION'
             ]
           && hasResourceFacility('warehouse_id', 'pos.audit.read'));
       allow write: if false;
@@ -759,6 +760,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /pos_members/{memberId} {
+      allow read, write: if false;
+    }
+    match /pos_member_compensations/{compensationId} {
       allow read, write: if false;
     }
 

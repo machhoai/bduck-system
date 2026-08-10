@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from "crypto";
 import type {
   PosDevice,
   PosDeviceSessionResult,
+  PosReceiptSettings,
   PosReceiptSettingsWatchResult,
 } from "@bduck/shared-types";
 
@@ -10,7 +11,9 @@ import { posDeviceRepository } from "../repositories/posDeviceRepository.js";
 import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
 import { posReceiptSettingsRepository } from "../repositories/posReceiptSettingsRepository.js";
 
+import type { AuditMetadata } from "./auditService.js";
 import { PosDeviceError } from "./posDeviceService.js";
+import type { PosReceiptSettingsInput } from "./posReceiptSettingsSchemas.js";
 
 const requireActivePosDevice = async (input: {
   deviceId: string;
@@ -68,4 +71,25 @@ export const watchPosReceiptSettings = async (input: {
     receipt_settings: result.settings,
     server_time: new Date(),
   };
+};
+
+export const savePosReceiptSettingsFromDevice = async (input: {
+  deviceId: string;
+  credential: string;
+  appVersion: string;
+  value: PosReceiptSettingsInput;
+  auditMetadata?: AuditMetadata;
+}): Promise<PosReceiptSettings> => {
+  const device = await requireActivePosDevice(input);
+  await posDeviceRepository.touchHeartbeat(device.id, input.appVersion);
+  return posReceiptSettingsRepository.save({
+    warehouseId: device.warehouse_id,
+    actorId: device.id,
+    value: input.value,
+    context: {
+      ...input.auditMetadata,
+      device_id: device.id,
+    },
+    source: "JPOS",
+  });
 };

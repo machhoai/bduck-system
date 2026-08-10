@@ -76,6 +76,7 @@ export const posReceiptSettingsRepository = {
     actorId: string;
     value: Omit<PosReceiptSettings, "id" | "warehouse_id" | "version" | "updated_by" | "created_at" | "updated_at" | "is_deleted">;
     context?: { ip_address?: string | null; device_id?: string | null; session_token?: string | null };
+    source?: "JPULSE" | "JPOS";
   }): Promise<PosReceiptSettings> {
     const reference = db
       .collection(POS_RECEIPT_SETTINGS_COLLECTION)
@@ -112,7 +113,7 @@ export const posReceiptSettingsRepository = {
         ip_address: input.context?.ip_address ?? null,
         device_id: input.context?.device_id ?? null,
         session_token: input.context?.session_token ?? null,
-        notes: "Updated JPOS receipt settings from JPULSE",
+        notes: `Updated JPOS receipt settings from ${input.source ?? "JPULSE"}`,
       });
       return current;
     });

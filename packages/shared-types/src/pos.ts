@@ -130,6 +130,40 @@ export interface PosPaymentSettings {
   updatedByUid: string;
 }
 
+export const POS_MEMBER_COMPENSATION_STATUSES = [
+  "PROCESSING",
+  "SUCCEEDED",
+  "FAILED",
+  "UNKNOWN",
+] as const;
+export type PosMemberCompensationStatus =
+  (typeof POS_MEMBER_COMPENSATION_STATUSES)[number];
+
+/** Backend-only record for an idempotent manual member balance correction. */
+export interface PosMemberCompensation extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  shop_id: number;
+  member_uid: string;
+  member_code: string | null;
+  member_name: string;
+  stored_category: 1;
+  amount: number;
+  reason: string;
+  accounting_category: 1004;
+  status: PosMemberCompensationStatus;
+  created_by: string;
+  created_by_name: string;
+  device_id: string;
+  action_time: Date;
+  sync_time: Date;
+  attempt_count: number;
+  remote_total_value: number | null;
+  remote_code: number | null;
+  remote_message: string | null;
+  completed_at: Date | null;
+}
+
 export type PosPaymentSettingsInput = Pick<
   PosPaymentSettings,
   "enabled" | "bankBin" | "accountNumber" | "accountName"

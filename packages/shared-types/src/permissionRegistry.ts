@@ -262,6 +262,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "pos.members.compensate",
+    group: "pos",
+    label: { vi: "Nạp bù tài khoản thành viên", zh: "会员账户补偿充值" },
+    description: {
+      vi: "Nạp bù điểm chơi cho thành viên tại cửa hàng và ghi nhật ký kiểm toán.",
+      zh: "在门店为会员补充游戏点数并记录审计日志。",
+    },
+  },
+  {
     key: "pos.shift.close",
     group: "pos",
     label: { vi: "Kết ca POS", zh: "POS 交班结算" },
