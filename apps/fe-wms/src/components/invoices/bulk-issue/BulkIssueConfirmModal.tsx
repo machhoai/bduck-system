@@ -3,6 +3,7 @@
 import type { InvoiceBulkIssuePreview } from "@bduck/shared-types";
 import {
   AlertTriangle,
+  Banknote,
   ChevronDown,
   Eye,
   FileSpreadsheet,
@@ -16,6 +17,7 @@ import { useBulkIssueMisaPreview } from "@/hooks/useBulkIssueMisaPreview";
 import { downloadInvoiceBulkIssueExcel } from "@/utils/invoiceBulkIssueExcel";
 import { showToast } from "@/utils/toast";
 
+import { summarizeBulkIssuePayments } from "./bulkIssuePaymentSummary";
 import { BulkIssueSummaryCard } from "./BulkIssueSummaryCard";
 import { bulkIssueTranslations } from "./bulkIssueTranslations";
 
@@ -42,6 +44,10 @@ export function BulkIssueConfirmModal({
 }) {
   const summary = preview.summary;
   const d = bulkIssueTranslations[lang];
+  const paymentSummaries = summarizeBulkIssuePayments(
+    preview.invoices,
+    d.unspecifiedPaymentMethod,
+  );
   const [exportingExcel, setExportingExcel] = useState(false);
   const { previewingInvoiceId, previewInvoice } = useBulkIssueMisaPreview(
     preview,
@@ -118,6 +124,38 @@ export function BulkIssueConfirmModal({
               value={money.format(summary.total_amount)}
               strong
             />
+          </section>
+
+          <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="flex items-center gap-2 border-b border-slate-100 p-3">
+              <Banknote className="text-emerald-700" size={16} />
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">
+                  {d.paymentSummaryTitle}
+                </h4>
+                <p className="text-xxs text-slate-500">
+                  {d.paymentSummarySubtitle(paymentSummaries.length)}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
+              {paymentSummaries.map((payment) => (
+                <div
+                  key={payment.paymentMethodName}
+                  className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+                >
+                  <p className="truncate text-xxs font-semibold text-emerald-800">
+                    {payment.paymentMethodName}
+                  </p>
+                  <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                    {money.format(payment.totalAmount)}
+                  </p>
+                  <p className="mt-0.5 text-xxs text-slate-500">
+                    {d.paymentInvoiceCount(payment.invoiceCount)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
