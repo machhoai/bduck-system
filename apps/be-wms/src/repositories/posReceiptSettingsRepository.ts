@@ -29,6 +29,48 @@ export const posReceiptSettingsRepository = {
     return snapshot.exists ? mapSettings(snapshot.data() || {}) : null;
   },
 
+  waitForVersionChange(
+    warehouseId: string,
+    knownVersion: number | null,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<{ changed: boolean; settings: PosReceiptSettings | null }> {
+    const reference = db.collection(POS_RECEIPT_SETTINGS_COLLECTION).doc(warehouseId);
+    return new Promise((resolve, reject) => {
+      let unsubscribe: () => void = () => undefined;
+      let settled = false;
+      const handleAbort = () => finish({ changed: false, settings: null });
+      const finish = (result: { changed: boolean; settings: PosReceiptSettings | null }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", handleAbort);
+        unsubscribe();
+        resolve(result);
+      };
+      const timer = setTimeout(() => finish({ changed: false, settings: null }), timeoutMs);
+      if (signal?.aborted) {
+        finish({ changed: false, settings: null });
+        return;
+      }
+      signal?.addEventListener("abort", handleAbort, { once: true });
+      unsubscribe = reference.onSnapshot(
+        (snapshot) => {
+          const settings = snapshot.exists ? mapSettings(snapshot.data() || {}) : null;
+          if ((settings?.version ?? null) !== knownVersion) finish({ changed: true, settings });
+        },
+        (error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", handleAbort);
+          unsubscribe();
+          reject(error);
+        },
+      );
+    });
+  },
+
   async save(input: {
     warehouseId: string;
     actorId: string;

@@ -54,6 +54,12 @@ export interface PosDeviceSessionResult {
   server_time: Date;
 }
 
+export interface PosReceiptSettingsWatchResult {
+  changed: boolean;
+  receipt_settings: PosReceiptSettings | null;
+  server_time: Date;
+}
+
 export interface PosReceiptFontWeights {
   storeName: number;
   storeDetails: number;

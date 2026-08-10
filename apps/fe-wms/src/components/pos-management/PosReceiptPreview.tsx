@@ -1,0 +1,109 @@
+"use client";
+
+import { QRCodeSVG } from "qrcode.react";
+
+import type { PosReceiptSettingsPayload } from "@/api/posManagementApi";
+
+import { usePosReceiptEditorCopy } from "./usePosReceiptEditorCopy";
+
+const weightClass = (weight: number) => weight >= 900 ? "font-black" : weight >= 800 ? "font-extrabold" : weight >= 700 ? "font-bold" : weight >= 600 ? "font-semibold" : weight >= 500 ? "font-medium" : "font-normal";
+const fontSizeClass = (size: number) => {
+  const sizes: Record<string, string> = {
+    "6": "text-[6pt]", "6.5": "text-[6.5pt]", "7": "text-[7pt]", "7.5": "text-[7.5pt]",
+    "8": "text-[8pt]", "8.5": "text-[8.5pt]", "9": "text-[9pt]", "9.5": "text-[9.5pt]",
+    "10": "text-[10pt]", "10.5": "text-[10.5pt]", "11": "text-[11pt]", "11.5": "text-[11.5pt]",
+    "12": "text-[12pt]", "12.5": "text-[12.5pt]", "13": "text-[13pt]", "13.5": "text-[13.5pt]",
+    "14": "text-[14pt]", "14.5": "text-[14.5pt]", "15": "text-[15pt]", "15.5": "text-[15.5pt]", "16": "text-[16pt]",
+  };
+  return sizes[String(size)] ?? "text-[10pt]";
+};
+
+const money = (value: number) => `${value.toLocaleString("vi-VN")} đ`;
+
+function PreviewRow({ label, value, boldClass = "font-normal" }: { label: string; value: string; boldClass?: string }) {
+  return <div className={`flex items-baseline justify-between gap-3 ${boldClass}`}><span>{label}</span><span className="shrink-0 text-right tabular-nums">{value}</span></div>;
+}
+
+function ThemeDecoration({ theme, weight }: { theme: PosReceiptSettingsPayload["theme"]; weight: number }) {
+  return (
+    <div className={`flex items-center gap-2 ${weightClass(weight)}`} aria-hidden="true">
+      <span className={`flex-1 border-t border-black ${theme === "NATIONAL_DAY" ? "border-b py-0.5" : ""}`} />
+      <span>{theme === "NATIONAL_DAY" ? "★" : theme === "TET" ? "◆ ◇ ◆" : "○"}</span>
+      <span className={`flex-1 border-t border-black ${theme === "NATIONAL_DAY" ? "border-b py-0.5" : ""}`} />
+    </div>
+  );
+}
+
+export function PosReceiptPreview({ form }: { form: PosReceiptSettingsPayload }) {
+  const { copy } = usePosReceiptEditorCopy();
+  const weights = form.font_weights;
+  const compact = form.paper_size === "POS58";
+  const themeMessage = form.theme_messages[form.theme]?.trim();
+  const paperClass = form.paper_size === "POS58" ? "w-[58mm] p-[3mm] text-[10px]" : form.paper_size === "POS82" ? "w-[82mm] p-[4mm] text-[11.5px]" : "w-[80mm] p-[4mm] text-[11.5px]";
+  const logoContrastClass = form.logo_contrast_percent >= 175 ? "contrast-200" : form.logo_contrast_percent >= 135 ? "contrast-150" : form.logo_contrast_percent >= 110 ? "contrast-125" : "contrast-100";
+  const qrPixels = Math.round(Math.min(form.invoice_qr_size_mm, compact ? 50 : 60) * 3);
+  return (
+    <aside className="rounded-xl border border-slate-200 bg-[#e9e8e5] p-4 xl:sticky xl:top-3">
+      <div className="mb-3">
+        <h3 className="text-sm font-black text-slate-900">{copy.preview}</h3>
+        <p className="text-[11px] text-slate-500">{form.paper_size.replace("POS", "")} mm · {copy.monochrome}</p>
+      </div>
+      <div className="overflow-x-auto rounded-xl bg-[#d8d6d1] p-4 shadow-inner">
+        <article className={`mx-auto min-h-40 bg-white font-sans leading-[1.35] text-black shadow-xl ${paperClass}`}>
+          <header className="text-center">
+            {form.show_logo && form.logo_data_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.logo_data_url} alt={copy.logoAlt} width={Math.min(form.logo_width_mm * 3, compact ? 150 : 210)} height={form.logo_max_height_mm * 3} className={`mx-auto mb-2 max-w-full object-contain grayscale ${logoContrastClass}`} />
+            )}
+            <div className={`${compact ? "text-[15px]" : "text-[18px]"} ${weightClass(weights.storeName)}`}>{form.store_name}</div>
+            {form.store_address && <div className={`mt-1 ${weightClass(weights.storeDetails)}`}>{form.store_address}</div>}
+            {form.show_contact && form.hotline && <div className={`mt-0.5 ${weightClass(weights.storeDetails)}`}>{copy.hotlineLabel}: {form.hotline}</div>}
+            {form.show_theme_message && themeMessage && (
+              <div className={`mx-auto mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2 ${fontSizeClass(form.theme_message_font_size_pt)} ${weightClass(weights.themeMessage)}`}><span>◆</span><span>{themeMessage}</span><span>◆</span></div>
+            )}
+            <div className={`my-3 border-y border-black py-1.5 uppercase tracking-wide ${compact ? "text-xs" : "text-sm"} ${weightClass(weights.receiptTitle)}`}>{copy.receiptTitle}</div>
+          </header>
+          <section className={`grid gap-1 ${weightClass(weights.orderInfo)}`}>
+            <PreviewRow label={`${copy.orderCode}:`} value="ORD-A29F8C" />
+            <PreviewRow label={`${copy.dateTime}:`} value="02/09/2026 10:11" />
+            {form.show_cashier && <PreviewRow label={`${copy.cashier}:`} value="Nguyễn Minh Anh" />}
+            <PreviewRow label={`${copy.payment}:`} value={copy.cashPayment} />
+          </section>
+          <div className="my-3 border-t border-dashed border-black" />
+          <section>
+            <PreviewRow label={copy.goods} value={copy.amount} boldClass={weightClass(weights.tableHeader)} />
+            <div className="mt-2 grid gap-2">
+              {[[copy.sampleTicket, 1, 220000], [copy.sampleGift, 2, 54450]].map(([name, quantity, price]) => (
+                <div key={String(name)}>
+                  <div className={weightClass(weights.itemName)}>{name}</div>
+                  <PreviewRow label={`${quantity} × ${money(Number(price))}`} value={money(Number(quantity) * Number(price))} boldClass={weightClass(weights.itemDetails)} />
+                  {form.show_item_tax && <PreviewRow label={`${copy.itemTax} 10%`} value={money(Number(quantity) * Number(price) / 11)} boldClass={`${weightClass(weights.itemTax)} text-[0.92em]`} />}
+                </div>
+              ))}
+            </div>
+          </section>
+          <div className="my-3 border-t border-dashed border-black" />
+          <section className={`grid gap-1 ${weightClass(weights.summary)}`}>
+            <PreviewRow label={copy.subtotal} value={money(328900)} />
+            <PreviewRow label={`${copy.discount} (WELCOME)`} value={`-${money(20000)}`} />
+            <PreviewRow label={copy.taxTotal} value={money(29900)} boldClass={weightClass(weights.taxTotal)} />
+            <div className={`mt-1 border-t-2 border-black pt-2 ${compact ? "text-sm" : "text-base"}`}><PreviewRow label={copy.total} value={money(308900)} boldClass={weightClass(weights.grandTotal)} /></div>
+          </section>
+          <footer className="mt-4 text-center">
+            {form.show_invoice_request_qr && (
+              <section className="mb-3 border-t border-dashed border-black pt-3">
+                <div className={`${fontSizeClass(form.invoice_qr_title_font_size_pt)} ${weightClass(weights.invoiceQrTitle)}`}>{copy.invoiceQrTitle}</div>
+                <div className="my-2 flex justify-center"><QRCodeSVG value="https://invoice-preview.local/request/sample" size={qrPixels} level="M" marginSize={1} /></div>
+                <div className={`${fontSizeClass(form.invoice_qr_hint_font_size_pt)} ${weightClass(weights.invoiceQrHint)}`}>{copy.invoiceQrHint}</div>
+              </section>
+            )}
+            {form.show_contact && form.after_sales_text && <div className={`border-t border-dashed border-black pt-3 ${weightClass(weights.footer)}`}>{form.after_sales_text}</div>}
+            {form.footer_message && <div className={`mt-2 ${weightClass(weights.footer)}`}>{form.footer_message}</div>}
+            <div className="mt-3"><ThemeDecoration theme={form.theme} weight={weights.decoration} /></div>
+          </footer>
+        </article>
+      </div>
+      <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-500">{copy.previewHint}</p>
+    </aside>
+  );
+}

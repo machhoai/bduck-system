@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomInt } from "crypto";
 
 import {
   ActiveStatus,
@@ -7,13 +7,11 @@ import {
   type PosDeviceActivationResult,
   type PosDeviceEnrollment,
   type PosDeviceEnrollmentGrant,
-  type PosDeviceSessionResult,
   type PosDeviceStatus,
   type PosStoreOverview,
 } from "@bduck/shared-types";
 
 import { posDeviceRepository } from "../repositories/posDeviceRepository.js";
-import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
 import { posReceiptSettingsRepository } from "../repositories/posReceiptSettingsRepository.js";
 
 import type { AuditMetadata } from "./auditService.js";
@@ -66,42 +64,6 @@ const withoutCredential = (
 ): Omit<PosDevice, "credential_hash"> => {
   const { credential_hash: _credentialHash, ...safeDevice } = device;
   return safeDevice;
-};
-
-export const openPosDeviceSession = async (input: {
-  deviceId: string;
-  credential: string;
-  appVersion: string;
-}): Promise<PosDeviceSessionResult> => {
-  const device = await posDeviceRepository.findById(input.deviceId);
-  const receivedHash = createHash("sha256")
-    .update(input.credential)
-    .digest("hex");
-  const stored = Buffer.from(device?.credential_hash || "", "utf8");
-  const received = Buffer.from(receivedHash, "utf8");
-  const matches =
-    stored.length === received.length && timingSafeEqual(stored, received);
-  if (!device || device.is_deleted || device.status !== "ACTIVE" || !matches) {
-    throw new PosDeviceError(401, {
-      vi: "Máy POS chưa được cấp quyền hoặc đã bị khóa.",
-      zh: "POS 设备未获授权或已被锁定。",
-    });
-  }
-
-  const activeDevice = await posDeviceRepository.touchHeartbeat(
-    device.id,
-    input.appVersion,
-  );
-  const [receiptSettings, paymentSettings] = await Promise.all([
-    posReceiptSettingsRepository.findByWarehouse(device.warehouse_id),
-    posPaymentSettingsRepository.findByWarehouse(device.warehouse_id),
-  ]);
-  return {
-    device: withoutCredential(activeDevice),
-    receipt_settings: receiptSettings,
-    payment_settings: paymentSettings,
-    server_time: new Date(),
-  };
 };
 
 export const listPosDevices = async (

@@ -10,6 +10,15 @@ const fontWeights = z.object({
   decoration: weight,
 });
 
+const receiptLogoDataUrl = z
+  .string()
+  .max(1_500_000)
+  .refine(
+    (value) => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(value),
+    "Logo phải là ảnh PNG, JPG hoặc WEBP hợp lệ.",
+  )
+  .nullable();
+
 export const posReceiptSettingsSchema = z.object({
   paper_size: z.enum(["POS58", "POS80", "POS82"]),
   theme: z.enum(["CLASSIC", "NATIONAL_DAY", "TET"]),
@@ -20,7 +29,7 @@ export const posReceiptSettingsSchema = z.object({
   hotline: z.string().trim().max(50),
   after_sales_text: z.string().trim().max(500),
   footer_message: z.string().trim().max(500),
-  logo_data_url: z.string().max(1_500_000).nullable(),
+  logo_data_url: receiptLogoDataUrl,
   logo_width_mm: z.number().min(5).max(70),
   logo_max_height_mm: z.number().min(5).max(70),
   logo_contrast_percent: z.number().min(50).max(250),

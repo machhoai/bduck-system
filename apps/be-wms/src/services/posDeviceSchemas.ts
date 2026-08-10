@@ -42,6 +42,10 @@ export const openPosDeviceSessionSchema = z.object({
   app_version: safeText(1, 30),
 });
 
+export const watchPosReceiptSettingsSchema = openPosDeviceSessionSchema.extend({
+  known_version: z.number().int().nonnegative().nullable(),
+});
+
 export const changePosDeviceStatusSchema = z.object({
   status: z.enum(POS_DEVICE_STATUSES),
 });

@@ -8,6 +8,7 @@ import {
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
   transferPosDeviceHandler,
+  watchPosReceiptSettingsHandler,
 } from "../controllers/posDeviceController.js";
 import {
   getPosPaymentSettingsHandler,
@@ -18,13 +19,18 @@ import {
   savePosReceiptSettingsHandler,
 } from "../controllers/posReceiptSettingsController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { authRateLimiter } from "../middlewares/rateLimitMiddleware.js";
+import { apiRateLimiter, authRateLimiter } from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.post("/devices/activate", authRateLimiter, activatePosDeviceHandler);
 router.post("/devices/session", authRateLimiter, openPosDeviceSessionHandler);
+router.post(
+  "/devices/receipt-settings/watch",
+  apiRateLimiter,
+  watchPosReceiptSettingsHandler,
+);
 
 router.use(requireAuth);
 router.get(

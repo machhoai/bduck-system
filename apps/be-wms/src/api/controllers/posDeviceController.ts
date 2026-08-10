@@ -9,6 +9,7 @@ import {
   posDeviceParamsSchema,
   posWarehouseParamsSchema,
   transferPosDeviceSchema,
+  watchPosReceiptSettingsSchema,
 } from "../../services/posDeviceSchemas.js";
 import {
   activatePosDevice,
@@ -16,10 +17,13 @@ import {
   createPosEnrollment,
   getPosStoreOverview,
   listPosDevices,
-  openPosDeviceSession,
   PosDeviceError,
   transferPosDevice,
 } from "../../services/posDeviceService.js";
+import {
+  openPosDeviceSession,
+  watchPosReceiptSettings,
+} from "../../services/posDeviceSessionService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
@@ -163,6 +167,33 @@ export const openPosDeviceSessionHandler = async (
       zh: "POS 设备会话有效。",
     });
   } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const watchPosReceiptSettingsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  const abortController = new AbortController();
+  res.once("close", () => abortController.abort());
+  try {
+    const input = watchPosReceiptSettingsSchema.parse(req.body);
+    const result = await watchPosReceiptSettings({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      knownVersion: input.known_version,
+      signal: abortController.signal,
+    });
+    if (abortController.signal.aborted || res.writableEnded) return;
+    return sendSuccess(res, result, {
+      vi: result.changed
+        ? "Đã nhận cấu hình hóa đơn POS mới."
+        : "Cấu hình hóa đơn POS chưa thay đổi.",
+      zh: result.changed ? "已收到新的 POS 小票配置。" : "POS 小票配置未变更。",
+    });
+  } catch (error) {
+    if (abortController.signal.aborted || res.writableEnded) return;
     return handleError(res, error);
   }
 };
