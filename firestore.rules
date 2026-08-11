@@ -599,6 +599,16 @@ service cloud.firestore {
     match /pos_payment_settings/{warehouseId} {
       allow read, write: if false;
     }
+    // Both JPULSE and authenticated JPOS editors observe this same document
+    // in the shared Firestore. All mutations remain backend-only for audit.
+    match /pos_customer_display_settings/{warehouseId} {
+      allow read: if hasFacilityPermission(warehouseId, 'pos.advertising.read');
+      allow write: if false;
+      match /media/{mediaId} {
+        allow read: if hasFacilityPermission(warehouseId, 'pos.advertising.read');
+        allow write: if false;
+      }
+    }
     match /invoice_source_order_payloads/{docId} {
       allow read, write: if false;
       match /revisions/{revisionId} {

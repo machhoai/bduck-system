@@ -48,6 +48,10 @@ export const watchPosReceiptSettingsSchema = openPosDeviceSessionSchema.extend({
   known_version: z.number().int().nonnegative().nullable(),
 });
 
+export const watchPosCustomerDisplaySettingsSchema = openPosDeviceSessionSchema.extend({
+  known_version: z.number().int().nonnegative().nullable(),
+});
+
 export const savePosReceiptSettingsFromDeviceSchema =
   openPosDeviceSessionSchema.extend({
     receipt_settings: posReceiptSettingsSchema,

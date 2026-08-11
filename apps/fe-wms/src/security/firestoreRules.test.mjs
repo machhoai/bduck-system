@@ -698,6 +698,7 @@ beforeEach(async () => {
       "revenue.read": true,
       "invoices.read": true,
       "invoices.config": true,
+      "pos.advertising.read": true,
       "employees.contracts.self.read": true,
       "leave.self.read": true,
     },
@@ -1427,6 +1428,48 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertFails(
       getDoc(doc(admin, "invoice_reconciliation_snapshots", "snapshot-d")),
+    );
+  });
+
+  it("allows scoped realtime advertising reads but keeps all writes backend-only", async () => {
+    const warehouseUser = environment
+      .authenticatedContext("user-a")
+      .firestore();
+    const storeUser = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    await assertSucceeds(
+      getDoc(doc(storeUser, "pos_customer_display_settings", "store-d")),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(
+          storeUser,
+          "pos_customer_display_settings/store-d/media",
+          "media-1",
+        ),
+      ),
+    );
+    await assertFails(
+      getDoc(doc(warehouseUser, "pos_customer_display_settings", "store-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin, "pos_customer_display_settings", "store-d")),
+    );
+    await assertFails(
+      setDoc(doc(storeUser, "pos_customer_display_settings", "store-d"), {
+        warehouse_id: "store-d",
+      }),
+    );
+    await assertFails(
+      setDoc(
+        doc(
+          admin,
+          "pos_customer_display_settings/store-d/media",
+          "media-1",
+        ),
+        { warehouse_id: "store-d" },
+      ),
     );
   });
 

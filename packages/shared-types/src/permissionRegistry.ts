@@ -298,6 +298,24 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "pos.advertising.read",
+    group: "pos",
+    label: { vi: "Xem quảng cáo màn hình khách", zh: "查看顾客屏广告" },
+    description: {
+      vi: "Xem playlist quảng cáo màn hình khách theo cửa hàng.",
+      zh: "查看各门店顾客屏的广告播放列表。",
+    },
+  },
+  {
+    key: "pos.advertising.manage",
+    group: "pos",
+    label: { vi: "Quản lý quảng cáo màn hình khách", zh: "管理顾客屏广告" },
+    description: {
+      vi: "Tải lên, sắp xếp và phát hành quảng cáo màn hình khách theo cửa hàng.",
+      zh: "按门店上传、排序并发布顾客屏广告。",
+    },
+  },
+  {
     key: "pos.devices.read",
     group: "pos",
     label: { vi: "Xem thiết bị POS", zh: "查看 POS 设备" },

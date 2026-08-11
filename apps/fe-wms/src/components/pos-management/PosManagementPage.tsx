@@ -9,6 +9,7 @@ import { useStores } from "@/hooks/useWarehouses";
 import { useUserStore } from "@/stores/useUserStore";
 
 import { PosAccessPanel } from "./PosAccessPanel";
+import { PosAdvertisingPanel } from "./PosAdvertisingPanel";
 import { PosDevicePanel } from "./PosDevicePanel";
 import {
   PosAuditLink,
@@ -19,12 +20,14 @@ import {
 import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
 import { PosSettingsPanel } from "./PosSettingsPanel";
 import { PosStoreRail } from "./PosStoreRail";
+import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
 
-type Tab = "overview" | "devices" | "settings" | "access" | "audit";
+type Tab = "overview" | "devices" | "settings" | "advertising" | "access" | "audit";
 
 export default function PosManagementPage() {
   const copy = usePosManagementCopy();
+  const advertisingCopy = usePosAdvertisingCopy();
   const { stores, loading: storesLoading } = useStores();
   const hasPermission = useUserStore((state) => state.hasPermission);
   const [selectedStoreId, setSelectedStoreId] = useState("");
@@ -38,6 +41,8 @@ export default function PosManagementPage() {
   const canManageDevices = hasPermission("pos.devices.manage", activeStoreId);
   const canReadSettings = hasPermission("pos.settings.read", activeStoreId);
   const canManageSettings = hasPermission("pos.settings.manage", activeStoreId);
+  const canReadAdvertising = hasPermission("pos.advertising.read", activeStoreId);
+  const canManageAdvertising = hasPermission("pos.advertising.manage", activeStoreId);
   const canManageAccess = hasPermission("pos.access.manage", activeStoreId);
   const canReadAudit =
     hasPermission("pos.audit.read", activeStoreId) ||
@@ -45,6 +50,7 @@ export default function PosManagementPage() {
   const canEnter =
     hasPermission("pos.devices.read") ||
     hasPermission("pos.settings.read") ||
+    hasPermission("pos.advertising.read") ||
     hasPermission("pos.access.manage") ||
     hasPermission("pos.audit.read");
   const deviceTransferTargets = stores
@@ -62,6 +68,7 @@ export default function PosManagementPage() {
     { id: "overview", label: copy.overview },
     { id: "devices", label: copy.devices },
     { id: "settings", label: copy.settings },
+    { id: "advertising", label: advertisingCopy.tab },
     { id: "access", label: copy.access },
     { id: "audit", label: copy.audit },
   ];
@@ -173,6 +180,16 @@ export default function PosManagementPage() {
                       onChanged={management.refresh}
                     />
                   </div>
+                ) : (
+                  <PosNoAccess />
+                ))}
+              {tab === "advertising" &&
+                (canReadAdvertising ? (
+                  <PosAdvertisingPanel
+                    key={activeStoreId}
+                    warehouseId={activeStoreId}
+                    canManage={canManageAdvertising}
+                  />
                 ) : (
                   <PosNoAccess />
                 ))}

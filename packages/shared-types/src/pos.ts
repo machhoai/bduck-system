@@ -51,12 +51,67 @@ export interface PosDeviceSessionResult {
   device: Omit<PosDevice, "credential_hash">;
   receipt_settings: PosReceiptSettings | null;
   payment_settings: PosPaymentSettings | null;
+  customer_display_settings?: PosCustomerDisplaySettingsView | null;
   server_time: Date;
 }
 
 export interface PosReceiptSettingsWatchResult {
   changed: boolean;
   receipt_settings: PosReceiptSettings | null;
+  server_time: Date;
+}
+
+export type PosCustomerDisplayMediaType = "IMAGE" | "VIDEO";
+
+export interface PosCustomerDisplayPlaylistItem {
+  media_id: string;
+  sort_order: number;
+  enabled: boolean;
+  image_duration_seconds: number | null;
+}
+
+export interface PosCustomerDisplaySettings extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  version: number;
+  playlist: PosCustomerDisplayPlaylistItem[];
+  updated_by: string;
+}
+
+export interface PosCustomerDisplayMedia extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  type: PosCustomerDisplayMediaType;
+  storage_path: string;
+  file_name: string;
+  mime_type: "image/jpeg" | "image/png" | "image/webp" | "video/mp4";
+  file_size_bytes: number;
+  checksum_sha256: string;
+  width: number | null;
+  height: number | null;
+  duration_seconds: number | null;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface PosCustomerDisplayMediaView extends PosCustomerDisplayMedia {
+  download_url: string;
+}
+
+export interface PosCustomerDisplaySettingsView {
+  settings: PosCustomerDisplaySettings | null;
+  media: PosCustomerDisplayMediaView[];
+}
+
+export interface PosCustomerDisplaySettingsInput {
+  expected_version: number;
+  playlist: PosCustomerDisplayPlaylistItem[];
+  action_time: string;
+}
+
+export interface PosCustomerDisplaySettingsWatchResult {
+  changed: boolean;
+  customer_display_settings: PosCustomerDisplaySettingsView | null;
   server_time: Date;
 }
 
