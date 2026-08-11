@@ -36,7 +36,7 @@ const vi = {
   hotlineLabel: "Hotline", cashPayment: "Tiền mặt", sampleTicket: "Vé vui chơi trọn gói",
   sampleGift: "Gấu bông B.Duck mini", itemTax: "Thuế",
   subtotal: "Tạm tính", discount: "Giảm giá", taxTotal: "Tổng tiền thuế", total: "TỔNG TIỀN",
-  invoiceQrTitle: "Quét mã để yêu cầu xuất hóa đơn", invoiceQrHint: "Thông tin hóa đơn được tiếp nhận trước 22h trong ngày.",
+  invoiceQrTitle: "Quét mã để yêu cầu xuất hóa đơn", invoiceQrHint: "Vui lòng điền thông tin xuất hóa đơn trước 22:30 cùng ngày.",
 };
 
 const zh: typeof vi = {

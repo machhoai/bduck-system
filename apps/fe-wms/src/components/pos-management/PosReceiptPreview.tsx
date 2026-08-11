@@ -24,12 +24,130 @@ function PreviewRow({ label, value, boldClass = "font-normal" }: { label: string
   return <div className={`flex items-baseline justify-between gap-3 ${boldClass}`}><span>{label}</span><span className="shrink-0 text-right tabular-nums">{value}</span></div>;
 }
 
-function ThemeDecoration({ theme, weight }: { theme: PosReceiptSettingsPayload["theme"]; weight: number }) {
+function VietnamFlagIcon({ heightMm = 4 }: { heightMm?: number }) {
+  const widthMm = heightMm * 1.5;
   return (
-    <div className={`flex items-center gap-2 ${weightClass(weight)}`} aria-hidden="true">
-      <span className={`flex-1 border-t border-black ${theme === "NATIONAL_DAY" ? "border-b py-0.5" : ""}`} />
-      <span>{theme === "NATIONAL_DAY" ? "★" : theme === "TET" ? "◆ ◇ ◆" : "○"}</span>
-      <span className={`flex-1 border-t border-black ${theme === "NATIONAL_DAY" ? "border-b py-0.5" : ""}`} />
+    <svg
+      viewBox="0 0 30 20"
+      style={{
+        width: `${widthMm}mm`,
+        height: `${heightMm}mm`,
+        display: "inline-block",
+        verticalAlign: "middle",
+        borderRadius: "0.5px",
+        flexShrink: 0,
+      }}
+      aria-label="Lá cờ Việt Nam"
+      role="img"
+    >
+      <rect width="30" height="20" fill="#DA251D" />
+      <path
+        d="M 15 4 L 16.347 8.146 L 20.706 8.146 L 17.18 10.708 L 18.527 14.854 L 15 12.292 L 11.473 14.854 L 12.82 10.708 L 9.294 8.146 L 13.653 8.146 Z"
+        fill="#FFCD00"
+      />
+    </svg>
+  );
+}
+
+function ThemeMessageBanner({
+  theme,
+  message,
+  fontSizePt,
+  weight,
+  compact,
+}: {
+  theme: PosReceiptSettingsPayload["theme"];
+  message: string;
+  fontSizePt: number;
+  weight: number;
+  compact: boolean;
+}) {
+  const marker = theme === "NATIONAL_DAY" ? "★" : theme === "TET" ? "◆" : "•";
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "1mm", flexDirection: "column" }}>
+      <div
+        className={`${fontSizeClass(fontSizePt)} ${weightClass(weight)}`}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto minmax(0, 1fr) auto",
+          alignItems: "center",
+          gap: compact ? "1.5mm" : "2.5mm",
+          marginTop: "3mm",
+          padding: compact ? "0.8mm 0.5mm" : "0.2mm 1mm",
+          lineHeight: 1.25,
+          letterSpacing: theme === "NATIONAL_DAY" ? "0.25px" : "0",
+          textAlign: "center",
+        }}
+      >
+        <span aria-hidden="true">{marker}</span>
+        <span>{message}</span>
+        <span aria-hidden="true">{marker}</span>
+      </div>
+      {theme === "NATIONAL_DAY" && <VietnamFlagIcon />}
+    </div>
+  );
+}
+
+function ThemeDecoration({
+  theme,
+  weight,
+  compact = false,
+  placement = "bottom",
+}: {
+  theme: PosReceiptSettingsPayload["theme"];
+  weight: number;
+  compact?: boolean;
+  placement?: "top" | "bottom";
+}) {
+  const lineStyle: React.CSSProperties = {
+    flex: "1 1 auto",
+    height: theme === "NATIONAL_DAY" ? "1.2mm" : "0",
+    borderTop: "1px solid #000",
+    borderBottom: theme === "NATIONAL_DAY" ? "1px solid #000" : undefined,
+  };
+
+  return (
+    <div
+      aria-hidden="true"
+      className={weightClass(weight)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: compact ? "1.5mm" : "2mm",
+        marginTop: placement === "bottom" ? "3.5mm" : "0",
+        marginBottom: placement === "top" ? "3.5mm" : "0",
+      }}
+    >
+      <span style={lineStyle} />
+      {theme === "NATIONAL_DAY" ? (
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: compact ? "6mm" : "7mm",
+            height: compact ? "6mm" : "7mm",
+            border: "1.5px solid #000",
+            borderRadius: "50%",
+            fontSize: compact ? "11px" : "14px",
+            lineHeight: 1,
+          }}
+        >
+          ★
+        </span>
+      ) : theme === "TET" ? (
+        <span style={{ display: "flex", alignItems: "center", gap: "2mm", padding: "0 1mm" }}>
+          <span style={{ width: "2mm", height: "2mm", background: "#000", transform: "rotate(45deg)" }} />
+          <span style={{ width: "5mm", height: "5mm", border: "1.5px solid #000", transform: "rotate(45deg)", padding: "1mm" }}>
+            <span style={{ display: "block", width: "100%", height: "100%", background: "#000" }} />
+          </span>
+          <span style={{ width: "2mm", height: "2mm", background: "#000", transform: "rotate(45deg)" }} />
+        </span>
+      ) : (
+        <span style={{ width: "3mm", height: "3mm", border: "1px solid #000", borderRadius: "50%" }} />
+      )}
+      <span style={lineStyle} />
     </div>
   );
 }
@@ -42,6 +160,7 @@ export function PosReceiptPreview({ form }: { form: PosReceiptSettingsPayload })
   const paperClass = form.paper_size === "POS58" ? "w-[58mm] p-[3mm] text-[10px]" : form.paper_size === "POS82" ? "w-[82mm] p-[4mm] text-[11.5px]" : "w-[80mm] p-[4mm] text-[11.5px]";
   const logoContrastClass = form.logo_contrast_percent >= 175 ? "contrast-200" : form.logo_contrast_percent >= 135 ? "contrast-150" : form.logo_contrast_percent >= 110 ? "contrast-125" : "contrast-100";
   const qrPixels = Math.round(Math.min(form.invoice_qr_size_mm, compact ? 50 : 60) * 3);
+  const titleBorderClass = form.theme === "TET" ? "border-y-2 border-black" : "border-y border-black";
   return (
     <aside className="rounded-xl border border-slate-200 bg-[#e9e8e5] p-4 xl:sticky xl:top-3">
       <div className="mb-3">
@@ -59,9 +178,15 @@ export function PosReceiptPreview({ form }: { form: PosReceiptSettingsPayload })
             {form.store_address && <div className={`mt-1 ${weightClass(weights.storeDetails)}`}>{form.store_address}</div>}
             {form.show_contact && form.hotline && <div className={`mt-0.5 ${weightClass(weights.storeDetails)}`}>{copy.hotlineLabel}: {form.hotline}</div>}
             {form.show_theme_message && themeMessage && (
-              <div className={`mx-auto mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2 ${fontSizeClass(form.theme_message_font_size_pt)} ${weightClass(weights.themeMessage)}`}><span>◆</span><span>{themeMessage}</span><span>◆</span></div>
+              <ThemeMessageBanner
+                theme={form.theme}
+                message={themeMessage}
+                fontSizePt={form.theme_message_font_size_pt}
+                weight={weights.themeMessage}
+                compact={compact}
+              />
             )}
-            <div className={`my-3 border-y border-black py-1.5 uppercase tracking-wide ${compact ? "text-xs" : "text-sm"} ${weightClass(weights.receiptTitle)}`}>{copy.receiptTitle}</div>
+            <div className={`my-3 ${titleBorderClass} py-1.5 uppercase tracking-wide ${compact ? "text-xs" : "text-sm"} ${weightClass(weights.receiptTitle)}`}>{copy.receiptTitle}</div>
           </header>
           <section className={`grid gap-1 ${weightClass(weights.orderInfo)}`}>
             <PreviewRow label={`${copy.orderCode}:`} value="ORD-A29F8C" />
@@ -99,7 +224,7 @@ export function PosReceiptPreview({ form }: { form: PosReceiptSettingsPayload })
             )}
             {form.show_contact && form.after_sales_text && <div className={`border-t border-dashed border-black pt-3 ${weightClass(weights.footer)}`}>{form.after_sales_text}</div>}
             {form.footer_message && <div className={`mt-2 ${weightClass(weights.footer)}`}>{form.footer_message}</div>}
-            <div className="mt-3"><ThemeDecoration theme={form.theme} weight={weights.decoration} /></div>
+            <div><ThemeDecoration theme={form.theme} weight={weights.decoration} compact={compact} placement="bottom" /></div>
           </footer>
         </article>
       </div>
