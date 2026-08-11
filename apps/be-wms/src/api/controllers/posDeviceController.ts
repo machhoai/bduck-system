@@ -9,9 +9,11 @@ import {
   posDeviceParamsSchema,
   posWarehouseParamsSchema,
   savePosReceiptSettingsFromDeviceSchema,
+  savePosTicketSettingsFromDeviceSchema,
   transferPosDeviceSchema,
   watchPosCustomerDisplaySettingsSchema,
   watchPosReceiptSettingsSchema,
+  watchPosTicketSettingsSchema,
 } from "../../services/posDeviceSchemas.js";
 import {
   activatePosDevice,
@@ -25,8 +27,10 @@ import {
 import {
   openPosDeviceSession,
   savePosReceiptSettingsFromDevice,
+  savePosTicketSettingsFromDevice,
   watchPosCustomerDisplaySettings,
   watchPosReceiptSettings,
+  watchPosTicketSettings,
 } from "../../services/posDeviceSessionService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -202,6 +206,33 @@ export const watchPosReceiptSettingsHandler = async (
   }
 };
 
+export const watchPosTicketSettingsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  const abortController = new AbortController();
+  res.once("close", () => abortController.abort());
+  try {
+    const input = watchPosTicketSettingsSchema.parse(req.body);
+    const result = await watchPosTicketSettings({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      knownVersion: input.known_version,
+      signal: abortController.signal,
+    });
+    if (abortController.signal.aborted || res.writableEnded) return;
+    return sendSuccess(res, result, {
+      vi: result.changed
+        ? "Đã nhận cấu hình vé POS mới."
+        : "Cấu hình vé POS chưa thay đổi.",
+      zh: result.changed ? "已收到新的 POS 票券配置。" : "POS 票券配置未更改。",
+    });
+  } catch (error) {
+    if (abortController.signal.aborted || res.writableEnded) return;
+    return handleError(res, error);
+  }
+};
+
 export const watchPosCustomerDisplaySettingsHandler = async (
   req: Request,
   res: Response,
@@ -245,6 +276,28 @@ export const savePosReceiptSettingsFromDeviceHandler = async (
     return sendSuccess(res, settings, {
       vi: "Đã đồng bộ cấu hình biên lai từ máy POS lên JPULSE.",
       zh: "已将 POS 小票配置同步到 JPULSE。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const savePosTicketSettingsFromDeviceHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = savePosTicketSettingsFromDeviceSchema.parse(req.body);
+    const settings = await savePosTicketSettingsFromDevice({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      appVersion: input.app_version,
+      value: input.ticket_settings,
+      auditMetadata: getAuditRequestMetadata(req),
+    });
+    return sendSuccess(res, settings, {
+      vi: "Đã đồng bộ cấu hình vé từ máy POS lên JPULSE.",
+      zh: "已将 POS 票券配置同步到 JPULSE。",
     });
   } catch (error) {
     return handleError(res, error);

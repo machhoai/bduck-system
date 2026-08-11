@@ -1382,12 +1382,15 @@ describe("grant-aware Firestore rules", () => {
       "pos_devices",
       "pos_device_enrollments",
       "pos_receipt_settings",
+      "pos_ticket_settings",
       "pos_payment_settings",
     ]) {
       await assertFails(getDoc(doc(storeUser, collectionName, "store-d")));
       await assertFails(getDoc(doc(admin, collectionName, "store-d")));
       await assertFails(
-        setDoc(doc(admin, collectionName, "store-d"), { warehouse_id: "store-d" }),
+        setDoc(doc(admin, collectionName, "store-d"), {
+          warehouse_id: "store-d",
+        }),
       );
     }
     await assertFails(
@@ -1463,11 +1466,7 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertFails(
       setDoc(
-        doc(
-          admin,
-          "pos_customer_display_settings/store-d/media",
-          "media-1",
-        ),
+        doc(admin, "pos_customer_display_settings/store-d/media", "media-1"),
         { warehouse_id: "store-d" },
       ),
     );

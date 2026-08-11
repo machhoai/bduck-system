@@ -21,9 +21,11 @@ import {
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
   savePosReceiptSettingsFromDeviceHandler,
+  savePosTicketSettingsFromDeviceHandler,
   transferPosDeviceHandler,
   watchPosCustomerDisplaySettingsHandler,
   watchPosReceiptSettingsHandler,
+  watchPosTicketSettingsHandler,
 } from "../controllers/posDeviceController.js";
 import {
   getPosPaymentSettingsHandler,
@@ -33,22 +35,45 @@ import {
   getPosReceiptSettingsHandler,
   savePosReceiptSettingsHandler,
 } from "../controllers/posReceiptSettingsController.js";
+import {
+  getPosTicketSettingsHandler,
+  savePosTicketSettingsHandler,
+} from "../controllers/posTicketSettingsController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { apiRateLimiter, authRateLimiter } from "../middlewares/rateLimitMiddleware.js";
+import {
+  apiRateLimiter,
+  authRateLimiter,
+  posDeviceSessionRateLimiter,
+} from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 const customerDisplayRawBody = raw({
-  type: ["image/png", "image/jpeg", "image/webp", "video/mp4", "application/octet-stream"],
+  type: [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "video/mp4",
+    "application/octet-stream",
+  ],
   limit: "20mb",
 });
 
 router.post("/devices/activate", authRateLimiter, activatePosDeviceHandler);
-router.post("/devices/session", authRateLimiter, openPosDeviceSessionHandler);
+router.post(
+  "/devices/session",
+  posDeviceSessionRateLimiter,
+  openPosDeviceSessionHandler,
+);
 router.post(
   "/devices/receipt-settings/watch",
   apiRateLimiter,
   watchPosReceiptSettingsHandler,
+);
+router.post(
+  "/devices/ticket-settings/watch",
+  apiRateLimiter,
+  watchPosTicketSettingsHandler,
 );
 router.post(
   "/devices/customer-display-settings/watch",
@@ -64,6 +89,11 @@ router.put(
   "/devices/receipt-settings",
   apiRateLimiter,
   savePosReceiptSettingsFromDeviceHandler,
+);
+router.put(
+  "/devices/ticket-settings",
+  apiRateLimiter,
+  savePosTicketSettingsFromDeviceHandler,
 );
 
 router.use(requireAuth);
@@ -101,6 +131,16 @@ router.put(
   "/stores/:warehouseId/receipt-settings",
   requireAnyScopedPermission("pos.settings.manage"),
   savePosReceiptSettingsHandler,
+);
+router.get(
+  "/stores/:warehouseId/ticket-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosTicketSettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/ticket-settings",
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosTicketSettingsHandler,
 );
 router.get(
   "/stores/:warehouseId/payment-settings",

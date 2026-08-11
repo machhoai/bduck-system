@@ -1,4 +1,5 @@
-import { rateLimit } from "express-rate-limit";
+import type { Request } from "express";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 
 const parsePositiveInteger = (
   value: string | undefined,
@@ -31,15 +32,36 @@ const localizedRateLimitResponse = {
   },
 };
 
-const createRateLimiter = (windowMs: number, limit: number) =>
+const createRateLimiter = (
+  windowMs: number,
+  limit: number,
+  keyGenerator?: (request: Request) => string,
+) =>
   rateLimit({
     windowMs,
     limit,
+    keyGenerator,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: (_request, response) =>
       response.status(429).json(localizedRateLimitResponse),
   });
+
+const POS_DEVICE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const resolvePosDeviceSessionRateLimitKey = (
+  request: Pick<Request, "body" | "ip">,
+): string => {
+  const deviceId =
+    typeof request.body?.device_id === "string"
+      ? request.body.device_id.trim().toLowerCase()
+      : "";
+  const ipKey = ipKeyGenerator(request.ip ?? "unknown");
+  return POS_DEVICE_ID_PATTERN.test(deviceId)
+    ? `pos-device-session:${deviceId}:${ipKey}`
+    : `pos-device-session:${ipKey}`;
+};
 
 export const apiRateLimiter = createRateLimiter(
   parsePositiveInteger(process.env.BE_WMS_RATE_LIMIT_WINDOW_MS, 60_000),
@@ -60,6 +82,18 @@ export const authSessionRateLimiter = createRateLimiter(
     process.env.BE_WMS_AUTH_SESSION_RATE_LIMIT_MAX_REQUESTS,
     120,
   ),
+);
+
+export const posDeviceSessionRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_DEVICE_SESSION_RATE_LIMIT_WINDOW_MS,
+    900_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_DEVICE_SESSION_RATE_LIMIT_MAX_REQUESTS,
+    60,
+  ),
+  resolvePosDeviceSessionRateLimitKey,
 );
 
 export const publicInvoiceReadRateLimiter = createRateLimiter(

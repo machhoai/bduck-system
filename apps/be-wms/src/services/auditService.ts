@@ -85,6 +85,7 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   POS_DEVICE: "pos_devices",
   POS_DEVICE_ENROLLMENT: "pos_device_enrollments",
   POS_RECEIPT_SETTINGS: "pos_receipt_settings",
+  POS_TICKET_SETTINGS: "pos_ticket_settings",
   POS_PAYMENT_SETTINGS: "pos_payment_settings",
   POS_ORDER: "pos_orders",
 };

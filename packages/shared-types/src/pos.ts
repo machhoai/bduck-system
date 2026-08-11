@@ -1,9 +1,18 @@
-import type { ISOTimestamped, LocalizedText, SoftDeletable } from "./utility.js";
+import type {
+  ISOTimestamped,
+  LocalizedText,
+  SoftDeletable,
+} from "./utility.js";
 
 export const POS_DEVICE_STATUSES = ["ACTIVE", "REVOKED"] as const;
 export type PosDeviceStatus = (typeof POS_DEVICE_STATUSES)[number];
 
-export const POS_ENROLLMENT_STATUSES = ["PENDING", "USED", "EXPIRED", "REVOKED"] as const;
+export const POS_ENROLLMENT_STATUSES = [
+  "PENDING",
+  "USED",
+  "EXPIRED",
+  "REVOKED",
+] as const;
 export type PosEnrollmentStatus = (typeof POS_ENROLLMENT_STATUSES)[number];
 
 export interface PosDevice extends SoftDeletable {
@@ -50,6 +59,7 @@ export interface PosDeviceActivationResult {
 export interface PosDeviceSessionResult {
   device: Omit<PosDevice, "credential_hash">;
   receipt_settings: PosReceiptSettings | null;
+  ticket_settings: PosTicketSettings | null;
   payment_settings: PosPaymentSettings | null;
   customer_display_settings?: PosCustomerDisplaySettingsView | null;
   server_time: Date;
@@ -58,6 +68,12 @@ export interface PosDeviceSessionResult {
 export interface PosReceiptSettingsWatchResult {
   changed: boolean;
   receipt_settings: PosReceiptSettings | null;
+  server_time: Date;
+}
+
+export interface PosTicketSettingsWatchResult {
+  changed: boolean;
+  ticket_settings: PosTicketSettings | null;
   server_time: Date;
 }
 
@@ -162,6 +178,35 @@ export interface PosReceiptSettings extends SoftDeletable {
   show_invoice_request_qr: boolean;
   show_theme_message: boolean;
   default_tax_rate: number;
+  updated_by: string;
+}
+
+export interface PosTicketSettings extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  version: number;
+  paper_size: "POS58" | "POS80" | "POS82";
+  ticket_height_mm: number;
+  store_name: string;
+  ticket_title: string;
+  subtitle: string;
+  instructions: string;
+  footer_message: string;
+  logo_data_url: string | null;
+  logo_width_mm: number;
+  logo_max_height_mm: number;
+  logo_contrast_percent: number;
+  qr_size_mm: number;
+  title_font_size_pt: number;
+  product_font_size_pt: number;
+  body_font_size_pt: number;
+  font_weight: number;
+  show_logo: boolean;
+  show_order_code: boolean;
+  show_issued_at: boolean;
+  show_price: boolean;
+  show_sequence: boolean;
+  auto_print_after_payment: boolean;
   updated_by: string;
 }
 

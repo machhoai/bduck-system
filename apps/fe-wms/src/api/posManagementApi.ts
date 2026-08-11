@@ -6,6 +6,7 @@ import type {
   PosPaymentSettingsInput,
   PosReceiptSettings,
   PosStoreOverview,
+  PosTicketSettings,
 } from "@bduck/shared-types";
 
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
@@ -22,6 +23,16 @@ interface ApiEnvelope<T> {
 export type SafePosDevice = Omit<PosDevice, "credential_hash">;
 export type PosReceiptSettingsPayload = Omit<
   PosReceiptSettings,
+  | "id"
+  | "warehouse_id"
+  | "version"
+  | "updated_by"
+  | "is_deleted"
+  | "created_at"
+  | "updated_at"
+>;
+export type PosTicketSettingsPayload = Omit<
+  PosTicketSettings,
   | "id"
   | "warehouse_id"
   | "version"
@@ -83,6 +94,25 @@ export const posManagementApi = {
   ) =>
     callPosApi<PosReceiptSettings>(
       `/api/pos/stores/${warehouseId}/receipt-settings`,
+      {
+        method: "PUT",
+        body: JSON.stringify(value),
+      },
+    ),
+  getTicketSettings: async (warehouseId: string) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/api/pos/stores/${warehouseId}/ticket-settings`,
+    );
+    const envelope = (await response.json()) as ApiEnvelope<PosTicketSettings>;
+    if (!response.ok)
+      throw new Error(
+        envelope.messages?.vi || "Không thể tải cấu hình vé POS.",
+      );
+    return envelope.data;
+  },
+  saveTicketSettings: (warehouseId: string, value: PosTicketSettingsPayload) =>
+    callPosApi<PosTicketSettings>(
+      `/api/pos/stores/${warehouseId}/ticket-settings`,
       {
         method: "PUT",
         body: JSON.stringify(value),

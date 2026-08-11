@@ -20,10 +20,17 @@ import {
 import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
 import { PosSettingsPanel } from "./PosSettingsPanel";
 import { PosStoreRail } from "./PosStoreRail";
+import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
 import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
 
-type Tab = "overview" | "devices" | "settings" | "advertising" | "access" | "audit";
+type Tab =
+  | "overview"
+  | "devices"
+  | "settings"
+  | "advertising"
+  | "access"
+  | "audit";
 
 export default function PosManagementPage() {
   const copy = usePosManagementCopy();
@@ -41,8 +48,14 @@ export default function PosManagementPage() {
   const canManageDevices = hasPermission("pos.devices.manage", activeStoreId);
   const canReadSettings = hasPermission("pos.settings.read", activeStoreId);
   const canManageSettings = hasPermission("pos.settings.manage", activeStoreId);
-  const canReadAdvertising = hasPermission("pos.advertising.read", activeStoreId);
-  const canManageAdvertising = hasPermission("pos.advertising.manage", activeStoreId);
+  const canReadAdvertising = hasPermission(
+    "pos.advertising.read",
+    activeStoreId,
+  );
+  const canManageAdvertising = hasPermission(
+    "pos.advertising.manage",
+    activeStoreId,
+  );
   const canManageAccess = hasPermission("pos.access.manage", activeStoreId);
   const canReadAudit =
     hasPermission("pos.audit.read", activeStoreId) ||
@@ -169,6 +182,14 @@ export default function PosManagementPage() {
                       warehouseId={activeStoreId}
                       storeName={activeStore?.name || ""}
                       settings={management.settings}
+                      canManage={canManageSettings}
+                      onChanged={management.refresh}
+                    />
+                    <PosTicketSettingsPanel
+                      key={`${activeStoreId}:${management.ticketSettings?.version ?? 0}:ticket`}
+                      warehouseId={activeStoreId}
+                      storeName={activeStore?.name || ""}
+                      settings={management.ticketSettings}
                       canManage={canManageSettings}
                       onChanged={management.refresh}
                     />
