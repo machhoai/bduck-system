@@ -9,7 +9,12 @@ export const POS_PAYMENT_SETTINGS_COLLECTION = "pos_payment_settings";
 export const posPaymentSettingsRepository = {
   async findByWarehouse(warehouseId: string): Promise<PosPaymentSettings | null> {
     const snapshot = await db.collection(POS_PAYMENT_SETTINGS_COLLECTION).doc(warehouseId).get();
-    return snapshot.exists ? snapshot.data() as PosPaymentSettings : null;
+    if (!snapshot.exists) return null;
+    const settings = snapshot.data() as PosPaymentSettings;
+    return {
+      ...settings,
+      fixedTransferOnly: settings.fixedTransferOnly === true,
+    };
   },
 
   async save(input: {
@@ -48,7 +53,7 @@ export const posPaymentSettingsRepository = {
         ip_address: input.context?.ip_address ?? null,
         device_id: input.context?.device_id ?? null,
         session_token: input.context?.session_token ?? null,
-        notes: "Updated JPOS fixed transfer fallback settings from JPULSE",
+        notes: "Updated JPOS transfer payment settings from JPULSE",
       });
       return current;
     });

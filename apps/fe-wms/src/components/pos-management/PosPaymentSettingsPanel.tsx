@@ -11,6 +11,7 @@ import { usePosManagementCopy } from "./usePosManagementCopy";
 
 const EMPTY: PosPaymentSettingsInput = {
   enabled: false,
+  fixedTransferOnly: false,
   bankBin: "",
   accountNumber: "",
   accountName: "",
@@ -25,6 +26,7 @@ export function PosPaymentSettingsPanel({ warehouseId, settings, canManage, onCh
   const copy = usePosManagementCopy();
   const [form, setForm] = useState<PosPaymentSettingsInput>(() => settings ? {
     enabled: settings.enabled,
+    fixedTransferOnly: settings.fixedTransferOnly === true,
     bankBin: settings.bankBin,
     accountNumber: settings.accountNumber,
     accountName: settings.accountName,
@@ -53,7 +55,16 @@ export function PosPaymentSettingsPanel({ warehouseId, settings, canManage, onCh
         <Field label={copy.accountNumber} value={form.accountNumber} onChange={(value) => setForm((current) => ({ ...current, accountNumber: value.replace(/\D/g, "").slice(0, 19) }))} />
         <Field label={copy.accountName} value={form.accountName} onChange={(value) => setForm((current) => ({ ...current, accountName: value.slice(0, 50) }))} />
       </fieldset>
-      <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700"><input type="checkbox" checked={form.enabled} disabled={!canManage} onChange={(event) => setForm((current) => ({ ...current, enabled: event.target.checked }))} className="h-4 w-4 accent-amber-500" />{copy.enableFallback}</label>
+      <div className="grid gap-2 md:grid-cols-2">
+        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700">
+          <input type="checkbox" checked={form.enabled} disabled={!canManage || saving} onChange={(event) => setForm((current) => ({ ...current, enabled: event.target.checked, ...(!event.target.checked ? { fixedTransferOnly: false } : {}) }))} className="h-4 w-4 accent-amber-500" />
+          {copy.enableFallback}
+        </label>
+        <label className="flex min-h-10 items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
+          <input type="checkbox" checked={form.fixedTransferOnly} disabled={!canManage || saving} onChange={(event) => setForm((current) => ({ ...current, fixedTransferOnly: event.target.checked, ...(event.target.checked ? { enabled: true } : {}) }))} className="mt-0.5 h-4 w-4 accent-blue-600" />
+          <span>{copy.fixedTransferOnly}<span className="mt-0.5 block font-normal text-blue-700">{copy.fixedTransferOnlyHint}</span></span>
+        </label>
+      </div>
     </section>
   );
 }

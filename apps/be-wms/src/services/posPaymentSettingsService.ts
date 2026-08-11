@@ -9,10 +9,17 @@ import { loadWarehouseById } from "./warehouseService.js";
 
 export const posPaymentSettingsSchema = z.object({
   enabled: z.boolean(),
+  fixedTransferOnly: z.boolean().default(false),
   bankBin: z.string().trim().regex(/^\d{6}$/),
   accountNumber: z.string().trim().regex(/^\d{6,19}$/),
   accountName: z.string().trim().min(2).max(50),
-});
+}).refine(
+  (value) => !value.fixedTransferOnly || value.enabled,
+  {
+    message: "Phải bật QR cố định trước khi dùng chế độ chỉ QR cố định.",
+    path: ["fixedTransferOnly"],
+  },
+);
 
 export const getPosPaymentSettings = async (
   warehouseId: string,
