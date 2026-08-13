@@ -34,7 +34,7 @@ export function PosTicketPreview({ form }: { form: PosTicketSettingsPayload }) {
   return (
     <aside className="rounded-xl border border-slate-200 bg-[#e9e8e5] p-4 xl:sticky xl:top-3">
       <div className="mb-3">
-        <h3 className="text-sm font-black text-slate-900">{copy.preview}</h3>
+        <h3 className="text-sm font-bold text-slate-900">{copy.preview}</h3>
         <p className="text-[11px] text-slate-500">
           {form.paper_size.replace("POS", "")} mm
         </p>

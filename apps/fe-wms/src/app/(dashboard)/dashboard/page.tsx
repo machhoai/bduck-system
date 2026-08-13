@@ -10,20 +10,20 @@
  * ► Chọn từng kho → hiển thị chi tiết hơn
  */
 
+import { ShieldOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { ShieldOff } from "lucide-react";
+
+import type { LegacyDashboardState } from "../../../components/inventory/LegacyDashboardDataProvider";
+import LowStockTable from "../../../components/inventory/LowStockTable";
+import StatCardGrid from "../../../components/inventory/StatCardGrid";
+import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
+import WarehouseDetailPopup from "../../../components/inventory/WarehouseDetailPopup";
+import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
+import { useInventoryDashboardSummary } from "../../../hooks/useInventoryDashboardSummary";
+import { useWarehouseLocations } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
-import { useWarehouseLocations } from "../../../hooks/useWarehouses";
-import { useInventoryDashboardSummary } from "../../../hooks/useInventoryDashboardSummary";
-import type { LegacyDashboardState } from "../../../components/inventory/LegacyDashboardDataProvider";
-
-import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
-import StatCardGrid from "../../../components/inventory/StatCardGrid";
-import WarehouseDetailPopup from "../../../components/inventory/WarehouseDetailPopup";
-import LowStockTable from "../../../components/inventory/LowStockTable";
-import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
 const StockDistributionChart = dynamic(
   () => import("../../../components/inventory/StockDistributionChart"),
 );
@@ -184,6 +184,10 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-3">
           <DashboardRevenueOverview
             warehouseId={selectedWarehouseId || stores[0]?.id}
+            canSyncPartner={hasPermission(
+              "revenue.sync",
+              selectedWarehouseId || stores[0]?.id,
+            )}
           />
         </div>
       )}

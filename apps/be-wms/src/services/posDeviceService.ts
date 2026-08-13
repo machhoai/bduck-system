@@ -70,7 +70,12 @@ export const listPosDevices = async (
   warehouseId: string,
   authorization: AuthorizationService,
 ): Promise<Array<Omit<PosDevice, "credential_hash">>> => {
-  authorization.assert("pos.devices.read", warehouseId);
+  if (
+    !authorization.can("pos.devices.read", warehouseId) &&
+    !authorization.can("pos.settings.read", warehouseId)
+  ) {
+    authorization.assert("pos.devices.read", warehouseId);
+  }
   await assertStore(warehouseId);
   const devices = await posDeviceRepository.listByWarehouse(warehouseId);
   return devices.map(withoutCredential);

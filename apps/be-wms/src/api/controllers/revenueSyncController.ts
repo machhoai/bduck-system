@@ -1,14 +1,17 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
 import {
   getJoyworldToken,
   getOrderDetail,
 } from "../../services/joyworldService.js";
+import { syncPartnerOrdersToPos } from "../../services/partnerPosOrderSyncService.js";
 import { LANDMARK_81_WAREHOUSE_ID } from "../../services/revenueDashboardService.js";
 import {
   getCachedRevenue,
   syncRevenueForPeriod,
 } from "../../services/revenueSyncService.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
@@ -20,6 +23,9 @@ const warehouseQuerySchema = z.object({
   warehouseId: z.string().uuid().default(LANDMARK_81_WAREHOUSE_ID),
 });
 const orderIdSchema = z.string().trim().min(1).max(128);
+const partnerPosSyncSchema = z.object({
+  warehouseId: z.string().uuid(),
+});
 
 const serializeRevenue = <T extends { sync_time: unknown }>(data: T) => {
   const syncTime = data.sync_time as { toDate?: () => Date } | null;
@@ -75,6 +81,33 @@ export const syncRevenueHandler = async (
           : "营收数据仍然是最新的。",
       },
     );
+  } catch (error) {
+    handleRevenueError(res, error);
+  }
+};
+
+export const syncPartnerPosOrdersHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { warehouseId } = partnerPosSyncSchema.parse(req.body);
+    requireRequestAuthorization(req).assert("revenue.sync", warehouseId);
+    const result = await syncPartnerOrdersToPos({
+      warehouseId,
+      actorId: requireAuthenticatedRequestUser(req).id,
+      auditMetadata: getAuditRequestMetadata(req),
+    });
+    sendSuccess(res, result, {
+      vi:
+        result.inserted_count > 0
+          ? `Đã thêm ${result.inserted_count} đơn mới từ POS đối tác.`
+          : "Dữ liệu JPOS đã là mới nhất.",
+      zh:
+        result.inserted_count > 0
+          ? `已从合作方 POS 新增 ${result.inserted_count} 个订单。`
+          : "JPOS 数据已是最新。",
+    });
   } catch (error) {
     handleRevenueError(res, error);
   }

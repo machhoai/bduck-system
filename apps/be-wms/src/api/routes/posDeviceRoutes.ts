@@ -104,7 +104,7 @@ router.get(
 );
 router.get(
   "/stores/:warehouseId/devices",
-  requireAnyScopedPermission("pos.devices.read"),
+  requireAnyScopedPermission(["pos.devices.read", "pos.settings.read"]),
   listPosDevicesHandler,
 );
 router.post(
@@ -143,7 +143,7 @@ router.put(
   savePosTicketSettingsHandler,
 );
 router.get(
-  "/stores/:warehouseId/payment-settings",
+  "/devices/:deviceId/payment-settings",
   requireAnyScopedPermission("pos.settings.read"),
   getPosPaymentSettingsHandler,
 );
@@ -190,7 +190,7 @@ router.patch(
   deletePosCustomerDisplayMediaFromDeviceHandler,
 );
 router.put(
-  "/stores/:warehouseId/payment-settings",
+  "/devices/:deviceId/payment-settings",
   requireAnyScopedPermission("pos.settings.manage"),
   savePosPaymentSettingsHandler,
 );

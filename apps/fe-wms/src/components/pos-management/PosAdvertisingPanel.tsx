@@ -63,7 +63,7 @@ export function PosAdvertisingPanel({ warehouseId, canManage }: { warehouseId: s
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex gap-2"><Radio size={19} className="mt-0.5 text-amber-600" /><div><h2 className="text-sm font-black text-slate-900">{copy.title}</h2><p className="text-xs text-slate-500">{copy.hint}</p><p className="mt-1 text-[11px] font-bold text-emerald-700">{copy.realtime} · {copy.version} {sync.view?.settings?.version ?? 0}</p></div></div>
+        <div className="flex gap-2"><Radio size={19} className="mt-0.5 text-amber-600" /><div><h2 className="text-sm font-bold text-slate-900">{copy.title}</h2><p className="text-xs text-slate-500">{copy.hint}</p><p className="mt-1 text-[11px] font-bold text-emerald-700">{copy.realtime} · {copy.version} {sync.view?.settings?.version ?? 0}</p></div></div>
         {canManage && <button type="button" disabled={busy !== null || sync.loading} onClick={() => void save()} className="flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-bold text-white disabled:opacity-50"><Save size={15} />{busy === "save" ? copy.saving : copy.save}</button>}
       </div>
       {sync.error && <p className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{sync.error}</p>}

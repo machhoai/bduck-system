@@ -1,24 +1,27 @@
 import { createHash } from "node:crypto";
+
 import {
   AuditAction,
   InvoiceOrderSyncPurpose,
   InvoiceOrderSyncRunStatus,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import {
   invoiceOrderRepository,
   invoiceSourceOrderDocumentId,
 } from "../repositories/invoiceOrderRepository.js";
 import {
-  posInvoiceOrderRepository,
-  type PosInvoiceOrderRecord,
-} from "../repositories/posInvoiceOrderRepository.js";
-import {
   meInvoiceConfigRepository,
   type StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
-import type { AuthorizationService } from "./authorization/index.js";
+import {
+  posInvoiceOrderRepository,
+  type PosInvoiceOrderRecord,
+} from "../repositories/posInvoiceOrderRepository.js";
+
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import type { AuthorizationService } from "./authorization/index.js";
 import {
   calculateInvoice,
   INVOICE_CALCULATION_VERSION,
@@ -26,8 +29,17 @@ import {
 import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { adaptJoyworldOrderItems } from "./invoiceOrderAdapter.js";
-import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import type { InvoiceOrderSyncInput } from "./invoiceOrderSyncSchemas.js";
+import {
+  canonicalJson,
+  deriveAmountBeforeTax,
+  parseJoyworldDate,
+} from "./invoiceOrderSyncUtils.js";
+import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
+import { resolveInvoiceSourcePaymentMethod } from "./invoicePaymentMethod.js";
+import { syncPosInvoiceOrdersForDate } from "./invoicePosOrderSyncService.js";
+import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
+import { sourceOrderIsInvoiceEligible } from "./invoiceReconciliationPolicy.js";
 import {
   getJoyworldToken,
   getOrderDetail,
@@ -35,16 +47,8 @@ import {
   getOrderList,
   type RevenueOverviewResponse,
 } from "./joyworldService.js";
-import { loadWarehouseById } from "./warehouseService.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
-import { sourceOrderIsInvoiceEligible } from "./invoiceReconciliationPolicy.js";
-import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
-import {
-  canonicalJson,
-  deriveAmountBeforeTax,
-  parseJoyworldDate,
-} from "./invoiceOrderSyncUtils.js";
-import { syncPosInvoiceOrdersForDate } from "./invoicePosOrderSyncService.js";
+import { loadWarehouseById } from "./warehouseService.js";
 
 type JsonRecord = Record<string, unknown>;
 const PAGE_SIZE = 200;
@@ -177,6 +181,10 @@ const buildSourceOrder = (
   const localOrderId = nullableString(linkedPosOrder?.localOrderId);
   const sourceOrderId = localOrderId ?? joyworldOrderId;
   const sourceSystem = localOrderId ? "JPOS" : "JOYWORLD";
+  const paymentMethod = resolveInvoiceSourcePaymentMethod(
+    detail.payModeNames ?? order.payModeNames,
+    linkedPosOrder,
+  );
   const paymentTime = resolvePaymentTime(detail);
   const createTime =
     nullableString(detail.createTime) ?? nullableString(order.createTime);
@@ -189,15 +197,25 @@ const buildSourceOrder = (
       local_order_id: localOrderId,
       hk_order_number: hkOrderNumber,
       joyworld_order_id: joyworldOrderId,
+      ...(linkedPosOrder
+        ? {
+            local_payment: {
+              payment_method: nullableString(linkedPosOrder.paymentMethod),
+              payment_method_id: nullableString(
+                linkedPosOrder.paymentMethodId,
+              ),
+              payment_method_name: nullableString(
+                linkedPosOrder.paymentMethodName,
+              ),
+            },
+          }
+        : {}),
     },
   };
   const detailGoods = Array.isArray(detail.goodsInfo) ? detail.goodsInfo : [];
   const realMoney = nullableNumber(detail.realMoney ?? order.realMoney);
   const taxMoney = nullableNumber(detail.taxMoney ?? order.taxMoney);
   const amountBeforeTax = deriveAmountBeforeTax(realMoney, taxMoney);
-  const paymentMethod = nullableString(
-    detail.payModeNames ?? order.payModeNames,
-  );
   const defaultPaymentMethod = nullableString(
     storeConfig?.default_payment_method_name,
   );

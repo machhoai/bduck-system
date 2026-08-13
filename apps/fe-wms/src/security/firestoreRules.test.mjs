@@ -532,6 +532,16 @@ async function seedDocuments() {
         { warehouse_id: "store-d", period: "2026-07" },
       ],
       [
+        "pos_orders/local-order-1",
+        {
+          localOrderId: "local-order-1",
+          warehouseId: "store-d",
+          status: "SYNC_SUCCESS",
+          totalAmount: 100000,
+          paidAt: "2026-07-01T03:00:00.000Z",
+        },
+      ],
+      [
         "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
         {
           warehouse_id: "store-d",
@@ -1311,6 +1321,16 @@ describe("grant-aware Firestore rules", () => {
       ),
     );
     await assertSucceeds(
+      getDocs(
+        query(
+          collection(storeUser, "pos_orders"),
+          where("warehouseId", "==", "store-d"),
+          where("paidAt", ">=", "2026-07-01T00:00:00.000Z"),
+          where("paidAt", "<", "2026-07-02T00:00:00.000Z"),
+        ),
+      ),
+    );
+    await assertSucceeds(
       getDoc(
         doc(
           storeUser,
@@ -1376,8 +1396,11 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
     await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
-    await assertFails(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
-    await assertFails(getDoc(doc(admin, "pos_orders", "local-order-1")));
+    await assertSucceeds(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
+    await assertSucceeds(getDoc(doc(admin, "pos_orders", "local-order-1")));
+    await assertFails(
+      getDoc(doc(warehouseUser, "pos_orders", "local-order-1")),
+    );
     for (const collectionName of [
       "pos_devices",
       "pos_device_enrollments",

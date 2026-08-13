@@ -581,10 +581,11 @@ service cloud.firestore {
       allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
       allow write: if false;
     }
-    // JPOS uses callable Functions for all order access. Keep opaque invoice
-    // request tokens server-only even though both applications share Firestore.
+    // Revenue readers can observe paid JPOS orders for realtime dashboard
+    // aggregation. All order mutations remain backend-only.
     match /pos_orders/{orderId} {
-      allow read, write: if false;
+      allow read: if hasResourceFacility('warehouseId', 'revenue.read');
+      allow write: if false;
     }
     // JPOS device credentials, pairing grants and configuration are backend-only.
     match /pos_devices/{deviceId} {
@@ -599,7 +600,7 @@ service cloud.firestore {
     match /pos_ticket_settings/{warehouseId} {
       allow read, write: if false;
     }
-    match /pos_payment_settings/{warehouseId} {
+    match /pos_payment_settings/{deviceId} {
       allow read, write: if false;
     }
     // Both JPULSE and authenticated JPOS editors observe this same document
@@ -767,10 +768,11 @@ service cloud.firestore {
       }
     }
 
-    // POS-owned data is backend-only. POS clients use authenticated callable
-    // Cloud Functions; reads and writes are performed through the Admin SDK.
+    // This duplicate legacy match intentionally mirrors the scoped read rule
+    // above; Firestore combines matching allow expressions with OR semantics.
     match /pos_orders/{orderId} {
-      allow read, write: if false;
+      allow read: if hasResourceFacility('warehouseId', 'revenue.read');
+      allow write: if false;
     }
     match /pos_members/{memberId} {
       allow read, write: if false;

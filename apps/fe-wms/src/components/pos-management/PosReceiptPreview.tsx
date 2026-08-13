@@ -6,7 +6,7 @@ import type { PosReceiptSettingsPayload } from "@/api/posManagementApi";
 
 import { usePosReceiptEditorCopy } from "./usePosReceiptEditorCopy";
 
-const weightClass = (weight: number) => weight >= 900 ? "font-black" : weight >= 800 ? "font-extrabold" : weight >= 700 ? "font-bold" : weight >= 600 ? "font-semibold" : weight >= 500 ? "font-medium" : "font-normal";
+const weightClass = (weight: number) => weight >= 800 ? "font-extrabold" : weight >= 700 ? "font-bold" : weight >= 600 ? "font-semibold" : weight >= 500 ? "font-medium" : "font-normal";
 const fontSizeClass = (size: number) => {
   const sizes: Record<string, string> = {
     "6": "text-[6pt]", "6.5": "text-[6.5pt]", "7": "text-[7pt]", "7.5": "text-[7.5pt]",
@@ -164,7 +164,7 @@ export function PosReceiptPreview({ form }: { form: PosReceiptSettingsPayload })
   return (
     <aside className="rounded-xl border border-slate-200 bg-[#e9e8e5] p-4 xl:sticky xl:top-3">
       <div className="mb-3">
-        <h3 className="text-sm font-black text-slate-900">{copy.preview}</h3>
+        <h3 className="text-sm font-bold text-slate-900">{copy.preview}</h3>
         <p className="text-[11px] text-slate-500">{form.paper_size.replace("POS", "")} mm · {copy.monochrome}</p>
       </div>
       <div className="overflow-x-auto rounded-xl bg-[#d8d6d1] p-4 shadow-inner">

@@ -91,7 +91,7 @@ export function PosDevicePanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-black text-slate-900">
+          <h2 className="text-sm font-bold text-slate-900">
             {copy.deviceTitle}
           </h2>
           <p className="text-xs text-slate-500">{copy.deviceHint}</p>
@@ -107,22 +107,23 @@ export function PosDevicePanel({
         )}
       </div>
       {grant && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 p-3">
           <div>
-            <p className="text-xs font-bold text-amber-700">
+            <p className="text-xxs font-bold text-amber-800">
               {copy.oneTimeCode} · {copy.expires}{" "}
               {new Date(grant.expires_at).toLocaleTimeString()}
             </p>
-            <p className="mt-1 font-mono text-2xl font-black tracking-widest text-slate-900">
+            <p className="mt-1 font-mono text-lg font-bold tracking-widest text-slate-900">
               {grant.pairing_code}
             </p>
           </div>
           <button
             type="button"
-            onClick={() =>
-              void navigator.clipboard.writeText(grant.pairing_code)
-            }
-            className="h-8 rounded-lg border border-amber-300 px-3 text-xs font-bold text-amber-800"
+            onClick={() => {
+              void navigator.clipboard.writeText(grant.pairing_code);
+              gooeyToast.success(copy.copy);
+            }}
+            className="h-8 rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-amber-800 hover:bg-amber-100 transition-colors"
           >
             {copy.copy}
           </button>
@@ -142,13 +143,15 @@ export function PosDevicePanel({
         onTransfer={(device) => void transferDevice(device)}
         onStatusChange={(device, status) => void changeStatus(device, status)}
       />
-      <button
-        type="button"
-        onClick={() => void onChanged()}
-        className="flex h-8 items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-700"
-      >
-        <RefreshCw size={14} /> {copy.refresh}
-      </button>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => void onChanged()}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-amber-400 hover:text-amber-700 transition-colors"
+        >
+          <RefreshCw size={13} /> {copy.refresh}
+        </button>
+      </div>
       {showOtp && (
         <ActionOtpModal
           title={copy.otpTitle}
@@ -161,3 +164,4 @@ export function PosDevicePanel({
     </div>
   );
 }
+

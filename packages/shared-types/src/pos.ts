@@ -220,6 +220,7 @@ export interface PosStoreOverview {
 }
 
 export interface PosPaymentSettings {
+  deviceId: string;
   warehouseId: string;
   enabled: boolean;
   fixedTransferOnly: boolean;
@@ -267,11 +268,7 @@ export interface PosMemberCompensation extends SoftDeletable {
 
 export type PosPaymentSettingsInput = Pick<
   PosPaymentSettings,
-  | "enabled"
-  | "fixedTransferOnly"
-  | "bankBin"
-  | "accountNumber"
-  | "accountName"
+  "enabled" | "fixedTransferOnly" | "bankBin" | "accountNumber" | "accountName"
 >;
 
 export interface PosFailureEvent extends ISOTimestamped {

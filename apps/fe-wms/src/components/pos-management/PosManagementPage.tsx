@@ -1,6 +1,16 @@
 "use client";
 
-import { ShieldCheck, Store } from "lucide-react";
+import {
+  ChevronDown,
+  History,
+  LayoutDashboard,
+  Megaphone,
+  MonitorSmartphone,
+  Settings2,
+  ShieldCheck,
+  Store,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import Forbidden403 from "@/components/shared/Forbidden403";
@@ -17,8 +27,13 @@ import {
   PosNoAccess,
   PosOverview,
 } from "./PosManagementSections";
+import { PosMobileStoreSheet } from "./PosMobileStoreSheet";
 import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
 import { PosSettingsPanel } from "./PosSettingsPanel";
+import {
+  PosSettingsSubNav,
+  type SettingsSubTab,
+} from "./PosSettingsSubNav";
 import { PosStoreRail } from "./PosStoreRail";
 import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
 import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
@@ -39,11 +54,15 @@ export default function PosManagementPage() {
   const hasPermission = useUserStore((state) => state.hasPermission);
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>("receipt");
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+
   const activeStoreId = selectedStoreId || stores[0]?.id || "";
   const activeStore = useMemo(
     () => stores.find((store) => store.id === activeStoreId),
     [activeStoreId, stores],
   );
+
   const canReadDevices = hasPermission("pos.devices.read", activeStoreId);
   const canManageDevices = hasPermission("pos.devices.manage", activeStoreId);
   const canReadSettings = hasPermission("pos.settings.read", activeStoreId);
@@ -66,6 +85,7 @@ export default function PosManagementPage() {
     hasPermission("pos.advertising.read") ||
     hasPermission("pos.access.manage") ||
     hasPermission("pos.audit.read");
+
   const deviceTransferTargets = stores
     .filter(
       (store) =>
@@ -73,43 +93,69 @@ export default function PosManagementPage() {
         hasPermission("pos.devices.manage", store.id),
     )
     .map((store) => ({ id: store.id, name: store.name }));
+
   const management = usePosManagement(activeStoreId, {
     devices: canReadDevices,
     settings: canReadSettings,
   });
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: "overview", label: copy.overview },
-    { id: "devices", label: copy.devices },
-    { id: "settings", label: copy.settings },
-    { id: "advertising", label: advertisingCopy.tab },
-    { id: "access", label: copy.access },
-    { id: "audit", label: copy.audit },
+
+  const tabs: Array<{ id: Tab; label: string; icon: typeof LayoutDashboard }> = [
+    { id: "overview", label: copy.overview, icon: LayoutDashboard },
+    { id: "devices", label: copy.devices, icon: MonitorSmartphone },
+    { id: "settings", label: copy.settings, icon: Settings2 },
+    { id: "advertising", label: advertisingCopy.tab, icon: Megaphone },
+    { id: "access", label: copy.access, icon: Users },
+    { id: "audit", label: copy.audit, icon: History },
   ];
 
   if (!canEnter) return <Forbidden403 />;
   if (storesLoading) return <PosManagementSkeleton />;
+
   return (
     <div className="flex min-h-0 w-full flex-col gap-3">
-      <header className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+      {/* Page Header */}
+      <header className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase text-amber-600">
+          <p className="text-xxs font-bold uppercase tracking-wider text-amber-600">
             {copy.adminArea}
           </p>
-          <h1 className="mt-1 text-lg font-black text-slate-900">
+          <h1 className="mt-0.5 text-lg font-bold text-slate-900">
             {copy.title}
           </h1>
           <p className="text-xs text-slate-500">{copy.subtitle}</p>
         </div>
-        <div className="hidden items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 md:flex">
-          <ShieldCheck size={16} /> {copy.trusted}
+
+        <div className="flex items-center gap-2">
+          {/* Mobile Store Picker Trigger (< 1024px) */}
+          {stores.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsMobileSheetOpen(true)}
+              className="flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 text-xs font-bold text-amber-900 active:bg-amber-100 lg:hidden"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Store size={15} className="text-amber-600 shrink-0" />
+                <span className="truncate">{activeStore?.name}</span>
+              </div>
+              <ChevronDown size={14} className="text-amber-600 shrink-0" />
+            </button>
+          )}
+
+          {/* Desktop Security Badge */}
+          <div className="hidden items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 lg:flex">
+            <ShieldCheck size={16} className="text-amber-600" />
+            <span>{copy.trusted}</span>
+          </div>
         </div>
       </header>
+
       {stores.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-xs text-slate-500">
           {copy.noStores}
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-4">
+          {/* Desktop Left Rail */}
           <PosStoreRail
             stores={stores}
             activeId={activeStoreId}
@@ -118,40 +164,59 @@ export default function PosManagementPage() {
               setTab("overview");
             }}
           />
-          <section className="min-w-0 rounded-xl border border-slate-200 bg-white lg:col-span-3">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <Store size={17} className="text-amber-600" />
+
+          {/* Main Section */}
+          <section className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-2xs lg:col-span-3">
+            {/* Active Store Desktop Info Header */}
+            <div className="hidden items-center justify-between border-b border-slate-100 px-4 py-2.5 lg:flex">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                  <Store size={16} />
+                </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-900">
+                  <p className="truncate text-xs font-bold text-slate-900">
                     {activeStore?.name}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xxs text-slate-400">
                     {activeStore?.code || activeStoreId}
                   </p>
                 </div>
               </div>
               {management.loading && (
-                <span className="text-xs font-bold text-amber-700">
+                <span className="flex items-center gap-1.5 text-xxs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                   {copy.syncing}
                 </span>
               )}
             </div>
-            <nav className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 pt-2">
-              {tabs.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTab(item.id)}
-                  className={`h-8 whitespace-nowrap border-b-2 px-3 text-xs font-bold ${tab === item.id ? "border-amber-500 text-amber-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}
-                >
-                  {item.label}
-                </button>
-              ))}
+
+            {/* Navigation Tabs (Native Segmented / Scrollable Pills) */}
+            <nav className="flex gap-1 overflow-x-auto border-b border-slate-100 p-2 scrollbar-none">
+              {tabs.map((item) => {
+                const Icon = item.icon;
+                const isActive = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTab(item.id)}
+                    className={`flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-amber-500 text-white shadow-2xs"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon size={14} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </nav>
-            <div className="p-4">
+
+            {/* Tab Content Body */}
+            <div className="p-3 sm:p-4">
               {management.error && (
-                <p className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">
+                <p className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700 border border-red-100">
                   {management.error}
                 </p>
               )}
@@ -176,30 +241,38 @@ export default function PosManagementPage() {
                 ))}
               {tab === "settings" &&
                 (canReadSettings ? (
-                  <div className="space-y-4">
-                    <PosSettingsPanel
-                      key={`${activeStoreId}:${management.settings?.version ?? 0}`}
-                      warehouseId={activeStoreId}
-                      storeName={activeStore?.name || ""}
-                      settings={management.settings}
-                      canManage={canManageSettings}
-                      onChanged={management.refresh}
+                  <div>
+                    <PosSettingsSubNav
+                      activeSubTab={settingsSubTab}
+                      onSelect={setSettingsSubTab}
                     />
-                    <PosTicketSettingsPanel
-                      key={`${activeStoreId}:${management.ticketSettings?.version ?? 0}:ticket`}
-                      warehouseId={activeStoreId}
-                      storeName={activeStore?.name || ""}
-                      settings={management.ticketSettings}
-                      canManage={canManageSettings}
-                      onChanged={management.refresh}
-                    />
-                    <PosPaymentSettingsPanel
-                      key={`${activeStoreId}:${management.paymentSettings?.version ?? 0}:payment`}
-                      warehouseId={activeStoreId}
-                      settings={management.paymentSettings}
-                      canManage={canManageSettings}
-                      onChanged={management.refresh}
-                    />
+                    {settingsSubTab === "receipt" && (
+                      <PosSettingsPanel
+                        key={`${activeStoreId}:${management.settings?.version ?? 0}`}
+                        warehouseId={activeStoreId}
+                        storeName={activeStore?.name || ""}
+                        settings={management.settings}
+                        canManage={canManageSettings}
+                        onChanged={management.refresh}
+                      />
+                    )}
+                    {settingsSubTab === "ticket" && (
+                      <PosTicketSettingsPanel
+                        key={`${activeStoreId}:${management.ticketSettings?.version ?? 0}:ticket`}
+                        warehouseId={activeStoreId}
+                        storeName={activeStore?.name || ""}
+                        settings={management.ticketSettings}
+                        canManage={canManageSettings}
+                        onChanged={management.refresh}
+                      />
+                    )}
+                    {settingsSubTab === "payment" && (
+                      <PosPaymentSettingsPanel
+                        key={`${activeStoreId}:payment`}
+                        devices={management.devices}
+                        canManage={canManageSettings}
+                      />
+                    )}
                   </div>
                 ) : (
                   <PosNoAccess />
@@ -230,6 +303,18 @@ export default function PosManagementPage() {
           </section>
         </div>
       )}
+
+      {/* Mobile Native Store Bottom Sheet */}
+      <PosMobileStoreSheet
+        isOpen={isMobileSheetOpen}
+        stores={stores}
+        activeId={activeStoreId}
+        onSelect={(id) => {
+          setSelectedStoreId(id);
+          setTab("overview");
+        }}
+        onClose={() => setIsMobileSheetOpen(false)}
+      />
     </div>
   );
 }

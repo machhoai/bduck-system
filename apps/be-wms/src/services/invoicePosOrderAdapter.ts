@@ -1,25 +1,29 @@
 import { createHash } from "node:crypto";
+
 import type {
   InvoiceSkuMapping,
   InvoiceSourceOrderLine,
   InvoiceVatRateName,
   MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { SourceOrderWrite } from "../repositories/invoiceOrderRepository.js";
-import type {
-  PosInvoiceOrderRecord,
-} from "../repositories/posInvoiceOrderRepository.js";
 import type {
   StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
+import type {
+  PosInvoiceOrderRecord,
+} from "../repositories/posInvoiceOrderRepository.js";
+
 import {
   calculateInvoice,
   INVOICE_CALCULATION_VERSION,
 } from "./invoiceCalculationService.js";
-import { normalizeVatRateName } from "./invoiceOrderAdapter.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
-import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
+import { normalizeVatRateName } from "./invoiceOrderAdapter.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
+import { resolvePosOrderPaymentMethod } from "./invoicePaymentMethod.js";
+import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 
 const MAPPING_VERSION = "jpos-meinvoice-v1";
 const PAID_STATUSES = new Set([
@@ -157,8 +161,7 @@ export const buildPosInvoiceSourceOrder = (
     0,
   );
   const totalAmount = number(order.totalAmount);
-  const paymentMethod =
-    text(order.paymentMethodName) ?? text(order.paymentMethodId);
+  const paymentMethod = resolvePosOrderPaymentMethod(order);
   const mappedPaymentMethod = paymentMethod
     ? config?.payment_method_mapping[paymentMethod]
       ?? config?.default_payment_method_name
