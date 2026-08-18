@@ -8,25 +8,31 @@ import {
   type InvoiceSourceOrderLine,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import { invoiceDocumentRepository } from "../repositories/invoiceDocumentRepository.js";
 import { invoiceOrderRepository } from "../repositories/invoiceOrderRepository.js";
 import {
   meInvoiceConfigRepository,
   type StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
-import type { AuthorizationService } from "./authorization/index.js";
+
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import type { AuthorizationService } from "./authorization/index.js";
 import { calculateInvoice } from "./invoiceCalculationService.js";
+import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import {
   canEditInvoiceDocument,
+  canSafelyAutoRebaseInvoiceDocument,
   statusAfterInvoiceEdit,
   vatRateValue,
 } from "./invoiceDocumentPolicy.js";
-import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
-import type { InvoiceDocumentUpdateInput } from "./invoiceDocumentSchemas.js";
+import type {
+  InvoiceDocumentBulkRebaseInput,
+  InvoiceDocumentUpdateInput,
+} from "./invoiceDocumentSchemas.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
-import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
+import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 import { dateFromValue } from "./meInvoiceConfigService.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
@@ -110,6 +116,13 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
   actorId: string,
   authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
+  options?: {
+    safeAutoRebase?: boolean;
+    context?: {
+      storeConfig: MeInvoiceStoreConfig;
+      account: StoredMeInvoiceAccount;
+    };
+  },
 ) => {
   authorization.assert("invoices.prepare", warehouseId);
   const sourceOrder = await invoiceOrderRepository.getOrder(
@@ -132,7 +145,8 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
       "INVOICE_SOURCE_STALE",
     );
   }
-  const { storeConfig, account } = await loadInvoiceContext(warehouseId);
+  const { storeConfig, account } =
+    options?.context ?? (await loadInvoiceContext(warehouseId));
   const existing = await invoiceDocumentRepository.getDocument(
     sourceOrderDocumentId,
     warehouseId,
@@ -145,6 +159,17 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
         "Bản nháp đã vào luồng phát hành nên không thể cập nhật từ đơn nguồn.",
         "草稿已进入开票流程，无法从源订单更新。",
         "INVOICE_DOCUMENT_NOT_REBASABLE",
+      );
+    }
+    if (
+      options?.safeAutoRebase &&
+      !canSafelyAutoRebaseInvoiceDocument(existing)
+    ) {
+      throw serviceError(
+        409,
+        "Draft đã được chỉnh sửa hoặc review và cần xác nhận thủ công.",
+        "草稿已编辑或审核，需要人工确认。",
+        "INVOICE_AUTO_REBASE_REQUIRES_REVIEW",
       );
     }
     const seed = buildInitialInvoiceDocument(
@@ -259,6 +284,193 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
   return getInvoiceDocument(sourceOrderDocumentId, warehouseId, authorization);
 };
 
+export type InvoiceBulkRebaseItemStatus =
+  | "REBASED"
+  | "UNCHANGED"
+  | "SKIPPED"
+  | "FAILED";
+
+export interface InvoiceBulkRebaseResult {
+  total_count: number;
+  stale_count: number;
+  rebased_count: number;
+  unchanged_count: number;
+  skipped_count: number;
+  failed_count: number;
+  items: Array<{
+    source_order_document_id: string;
+    order_number: string | null;
+    status: InvoiceBulkRebaseItemStatus;
+    code: string | null;
+  }>;
+}
+
+const bulkRebaseErrorCode = (error: unknown): string => {
+  const known = error as { data?: { code?: unknown }; message?: unknown };
+  if (typeof known.data?.code === "string") return known.data.code;
+  if (typeof known.message === "string") return known.message.slice(0, 120);
+  return "UNKNOWN_BULK_REBASE_ERROR";
+};
+
+export const bulkRebaseInvoiceDocuments = async (
+  input: InvoiceDocumentBulkRebaseInput,
+  actorId: string,
+  authorization: AuthorizationService,
+  auditMetadata?: AuditMetadata,
+): Promise<InvoiceBulkRebaseResult> => {
+  authorization.assert("invoices.prepare", input.warehouse_id);
+  const orders = await invoiceOrderRepository.listOrders(
+    input.warehouse_id,
+    input.business_date,
+  );
+  const requestedIds = new Set(input.source_order_ids);
+  const scopedOrders = orders.filter(
+    (order) =>
+      typeof order.id === "string" &&
+      typeof order.invoice_document_id === "string" &&
+      (input.selection_mode === "ALL_STALE" || requestedIds.has(order.id)),
+  );
+  const documents = await invoiceDocumentRepository.getDocuments(
+    scopedOrders.map((order) => String(order.invoice_document_id)),
+    input.warehouse_id,
+  );
+  const documentsById = new Map(
+    documents.map((document) => [String(document.id), document]),
+  );
+  const candidates = scopedOrders.filter((order) => {
+    if (input.selection_mode !== "ALL_STALE") return true;
+    const document = documentsById.get(String(order.invoice_document_id));
+    return Boolean(
+      document && document.source_payload_hash !== order.source_payload_hash,
+    );
+  });
+  const staleCandidateCount = candidates.filter((order) => {
+    const document = documentsById.get(String(order.invoice_document_id));
+    return Boolean(
+      document && document.source_payload_hash !== order.source_payload_hash,
+    );
+  }).length;
+  const { storeConfig, account } = await loadInvoiceContext(input.warehouse_id);
+
+  const items: InvoiceBulkRebaseResult["items"] = new Array(candidates.length);
+  let candidateCursor = 0;
+  const worker = async () => {
+    while (candidateCursor < candidates.length) {
+      const index = candidateCursor;
+      candidateCursor += 1;
+      const order = candidates[index];
+      items[index] = await (async () => {
+        const id = String(order.invoice_document_id);
+        const orderNumber =
+          typeof order.order_number === "string" ? order.order_number : null;
+        const document = documentsById.get(id);
+        if (!document) {
+          return {
+            source_order_document_id: id,
+            order_number: orderNumber,
+            status: "SKIPPED" as const,
+            code: "DOCUMENT_NOT_PREPARED",
+          };
+        }
+        if (document.source_payload_hash === order.source_payload_hash) {
+          return {
+            source_order_document_id: id,
+            order_number: orderNumber,
+            status: "UNCHANGED" as const,
+            code: null,
+          };
+        }
+        if (!canSafelyAutoRebaseInvoiceDocument(document)) {
+          return {
+            source_order_document_id: id,
+            order_number: orderNumber,
+            status: "SKIPPED" as const,
+            code: "INVOICE_AUTO_REBASE_REQUIRES_REVIEW",
+          };
+        }
+        try {
+          await prepareInvoiceDocumentFromSourceOrder(
+            id,
+            input.warehouse_id,
+            String(order.source_payload_hash),
+            actorId,
+            authorization,
+            auditMetadata,
+            {
+              safeAutoRebase: true,
+              context: { storeConfig, account },
+            },
+          );
+          return {
+            source_order_document_id: id,
+            order_number: orderNumber,
+            status: "REBASED" as const,
+            code: null,
+          };
+        } catch (error) {
+          const code = bulkRebaseErrorCode(error);
+          const skipped = [
+            "INVOICE_AUTO_REBASE_REQUIRES_REVIEW",
+            "INVOICE_DOCUMENT_NOT_REBASABLE",
+            "INVOICE_REVISION_CONFLICT",
+            "INVOICE_STATUS_CONFLICT",
+          ].includes(code);
+          return {
+            source_order_document_id: id,
+            order_number: orderNumber,
+            status: skipped ? ("SKIPPED" as const) : ("FAILED" as const),
+            code,
+          };
+        }
+      })();
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(5, candidates.length) }, worker),
+  );
+
+  if (input.selection_mode === "SELECTED") {
+    const foundIds = new Set(scopedOrders.map((order) => String(order.id)));
+    for (const id of input.source_order_ids) {
+      if (foundIds.has(id)) continue;
+      items.push({
+        source_order_document_id: id,
+        order_number: null,
+        status: "SKIPPED",
+        code: "SOURCE_ORDER_NOT_IN_SCOPE",
+      });
+    }
+  }
+
+  const result: InvoiceBulkRebaseResult = {
+    total_count: items.length,
+    stale_count: staleCandidateCount,
+    rebased_count: items.filter((item) => item.status === "REBASED").length,
+    unchanged_count: items.filter((item) => item.status === "UNCHANGED").length,
+    skipped_count: items.filter((item) => item.status === "SKIPPED").length,
+    failed_count: items.filter((item) => item.status === "FAILED").length,
+    items,
+  };
+  await logAudit({
+    entity_type: "INVOICE_DRAFT_BULK_REBASE",
+    entity_id: `${input.warehouse_id}:${input.business_date}`,
+    warehouse_id: input.warehouse_id,
+    action: AuditAction.UPDATE,
+    user_id: actorId,
+    old_value: null,
+    new_value: {
+      selection_mode: input.selection_mode,
+      total_count: result.total_count,
+      rebased_count: result.rebased_count,
+      skipped_count: result.skipped_count,
+      failed_count: result.failed_count,
+    },
+    notes: "Bulk rebased safe invoice drafts from latest source revisions",
+    ...auditMetadata,
+  });
+  return result;
+};
+
 export const getInvoiceDocument = async (
   id: string,
   warehouseId: string,
@@ -288,9 +500,7 @@ const validationForEditedDraft = (
   storeConfig: MeInvoiceStoreConfig,
   account: StoredMeInvoiceAccount,
 ) => {
-  const invoiceItems = items.filter(
-    invoiceLineShouldAppearInIssuedInvoice,
-  );
+  const invoiceItems = items.filter(invoiceLineShouldAppearInIssuedInvoice);
   const calculation =
     storeConfig.price_includes_vat === null
       ? null

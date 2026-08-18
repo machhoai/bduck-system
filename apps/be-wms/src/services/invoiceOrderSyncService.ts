@@ -7,6 +7,7 @@ import {
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 
+import { invoiceDocumentRepository } from "../repositories/invoiceDocumentRepository.js";
 import {
   invoiceOrderRepository,
   invoiceSourceOrderDocumentId,
@@ -26,9 +27,10 @@ import {
   calculateInvoice,
   INVOICE_CALCULATION_VERSION,
 } from "./invoiceCalculationService.js";
-import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
+import { prepareInvoiceDocumentFromSourceOrder } from "./invoiceDocumentService.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { adaptJoyworldOrderItems } from "./invoiceOrderAdapter.js";
+import { finalInvoiceSourceWrites } from "./invoiceOrderFinalization.js";
 import type { InvoiceOrderSyncInput } from "./invoiceOrderSyncSchemas.js";
 import {
   canonicalJson,
@@ -201,9 +203,7 @@ const buildSourceOrder = (
         ? {
             local_payment: {
               payment_method: nullableString(linkedPosOrder.paymentMethod),
-              payment_method_id: nullableString(
-                linkedPosOrder.paymentMethodId,
-              ),
+              payment_method_id: nullableString(linkedPosOrder.paymentMethodId),
               payment_method_name: nullableString(
                 linkedPosOrder.paymentMethodName,
               ),
@@ -220,9 +220,9 @@ const buildSourceOrder = (
     storeConfig?.default_payment_method_name,
   );
   const mappedPaymentMethod = paymentMethod
-    ? (storeConfig?.payment_method_mapping[paymentMethod]
-      ?? defaultPaymentMethod
-      ?? null)
+    ? (storeConfig?.payment_method_mapping[paymentMethod] ??
+      defaultPaymentMethod ??
+      null)
     : defaultPaymentMethod;
   const normalizedItems = adaptJoyworldOrderItems(detailGoods, goods, {
     price_includes_vat: storeConfig?.price_includes_vat ?? null,
@@ -352,15 +352,13 @@ export const syncInvoiceOrdersForDate = async (
       runId,
       storeConfig,
       account,
-      actorId,
-      createDrafts: input.purpose === InvoiceOrderSyncPurpose.ISSUE,
     });
     await invoiceOrderRepository.updateRun(runId, {
       pos_order_count: posSync.orders.length,
       pos_inserted_count: posSync.inserted_count,
       pos_updated_count: posSync.updated_count,
       pos_unchanged_count: posSync.unchanged_count,
-      pos_draft_created_count: posSync.draft_created_count,
+      pos_draft_created_count: 0,
     });
     const token = await getJoyworldToken();
     const range = {
@@ -412,9 +410,7 @@ export const syncInvoiceOrdersForDate = async (
         details[index],
         storeConfig,
         account,
-        hkOrderNumber
-          ? posOrdersByHkNumber.get(hkOrderNumber) ?? null
-          : null,
+        hkOrderNumber ? (posOrdersByHkNumber.get(hkOrderNumber) ?? null) : null,
       );
     });
     const syncTime = new Date();
@@ -424,13 +420,19 @@ export const syncInvoiceOrdersForDate = async (
       writes,
       syncTime,
     );
-    let draftCreatedCount = posSync.draft_created_count;
+    let draftCreatedCount = 0;
+    let draftRebasedCount = 0;
+    let draftRebaseSkippedCount = 0;
     if (
       input.purpose === InvoiceOrderSyncPurpose.ISSUE &&
       storeConfig &&
       account
     ) {
-      const candidates = writes.filter((write) => {
+      const candidates = finalInvoiceSourceWrites(
+        input.warehouse_id,
+        posSync.writes,
+        writes,
+      ).filter((write) => {
         if (!sourceOrderIsInvoiceEligible(write.projection)) return false;
         const preflight = write.projection.preflight as
           | {
@@ -441,26 +443,63 @@ export const syncInvoiceOrdersForDate = async (
           (issue) => issue.code === "BEFORE_GO_LIVE",
         );
       });
-      const prepared = await mapLimit(candidates, DETAIL_CONCURRENCY, (write) =>
-        ensureInitialInvoiceDocument(
-          {
-            id: invoiceSourceOrderDocumentId(
-              input.warehouse_id,
-              write.source_order_id,
-              write.projection.source_system === "JPOS"
-                ? "JPOS"
-                : "JOYWORLD",
-            ),
-            ...write.projection,
-            source_payload_hash: write.source_payload_hash,
-          },
-          storeConfig,
-          account,
-          actorId,
+      const existingDocuments = await invoiceDocumentRepository.getDocuments(
+        candidates.map((write) =>
+          invoiceSourceOrderDocumentId(
+            input.warehouse_id,
+            write.source_order_id,
+            write.projection.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+          ),
         ),
+        input.warehouse_id,
       );
-      draftCreatedCount += prepared.filter(
-        (item) => item?.created === true,
+      const existingById = new Map(
+        existingDocuments.map((document) => [String(document.id), document]),
+      );
+      const prepared = await mapLimit(
+        candidates,
+        DETAIL_CONCURRENCY,
+        async (write) => {
+          const id = invoiceSourceOrderDocumentId(
+            input.warehouse_id,
+            write.source_order_id,
+            write.projection.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+          );
+          const existing = existingById.get(id);
+          try {
+            await prepareInvoiceDocumentFromSourceOrder(
+              id,
+              input.warehouse_id,
+              write.source_payload_hash,
+              actorId,
+              authorization,
+              auditMetadata,
+              {
+                safeAutoRebase: true,
+                context: { storeConfig, account },
+              },
+            );
+            return !existing
+              ? "CREATED"
+              : existing.source_payload_hash !== write.source_payload_hash
+                ? "REBASED"
+                : "UNCHANGED";
+          } catch (error) {
+            const code = (error as { data?: { code?: string } })?.data?.code;
+            if (
+              code === "INVOICE_AUTO_REBASE_REQUIRES_REVIEW" ||
+              code === "INVOICE_DOCUMENT_NOT_REBASABLE"
+            ) {
+              return "SKIPPED";
+            }
+            throw error;
+          }
+        },
+      );
+      draftCreatedCount = prepared.filter((item) => item === "CREATED").length;
+      draftRebasedCount = prepared.filter((item) => item === "REBASED").length;
+      draftRebaseSkippedCount = prepared.filter(
+        (item) => item === "SKIPPED",
       ).length;
     }
     const orderCount = new Set(
@@ -473,6 +512,8 @@ export const syncInvoiceOrdersForDate = async (
       ...input,
       order_count: orderCount,
       draft_created_count: draftCreatedCount,
+      draft_rebased_count: draftRebasedCount,
+      draft_rebase_skipped_count: draftRebaseSkippedCount,
       pos_order_count: posSync.orders.length,
       pos_counts: {
         inserted_count: posSync.inserted_count,
@@ -486,6 +527,8 @@ export const syncInvoiceOrdersForDate = async (
       ...counts,
       order_count: orderCount,
       draft_created_count: draftCreatedCount,
+      draft_rebased_count: draftRebasedCount,
+      draft_rebase_skipped_count: draftRebaseSkippedCount,
       completed_at: syncTime,
     });
     await logAudit({
@@ -524,7 +567,34 @@ export const listInvoiceSourceOrders = async (
     warehouseId,
     businessDate,
   );
-  return orders.filter(invoiceOrderShouldAppearInList);
+  const visibleOrders = orders.filter(invoiceOrderShouldAppearInList);
+  const documents = await invoiceDocumentRepository.getDocuments(
+    visibleOrders
+      .map((order) => order.invoice_document_id)
+      .filter((id): id is string => typeof id === "string" && Boolean(id)),
+    warehouseId,
+  );
+  const documentsById = new Map(
+    documents.map((document) => [String(document.id), document]),
+  );
+  return visibleOrders.map((order) => {
+    const document =
+      typeof order.invoice_document_id === "string"
+        ? documentsById.get(order.invoice_document_id)
+        : undefined;
+    const documentSourcePayloadHash =
+      typeof document?.source_payload_hash === "string"
+        ? document.source_payload_hash
+        : null;
+    return {
+      ...order,
+      invoice_document_source_payload_hash: documentSourcePayloadHash,
+      invoice_document_stale: Boolean(
+        documentSourcePayloadHash &&
+        documentSourcePayloadHash !== order.source_payload_hash,
+      ),
+    };
+  });
 };
 
 export const getInvoiceSourceOrder = async (
@@ -543,5 +613,23 @@ export const getInvoiceSourceOrder = async (
       },
     };
   }
-  return order;
+  const document =
+    typeof order.invoice_document_id === "string"
+      ? await invoiceDocumentRepository.getDocument(
+          order.invoice_document_id,
+          warehouseId,
+        )
+      : null;
+  const documentSourcePayloadHash =
+    typeof document?.source_payload_hash === "string"
+      ? document.source_payload_hash
+      : null;
+  return {
+    ...order,
+    invoice_document_source_payload_hash: documentSourcePayloadHash,
+    invoice_document_stale: Boolean(
+      documentSourcePayloadHash &&
+      documentSourcePayloadHash !== order.source_payload_hash,
+    ),
+  };
 };

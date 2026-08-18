@@ -23,7 +23,7 @@ const copy = {
         preparing: "Đang tạo bản nháp…",
         loadError: "Không thể tải bản nháp hóa đơn.",
         revision: "Revision",
-        sourceStale: "Dữ liệu HKAPI đã thay đổi. Hãy đồng bộ lại và tạo revision mới.",
+        sourceStale: "Dữ liệu JPOS/HKAPI đã thay đổi. Hãy tạo revision mới từ dữ liệu nguồn mới nhất.",
         rebase: "Cập nhật draft từ HKAPI",
         buyer: "Thông tin người mua",
         fullName: "Tên người mua",
@@ -299,7 +299,7 @@ export function InvoiceDraftWorkflow({
             InvoiceDocumentStatus.REJECTED,
         ].includes(document.status),
     );
-    const sourceStale = document?.source_payload_hash !== order.source_payload_hash;
+    const sourceStale = order.invoice_document_stale === true;
     const statusContext = document
         ? {
               transactionId: document.transaction_id,

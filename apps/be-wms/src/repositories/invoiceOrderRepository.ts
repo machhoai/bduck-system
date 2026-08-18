@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { db } from "../config/firebase.js";
 
 const orders = db.collection("invoice_source_orders");
@@ -113,7 +114,20 @@ export const invoiceOrderRepository = {
                   match_status: "NOT_CHECKED",
                   invoice_document_id: null,
                   invoice_document_status: null,
+                  invoice_document_source_payload_hash: null,
+                  invoice_document_stale: false,
                 }),
+            ...(previous?.invoice_document_id
+              ? {
+                  invoice_document_stale:
+                    typeof previous.invoice_document_source_payload_hash ===
+                    "string"
+                      ? previous.invoice_document_source_payload_hash !==
+                        value.source_payload_hash
+                      : previous.source_payload_hash !==
+                        value.source_payload_hash,
+                }
+              : {}),
           },
           { merge: true },
         );
@@ -181,8 +195,7 @@ export const invoiceOrderRepository = {
     const matches = snapshot.docs
       .map((item) => item.data() as Record<string, unknown>)
       .filter(
-        (item) =>
-          item.warehouse_id === warehouseId && item.is_deleted !== true,
+        (item) => item.warehouse_id === warehouseId && item.is_deleted !== true,
       );
     if (matches.length > 1) throw new Error("DUPLICATE_HK_ORDER_NUMBER");
     return matches[0] ?? null;

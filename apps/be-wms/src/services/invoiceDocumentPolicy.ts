@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
+
 import {
   InvoiceDocumentStatus,
   type InvoicePreflightIssue,
   type InvoiceSourceOrderLine,
   type InvoiceVatRateName,
 } from "@bduck/shared-types";
+
 import { canonicalJson } from "./invoiceOrderSyncUtils.js";
 
 const VAT_RATE_VALUES: Record<InvoiceVatRateName, number> = {
@@ -50,7 +52,8 @@ export const validationStateWithoutSourceMoneyComparison = (
 
   const hasError = remainingIssues.some((item) => item.severity === "ERROR");
   const needsTaxConfiguration = remainingIssues.some((item) =>
-    ["PRICE_VAT_MODE_UNCONFIRMED", "VAT_RATE_MISSING"].includes(item.code));
+    ["PRICE_VAT_MODE_UNCONFIRMED", "VAT_RATE_MISSING"].includes(item.code),
+  );
   return {
     status: needsTaxConfiguration
       ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
@@ -104,3 +107,19 @@ export const canEditInvoiceDocument = (
     InvoiceDocumentStatus.READY_TO_ISSUE,
     InvoiceDocumentStatus.REJECTED,
   ].includes(status);
+
+const SAFE_AUTO_REBASE_STATUSES = new Set<InvoiceDocumentStatus>([
+  InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
+  InvoiceDocumentStatus.NEEDS_CORRECTION,
+  InvoiceDocumentStatus.READY_TO_ISSUE,
+]);
+
+export const canSafelyAutoRebaseInvoiceDocument = (
+  document: Record<string, unknown>,
+): boolean =>
+  SAFE_AUTO_REBASE_STATUSES.has(document.status as InvoiceDocumentStatus) &&
+  document.financially_edited !== true &&
+  !document.edited_at &&
+  !document.reviewed_at &&
+  !document.rejected_at &&
+  !document.active_issue_job_id;

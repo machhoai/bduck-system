@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   InvoiceDocumentStatus,
   InvoicePreparationStatus,
@@ -8,15 +9,21 @@ import {
   type InvoiceSourceOrderLine,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
+
 import { calculateInvoice } from "./invoiceCalculationService.js";
+import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import {
+  canSafelyAutoRebaseInvoiceDocument,
   invoiceFinancialFingerprint,
   statusAfterInvoiceEdit,
   validationStateWithoutSourceMoneyComparison,
 } from "./invoiceDocumentPolicy.js";
-import { invoiceDocumentUpdateSchema } from "./invoiceDocumentSchemas.js";
-import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
+import {
+  invoiceDocumentBulkRebaseSchema,
+  invoiceDocumentUpdateSchema,
+} from "./invoiceDocumentSchemas.js";
 
 const option = {
   main_currency: "VND",
@@ -206,4 +213,57 @@ test("initial document preserves source data and starts at revision one", () => 
     phone_number: "",
     email: "",
   });
+});
+
+test("automatic rebase is limited to untouched draft states", () => {
+  const untouched = {
+    status: InvoiceDocumentStatus.READY_TO_ISSUE,
+    financially_edited: false,
+    edited_at: null,
+    reviewed_at: null,
+    rejected_at: null,
+    active_issue_job_id: null,
+  };
+  assert.equal(canSafelyAutoRebaseInvoiceDocument(untouched), true);
+  assert.equal(
+    canSafelyAutoRebaseInvoiceDocument({
+      ...untouched,
+      edited_at: new Date(),
+    }),
+    false,
+  );
+  assert.equal(
+    canSafelyAutoRebaseInvoiceDocument({
+      ...untouched,
+      status: InvoiceDocumentStatus.NEEDS_REVIEW,
+    }),
+    false,
+  );
+  assert.equal(
+    canSafelyAutoRebaseInvoiceDocument({
+      ...untouched,
+      active_issue_job_id: "job-1",
+    }),
+    false,
+  );
+});
+
+test("bulk rebase schema supports all stale or an explicit selection", () => {
+  assert.equal(
+    invoiceDocumentBulkRebaseSchema.safeParse({
+      warehouse_id: "warehouse-1",
+      business_date: "2026-08-18",
+      selection_mode: "ALL_STALE",
+    }).success,
+    true,
+  );
+  assert.equal(
+    invoiceDocumentBulkRebaseSchema.safeParse({
+      warehouse_id: "warehouse-1",
+      business_date: "2026-08-18",
+      selection_mode: "SELECTED",
+      source_order_ids: [],
+    }).success,
+    false,
+  );
 });

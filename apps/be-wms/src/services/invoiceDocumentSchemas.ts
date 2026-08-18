@@ -25,6 +25,26 @@ export const invoiceDocumentPrepareSchema = z.object({
   expected_source_payload_hash: hashSchema,
 });
 
+export const invoiceDocumentBulkRebaseSchema = z
+  .object({
+    warehouse_id: warehouseIdSchema,
+    business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    selection_mode: z.enum(["ALL_STALE", "SELECTED"]),
+    source_order_ids: z.array(hashSchema).max(500).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.selection_mode === "SELECTED" &&
+      value.source_order_ids.length === 0
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["source_order_ids"],
+        message: "At least one source order is required for SELECTED mode.",
+      });
+    }
+  });
+
 export const invoiceDocumentPreviewSchema = z.object({
   warehouse_id: warehouseIdSchema,
   expected_revision: z.number().int().min(1),
@@ -100,6 +120,9 @@ export const invoiceDocumentUpdateSchema = z
 
 export type InvoiceDocumentUpdateInput = z.infer<
   typeof invoiceDocumentUpdateSchema
+>;
+export type InvoiceDocumentBulkRebaseInput = z.infer<
+  typeof invoiceDocumentBulkRebaseSchema
 >;
 export const editableInvoiceStatuses = new Set<InvoiceDocumentStatus>([
   InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,

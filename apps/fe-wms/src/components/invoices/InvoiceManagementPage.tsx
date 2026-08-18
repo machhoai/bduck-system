@@ -1,6 +1,7 @@
 "use client";
 
 import { InvoiceDocumentStatus, InvoiceOrderSyncPurpose, InvoicePreparationStatus } from "@bduck/shared-types";
+import { collection, onSnapshot, orderBy, query as firestoreQuery, where } from "firebase/firestore";
 import {
     AlertTriangle,
     CheckCircle2,
@@ -13,14 +14,13 @@ import {
     ShieldCheck,
     X,
 } from "lucide-react";
-import { collection, onSnapshot, orderBy, query as firestoreQuery, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { invoiceApi, type InvoiceSourceOrderView, type InvoiceSyncResult } from "@/api/invoiceApi";
 import { useStores } from "@/hooks/useWarehouses";
-import { useTranslation } from "@/lib/i18n";
 import { db } from "@/lib/firebase";
+import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import { shortName } from "@/utils/name";
 import { showToast } from "@/utils/toast";
@@ -46,6 +46,15 @@ const copy = {
         reconciliation: "Đối chiếu",
         sync: "Đồng bộ toàn ngày",
         syncing: "Đang đồng bộ…",
+        staleDraftTitle: (count: number) => `${count} draft đang dùng dữ liệu nguồn cũ`,
+        staleDraftDescription:
+            "Có thể cập nhật đồng thời các draft chưa chỉnh sửa. Draft đã sửa hoặc review sẽ được giữ lại để kiểm tra thủ công.",
+        staleDraftBadge: "Draft cần cập nhật",
+        rebaseAll: "Cập nhật tất cả draft an toàn",
+        rebasing: "Đang cập nhật draft…",
+        rebaseDone: "Đã cập nhật draft",
+        rebaseDoneDescription: "Các draft an toàn đã được tạo revision mới từ dữ liệu JPOS/HKAPI mới nhất.",
+        rebaseFailed: "Không thể cập nhật draft hàng loạt",
         total: "Tổng đơn",
         ready: "Sẵn sàng phát hành",
         tax: "Thiếu cấu hình thuế",
@@ -100,6 +109,14 @@ const copy = {
         reconciliation: "对账",
         sync: "同步全天订单",
         syncing: "同步中…",
+        staleDraftTitle: (count: number) => `${count} 个草稿使用旧源数据`,
+        staleDraftDescription: "可批量更新未编辑的草稿；已编辑或审核的草稿会保留以供人工检查。",
+        staleDraftBadge: "草稿需要更新",
+        rebaseAll: "安全更新全部草稿",
+        rebasing: "正在更新草稿…",
+        rebaseDone: "草稿已更新",
+        rebaseDoneDescription: "安全草稿已根据最新 JPOS/HKAPI 数据创建新修订版本。",
+        rebaseFailed: "无法批量更新草稿",
         total: "订单总数",
         ready: "可开票",
         tax: "缺少税务配置",
@@ -196,6 +213,7 @@ const statusLabel = (status: InvoicePreparationStatus, lang: "vi" | "zh") => {
 
 const canSelectForBulkIssue = (order: InvoiceSourceOrderView) =>
     order.preflight.issue_eligible === true &&
+    order.invoice_document_stale !== true &&
     Boolean(order.invoice_document_id) &&
     [
         InvoiceDocumentStatus.NEEDS_REVIEW,
@@ -229,6 +247,7 @@ export default function InvoiceManagementPage() {
     const [orders, setOrders] = useState<InvoiceSourceOrderView[]>([]);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [rebasing, setRebasing] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<InvoiceSourceOrderView | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [syncResult, setSyncResult] = useState<InvoiceSyncResult | null>(null);
@@ -356,6 +375,30 @@ export default function InvoiceManagementPage() {
         }
     };
 
+    const handleBulkRebase = async () => {
+        if (!activeStoreId || rebasing) return;
+        setRebasing(true);
+        setError(null);
+        try {
+            const operation = invoiceApi.bulkRebaseSourceOrders(activeStoreId, businessDate).then(async (result) => {
+                await loadOrders();
+                return result;
+            });
+            await showToast.promise(operation, {
+                loading: d.rebasing,
+                success: d.rebaseDone,
+                error: d.rebaseFailed,
+                successDescription: d.rebaseDoneDescription,
+                errorDescription: (rebaseError) =>
+                    rebaseError instanceof Error ? rebaseError.message : d.rebaseFailed,
+            });
+        } catch (rebaseError) {
+            setError(rebaseError instanceof Error ? rebaseError.message : d.rebaseFailed);
+        } finally {
+            setRebasing(false);
+        }
+    };
+
     const stats = useMemo(
         () => ({
             total: orders.length,
@@ -397,6 +440,7 @@ export default function InvoiceManagementPage() {
             ? hasPermission("invoices.prepare", activeStoreId)
             : hasPermission("invoices.reconcile", activeStoreId);
     const canBulkIssue = hasPermission("invoices.bulk_issue", activeStoreId);
+    const canPrepareDrafts = hasPermission("invoices.prepare", activeStoreId);
     const canRetryIssue = hasPermission("invoices.retry", activeStoreId);
     const canConfigure = hasPermission("invoices.config", activeStoreId);
     const invoiceViews: Array<[InvoiceView, string]> = [
@@ -413,6 +457,7 @@ export default function InvoiceManagementPage() {
         orders.some((order) => order.id === id && canSelectForBulkIssue(order)),
     );
     const dailyEligibleCount = orders.filter(canSelectForBulkIssue).length;
+    const staleDrafts = orders.filter((order) => order.invoice_document_stale === true);
 
     const toggleIssueId = (id: string) => {
         setSelectedIssueIds((current) =>
@@ -540,6 +585,32 @@ export default function InvoiceManagementPage() {
                 <InvoiceConfigurationPanel warehouseId={activeStoreId} canConfigure={canConfigure} lang={lang} />
             ) : view === "PENDING" ? (
                 <>
+                    {staleDrafts.length > 0 && (
+                        <section className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-w-0 items-start gap-2.5">
+                                <AlertTriangle className="mt-0.5 shrink-0 text-amber-700" size={18} />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-950">
+                                        {d.staleDraftTitle(staleDrafts.length)}
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-amber-800">{d.staleDraftDescription}</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => void handleBulkRebase()}
+                                disabled={!canPrepareDrafts || rebasing}
+                                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-amber-700 px-3 text-xs font-semibold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                                {rebasing ? (
+                                    <LoaderCircle className="animate-spin" size={14} />
+                                ) : (
+                                    <RefreshCw size={14} />
+                                )}
+                                {rebasing ? d.rebasing : d.rebaseAll}
+                            </button>
+                        </section>
+                    )}
                     {(canBulkIssue || canRetryIssue) && (
                         <InvoiceBulkIssuePanel
                             warehouseId={activeStoreId}
@@ -712,6 +783,11 @@ export default function InvoiceManagementPage() {
                                                             )}
                                                         </div>
                                                     )}
+                                                    {order.invoice_document_stale && (
+                                                        <span className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
+                                                            {d.staleDraftBadge}
+                                                        </span>
+                                                    )}
                                                     {order.payment_time && (
                                                         <p className="mt-0.5 text-xs text-slate-400">
                                                             {order.payment_time}
@@ -810,7 +886,6 @@ export default function InvoiceManagementPage() {
                     mode={view === "RECONCILIATION" ? "RECONCILIATION" : "ISSUED"}
                     refreshToken={syncResult?.id ?? ""}
                     canDownload={hasPermission("invoices.download", activeStoreId)}
-                    canResolve={hasPermission("invoices.reconcile", activeStoreId)}
                 />
             )}
         </div>

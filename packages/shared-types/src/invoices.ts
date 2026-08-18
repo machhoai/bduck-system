@@ -471,6 +471,8 @@ export interface InvoiceSourceOrder {
   match_status: InvoiceOrderMatchStatus;
   invoice_document_id: string | null;
   invoice_document_status: InvoiceDocumentStatus | null;
+  invoice_document_source_payload_hash: string | null;
+  invoice_document_stale: boolean;
   customer_invoice_request_status: CustomerInvoiceRequestStatus;
   customer_invoice_request_submitted_at: Date | null;
   last_sync_run_id: string;

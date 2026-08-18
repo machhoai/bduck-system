@@ -1,6 +1,7 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 
 import {
+  bulkRebaseInvoiceDocumentsHandler,
   getInvoiceDocumentHandler,
   prepareInvoiceDocumentHandler,
   previewBulkIssueInvoiceDocumentHandler,
@@ -136,6 +137,11 @@ router.post(
   "/source-orders/sync",
   requireAnyScopedPermission(["invoices.prepare", "invoices.reconcile"]),
   syncInvoiceOrdersHandler,
+);
+router.post(
+  "/source-orders/rebase-bulk",
+  requirePermission("invoices.prepare", bodyWarehouseId),
+  bulkRebaseInvoiceDocumentsHandler,
 );
 router.get(
   "/source-orders",
