@@ -10,6 +10,7 @@ const vi = {
         categories: "Danh mục hàng hóa",
         importVoucher: "Tạo lệnh",
         vouchers: "Tạo lệnh",
+        marketingVouchers: "Voucher marketing",
         exportVoucher: "Lệnh xuất",
         transfer: "Lệnh điều chuyển",
         fileLibrary: "Thư viện tệp",

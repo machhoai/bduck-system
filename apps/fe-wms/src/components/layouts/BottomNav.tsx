@@ -21,12 +21,19 @@ export default function BottomNav() {
     const { t } = useTranslation();
     const pathname = usePathname();
     const hasPermission = useUserStore((s) => s.hasPermission);
+    const workplaceFacilityId = useUserStore(
+        (s) => s.user?.workplace_facility_id,
+    );
     const isOpen = useSidebarStore((s) => s.isMobileDrawerOpen);
     const openDrawer = useSidebarStore((s) => s.openDrawer);
     const closeDrawer = useSidebarStore((s) => s.closeDrawer);
     const badges = useLayoutMenuBadges();
 
-    const visibleItems = getVisibleMenuItems(menuItems, hasPermission)
+    const visibleItems = getVisibleMenuItems(
+        menuItems,
+        hasPermission,
+        workplaceFacilityId,
+    )
         .filter((item) => item.showInBottomNav)
         .slice(0, 4);
 

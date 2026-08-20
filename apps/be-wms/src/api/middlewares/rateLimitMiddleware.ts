@@ -117,3 +117,14 @@ export const publicInvoiceSubmitRateLimiter = createRateLimiter(
     10,
   ),
 );
+
+export const marketingVoucherMutationRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_MARKETING_VOUCHER_MUTATION_WINDOW_MS,
+    60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_MARKETING_VOUCHER_MUTATION_MAX_REQUESTS,
+    30,
+  ),
+);

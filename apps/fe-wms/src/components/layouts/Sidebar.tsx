@@ -16,7 +16,14 @@ export default function Sidebar() {
     const { t } = useTranslation();
     const isCollapsed = useSidebarStore((s) => s.isCollapsed);
     const hasPermission = useUserStore((s) => s.hasPermission);
-    const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
+    const workplaceFacilityId = useUserStore(
+        (s) => s.user?.workplace_facility_id,
+    );
+    const visibleItems = getVisibleMenuItems(
+        menuItems,
+        hasPermission,
+        workplaceFacilityId,
+    );
     const badges = useLayoutMenuBadges();
 
     return (

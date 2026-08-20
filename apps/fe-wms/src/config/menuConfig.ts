@@ -31,7 +31,10 @@ import {
     ScanBarcode,
     ReceiptText,
     MonitorSmartphone,
+    TicketPercent,
 } from "lucide-react";
+
+import { isMarketingVoucherFeatureEnabled } from "@/lib/marketingVoucherFeatureFlag";
 
 export interface MenuItem {
     id: string;
@@ -46,6 +49,10 @@ export interface MenuItem {
     showInBottomNav?: boolean;
     /** Key mapping to MenuBadges for realtime count display */
     badgeKey?: string;
+    /** Hide unfinished modules until their rollout flag is enabled. */
+    enabled?: boolean;
+    /** Global modules are granted at the user's canonical workplace. */
+    workplaceScoped?: boolean;
 }
 
 const userAccessReadPermissions = PERMISSION_REGISTRY.filter(
@@ -100,6 +107,15 @@ export const menuItems: MenuItem[] = [
             "transfers.write",
         ],
         badgeKey: "vouchers",
+    },
+    {
+        id: "marketingVouchers",
+        labelKey: "marketingVouchers",
+        icon: TicketPercent,
+        href: "/admin/vouchers",
+        permission: "marketing_vouchers.read",
+        workplaceScoped: true,
+        enabled: isMarketingVoucherFeatureEnabled,
     },
     {
         id: "stockCounts",
@@ -252,12 +268,19 @@ export const menuItems: MenuItem[] = [
  */
 export function getVisibleMenuItems(
     items: MenuItem[],
-    hasPermission: (action: string) => boolean,
+    hasPermission: (action: string, facilityId?: string) => boolean,
+    workplaceFacilityId?: string | null,
 ): MenuItem[] {
     return items.filter((item) => {
-        if (item.permission && hasPermission(item.permission)) return true;
+        if (item.enabled === false) return false;
+        const facilityId = item.workplaceScoped
+            ? workplaceFacilityId || "__missing_workplace__"
+            : undefined;
+        if (item.permission && hasPermission(item.permission, facilityId)) return true;
         if (
-            item.permissionsAny?.some((permission) => hasPermission(permission))
+            item.permissionsAny?.some((permission) =>
+                hasPermission(permission, facilityId),
+            )
         ) {
             return true;
         }

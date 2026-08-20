@@ -49,6 +49,7 @@ import invoiceOrderRoutes from "./api/routes/invoiceOrderRoutes.js";
 import customerInvoiceRequestRoutes from "./api/routes/customerInvoiceRequestRoutes.js";
 import dashboardRoutes from "./api/routes/dashboardRoutes.js";
 import posDeviceRoutes from "./api/routes/posDeviceRoutes.js";
+import marketingVoucherRoutes from "./api/routes/marketingVoucherRoutes.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
@@ -119,6 +120,7 @@ app.use("/api/invoices", invoiceOrderRoutes);
 app.use("/api/public/invoice-requests", customerInvoiceRequestRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/pos", posDeviceRoutes);
+app.use("/api/marketing-vouchers", marketingVoucherRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({

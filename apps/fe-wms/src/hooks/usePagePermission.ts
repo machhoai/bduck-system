@@ -17,7 +17,10 @@ import { menuItems } from "@/config/menuConfig";
  *
  * Any route not in this map = accessible to all authenticated users
  */
-const ROUTE_PERMISSIONS: Record<string, { permission?: string; permissionsAny?: string[] }> = {};
+const ROUTE_PERMISSIONS: Record<
+    string,
+    { permission?: string; permissionsAny?: string[]; workplaceScoped?: boolean }
+> = {};
 
 // Auto-populate from menuConfig
 menuItems.forEach((item) => {
@@ -25,6 +28,7 @@ menuItems.forEach((item) => {
         ROUTE_PERMISSIONS[item.href] = {
             permission: item.permission,
             permissionsAny: item.permissionsAny,
+            workplaceScoped: item.workplaceScoped,
         };
     }
 });
@@ -46,6 +50,9 @@ Object.entries(ADDITIONAL_ROUTES).forEach(([route, perm]) => {
  */
 export function usePagePermission(pathname: string): boolean {
     const hasPermission = useUserStore((s) => s.hasPermission);
+    const workplaceFacilityId = useUserStore(
+        (s) => s.user?.workplace_facility_id,
+    );
 
     // Find matching route (longest prefix match)
     const matchingRoute = Object.keys(ROUTE_PERMISSIONS)
@@ -56,12 +63,15 @@ export function usePagePermission(pathname: string): boolean {
     if (!matchingRoute) return true;
 
     const config = ROUTE_PERMISSIONS[matchingRoute];
+    const facilityId = config.workplaceScoped
+        ? workplaceFacilityId || "__missing_workplace__"
+        : undefined;
 
     // Check single permission
-    if (config.permission && hasPermission(config.permission)) return true;
+    if (config.permission && hasPermission(config.permission, facilityId)) return true;
 
     // Check any of multiple permissions
-    if (config.permissionsAny?.some((p) => hasPermission(p))) return true;
+    if (config.permissionsAny?.some((p) => hasPermission(p, facilityId))) return true;
 
     // No permission match = blocked
     return !config.permission && !config.permissionsAny;

@@ -85,6 +85,19 @@ service cloud.firestore {
             && facilityGrantAllows(facilityId, action)));
     }
 
+    // Company-wide capabilities are materialized on the actor's canonical
+    // workplace grant. This avoids broad authenticated reads and keeps the
+    // browser, Rules and backend service policy on the same scope.
+    function hasWorkplacePermission(action) {
+      let facilityId = accessWorkplaceFacilityId();
+      return hasActiveAccess()
+        && (access().is_global_admin == true
+          || (facilityId is string
+            && facilityId.size() > 0
+            && exists(grantPath(facilityId))
+            && facilityGrantAllows(facilityId, action)));
+    }
+
     function readableFacilityDirectory(facilityId) {
       return isSystemAdmin() || hasFacilityGrant(facilityId);
     }
@@ -419,6 +432,12 @@ service cloud.firestore {
 
     match /audit_logs/{docId} {
       allow read: if isSystemAdmin()
+        || (resource.data.entity_type in [
+              'marketing_voucher_campaigns',
+              'marketing_voucher_codes',
+              'marketing_voucher_jobs'
+            ]
+          && hasWorkplacePermission('marketing_vouchers.read'))
         || hasResourceFacility('warehouse_id', 'audit.read')
         || (resource.data.entity_type in [
               'POS_DEVICE',
@@ -444,6 +463,29 @@ service cloud.firestore {
     match /vouchers/{docId} {
       allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
       allow write: if false;
+    }
+
+    // Marketing vouchers are a separate company-wide domain. Realtime reads
+    // require the explicit workplace capability; all mutations use Admin SDK
+    // so validation, idempotency and audit cannot be bypassed by a client.
+    match /marketing_voucher_campaigns/{campaignId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+    }
+    match /marketing_voucher_codes/{codeId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+    }
+    match /marketing_voucher_jobs/{jobId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+      match /items/{itemId} {
+        allow read: if hasWorkplacePermission('marketing_vouchers.read');
+        allow write: if false;
+      }
+    }
+    match /marketing_voucher_operations/{operationId} {
+      allow read, write: if false;
     }
     match /import_vouchers/{voucherId} {
       allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');

@@ -24,6 +24,15 @@
         "workflow_definition_versions"
       ]
     },
+    "global_permission_scoped": {
+      "description": "Company-wide business data readable only through an explicit capability materialized at the actor's canonical workplace; writes remain backend-only.",
+      "collections": [
+        "marketing_voucher_campaigns",
+        "marketing_voucher_codes",
+        "marketing_voucher_job_items",
+        "marketing_voucher_jobs"
+      ]
+    },
     "facility_scoped": {
       "description": "Business data that must be queried and authorized through an effective facility grant.",
       "collections": [
@@ -96,6 +105,7 @@
         "integration_clients",
         "facility_access_migrations",
         "authorization_shadow_diffs",
+        "marketing_voucher_operations",
         "office_scope_materialization_jobs"
       ]
     }

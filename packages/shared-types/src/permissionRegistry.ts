@@ -103,6 +103,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     order: 8,
   },
   {
+    id: "marketing_vouchers",
+    label: { vi: "Voucher marketing", zh: "营销优惠券" },
+    icon: "TicketPercent",
+    order: 8,
+  },
+  {
     id: "transfers",
     label: { vi: "Điều chuyển", zh: "调拨" },
     icon: "ArrowLeftRight",
@@ -714,6 +720,80 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
 
+  // ── Marketing vouchers ──
+  {
+    key: "marketing_vouchers.read",
+    group: "marketing_vouchers",
+    label: { vi: "Xem voucher marketing", zh: "查看营销优惠券" },
+    description: {
+      vi: "Xem chiến dịch, kho mã, thống kê và tiến độ công việc voucher marketing.",
+      zh: "查看营销优惠券活动、券码库、统计数据和任务进度。",
+    },
+  },
+  {
+    key: "marketing_vouchers.campaigns.write",
+    group: "marketing_vouchers",
+    label: { vi: "Quản lý chiến dịch", zh: "管理优惠券活动" },
+    description: {
+      vi: "Tạo, chỉnh sửa, tạm dừng và kích hoạt lại chiến dịch voucher.",
+      zh: "创建、编辑、暂停和重新启用优惠券活动。",
+    },
+  },
+  {
+    key: "marketing_vouchers.codes.generate",
+    group: "marketing_vouchers",
+    label: { vi: "Sinh mã voucher", zh: "生成优惠券码" },
+    description: {
+      vi: "Khởi tạo công việc sinh mã mới hoặc bổ sung mã cho chiến dịch.",
+      zh: "启动新券码生成任务或为活动补充券码。",
+    },
+  },
+  {
+    key: "marketing_vouchers.codes.revoke",
+    group: "marketing_vouchers",
+    label: { vi: "Vô hiệu mã voucher", zh: "作废优惠券码" },
+    description: {
+      vi: "Vô hiệu từng mã hoặc nhiều mã voucher mà không xóa dữ liệu.",
+      zh: "作废单个或批量优惠券码，且不删除数据。",
+    },
+  },
+  {
+    key: "marketing_vouchers.campaigns.extend",
+    group: "marketing_vouchers",
+    label: { vi: "Gia hạn chiến dịch", zh: "延长优惠券活动" },
+    description: {
+      vi: "Gia hạn chiến dịch và các mã chưa dùng, chưa bị vô hiệu.",
+      zh: "延长活动及尚未使用、尚未作废券码的有效期。",
+    },
+  },
+  {
+    key: "marketing_vouchers.export",
+    group: "marketing_vouchers",
+    label: { vi: "Xuất voucher Excel", zh: "导出优惠券 Excel" },
+    description: {
+      vi: "Tạo file Excel hoặc ZIP chứa voucher và mã QR để in.",
+      zh: "生成包含优惠券和二维码的 Excel 或 ZIP 文件用于印刷。",
+    },
+  },
+  {
+    key: "marketing_vouchers.appearance.write",
+    group: "marketing_vouchers",
+    label: { vi: "Thiết kế màu voucher", zh: "设置优惠券颜色" },
+    description: {
+      vi: "Chọn màu nhấn cho mẫu voucher cố định của chiến dịch.",
+      zh: "为活动的固定优惠券模板选择强调色。",
+    },
+  },
+  {
+    key: "marketing_vouchers.email.send",
+    group: "marketing_vouchers",
+    label: { vi: "Gửi voucher qua email", zh: "通过邮件发送优惠券" },
+    description: {
+      vi: "Tạo công việc gửi voucher qua Brevo và gửi lại các mục thất bại.",
+      zh: "通过 Brevo 创建优惠券邮件任务并重试失败项目。",
+    },
+  },
+
   // ── Transfers ──
   {
     key: "transfers.read",
@@ -946,7 +1026,10 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
   {
     key: "leave.requests.read_all",
     group: "leave",
-    label: { vi: "Xem yêu cầu nghỉ phép toàn công ty", zh: "查看全公司休假申请" },
+    label: {
+      vi: "Xem yêu cầu nghỉ phép toàn công ty",
+      zh: "查看全公司休假申请",
+    },
     description: {
       vi: "Xem lịch sử và trạng thái yêu cầu nghỉ phép của toàn bộ nhân viên.",
       zh: "查看全体员工休假申请的历史和状态。",
