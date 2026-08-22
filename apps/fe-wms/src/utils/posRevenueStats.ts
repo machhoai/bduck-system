@@ -14,6 +14,7 @@ export const JPOS_REVENUE_PAID_STATUSES = new Set([
 
 export interface PosRevenueOrderRecord {
   id: string;
+  warehouseId?: unknown;
   localOrderId?: unknown;
   hkOrderNumber?: unknown;
   status?: unknown;
@@ -241,7 +242,11 @@ function getPaidPosOrders(
       continue;
     }
     const localOrderId = text(record.localOrderId) ?? record.id;
-    paidOrders.set(localOrderId, record);
+    const warehouseId = text(record.warehouseId);
+    const businessIdentity = warehouseId
+      ? `${warehouseId}:${localOrderId}`
+      : localOrderId;
+    paidOrders.set(businessIdentity, record);
   }
   return paidOrders;
 }

@@ -22,6 +22,31 @@ test("JPOS revenue stats include paid orders and de-duplicate local ids", () => 
   });
 });
 
+test("all-store revenue keeps equal local order ids from different warehouses", () => {
+  const result = aggregatePosRevenueStats([
+    {
+      id: "lm-document",
+      warehouseId: "lm81",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 120_000,
+    },
+    {
+      id: "aeon-document",
+      warehouseId: "aeon",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 80_000,
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    totalRevenue: 200_000,
+    totalOrders: 2,
+    averageOrderValue: 100_000,
+  });
+});
+
 test("JPOS revenue stats ignore invalid totals", () => {
   assert.deepEqual(
     aggregatePosRevenueStats([
