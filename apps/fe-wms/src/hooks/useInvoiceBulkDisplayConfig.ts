@@ -5,10 +5,15 @@ import type {
   InvoiceBulkSelectionMode,
 } from "@bduck/shared-types";
 import { useEffect, useMemo, useState } from "react";
+
 import {
   invoiceApi,
   type InvoiceBulkIssueSelectionPayload,
 } from "@/api/invoiceApi";
+import {
+  normalizeInvoiceDisplayMappingDraft,
+  withInvoiceDisplayMappingDraftValue,
+} from "@/utils/invoiceDisplayMappingDraft";
 import { showToast } from "@/utils/toast";
 
 const sortedEntries = (mapping: Record<string, string>) =>
@@ -19,18 +24,6 @@ const sameMapping = (
   right: Record<string, string>,
 ) =>
   JSON.stringify(sortedEntries(left)) === JSON.stringify(sortedEntries(right));
-
-const withMappingValue = (
-  current: Record<string, string>,
-  source: string,
-  target: string,
-) => {
-  const next = { ...current };
-  const normalized = target.trim();
-  if (normalized) next[source] = normalized;
-  else delete next[source];
-  return next;
-};
 
 export const useInvoiceBulkDisplayConfig = ({
   warehouseId,
@@ -122,8 +115,10 @@ export const useInvoiceBulkDisplayConfig = ({
       warehouseId,
       businessDate,
       {
-        item_name_mapping: itemNameMapping,
-        item_unit_mapping: itemUnitMapping,
+        item_name_mapping:
+          normalizeInvoiceDisplayMappingDraft(itemNameMapping),
+        item_unit_mapping:
+          normalizeInvoiceDisplayMappingDraft(itemUnitMapping),
       },
     );
     try {
@@ -167,11 +162,11 @@ export const useInvoiceBulkDisplayConfig = ({
     closeConfiguration: () => setConfigOpen(false),
     changeItemName: (source: string, target: string) =>
       setItemNameMapping((current) =>
-        withMappingValue(current, source, target),
+        withInvoiceDisplayMappingDraftValue(current, source, target),
       ),
     changeItemUnit: (source: string, target: string) =>
       setItemUnitMapping((current) =>
-        withMappingValue(current, source, target),
+        withInvoiceDisplayMappingDraftValue(current, source, target),
       ),
   };
 };
