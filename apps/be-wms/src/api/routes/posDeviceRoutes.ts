@@ -41,9 +41,9 @@ import {
 } from "../controllers/posTicketSettingsController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
-  apiRateLimiter,
   authRateLimiter,
   posDeviceSessionRateLimiter,
+  posDeviceWatchRateLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
@@ -67,32 +67,29 @@ router.post(
 );
 router.post(
   "/devices/receipt-settings/watch",
-  apiRateLimiter,
+  posDeviceWatchRateLimiter,
   watchPosReceiptSettingsHandler,
 );
 router.post(
   "/devices/ticket-settings/watch",
-  apiRateLimiter,
+  posDeviceWatchRateLimiter,
   watchPosTicketSettingsHandler,
 );
 router.post(
   "/devices/customer-display-settings/watch",
-  apiRateLimiter,
+  posDeviceWatchRateLimiter,
   watchPosCustomerDisplaySettingsHandler,
 );
 router.get(
   "/devices/customer-display-media/:mediaId/content",
-  apiRateLimiter,
   getPosCustomerDisplayMediaContentFromDeviceHandler,
 );
 router.put(
   "/devices/receipt-settings",
-  apiRateLimiter,
   savePosReceiptSettingsFromDeviceHandler,
 );
 router.put(
   "/devices/ticket-settings",
-  apiRateLimiter,
   savePosTicketSettingsFromDeviceHandler,
 );
 

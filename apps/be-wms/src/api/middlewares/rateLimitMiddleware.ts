@@ -36,11 +36,13 @@ const createRateLimiter = (
   windowMs: number,
   limit: number,
   keyGenerator?: (request: Request) => string,
+  skip?: (request: Request) => boolean,
 ) =>
   rateLimit({
     windowMs,
     limit,
     keyGenerator,
+    skip,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: (_request, response) =>
@@ -63,9 +65,33 @@ export const resolvePosDeviceSessionRateLimitKey = (
     : `pos-device-session:${ipKey}`;
 };
 
+export const resolvePosDeviceWatchRateLimitKey = (
+  request: Pick<Request, "body" | "ip">,
+): string => {
+  const deviceId =
+    typeof request.body?.device_id === "string"
+      ? request.body.device_id.trim().toLowerCase()
+      : "";
+  const ipKey = ipKeyGenerator(request.ip ?? "unknown");
+  return POS_DEVICE_ID_PATTERN.test(deviceId)
+    ? `pos-device-watch:${deviceId}:${ipKey}`
+    : `pos-device-watch:${ipKey}`;
+};
+
+const POS_DEVICE_WATCH_PATH_PATTERN =
+  /^\/api\/pos\/devices\/(receipt-settings|ticket-settings|customer-display-settings)\/watch$/;
+
+export const isPosDeviceWatchRequest = (
+  request: Pick<Request, "method" | "originalUrl">,
+): boolean =>
+  request.method === "POST" &&
+  POS_DEVICE_WATCH_PATH_PATTERN.test(request.originalUrl.split("?", 1)[0] ?? "");
+
 export const apiRateLimiter = createRateLimiter(
   parsePositiveInteger(process.env.BE_WMS_RATE_LIMIT_WINDOW_MS, 60_000),
   parsePositiveInteger(process.env.BE_WMS_RATE_LIMIT_MAX_REQUESTS, 300),
+  undefined,
+  isPosDeviceWatchRequest,
 );
 
 export const authRateLimiter = createRateLimiter(
@@ -94,6 +120,18 @@ export const posDeviceSessionRateLimiter = createRateLimiter(
     60,
   ),
   resolvePosDeviceSessionRateLimitKey,
+);
+
+export const posDeviceWatchRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_DEVICE_WATCH_RATE_LIMIT_WINDOW_MS,
+    60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_DEVICE_WATCH_RATE_LIMIT_MAX_REQUESTS,
+    30,
+  ),
+  resolvePosDeviceWatchRateLimitKey,
 );
 
 export const publicInvoiceReadRateLimiter = createRateLimiter(
