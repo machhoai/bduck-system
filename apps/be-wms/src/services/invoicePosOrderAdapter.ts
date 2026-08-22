@@ -1,25 +1,29 @@
 import { createHash } from "node:crypto";
+
 import type {
   InvoiceSkuMapping,
   InvoiceSourceOrderLine,
   InvoiceVatRateName,
   MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { SourceOrderWrite } from "../repositories/invoiceOrderRepository.js";
-import type {
-  PosInvoiceOrderRecord,
-} from "../repositories/posInvoiceOrderRepository.js";
 import type {
   StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
+import type {
+  PosInvoiceOrderRecord,
+} from "../repositories/posInvoiceOrderRepository.js";
+
 import {
   calculateInvoice,
   INVOICE_CALCULATION_VERSION,
 } from "./invoiceCalculationService.js";
-import { normalizeVatRateName } from "./invoiceOrderAdapter.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
-import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
+import { normalizeVatRateName } from "./invoiceOrderAdapter.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
+import { resolvePosOrderPaymentMethod } from "./invoicePaymentMethod.js";
+import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
 
 const MAPPING_VERSION = "jpos-meinvoice-v1";
 const PAID_STATUSES = new Set([
@@ -137,6 +141,7 @@ export const buildPosInvoiceSourceOrder = (
   businessDate: string,
   config: MeInvoiceStoreConfig | null,
   account: StoredMeInvoiceAccount | null,
+  externalSourceAccountKey?: string | null,
 ): SourceOrderWrite => {
   const normalizedItems = normalizeItems(order, config);
   const invoiceItems = normalizedItems.filter(
@@ -157,8 +162,7 @@ export const buildPosInvoiceSourceOrder = (
     0,
   );
   const totalAmount = number(order.totalAmount);
-  const paymentMethod =
-    text(order.paymentMethodName) ?? text(order.paymentMethodId);
+  const paymentMethod = resolvePosOrderPaymentMethod(order);
   const mappedPaymentMethod = paymentMethod
     ? config?.payment_method_mapping[paymentMethod]
       ?? config?.default_payment_method_name
@@ -190,6 +194,14 @@ export const buildPosInvoiceSourceOrder = (
       warehouse_id: order.warehouseId,
       source_system: "JPOS",
       source_order_id: order.localOrderId,
+      external_source_account_key:
+        externalSourceAccountKey && text(order.hkOrderNumber)
+          ? externalSourceAccountKey
+          : null,
+      external_order_number:
+        externalSourceAccountKey && text(order.hkOrderNumber)
+          ? text(order.hkOrderNumber)
+          : null,
       local_order_id: order.localOrderId,
       hk_order_number: text(order.hkOrderNumber),
       pos_order_status: order.status,

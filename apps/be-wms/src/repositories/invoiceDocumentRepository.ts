@@ -203,6 +203,10 @@ export const invoiceDocumentRepository = {
           transaction.update(sourceRef, {
             invoice_document_id: documentRef.id,
             invoice_document_status: refreshed.status,
+            invoice_document_source_payload_hash:
+              current.source_payload_hash ?? null,
+            invoice_document_stale:
+              current.source_payload_hash !== source.source_payload_hash,
             updated_at: now,
           });
           return { created: false, document: refreshed };
@@ -214,6 +218,10 @@ export const invoiceDocumentRepository = {
           transaction.update(sourceRef, {
             invoice_document_id: documentRef.id,
             invoice_document_status: current.status,
+            invoice_document_source_payload_hash:
+              current.source_payload_hash ?? null,
+            invoice_document_stale:
+              current.source_payload_hash !== source.source_payload_hash,
             updated_at: new Date(),
           });
         }
@@ -228,6 +236,8 @@ export const invoiceDocumentRepository = {
       transaction.update(sourceRef, {
         invoice_document_id: documentRef.id,
         invoice_document_status: value.status,
+        invoice_document_source_payload_hash: value.source_payload_hash,
+        invoice_document_stale: false,
         updated_at: new Date(),
       });
       return { created: true, document: value };
@@ -241,6 +251,25 @@ export const invoiceDocumentRepository = {
     return value.warehouse_id === warehouseId && value.is_deleted !== true
       ? value
       : null;
+  },
+
+  async getDocuments(ids: string[], warehouseId: string) {
+    const uniqueIds = [...new Set(ids.filter(Boolean))];
+    const result: Record<string, unknown>[] = [];
+    for (let cursor = 0; cursor < uniqueIds.length; cursor += 200) {
+      const refs = uniqueIds
+        .slice(cursor, cursor + 200)
+        .map((id) => documents.doc(id));
+      const snapshots = refs.length > 0 ? await db.getAll(...refs) : [];
+      for (const snapshot of snapshots) {
+        if (!snapshot.exists) continue;
+        const value = snapshot.data() as Record<string, unknown>;
+        if (value.warehouse_id === warehouseId && value.is_deleted !== true) {
+          result.push(value);
+        }
+      }
+    }
+    return result;
   },
 
   async listRevisions(id: string, warehouseId: string, limit = 20) {
@@ -285,6 +314,8 @@ export const invoiceDocumentRepository = {
       transaction.update(documentRef, nextValue);
       transaction.update(sourceRef, {
         invoice_document_status: next.status,
+        invoice_document_source_payload_hash: next.source_payload_hash,
+        invoice_document_stale: false,
         updated_at: next.updated_at,
       });
       transaction.create(
@@ -348,6 +379,8 @@ export const invoiceDocumentRepository = {
       transaction.update(sourceRef, {
         invoice_document_id: id,
         invoice_document_status: next.status,
+        invoice_document_source_payload_hash: next.source_payload_hash,
+        invoice_document_stale: false,
         updated_at: next.updated_at,
       });
       return next;

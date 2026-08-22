@@ -108,6 +108,22 @@ export const canEditInvoiceDocument = (
     InvoiceDocumentStatus.REJECTED,
   ].includes(status);
 
+const SAFE_AUTO_REBASE_STATUSES = new Set<InvoiceDocumentStatus>([
+  InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION,
+  InvoiceDocumentStatus.NEEDS_CORRECTION,
+  InvoiceDocumentStatus.READY_TO_ISSUE,
+]);
+
+export const canSafelyAutoRebaseInvoiceDocument = (
+  document: Record<string, unknown>,
+): boolean =>
+  SAFE_AUTO_REBASE_STATUSES.has(document.status as InvoiceDocumentStatus) &&
+  document.financially_edited !== true &&
+  !document.edited_at &&
+  !document.reviewed_at &&
+  !document.rejected_at &&
+  !document.active_issue_job_id;
+
 const calculationHash = (value: unknown): string | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const hash = (value as Record<string, unknown>).calculation_hash;
@@ -118,11 +134,7 @@ export const invoiceDocumentShouldRefreshFromSource = (
   current: Record<string, unknown>,
   next: Record<string, unknown>,
 ): boolean => {
-  if (
-    !canEditInvoiceDocument(current.status as InvoiceDocumentStatus) ||
-    current.financially_edited === true ||
-    current.active_issue_job_id
-  ) {
+  if (!canSafelyAutoRebaseInvoiceDocument(current)) {
     return false;
   }
   return (

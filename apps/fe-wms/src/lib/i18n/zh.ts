@@ -12,6 +12,7 @@ const zh: Dictionary = {
     categories: "货物分类",
     importVoucher: "创建单据",
     vouchers: "创建单据",
+    marketingVouchers: "营销优惠券",
     exportVoucher: "出库指令",
     transfer: "调拨指令",
     fileLibrary: "文件库",

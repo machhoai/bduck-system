@@ -159,7 +159,7 @@ export function PosTicketSettingsPanel({
   );
 
   return (
-    <div className="space-y-4 overflow-hidden border-t border-slate-200 pt-4">
+    <div className="space-y-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-slate-900">

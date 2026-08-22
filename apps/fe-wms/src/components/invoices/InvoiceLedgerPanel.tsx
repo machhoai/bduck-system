@@ -5,12 +5,14 @@ import {
   InvoiceReconciliationCaseStatus,
 } from "@bduck/shared-types";
 import {
+  ArrowRight,
   ExternalLink,
   FileDown,
   FileSearch,
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -351,11 +353,22 @@ export function InvoiceLedgerPanel({
 
       {mode === "EXCEPTIONS" && openCases.length > 0 && (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 p-2.5">
-            <h2 className="text-sm font-bold text-slate-900">Case sai lệch</h2>
-            <p className="text-xs text-slate-500">
-              Chỉ đóng case sau khi đã ghi rõ kết quả kiểm tra.
-            </p>
+          <div className="flex flex-col gap-2 border-b border-slate-200 p-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Case sai lệch
+              </h2>
+              <p className="text-xs text-slate-500">
+                Chỉ đóng case sau khi đã ghi rõ kết quả kiểm tra.
+              </p>
+            </div>
+            <Link
+              href={`/invoice-management/reconciliation-cases?store=${encodeURIComponent(warehouseId)}&date=${encodeURIComponent(businessDate)}`}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Xem trang đối chiếu
+              <ArrowRight size={14} />
+            </Link>
           </div>
           <div className="divide-y divide-slate-100">
             {openCases.map((item) => (

@@ -25,7 +25,11 @@ export default function MobileDrawer() {
     const user = useUserStore((s) => s.user);
     const { logout, isLoading: isLoggingOut } = useAuth();
 
-    const visibleItems = getVisibleMenuItems(menuItems, hasPermission);
+    const visibleItems = getVisibleMenuItems(
+        menuItems,
+        hasPermission,
+        user?.workplace_facility_id,
+    );
     const badges = useLayoutMenuBadges();
 
     const backdropRef = useRef<HTMLDivElement>(null);

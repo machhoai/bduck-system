@@ -39,7 +39,7 @@ const copy = {
     loadError: "Không thể tải bản nháp hóa đơn.",
     revision: "Revision",
     sourceStale:
-      "Dữ liệu HKAPI đã thay đổi. Hãy đồng bộ lại và tạo revision mới.",
+      "Dữ liệu JPOS/HKAPI đã thay đổi. Hãy cập nhật dữ liệu và kiểm tra revision mới.",
     rebase: "Cập nhật draft từ HKAPI",
     buyer: "Thông tin người mua",
     fullName: "Tên người mua",

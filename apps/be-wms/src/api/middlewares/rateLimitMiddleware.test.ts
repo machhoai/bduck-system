@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  isPosDeviceWatchRequest,
+  resolvePosDeviceWatchRateLimitKey,
   resolvePosDeviceSessionRateLimitKey,
   resolveTrustProxySetting,
 } from "./rateLimitMiddleware.js";
@@ -52,4 +54,41 @@ test("falls back to an IP limit when the POS device id is invalid", () => {
   });
 
   assert.equal(missingDevice, malformedDevice);
+});
+
+test("isolates POS watch limits by device behind the same public IP", () => {
+  const firstDevice = resolvePosDeviceWatchRateLimitKey({
+    body: { device_id: "a642997b-e955-4af7-9b68-275982398c46" },
+    ip: "203.0.113.10",
+  });
+  const secondDevice = resolvePosDeviceWatchRateLimitKey({
+    body: { device_id: "b642997b-e955-4af7-9b68-275982398c46" },
+    ip: "203.0.113.10",
+  });
+
+  assert.notEqual(firstDevice, secondDevice);
+});
+
+test("exempts only POST POS device watch endpoints from the global IP limit", () => {
+  assert.equal(
+    isPosDeviceWatchRequest({
+      method: "POST",
+      originalUrl: "/api/pos/devices/customer-display-settings/watch?source=jpos",
+    }),
+    true,
+  );
+  assert.equal(
+    isPosDeviceWatchRequest({
+      method: "GET",
+      originalUrl: "/api/pos/devices/customer-display-settings/watch",
+    }),
+    false,
+  );
+  assert.equal(
+    isPosDeviceWatchRequest({
+      method: "POST",
+      originalUrl: "/api/pos/devices/session",
+    }),
+    false,
+  );
 });

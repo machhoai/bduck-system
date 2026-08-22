@@ -61,7 +61,7 @@ export const openPosDeviceSession = async (input: {
   ] = await Promise.all([
     posReceiptSettingsRepository.findByWarehouse(device.warehouse_id),
     posTicketSettingsRepository.findByWarehouse(device.warehouse_id),
-    posPaymentSettingsRepository.findByWarehouse(device.warehouse_id),
+    posPaymentSettingsRepository.findByDevice(device.id, device.warehouse_id),
     getPosCustomerDisplaySettingsView(device.warehouse_id, "DEVICE"),
   ]);
   const { credential_hash: _credentialHash, ...safeDevice } = activeDevice;

@@ -118,9 +118,9 @@ export const posManagementApi = {
         body: JSON.stringify(value),
       },
     ),
-  getPaymentSettings: async (warehouseId: string) => {
+  getPaymentSettings: async (deviceId: string) => {
     const response = await authenticatedFetch(
-      `${API_BASE_URL}/api/pos/stores/${warehouseId}/payment-settings`,
+      `${API_BASE_URL}/api/pos/devices/${deviceId}/payment-settings`,
     );
     const envelope = (await response.json()) as ApiEnvelope<PosPaymentSettings>;
     if (!response.ok)
@@ -129,9 +129,9 @@ export const posManagementApi = {
       );
     return envelope.data;
   },
-  savePaymentSettings: (warehouseId: string, value: PosPaymentSettingsInput) =>
+  savePaymentSettings: (deviceId: string, value: PosPaymentSettingsInput) =>
     callPosApi<PosPaymentSettings>(
-      `/api/pos/stores/${warehouseId}/payment-settings`,
+      `/api/pos/devices/${deviceId}/payment-settings`,
       {
         method: "PUT",
         body: JSON.stringify(value),

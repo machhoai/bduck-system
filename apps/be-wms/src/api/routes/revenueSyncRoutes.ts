@@ -7,13 +7,15 @@
  */
 
 import { Router, type Router as ExpressRouter } from "express";
+
+import { getOnlineSalesReportHandler } from "../controllers/onlineSalesReportController.js";
+import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
 import {
   syncRevenueHandler,
+  syncPartnerPosOrdersHandler,
   getCachedRevenueHandler,
   getOrderDetailsHandler,
 } from "../controllers/revenueSyncController.js";
-import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
-import { getOnlineSalesReportHandler } from "../controllers/onlineSalesReportController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
@@ -25,6 +27,11 @@ router.get(
   "/dashboard",
   requireAnyScopedPermission("revenue.read"),
   getRevenueDashboardHandler,
+);
+router.post(
+  "/partner-pos-sync",
+  requireAnyScopedPermission("revenue.sync"),
+  syncPartnerPosOrdersHandler,
 );
 router.get(
   "/online-sales",

@@ -87,6 +87,43 @@ async function seedDocuments() {
     const firestore = context.firestore();
     const writes = [
       ["products/product-1", { name: "Global product" }],
+      [
+        "marketing_voucher_campaigns/campaign-a",
+        { name: "Campaign A", status: "ACTIVE", is_deleted: false },
+      ],
+      [
+        "marketing_voucher_codes/CODE-A",
+        {
+          campaign_id: "campaign-a",
+          status: "AVAILABLE",
+          is_deleted: false,
+        },
+      ],
+      [
+        "marketing_voucher_jobs/job-a",
+        {
+          campaign_id: "campaign-a",
+          type: "GENERATE_CODES",
+          status: "PROCESSING",
+          is_deleted: false,
+        },
+      ],
+      [
+        "marketing_voucher_jobs/job-a/items/item-a",
+        { campaign_id: "campaign-a", status: "QUEUED", is_deleted: false },
+      ],
+      [
+        "audit_logs/marketing-voucher-audit-a",
+        {
+          entity_type: "marketing_voucher_campaigns",
+          entity_id: "campaign-a",
+          warehouse_id: null,
+        },
+      ],
+      [
+        "marketing_voucher_operations/operation-a",
+        { actor_id: "user-a", action: "CREATE_CAMPAIGN" },
+      ],
       ["roles/role-1", { name: "Administrator" }],
       ["warehouses/warehouse-c", { name: "Warehouse C", is_deleted: false }],
       ["warehouses/store-d", { name: "Store D", is_deleted: false }],
@@ -532,6 +569,28 @@ async function seedDocuments() {
         { warehouse_id: "store-d", period: "2026-07" },
       ],
       [
+        "external_store_bindings/joyworld-store-d-store-f",
+        {
+          source_system: "JOYWORLD_LEGACY",
+          source_account_key: "test-account",
+          mode: "CONSOLIDATED",
+          canonical_warehouse_id: "store-d",
+          member_warehouse_ids: ["store-d", "store-f"],
+          display_name: "Store D + Store F",
+          enabled: true,
+        },
+      ],
+      [
+        "pos_orders/local-order-1",
+        {
+          localOrderId: "local-order-1",
+          warehouseId: "store-d",
+          status: "SYNC_SUCCESS",
+          totalAmount: 100000,
+          paidAt: "2026-07-01T03:00:00.000Z",
+        },
+      ],
+      [
         "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
         {
           warehouse_id: "store-d",
@@ -671,6 +730,7 @@ beforeEach(async () => {
       "office_scopes.read": true,
       "warehouses.read": true,
       "leave.config.manage": true,
+      "marketing_vouchers.read": true,
     },
     "warehouse-c": {
       "inventory.read": true,
@@ -704,6 +764,10 @@ beforeEach(async () => {
     },
   });
   await seedAccess("system-admin", {}, true);
+  await seedAccess("remote-marketing-reader", {
+    "store-a": { "inventory.read": true },
+    "store-b": { "marketing_vouchers.read": true },
+  });
   await seedAccess("office-a-manager", {
     "office-a": { "warehouses.read": true },
     "warehouse-c": { "inventory.read": true },
@@ -725,6 +789,68 @@ after(async () => {
 });
 
 describe("grant-aware Firestore rules", () => {
+  it("enforces workplace permission and backend-only marketing voucher writes", async () => {
+    const reader = environment.authenticatedContext("user-a").firestore();
+    const unrelated = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+    const remoteOnly = environment
+      .authenticatedContext("remote-marketing-reader")
+      .firestore();
+    const anonymous = environment.unauthenticatedContext().firestore();
+    const paths = [
+      ["marketing_voucher_campaigns", "campaign-a"],
+      ["marketing_voucher_codes", "CODE-A"],
+      ["marketing_voucher_jobs", "job-a"],
+      ["marketing_voucher_jobs/job-a/items", "item-a"],
+    ];
+
+    for (const [collectionPath, documentId] of paths) {
+      await assertSucceeds(getDoc(doc(reader, collectionPath, documentId)));
+      await assertSucceeds(getDoc(doc(admin, collectionPath, documentId)));
+      await assertFails(getDoc(doc(unrelated, collectionPath, documentId)));
+      await assertFails(getDoc(doc(remoteOnly, collectionPath, documentId)));
+      await assertFails(getDoc(doc(anonymous, collectionPath, documentId)));
+      await assertFails(
+        updateDoc(doc(reader, collectionPath, documentId), {
+          is_deleted: true,
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(admin, collectionPath, documentId), {
+          is_deleted: true,
+        }),
+      );
+      await assertFails(deleteDoc(doc(reader, collectionPath, documentId)));
+    }
+
+    const campaigns = await assertSucceeds(
+      getDocs(collection(reader, "marketing_voucher_campaigns")),
+    );
+    assert.equal(campaigns.size, 1);
+    await assertFails(
+      getDocs(collection(unrelated, "marketing_voucher_campaigns")),
+    );
+    await assertFails(
+      setDoc(doc(reader, "marketing_voucher_codes", "CLIENT-CODE"), {
+        campaign_id: "campaign-a",
+        status: "AVAILABLE",
+        is_deleted: false,
+      }),
+    );
+    await assertSucceeds(
+      getDoc(doc(reader, "audit_logs", "marketing-voucher-audit-a")),
+    );
+    await assertFails(
+      getDoc(doc(unrelated, "audit_logs", "marketing-voucher-audit-a")),
+    );
+    await assertFails(
+      getDoc(doc(reader, "marketing_voucher_operations", "operation-a")),
+    );
+    await assertFails(
+      getDoc(doc(admin, "marketing_voucher_operations", "operation-a")),
+    );
+  });
+
   it("limits office scope listeners to the granted office", async () => {
     const user = environment.authenticatedContext("user-a").firestore();
     await assertSucceeds(getDoc(doc(user, "office_scope_configs", "office-a")));
@@ -784,6 +910,26 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(user, "products", "product-1")));
     await assertFails(getDoc(doc(user, "roles", "role-1")));
     await assertSucceeds(getDoc(doc(admin, "roles", "role-1")));
+    await assertFails(
+      getDoc(
+        doc(
+          anonymous,
+          "external_store_bindings",
+          "joyworld-store-d-store-f",
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
+        { enabled: false },
+      ),
+    );
   });
 
   it("allows only facility-constrained inventory queries", async () => {
@@ -1311,6 +1457,16 @@ describe("grant-aware Firestore rules", () => {
       ),
     );
     await assertSucceeds(
+      getDocs(
+        query(
+          collection(storeUser, "pos_orders"),
+          where("warehouseId", "==", "store-d"),
+          where("paidAt", ">=", "2026-07-01T00:00:00.000Z"),
+          where("paidAt", "<", "2026-07-02T00:00:00.000Z"),
+        ),
+      ),
+    );
+    await assertSucceeds(
       getDoc(
         doc(
           storeUser,
@@ -1376,8 +1532,11 @@ describe("grant-aware Firestore rules", () => {
     );
     await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
     await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
-    await assertFails(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
-    await assertFails(getDoc(doc(admin, "pos_orders", "local-order-1")));
+    await assertSucceeds(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
+    await assertSucceeds(getDoc(doc(admin, "pos_orders", "local-order-1")));
+    await assertFails(
+      getDoc(doc(warehouseUser, "pos_orders", "local-order-1")),
+    );
     for (const collectionName of [
       "pos_devices",
       "pos_device_enrollments",

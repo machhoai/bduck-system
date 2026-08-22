@@ -10,186 +10,198 @@
  * ► Chọn từng kho → hiển thị chi tiết hơn
  */
 
+import { ShieldOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { ShieldOff } from "lucide-react";
+
+import type { LegacyDashboardState } from "../../../components/inventory/LegacyDashboardDataProvider";
+import LowStockTable from "../../../components/inventory/LowStockTable";
+import StatCardGrid from "../../../components/inventory/StatCardGrid";
+import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
+import WarehouseDetailPopup from "../../../components/inventory/WarehouseDetailPopup";
+import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
+import { useInventoryDashboardSummary } from "../../../hooks/useInventoryDashboardSummary";
+import { useWarehouseLocations } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
-import { useWarehouseLocations } from "../../../hooks/useWarehouses";
-import { useInventoryDashboardSummary } from "../../../hooks/useInventoryDashboardSummary";
-import type { LegacyDashboardState } from "../../../components/inventory/LegacyDashboardDataProvider";
-
-import WarehouseSelector from "../../../components/inventory/WarehouseSelector";
-import StatCardGrid from "../../../components/inventory/StatCardGrid";
-import WarehouseDetailPopup from "../../../components/inventory/WarehouseDetailPopup";
-import LowStockTable from "../../../components/inventory/LowStockTable";
-import TopProductsRanking from "../../../components/inventory/TopProductsRanking";
 const StockDistributionChart = dynamic(
-  () => import("../../../components/inventory/StockDistributionChart"),
+    () => import("../../../components/inventory/StockDistributionChart"),
 );
 const StockComparisonChart = dynamic(
-  () => import("../../../components/inventory/StockComparisonChart"),
+    () => import("../../../components/inventory/StockComparisonChart"),
 );
 const StockTrendChart = dynamic(
-  () => import("../../../components/inventory/StockTrendChart"),
+    () => import("../../../components/inventory/StockTrendChart"),
 );
 const DashboardRevenueOverview = dynamic(
-  () => import("../../../components/features/revenue/DashboardRevenueOverview"),
+    () => import("../../../components/features/revenue/DashboardRevenueOverview"),
 );
 const LegacyDashboardDataProvider = dynamic(
-  () => import("../../../components/inventory/LegacyDashboardDataProvider"),
-  { ssr: false },
+    () => import("../../../components/inventory/LegacyDashboardDataProvider"),
+    { ssr: false },
 );
 
 const EMPTY_KPIS = {
-  warehouseCount: 0,
-  skuCount: 0,
-  totalQuantity: 0,
-  atpQuantity: 0,
-  quarantineQuantity: 0,
-  inTransitQuantity: 0,
-  onHoldQuantity: 0,
+    warehouseCount: 0,
+    skuCount: 0,
+    totalQuantity: 0,
+    atpQuantity: 0,
+    quarantineQuantity: 0,
+    inTransitQuantity: 0,
+    onHoldQuantity: 0,
 };
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
-  const d = t.inventoryDashboard;
-  const user = useUserStore((state) => state.user);
-  const hasPermission = useUserStore((state) => state.hasPermission);
-  const displayName = user?.full_name?.split(" ").pop() || "";
+    const { t } = useTranslation();
+    const d = t.inventoryDashboard;
+    const user = useUserStore((state) => state.user);
+    const hasPermission = useUserStore((state) => state.hasPermission);
+    const displayName = user?.full_name?.split(" ").pop() || "";
 
-  // ── Data hooks (real-time) ──
-  // ── Warehouse filter ──
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<
-    string | undefined
-  >(undefined);
-  const isAllWarehouses = !selectedWarehouseId;
+    // ── Data hooks (real-time) ──
+    // ── Warehouse filter ──
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<
+        string | undefined
+    >(undefined);
+    const isAllWarehouses = !selectedWarehouseId;
 
-  const {
-    data: serverData,
-    loading: serverLoading,
-    refreshing,
-    error: serverError,
-    retry,
-    legacyBackend,
-  } = useInventoryDashboardSummary(selectedWarehouseId);
-  const [legacyState, setLegacyState] = useState<LegacyDashboardState>({
-    data: null,
-    loading: true,
-    error: null,
-  });
-  const data = serverData ?? (legacyBackend ? legacyState.data : null);
-  const loading =
-    serverLoading || (legacyBackend && legacyState.loading && !data);
-  const error = serverError ?? (legacyBackend ? legacyState.error : null);
-  const stores = data?.stores ?? [];
+    const {
+        data: serverData,
+        loading: serverLoading,
+        refreshing,
+        error: serverError,
+        retry,
+        legacyBackend,
+    } = useInventoryDashboardSummary(selectedWarehouseId);
+    const [legacyState, setLegacyState] = useState<LegacyDashboardState>({
+        data: null,
+        loading: true,
+        error: null,
+    });
+    const data = serverData ?? (legacyBackend ? legacyState.data : null);
+    const loading =
+        serverLoading || (legacyBackend && legacyState.loading && !data);
+    const error = serverError ?? (legacyBackend ? legacyState.error : null);
+    const stores = data?.stores ?? [];
 
-  // ── Locations for specific warehouse ──
-  const { locations, loading: locationsLoading } = useWarehouseLocations(
-    selectedWarehouseId,
-    { enabled: Boolean(selectedWarehouseId) },
-  );
-
-  // ── Popup state ──
-  const [popupMetric, setPopupMetric] = useState<string | null>(null);
-
-  // ── Computed KPIs (memoized) ──
-  const kpis = data?.kpis ?? EMPTY_KPIS;
-  const breakdown = data?.breakdown ?? [];
-  const lowStockProducts = data?.lowStockProducts ?? [];
-  const topMost = data?.topMost ?? [];
-  const topLeast = data?.topLeast ?? [];
-  const typeDistribution = data?.typeDistribution ?? [];
-  const stockComparison = data?.stockComparison ?? [];
-  const initialLoading = loading && !data;
-
-  // ── Permissions ──
-  const hasRevenueAccess = hasPermission("revenue.read");
-  // ── Full skeleton while loading ──
-  // ── No access state ──
-  if (data && stores.length === 0 && !loading && !error) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
-          <ShieldOff
-            size={28}
-            strokeWidth={1.5}
-            className="text-[var(--color-text-muted)]"
-          />
-        </div>
-        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-          {d.noAccess}
-        </h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {d.noAccessDescription}
-        </p>
-      </div>
+    // ── Locations for specific warehouse ──
+    const { locations, loading: locationsLoading } = useWarehouseLocations(
+        selectedWarehouseId,
+        { enabled: Boolean(selectedWarehouseId) },
     );
-  }
 
-  return (
-    <div className="relative flex flex-col gap-4 pb-3">
-      {legacyBackend && (
-        <LegacyDashboardDataProvider
-          warehouseId={selectedWarehouseId}
-          onChange={setLegacyState}
-        />
-      )}
-      <div className="absolute -top-12 -left-2 -right-2 lg:-left-4 lg:-right-2 h-60 rounded-b-3xl bg-[var(--color-brand-primary)] pointer-events-none z-0"></div>
-      {/* ── Header ── */}
-      <header
-        id="wms-dashboard-header"
-        className="relative z-10 flex justify-between gap-3 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div className="flex flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-[var(--font-display)] text-lg font-bold leading-tight tracking-tight text-white">
-              {t.dashboard.welcome}, {displayName}
-            </h1>
-          </div>
-          <p className="text-xs text-white/90">{d.title}</p>
-        </div>
+    // ── Popup state ──
+    const [popupMetric, setPopupMetric] = useState<string | null>(null);
 
-        <div id="wms-dashboard-warehouse-filter" className="shrink-0">
-          <WarehouseSelector
-            warehouses={stores}
-            selectedId={selectedWarehouseId}
-            onSelect={setSelectedWarehouseId}
-          />
-        </div>
-      </header>
+    // ── Computed KPIs (memoized) ──
+    const kpis = data?.kpis ?? EMPTY_KPIS;
+    const breakdown = data?.breakdown ?? [];
+    const lowStockProducts = data?.lowStockProducts ?? [];
+    const topMost = data?.topMost ?? [];
+    const topLeast = data?.topLeast ?? [];
+    const typeDistribution = data?.typeDistribution ?? [];
+    const stockComparison = data?.stockComparison ?? [];
+    const initialLoading = loading && !data;
 
-      {error && (
-        <div className="relative z-10 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <span>{error.message}</span>
-          <button
-            type="button"
-            onClick={() =>
-              legacyBackend ? window.location.reload() : void retry()
-            }
-            className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700"
-          >
-            {t.common.retry}
-          </button>
-        </div>
-      )}
+    // ── Permissions ──
+    const revenueWarehouseIds = selectedWarehouseId
+        ? hasPermission("revenue.read", selectedWarehouseId)
+            ? [selectedWarehouseId]
+            : []
+        : stores
+            .filter((store) => hasPermission("revenue.read", store.id))
+            .map((store) => store.id);
+    const hasRevenueAccess = revenueWarehouseIds.length > 0;
+    // ── Full skeleton while loading ──
+    // ── No access state ──
+    if (data && stores.length === 0 && !loading && !error) {
+        return (
+            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
+                    <ShieldOff
+                        size={28}
+                        strokeWidth={1.5}
+                        className="text-[var(--color-text-muted)]"
+                    />
+                </div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                    {d.noAccess}
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                    {d.noAccessDescription}
+                </p>
+            </div>
+        );
+    }
 
-      {refreshing && (
-        <p className="relative z-10 text-right text-[10px] text-white/80">
-          {t.common.loading}
-        </p>
-      )}
+    return (
+        <div className="relative flex flex-col gap-4 pb-3">
+            {legacyBackend && (
+                <LegacyDashboardDataProvider
+                    warehouseId={selectedWarehouseId}
+                    onChange={setLegacyState}
+                />
+            )}
+            <div className="absolute -top-12 -left-2 -right-2 lg:-left-4 lg:-right-2 h-60 rounded-b-3xl bg-[var(--color-brand-primary)] pointer-events-none z-0"></div>
+            {/* ── Header ── */}
+            <header
+                id="wms-dashboard-header"
+                className="relative z-10 flex justify-between gap-3 sm:flex-row sm:items-end sm:justify-between"
+            >
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="font-[var(--font-display)] text-lg font-bold leading-tight tracking-tight text-white">
+                            {t.dashboard.welcome}, {displayName}
+                        </h1>
+                    </div>
+                    <p className="text-xs text-white/90">{d.title}</p>
+                </div>
 
-      {hasRevenueAccess && data && stores.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <DashboardRevenueOverview
-            warehouseId={selectedWarehouseId || stores[0]?.id}
-          />
-        </div>
-      )}
+                <div id="wms-dashboard-warehouse-filter" className="shrink-0 z-100">
+                    <WarehouseSelector
+                        warehouses={stores}
+                        selectedId={selectedWarehouseId}
+                        onSelect={setSelectedWarehouseId}
+                    />
+                </div>
+            </header>
 
-      {/* ── Expense Dashboard Widgets ── */}
-      {/* {hasExpenseAccess && (
+            {error && (
+                <div className="relative z-10 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <span>{error.message}</span>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            legacyBackend ? window.location.reload() : void retry()
+                        }
+                        className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700"
+                    >
+                        {t.common.retry}
+                    </button>
+                </div>
+            )}
+
+            {refreshing && (
+                <p className="relative z-10 text-right text-[10px] text-white/80">
+                    {t.common.loading}
+                </p>
+            )}
+
+            {hasRevenueAccess && data && stores.length > 0 && (
+                <div className="flex flex-col gap-3">
+                    <DashboardRevenueOverview
+                        warehouseId={selectedWarehouseId}
+                        warehouseIds={revenueWarehouseIds}
+                        canSyncPartner={
+                            Boolean(selectedWarehouseId) &&
+                            hasPermission("revenue.sync", selectedWarehouseId)
+                        }
+                    />
+                </div>
+            )}
+
+            {/* ── Expense Dashboard Widgets ── */}
+            {/* {hasExpenseAccess && (
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between pb-1.5">
                         <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
@@ -202,71 +214,71 @@ export default function DashboardPage() {
                 </div>
             )} */}
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between pb-1.5">
-          <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
-            {d.inventorySectionTitle}
-          </h2>
-        </div>
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between pb-1.5">
+                    <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
+                        {d.inventorySectionTitle}
+                    </h2>
+                </div>
 
-        {/* ── Stat Cards ── */}
-        <div id="wms-dashboard-kpis">
-          <StatCardGrid
-            kpis={kpis}
-            loading={initialLoading}
-            isAllWarehouses={isAllWarehouses}
-            locationCount={locationsLoading ? undefined : locations.length}
-            onCardClick={(metric) => setPopupMetric(metric)}
-          />
-        </div>
+                {/* ── Stat Cards ── */}
+                <div id="wms-dashboard-kpis">
+                    <StatCardGrid
+                        kpis={kpis}
+                        loading={initialLoading}
+                        isAllWarehouses={isAllWarehouses}
+                        locationCount={locationsLoading ? undefined : locations.length}
+                        onCardClick={(metric) => setPopupMetric(metric)}
+                    />
+                </div>
 
-        {/* ── Charts Row ── */}
-        <div
-          id="wms-dashboard-charts"
-          className="grid grid-cols-1 gap-3 lg:grid-cols-2"
-        >
-          {data ? (
-            <>
-              <StockDistributionChart data={typeDistribution} loading={false} />
-              {isAllWarehouses ? (
-                <StockComparisonChart data={stockComparison} loading={false} />
-              ) : (
-                <StockTrendChart loading={false} />
-              )}
-            </>
-          ) : initialLoading ? (
-            <>
-              <div className="h-[320px] animate-pulse rounded-[var(--radius-lg)] bg-[var(--color-skeleton-base)]" />
-              <div className="h-[320px] animate-pulse rounded-[var(--radius-lg)] bg-[var(--color-skeleton-base)]" />
-            </>
-          ) : null}
-        </div>
+                {/* ── Charts Row ── */}
+                <div
+                    id="wms-dashboard-charts"
+                    className="grid grid-cols-1 gap-3 lg:grid-cols-2"
+                >
+                    {data ? (
+                        <>
+                            <StockDistributionChart data={typeDistribution} loading={false} />
+                            {isAllWarehouses ? (
+                                <StockComparisonChart data={stockComparison} loading={false} />
+                            ) : (
+                                <StockTrendChart loading={false} />
+                            )}
+                        </>
+                    ) : initialLoading ? (
+                        <>
+                            <div className="h-[320px] animate-pulse rounded-[var(--radius-lg)] bg-[var(--color-skeleton-base)]" />
+                            <div className="h-[320px] animate-pulse rounded-[var(--radius-lg)] bg-[var(--color-skeleton-base)]" />
+                        </>
+                    ) : null}
+                </div>
 
-        {/* ── Tables Row ── */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <div id="wms-dashboard-low-stock">
-            <LowStockTable
-              products={lowStockProducts}
-              loading={initialLoading}
-            />
-          </div>
-          <div id="wms-dashboard-top-products">
-            <TopProductsRanking
-              mostStocked={topMost}
-              leastStocked={topLeast}
-              loading={initialLoading}
-            />
-          </div>
-        </div>
+                {/* ── Tables Row ── */}
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div id="wms-dashboard-low-stock">
+                        <LowStockTable
+                            products={lowStockProducts}
+                            loading={initialLoading}
+                        />
+                    </div>
+                    <div id="wms-dashboard-top-products">
+                        <TopProductsRanking
+                            mostStocked={topMost}
+                            leastStocked={topLeast}
+                            loading={initialLoading}
+                        />
+                    </div>
+                </div>
 
-        {/* ── Warehouse Detail Popup ── */}
-        <WarehouseDetailPopup
-          isOpen={popupMetric !== null && isAllWarehouses}
-          onClose={() => setPopupMetric(null)}
-          metric={popupMetric || "totalQuantity"}
-          breakdown={breakdown}
-        />
-      </div>
-    </div>
-  );
+                {/* ── Warehouse Detail Popup ── */}
+                <WarehouseDetailPopup
+                    isOpen={popupMetric !== null && isAllWarehouses}
+                    onClose={() => setPopupMetric(null)}
+                    metric={popupMetric || "totalQuantity"}
+                    breakdown={breakdown}
+                />
+            </div>
+        </div>
+    );
 }

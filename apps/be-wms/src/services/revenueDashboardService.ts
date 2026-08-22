@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../config/firebase.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 
+import { resolveExternalStoreBinding } from "./externalStoreBindingService.js";
 import {
   getCashierSummary,
   getCoinStatistics,
@@ -199,8 +200,14 @@ export async function getRevenueDashboardData(
   params: RevenueDashboardParams,
   userId = "system",
 ): Promise<RevenueDashboardData> {
-  const normalized = normalizeRange(params);
-  const warehouseId = params.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+  const requestedWarehouseId = params.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+  const binding = await resolveExternalStoreBinding(
+    "JOYWORLD_LEGACY",
+    requestedWarehouseId,
+  );
+  const warehouseId = binding?.canonical_warehouse_id ?? requestedWarehouseId;
+  const canonicalParams = { ...params, warehouseId };
+  const normalized = normalizeRange(canonicalParams);
   const cacheKey = buildCacheKey(warehouseId, params.mode, normalized);
   const docRef = db.collection(DASHBOARD_COLLECTION).doc(cacheKey);
   const cachedSnap = await docRef.get();
@@ -229,11 +236,23 @@ export async function getRevenueDashboardData(
           { merge: true },
         );
       }
-      return hydrateDashboardRows(cached.dashboard, docRef);
+      const hydrated = await hydrateDashboardRows(cached.dashboard, docRef);
+      return binding
+        ? {
+            ...hydrated,
+            warehouseId,
+            warehouseName: binding.display_name,
+          }
+        : hydrated;
     }
   }
 
-  const dashboard = await fetchRevenueDashboardData(params, normalized, cacheKey);
+  const dashboard = await fetchRevenueDashboardData(
+    canonicalParams,
+    normalized,
+    cacheKey,
+    binding?.display_name,
+  );
   const dashboardSummary: RevenueDashboardData = {
     ...dashboard,
     orders: [],
@@ -263,6 +282,7 @@ async function fetchRevenueDashboardData(
   params: RevenueDashboardParams,
   normalized: NormalizedRange,
   cacheKey: string,
+  warehouseDisplayName?: string,
 ): Promise<RevenueDashboardData> {
   const chartWindow = getChartWindow(params, normalized);
   const warehouseId = params.warehouseId || LANDMARK_81_WAREHOUSE_ID;
@@ -331,7 +351,8 @@ async function fetchRevenueDashboardData(
 
   return {
     warehouseId,
-    warehouseName: warehouse?.name || "B.Duck Cityfuns Landmark 81",
+    warehouseName:
+      warehouseDisplayName || warehouse?.name || "B.Duck Cityfuns Landmark 81",
     mode: params.mode,
     cacheKey,
     range: {

@@ -85,6 +85,19 @@ service cloud.firestore {
             && facilityGrantAllows(facilityId, action)));
     }
 
+    // Company-wide capabilities are materialized on the actor's canonical
+    // workplace grant. This avoids broad authenticated reads and keeps the
+    // browser, Rules and backend service policy on the same scope.
+    function hasWorkplacePermission(action) {
+      let facilityId = accessWorkplaceFacilityId();
+      return hasActiveAccess()
+        && (access().is_global_admin == true
+          || (facilityId is string
+            && facilityId.size() > 0
+            && exists(grantPath(facilityId))
+            && facilityGrantAllows(facilityId, action)));
+    }
+
     function readableFacilityDirectory(facilityId) {
       return isSystemAdmin() || hasFacilityGrant(facilityId);
     }
@@ -419,6 +432,12 @@ service cloud.firestore {
 
     match /audit_logs/{docId} {
       allow read: if isSystemAdmin()
+        || (resource.data.entity_type in [
+              'marketing_voucher_campaigns',
+              'marketing_voucher_codes',
+              'marketing_voucher_jobs'
+            ]
+          && hasWorkplacePermission('marketing_vouchers.read'))
         || hasResourceFacility('warehouse_id', 'audit.read')
         || (resource.data.entity_type in [
               'POS_DEVICE',
@@ -444,6 +463,29 @@ service cloud.firestore {
     match /vouchers/{docId} {
       allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
       allow write: if false;
+    }
+
+    // Marketing vouchers are a separate company-wide domain. Realtime reads
+    // require the explicit workplace capability; all mutations use Admin SDK
+    // so validation, idempotency and audit cannot be bypassed by a client.
+    match /marketing_voucher_campaigns/{campaignId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+    }
+    match /marketing_voucher_codes/{codeId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+    }
+    match /marketing_voucher_jobs/{jobId} {
+      allow read: if hasWorkplacePermission('marketing_vouchers.read');
+      allow write: if false;
+      match /items/{itemId} {
+        allow read: if hasWorkplacePermission('marketing_vouchers.read');
+        allow write: if false;
+      }
+    }
+    match /marketing_voucher_operations/{operationId} {
+      allow read, write: if false;
     }
     match /import_vouchers/{voucherId} {
       allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
@@ -558,6 +600,10 @@ service cloud.firestore {
       allow read: if hasResourceFacility('warehouse_id', 'revenue.read');
       allow write: if false;
     }
+    match /external_store_bindings/{bindingId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
     match /revenue_dashboards/{dashboardId} {
       allow read: if hasResourceFacility('warehouse_id', 'revenue.read');
       allow write: if false;
@@ -581,10 +627,14 @@ service cloud.firestore {
       allow read: if hasResourceFacility('warehouse_id', 'invoices.read');
       allow write: if false;
     }
-    // JPOS uses callable Functions for all order access. Keep opaque invoice
-    // request tokens server-only even though both applications share Firestore.
-    match /pos_orders/{orderId} {
+    match /invoice_source_identities/{docId} {
       allow read, write: if false;
+    }
+    // Revenue readers can observe paid JPOS orders for realtime dashboard
+    // aggregation. All order mutations remain backend-only.
+    match /pos_orders/{orderId} {
+      allow read: if hasResourceFacility('warehouseId', 'revenue.read');
+      allow write: if false;
     }
     // JPOS device credentials, pairing grants and configuration are backend-only.
     match /pos_devices/{deviceId} {
@@ -599,7 +649,7 @@ service cloud.firestore {
     match /pos_ticket_settings/{warehouseId} {
       allow read, write: if false;
     }
-    match /pos_payment_settings/{warehouseId} {
+    match /pos_payment_settings/{deviceId} {
       allow read, write: if false;
     }
     // Both JPULSE and authenticated JPOS editors observe this same document
@@ -767,10 +817,11 @@ service cloud.firestore {
       }
     }
 
-    // POS-owned data is backend-only. POS clients use authenticated callable
-    // Cloud Functions; reads and writes are performed through the Admin SDK.
+    // This duplicate legacy match intentionally mirrors the scoped read rule
+    // above; Firestore combines matching allow expressions with OR semantics.
     match /pos_orders/{orderId} {
-      allow read, write: if false;
+      allow read: if hasResourceFacility('warehouseId', 'revenue.read');
+      allow write: if false;
     }
     match /pos_members/{memberId} {
       allow read, write: if false;

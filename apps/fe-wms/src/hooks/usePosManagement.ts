@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  PosPaymentSettings,
   PosReceiptSettings,
   PosStoreOverview,
   PosTicketSettings,
@@ -19,8 +18,6 @@ export function usePosManagement(
   const [settings, setSettings] = useState<PosReceiptSettings | null>(null);
   const [ticketSettings, setTicketSettings] =
     useState<PosTicketSettings | null>(null);
-  const [paymentSettings, setPaymentSettings] =
-    useState<PosPaymentSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -31,31 +28,24 @@ export function usePosManagement(
     setLoading(true);
     setError(null);
     try {
-      const [
-        nextOverview,
-        nextDevices,
-        nextSettings,
-        nextTicketSettings,
-        nextPaymentSettings,
-      ] = await Promise.all([
-        access.devices ? posManagementApi.getOverview(warehouseId) : null,
-        access.devices ? posManagementApi.listDevices(warehouseId) : [],
-        access.settings
-          ? posManagementApi.getReceiptSettings(warehouseId)
-          : null,
-        access.settings
-          ? posManagementApi.getTicketSettings(warehouseId)
-          : null,
-        access.settings
-          ? posManagementApi.getPaymentSettings(warehouseId)
-          : null,
-      ]);
+      const [nextOverview, nextDevices, nextSettings, nextTicketSettings] =
+        await Promise.all([
+          access.devices ? posManagementApi.getOverview(warehouseId) : null,
+          access.devices || access.settings
+            ? posManagementApi.listDevices(warehouseId)
+            : [],
+          access.settings
+            ? posManagementApi.getReceiptSettings(warehouseId)
+            : null,
+          access.settings
+            ? posManagementApi.getTicketSettings(warehouseId)
+            : null,
+        ]);
       if (requestId.current !== activeRequestId) return;
       setOverview(nextOverview);
       setDevices(nextDevices);
       setSettings(nextSettings);
       setTicketSettings(nextTicketSettings);
-      setPaymentSettings(nextPaymentSettings);
     } catch (reason: unknown) {
       if (requestId.current !== activeRequestId) return;
       setError(
@@ -111,7 +101,6 @@ export function usePosManagement(
     devices,
     settings,
     ticketSettings,
-    paymentSettings,
     loading,
     error,
     refresh,

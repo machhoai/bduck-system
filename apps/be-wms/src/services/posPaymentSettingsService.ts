@@ -1,46 +1,71 @@
-import type { PosPaymentSettings, PosPaymentSettingsInput } from "@bduck/shared-types";
+import type {
+  PosPaymentSettings,
+  PosPaymentSettingsInput,
+} from "@bduck/shared-types";
 import { z } from "zod";
 
+import { posDeviceRepository } from "../repositories/posDeviceRepository.js";
 import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
 
 import type { AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
-import { loadWarehouseById } from "./warehouseService.js";
+import { PosDeviceError } from "./posDeviceService.js";
 
-export const posPaymentSettingsSchema = z.object({
-  enabled: z.boolean(),
-  fixedTransferOnly: z.boolean().default(false),
-  bankBin: z.string().trim().regex(/^\d{6}$/),
-  accountNumber: z.string().trim().regex(/^\d{6,19}$/),
-  accountName: z.string().trim().min(2).max(50),
-}).refine(
-  (value) => !value.fixedTransferOnly || value.enabled,
-  {
+export const posPaymentSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    fixedTransferOnly: z.boolean().default(false),
+    bankBin: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/),
+    accountNumber: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9]{6,19}$/),
+    accountName: z.string().trim().min(2).max(50),
+  })
+  .refine((value) => !value.fixedTransferOnly || value.enabled, {
     message: "Phải bật QR cố định trước khi dùng chế độ chỉ QR cố định.",
     path: ["fixedTransferOnly"],
-  },
-);
+  });
 
 export const getPosPaymentSettings = async (
-  warehouseId: string,
+  deviceId: string,
   authorization: AuthorizationService,
 ): Promise<PosPaymentSettings | null> => {
-  authorization.assert("pos.settings.read", warehouseId);
-  await loadWarehouseById(warehouseId);
-  return posPaymentSettingsRepository.findByWarehouse(warehouseId);
+  const device = await posDeviceRepository.findById(deviceId);
+  if (!device || device.is_deleted) {
+    throw new PosDeviceError(404, {
+      vi: "Không tìm thấy máy POS.",
+      zh: "未找到 POS 设备。",
+    });
+  }
+  authorization.assert("pos.settings.read", device.warehouse_id);
+  return posPaymentSettingsRepository.findByDevice(
+    device.id,
+    device.warehouse_id,
+  );
 };
 
 export const savePosPaymentSettings = async (input: {
-  warehouseId: string;
+  deviceId: string;
   actorId: string;
   value: PosPaymentSettingsInput;
   authorization: AuthorizationService;
   auditMetadata?: AuditMetadata;
 }): Promise<PosPaymentSettings> => {
-  input.authorization.assert("pos.settings.manage", input.warehouseId);
-  await loadWarehouseById(input.warehouseId);
+  const device = await posDeviceRepository.findById(input.deviceId);
+  if (!device || device.is_deleted) {
+    throw new PosDeviceError(404, {
+      vi: "Không tìm thấy máy POS.",
+      zh: "未找到 POS 设备。",
+    });
+  }
+  input.authorization.assert("pos.settings.manage", device.warehouse_id);
   return posPaymentSettingsRepository.save({
-    warehouseId: input.warehouseId,
+    deviceId: device.id,
+    warehouseId: device.warehouse_id,
     actorId: input.actorId,
     value: input.value,
     context: input.auditMetadata,

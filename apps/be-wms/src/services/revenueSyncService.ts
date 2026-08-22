@@ -41,6 +41,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../config/firebase.js";
 
 import { logAudit } from "./auditService.js";
+import { resolveCanonicalExternalWarehouseId } from "./externalStoreBindingService.js";
 import {
   getJoyworldToken,
   getRevenueData,
@@ -218,6 +219,10 @@ export async function syncRevenueForPeriod(
   userId: string,
   warehouseId = LANDMARK_81_WAREHOUSE_ID,
 ): Promise<SyncResult> {
+  warehouseId = await resolveCanonicalExternalWarehouseId(
+    "JOYWORLD_LEGACY",
+    warehouseId,
+  );
   const docRef = db.collection(COLLECTION).doc(`${warehouseId}_${period}`);
   const existingSnap = await docRef.get();
   const oldValue = existingSnap.exists
@@ -302,6 +307,10 @@ export async function getCachedRevenue(
   period: string,
   warehouseId = LANDMARK_81_WAREHOUSE_ID,
 ): Promise<RevenueSyncDoc | null> {
+  warehouseId = await resolveCanonicalExternalWarehouseId(
+    "JOYWORLD_LEGACY",
+    warehouseId,
+  );
   const docRef = db.collection(COLLECTION).doc(`${warehouseId}_${period}`);
   const snap = await docRef.get();
   return snap.exists ? (snap.data() as RevenueSyncDoc) : null;

@@ -123,20 +123,34 @@ export const syncInvoiceOrdersHandler = async (req: Request, res: Response) => {
       authorization,
       auditMetadata,
     );
-    const reconciliation =
+    const shouldReconcile =
       input.purpose === InvoiceOrderSyncPurpose.RECONCILIATION ||
-      input.include_reconciliation
-        ? await reconcileInvoiceDay(
-            input.warehouse_id,
-            input.business_date,
-            actorId,
-            authorization,
-            auditMetadata,
-          )
-        : null;
+      input.include_reconciliation;
+    const reconciliationWarehouseIds = shouldReconcile
+      ? result.partition_warehouse_ids.filter((warehouseId) =>
+          authorization.can("invoices.reconcile", warehouseId),
+        )
+      : [];
+    const reconciliationEntries = await Promise.all(
+      reconciliationWarehouseIds.map(
+        async (warehouseId) =>
+          [
+            warehouseId,
+            await reconcileInvoiceDay(
+              warehouseId,
+              input.business_date,
+              actorId,
+              authorization,
+              auditMetadata,
+            ),
+          ] as const,
+      ),
+    );
+    const reconciliations = Object.fromEntries(reconciliationEntries);
+    const reconciliation = reconciliations[input.warehouse_id] ?? null;
     return sendSuccess(
       res,
-      { ...result, reconciliation },
+      { ...result, reconciliation, reconciliations },
       {
         vi: "Đã đồng bộ đầy đủ dữ liệu đơn hàng trong ngày.",
         zh: "已完整同步当日订单数据。",

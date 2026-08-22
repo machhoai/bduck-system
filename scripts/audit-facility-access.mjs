@@ -177,6 +177,7 @@ const frontendFiles = await walk(
 const sensitiveProtectionClasses = new Set([
   "facility_scoped",
   "global_admin_configuration",
+  "global_permission_scoped",
   "user_private_or_participant",
 ]);
 

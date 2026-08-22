@@ -1,14 +1,18 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
+import { resolveCanonicalExternalWarehouseId } from "../../services/externalStoreBindingService.js";
 import {
   getJoyworldToken,
   getOrderDetail,
 } from "../../services/joyworldService.js";
+import { syncPartnerOrdersToPos } from "../../services/partnerPosOrderSyncService.js";
 import { LANDMARK_81_WAREHOUSE_ID } from "../../services/revenueDashboardService.js";
 import {
   getCachedRevenue,
   syncRevenueForPeriod,
 } from "../../services/revenueSyncService.js";
+import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
@@ -20,6 +24,9 @@ const warehouseQuerySchema = z.object({
   warehouseId: z.string().uuid().default(LANDMARK_81_WAREHOUSE_ID),
 });
 const orderIdSchema = z.string().trim().min(1).max(128);
+const partnerPosSyncSchema = z.object({
+  warehouseId: z.string().uuid(),
+});
 
 const serializeRevenue = <T extends { sync_time: unknown }>(data: T) => {
   const syncTime = data.sync_time as { toDate?: () => Date } | null;
@@ -52,7 +59,11 @@ export const syncRevenueHandler = async (
 ): Promise<void> => {
   try {
     const period = periodSchema.parse(req.params.period);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     const authorization = requireRequestAuthorization(req);
     authorization.assert("revenue.sync", warehouseId);
     const result = await syncRevenueForPeriod(
@@ -80,13 +91,48 @@ export const syncRevenueHandler = async (
   }
 };
 
+export const syncPartnerPosOrdersHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const request = partnerPosSyncSchema.parse(req.body);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      request.warehouseId,
+    );
+    requireRequestAuthorization(req).assert("revenue.sync", warehouseId);
+    const result = await syncPartnerOrdersToPos({
+      warehouseId,
+      actorId: requireAuthenticatedRequestUser(req).id,
+      auditMetadata: getAuditRequestMetadata(req),
+    });
+    sendSuccess(res, result, {
+      vi:
+        result.inserted_count > 0
+          ? `Đã thêm ${result.inserted_count} đơn mới từ POS đối tác.`
+          : "Dữ liệu JPOS đã là mới nhất.",
+      zh:
+        result.inserted_count > 0
+          ? `已从合作方 POS 新增 ${result.inserted_count} 个订单。`
+          : "JPOS 数据已是最新。",
+    });
+  } catch (error) {
+    handleRevenueError(res, error);
+  }
+};
+
 export const getCachedRevenueHandler = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
     const period = periodSchema.parse(req.params.period);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const data = await getCachedRevenue(period, warehouseId);
     sendSuccess(res, data ? serializeRevenue(data) : null, {
@@ -106,7 +152,11 @@ export const getOrderDetailsHandler = async (
 ): Promise<void> => {
   try {
     const orderId = orderIdSchema.parse(req.params.orderId);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const response = await getOrderDetail(await getJoyworldToken(), orderId);
     sendSuccess(res, response.data || response, {

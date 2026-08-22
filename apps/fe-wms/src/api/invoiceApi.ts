@@ -71,12 +71,29 @@ export interface InvoiceSyncResult {
   updated_count: number;
   unchanged_count: number;
   draft_created_count: number;
+  draft_rebased_count: number;
+  draft_rebase_skipped_count: number;
   reconciliation: {
     id: string;
     warehouse_id: string;
     business_date: string;
     summary: InvoiceDailyControlSummary;
   } | null;
+}
+
+export interface InvoiceBulkRebaseResult {
+  total_count: number;
+  stale_count: number;
+  rebased_count: number;
+  unchanged_count: number;
+  skipped_count: number;
+  failed_count: number;
+  items: Array<{
+    source_order_document_id: string;
+    order_number: string | null;
+    status: "REBASED" | "UNCHANGED" | "SKIPPED" | "FAILED";
+    code: string | null;
+  }>;
 }
 
 export type InvoiceLedgerEntryView = Omit<
@@ -460,6 +477,24 @@ export const invoiceApi = {
         include_reconciliation: includeReconciliation,
       }),
     }),
+
+  bulkRebaseSourceOrders: (
+    warehouseId: string,
+    businessDate: string,
+    sourceOrderIds: string[] = [],
+  ) =>
+    request<InvoiceBulkRebaseResult>(
+      "/api/invoices/source-orders/rebase-bulk",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          warehouse_id: warehouseId,
+          business_date: businessDate,
+          selection_mode: sourceOrderIds.length > 0 ? "SELECTED" : "ALL_STALE",
+          source_order_ids: sourceOrderIds,
+        }),
+      },
+    ),
 
   previewSourceOrder: (
     id: string,

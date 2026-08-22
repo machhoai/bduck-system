@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
+import { invoiceGlobalSourceIdentityDocumentId } from "../services/invoiceSourceIdentityPolicy.js";
 
 import {
   deduplicateSourceOrderWrites,
@@ -13,6 +14,7 @@ export { invoiceSourceOrderDocumentId } from "./invoiceOrderIdentity.js";
 const orders = db.collection("invoice_source_orders");
 const payloads = db.collection("invoice_source_order_payloads");
 const runs = db.collection("invoice_order_sync_runs");
+const sourceIdentities = db.collection("invoice_source_identities");
 const WRITE_CHUNK_SIZE = 140;
 
 export interface SourceOrderWrite {
@@ -28,6 +30,19 @@ export interface SourceOrderWriteResult {
   unchanged_count: number;
 }
 
+const globalIdentityForWrite = (value: SourceOrderWrite) => {
+  const sourceAccountKey = value.projection.external_source_account_key;
+  const externalOrderNumber = value.projection.external_order_number;
+  if (
+    typeof sourceAccountKey !== "string" ||
+    !sourceAccountKey ||
+    typeof externalOrderNumber !== "string" ||
+    !externalOrderNumber
+  ) {
+    return null;
+  }
+  return { sourceAccountKey, externalOrderNumber };
+};
 export const invoiceOrderRepository = {
   async createRun(value: Record<string, unknown>): Promise<string> {
     const id = randomUUID();
@@ -73,6 +88,63 @@ export const invoiceOrderRepository = {
           .collection("revisions")
           .doc(value.source_payload_hash),
       );
+      const identityTargets = new Map<
+        string,
+        {
+          reference: FirebaseFirestore.DocumentReference;
+          orderReference: FirebaseFirestore.DocumentReference;
+          identity: { sourceAccountKey: string; externalOrderNumber: string };
+        }
+      >();
+      chunk.forEach((value, index) => {
+        const identity = globalIdentityForWrite(value);
+        if (!identity) return;
+        const identityId = invoiceGlobalSourceIdentityDocumentId(
+          identity.sourceAccountKey,
+          identity.externalOrderNumber,
+        );
+        const existing = identityTargets.get(identityId);
+        if (existing && existing.orderReference.id !== refs[index].id) {
+          throw new Error("DUPLICATE_GLOBAL_SOURCE_ORDER_IN_BATCH");
+        }
+        identityTargets.set(identityId, {
+          reference: sourceIdentities.doc(identityId),
+          orderReference: refs[index],
+          identity,
+        });
+      });
+      if (identityTargets.size > 0) {
+        await db.runTransaction(async (transaction) => {
+          const targets = [...identityTargets.values()];
+          const identitySnapshots = await transaction.getAll(
+            ...targets.map((target) => target.reference),
+          );
+          targets.forEach((target, index) => {
+            const existing = identitySnapshots[index].data() as
+              | Record<string, unknown>
+              | undefined;
+            if (
+              existing?.source_order_document_id &&
+              existing.source_order_document_id !== target.orderReference.id
+            ) {
+              throw new Error("DUPLICATE_GLOBAL_SOURCE_ORDER");
+            }
+            transaction.set(
+              target.reference,
+              {
+                id: target.reference.id,
+                source_account_key: target.identity.sourceAccountKey,
+                external_order_number: target.identity.externalOrderNumber,
+                source_order_document_id: target.orderReference.id,
+                warehouse_id: warehouseId,
+                updated_at: syncTime,
+                created_at: existing?.created_at ?? syncTime,
+              },
+              { merge: true },
+            );
+          });
+        });
+      }
       const allSnapshots =
         refs.length > 0 ? await db.getAll(...refs, ...revisionRefs) : [];
       const snapshots = allSnapshots.slice(0, refs.length);
@@ -118,7 +190,20 @@ export const invoiceOrderRepository = {
                   match_status: "NOT_CHECKED",
                   invoice_document_id: null,
                   invoice_document_status: null,
+                  invoice_document_source_payload_hash: null,
+                  invoice_document_stale: false,
                 }),
+            ...(previous?.invoice_document_id
+              ? {
+                  invoice_document_stale:
+                    typeof previous.invoice_document_source_payload_hash ===
+                    "string"
+                      ? previous.invoice_document_source_payload_hash !==
+                        value.source_payload_hash
+                      : previous.source_payload_hash !==
+                        value.source_payload_hash,
+                }
+              : {}),
           },
           { merge: true },
         );

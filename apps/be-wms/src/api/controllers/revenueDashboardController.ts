@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
+import { resolveCanonicalExternalWarehouseId } from "../../services/externalStoreBindingService.js";
 import {
   LANDMARK_81_WAREHOUSE_ID,
   getRevenueDashboardData,
@@ -42,7 +44,10 @@ export const getRevenueDashboardHandler = async (
 ) => {
   try {
     const query = dashboardQuerySchema.parse(req.query);
-    const warehouseId = query.warehouseId || LANDMARK_81_WAREHOUSE_ID;
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId || LANDMARK_81_WAREHOUSE_ID,
+    );
 
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const user = requireAuthenticatedRequestUser(req);

@@ -1,13 +1,16 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
 import {
   invoiceDocumentParamsSchema,
+  invoiceDocumentBulkRebaseSchema,
   invoiceDocumentPrepareSchema,
   invoiceDocumentPreviewSchema,
   invoiceDocumentScopeSchema,
   invoiceDocumentUpdateSchema,
 } from "../../services/invoiceDocumentSchemas.js";
 import {
+  bulkRebaseInvoiceDocuments,
   getInvoiceDocument,
   prepareInvoiceDocumentFromSourceOrder,
   updateInvoiceDocument,
@@ -23,6 +26,7 @@ import {
   requireAuthenticatedRequestUser,
   requireRequestAuthorization,
 } from "../middlewares/requestAccessContext.js";
+
 import { toInvoicePreviewErrorResponse } from "./invoicePreviewError.js";
 
 const handleError = (res: Response, error: unknown) => {
@@ -40,12 +44,7 @@ const handleError = (res: Response, error: unknown) => {
   }
   if (error instanceof MeInvoiceApiError) {
     const mapped = toInvoicePreviewErrorResponse(error);
-    return sendError(
-      res,
-      mapped.messages,
-      mapped.statusCode,
-      mapped.data,
-    );
+    return sendError(res, mapped.messages, mapped.statusCode, mapped.data);
   }
   const known = error as {
     statusCode?: number;
@@ -83,6 +82,27 @@ export const prepareInvoiceDocumentHandler = async (
     return sendSuccess(res, data, {
       vi: "Đã chuẩn bị bản nháp hóa đơn.",
       zh: "发票草稿已准备完成。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const bulkRebaseInvoiceDocumentsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = invoiceDocumentBulkRebaseSchema.parse(req.body);
+    const data = await bulkRebaseInvoiceDocuments(
+      input,
+      requireAuthenticatedRequestUser(req).id,
+      requireRequestAuthorization(req),
+      getAuditRequestMetadata(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã cập nhật các draft an toàn từ dữ liệu nguồn mới nhất.",
+      zh: "已从最新源数据安全更新草稿。",
     });
   } catch (error) {
     return handleError(res, error);

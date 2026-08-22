@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
 import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
+import { gooeyToast } from "goey-toast";
 import {
     AlertTriangle,
     Banknote,
-    BarChart3,
     Globe2,
     ReceiptText,
+    RefreshCw,
     ShoppingCart,
     X,
     type LucideIcon,
 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+
 import ChartCanvas from "@/components/charts/ChartCanvas";
 import {
     chartAxisColor,
@@ -26,21 +28,21 @@ import {
     PercentNumberFlow,
 } from "@/components/ui/NumberFlowValue";
 import {
+    useOnlineSalesReport,
+    type OnlineSalesReport,
+} from "@/hooks/useOnlineSalesReport";
+import { usePosRevenueStats } from "@/hooks/usePosRevenueStats";
+import {
     getDefaultRevenueComparison,
     getDefaultRevenueFilter,
     getRevenueComparisonLabel,
-    useRevenueDashboard,
     type PaymentMethodMetric,
     type RevenueDashboardData,
     type RevenueDashboardFilter,
     type RevenueMetric,
 } from "@/hooks/useRevenueDashboard";
-import {
-    useOnlineSalesReport,
-    type OnlineSalesReport,
-} from "@/hooks/useOnlineSalesReport";
 import { useTranslation } from "@/lib/i18n";
-import RevenueDateFilter from "./RevenueDateFilter";
+
 import {
     chartColors,
     donutColors,
@@ -50,12 +52,28 @@ import {
     prepareComparableRevenuePoints,
     type ComparableRevenueChartPoint,
 } from "./revenueDashboardUtils";
+import RevenueDateFilter from "./RevenueDateFilter";
 
 type StatKey =
     | "totalRevenue"
     | "totalOrders"
     | "averageOrderValue"
     | "onlineRevenue";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+interface PartnerPosSyncResult {
+    start_date: string;
+    end_date: string;
+    inserted_count: number;
+    skipped_existing_count: number;
+}
+
+interface PartnerPosSyncResponse {
+    success?: boolean;
+    data?: PartnerPosSyncResult;
+    messages?: { vi?: string; zh?: string };
+}
 
 type RevenueDetail =
     | { type: "stat"; key: StatKey; title: string }
@@ -82,10 +100,14 @@ interface DashboardTopProduct {
 
 export default function DashboardRevenueOverview({
     warehouseId,
+    warehouseIds,
+    canSyncPartner = false,
 }: {
     warehouseId?: string;
+    warehouseIds: readonly string[];
+    canSyncPartner?: boolean;
 }) {
-    const { t } = useTranslation();
+    const { t, lang } = useTranslation();
     const d = t.revenue;
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
         getDefaultRevenueFilter(),
@@ -94,12 +116,13 @@ export default function DashboardRevenueOverview({
         () => getDefaultRevenueComparison(filter),
         [filter],
     );
-    const { data, loading, syncing, error, secondsUntilRefresh } =
-        useRevenueDashboard(filter, {
-            warehouseId,
-            enabled: Boolean(warehouseId),
-            keepPreviousData: true,
-        });
+    const {
+        data: posData,
+        loading,
+        error,
+    } = usePosRevenueStats(warehouseIds, filter);
+    const data = posData?.dashboard ?? null;
+    const [syncingPartner, setSyncingPartner] = useState(false);
     const {
         data: onlineData,
         loading: onlineLoading,
@@ -114,6 +137,64 @@ export default function DashboardRevenueOverview({
         () => getDashboardTopProducts(data?.topProductGroups ?? []),
         [data?.topProductGroups],
     );
+
+    const syncPartnerOrders = async () => {
+        if (!warehouseId || syncingPartner) return;
+        setSyncingPartner(true);
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/revenue/partner-pos-sync`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ warehouseId }),
+                },
+            );
+            const payload = (await response.json().catch(() => null)) as
+                | PartnerPosSyncResponse
+                | null;
+            if (!response.ok || !payload?.success || !payload.data) {
+                throw new Error(
+                    payload?.messages?.[lang] ??
+                    (lang === "vi"
+                        ? "Không thể đồng bộ dữ liệu POS đối tác."
+                        : "无法同步合作方 POS 数据。"),
+                );
+            }
+            const result = payload.data;
+            gooeyToast.success(
+                result.inserted_count > 0
+                    ? lang === "vi"
+                        ? `Đã thêm ${result.inserted_count} đơn mới`
+                        : `已新增 ${result.inserted_count} 个订单`
+                    : lang === "vi"
+                        ? "Dữ liệu đã là mới nhất"
+                        : "数据已是最新",
+                {
+                    description:
+                        lang === "vi"
+                            ? `Đã kiểm tra ${result.start_date}–${result.end_date}; bỏ qua ${result.skipped_existing_count} đơn đã có.`
+                            : `已检查 ${result.start_date}–${result.end_date}；跳过 ${result.skipped_existing_count} 个已有订单。`,
+                    preset: "snappy",
+                },
+            );
+        } catch (syncError) {
+            gooeyToast.error(
+                lang === "vi" ? "Đồng bộ thất bại" : "同步失败",
+                {
+                    description:
+                        syncError instanceof Error
+                            ? syncError.message
+                            : lang === "vi"
+                                ? "Vui lòng thử lại sau."
+                                : "请稍后重试。",
+                },
+            );
+        } finally {
+            setSyncingPartner(false);
+        }
+    };
 
     return (
         <section className="flex flex-col gap-3">
@@ -145,18 +226,35 @@ export default function DashboardRevenueOverview({
                     />
 
                     <p
-                        role={syncing || secondsUntilRefresh === 0 ? "status" : undefined}
+                        role="status"
                         className="px-1 text-center text-xxs font-medium tabular-nums text-[var(--color-text-muted)]"
                     >
-                        {syncing || secondsUntilRefresh === 0
-                            ? d.syncing
-                            : d.refreshCountdown.replace(
-                                "{seconds}",
-                                String(secondsUntilRefresh),
-                            )}
+                        JPOS · Realtime
                     </p>
 
-                    <div className="flex justify-end -mt-10 sm:mt-0 sm:mb-2">
+                    <div className="flex justify-end gap-2 -mt-10 sm:mt-0 sm:mb-2">
+                        {canSyncPartner && (
+                            <button
+                                type="button"
+                                onClick={() => void syncPartnerOrders()}
+                                disabled={!warehouseId || syncingPartner}
+                                className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-xs font-semibold text-[var(--color-text-primary)] shadow-sm transition hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)] disabled:cursor-wait disabled:opacity-60"
+                            >
+                                <RefreshCw
+                                    size={15}
+                                    className={syncingPartner ? "animate-spin" : undefined}
+                                />
+                                <span className="hidden sm:inline">
+                                    {syncingPartner
+                                        ? lang === "vi"
+                                            ? "Đang đồng bộ..."
+                                            : "同步中..."
+                                        : lang === "vi"
+                                            ? "Đồng bộ POS đối tác"
+                                            : "同步合作方 POS"}
+                                </span>
+                            </button>
+                        )}
                         <RevenueDateFilter
                             filter={filter}
                             comparison={comparison}
@@ -164,7 +262,7 @@ export default function DashboardRevenueOverview({
                             onChange={setFilter}
                             onComparisonChange={() => undefined}
                             generatedAt={data?.generatedAt}
-                            syncing={syncing}
+                            syncing={loading}
                             showComparison={false}
                         />
                     </div>
@@ -377,7 +475,6 @@ function HeroStatButton({
     };
     onClick: () => void;
 }) {
-    const Icon = stat.icon;
     return (
         <button
             type="button"
@@ -923,7 +1020,7 @@ function StatDetailContent({
                     <SectionTitle title={overview.revenueStructure} />
                     <div className="grid grid-cols-2 gap-2">
                         <DetailBox
-                            label={overview.joyWorld}
+                            label="JPOS"
                             value={
                                 <CurrencyNumberFlow
                                     value={data.stats.totalRevenue.value}
@@ -953,7 +1050,7 @@ function StatDetailContent({
                     <SectionTitle title={overview.orderStructure} />
                     <div className="grid grid-cols-3 gap-2">
                         <DetailBox
-                            label={overview.joyWorld}
+                            label="JPOS"
                             value={
                                 <NumberFlowValue
                                     value={data.stats.totalOrders.value}
