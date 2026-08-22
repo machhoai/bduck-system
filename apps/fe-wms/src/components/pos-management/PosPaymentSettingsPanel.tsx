@@ -9,6 +9,7 @@ import { Landmark, Save } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { posManagementApi, type SafePosDevice } from "@/api/posManagementApi";
+import { VIET_QR_BANKS } from "@/lib/vietQrBanks";
 
 import { usePosManagementCopy } from "./usePosManagementCopy";
 
@@ -157,13 +158,14 @@ export function PosPaymentSettingsPanel({
             disabled={!canManage || saving || loading}
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
           >
-            <Field
+            <BankField
               label={copy.bankBin}
+              placeholder={copy.bankPlaceholder}
               value={form.bankBin}
               onChange={(value) =>
                 setForm((current) => ({
                   ...current,
-                  bankBin: value.replace(/\D/g, "").slice(0, 6),
+                  bankBin: value,
                 }))
               }
             />
@@ -173,9 +175,15 @@ export function PosPaymentSettingsPanel({
               onChange={(value) =>
                 setForm((current) => ({
                   ...current,
-                  accountNumber: value.replace(/\D/g, "").slice(0, 19),
+                  accountNumber: value
+                    .replace(/[^A-Za-z0-9]/g, "")
+                    .slice(0, 19),
                 }))
               }
+              autoCapitalize="characters"
+              hint={copy.accountNumberHint}
+              maxLength={19}
+              spellCheck={false}
             />
             <Field
               label={copy.accountName}
@@ -244,10 +252,18 @@ function Field({
   label,
   value,
   onChange,
+  autoCapitalize,
+  hint,
+  maxLength,
+  spellCheck,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  autoCapitalize?: string;
+  hint?: string;
+  maxLength?: number;
+  spellCheck?: boolean;
 }) {
   return (
     <label>
@@ -255,8 +271,53 @@ function Field({
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        autoCapitalize={autoCapitalize}
+        maxLength={maxLength}
+        spellCheck={spellCheck}
         className="mt-1 h-8 w-full rounded-lg border border-slate-200 px-3 text-sm"
       />
+      {hint ? (
+        <span className="mt-1 block text-[11px] font-normal text-slate-500">
+          {hint}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function BankField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const hasUnlistedValue = Boolean(
+    value && !VIET_QR_BANKS.some((bank) => bank.bin === value),
+  );
+
+  return (
+    <label>
+      <span className="text-xs font-bold text-slate-600">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {hasUnlistedValue ? <option value={value}>{value}</option> : null}
+        {VIET_QR_BANKS.map((bank) => (
+          <option key={bank.bin} value={bank.bin}>
+            {bank.shortName} · {bank.bin}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

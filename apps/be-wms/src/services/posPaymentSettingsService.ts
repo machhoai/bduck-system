@@ -4,8 +4,8 @@ import type {
 } from "@bduck/shared-types";
 import { z } from "zod";
 
-import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
 import { posDeviceRepository } from "../repositories/posDeviceRepository.js";
+import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
 
 import type { AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
@@ -22,7 +22,7 @@ export const posPaymentSettingsSchema = z
     accountNumber: z
       .string()
       .trim()
-      .regex(/^\d{6,19}$/),
+      .regex(/^[A-Za-z0-9]{6,19}$/),
     accountName: z.string().trim().min(2).max(50),
   })
   .refine((value) => !value.fixedTransferOnly || value.enabled, {
