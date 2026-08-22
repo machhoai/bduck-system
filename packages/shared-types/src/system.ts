@@ -100,3 +100,27 @@ export interface OpenApiWarehouseConfig {
   updated_at?: Date | null;
   updated_by?: string | null;
 }
+
+export type ExternalStoreSourceSystem = "JOYWORLD_LEGACY";
+
+export type ExternalStoreBindingMode = "CONSOLIDATED";
+
+/**
+ * Maps one external commerce account to the JPULSE facilities represented by it.
+ * In CONSOLIDATED mode the canonical warehouse owns aggregate revenue while
+ * order-level data is partitioned to a member warehouse when a linked POS order
+ * provides an authoritative warehouseId.
+ */
+export interface ExternalStoreBinding {
+  id: string;
+  source_system: ExternalStoreSourceSystem;
+  source_account_key: string;
+  mode: ExternalStoreBindingMode;
+  canonical_warehouse_id: string;
+  member_warehouse_ids: string[];
+  display_name: string;
+  enabled: boolean;
+  created_at?: Date | null;
+  updated_at?: Date | null;
+  updated_by?: string | null;
+}

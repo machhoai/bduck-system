@@ -141,6 +141,7 @@ export const buildPosInvoiceSourceOrder = (
   businessDate: string,
   config: MeInvoiceStoreConfig | null,
   account: StoredMeInvoiceAccount | null,
+  externalSourceAccountKey?: string | null,
 ): SourceOrderWrite => {
   const normalizedItems = normalizeItems(order, config);
   const invoiceItems = normalizedItems.filter(
@@ -193,6 +194,14 @@ export const buildPosInvoiceSourceOrder = (
       warehouse_id: order.warehouseId,
       source_system: "JPOS",
       source_order_id: order.localOrderId,
+      external_source_account_key:
+        externalSourceAccountKey && text(order.hkOrderNumber)
+          ? externalSourceAccountKey
+          : null,
+      external_order_number:
+        externalSourceAccountKey && text(order.hkOrderNumber)
+          ? text(order.hkOrderNumber)
+          : null,
       local_order_id: order.localOrderId,
       hk_order_number: text(order.hkOrderNumber),
       pos_order_status: order.status,

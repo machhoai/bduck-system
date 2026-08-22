@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 
+import { resolveCanonicalExternalWarehouseId } from "../../services/externalStoreBindingService.js";
 import {
   getJoyworldToken,
   getOrderDetail,
@@ -58,7 +59,11 @@ export const syncRevenueHandler = async (
 ): Promise<void> => {
   try {
     const period = periodSchema.parse(req.params.period);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     const authorization = requireRequestAuthorization(req);
     authorization.assert("revenue.sync", warehouseId);
     const result = await syncRevenueForPeriod(
@@ -91,7 +96,11 @@ export const syncPartnerPosOrdersHandler = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { warehouseId } = partnerPosSyncSchema.parse(req.body);
+    const request = partnerPosSyncSchema.parse(req.body);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      request.warehouseId,
+    );
     requireRequestAuthorization(req).assert("revenue.sync", warehouseId);
     const result = await syncPartnerOrdersToPos({
       warehouseId,
@@ -119,7 +128,11 @@ export const getCachedRevenueHandler = async (
 ): Promise<void> => {
   try {
     const period = periodSchema.parse(req.params.period);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const data = await getCachedRevenue(period, warehouseId);
     sendSuccess(res, data ? serializeRevenue(data) : null, {
@@ -139,7 +152,11 @@ export const getOrderDetailsHandler = async (
 ): Promise<void> => {
   try {
     const orderId = orderIdSchema.parse(req.params.orderId);
-    const { warehouseId } = warehouseQuerySchema.parse(req.query);
+    const query = warehouseQuerySchema.parse(req.query);
+    const warehouseId = await resolveCanonicalExternalWarehouseId(
+      "JOYWORLD_LEGACY",
+      query.warehouseId,
+    );
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const response = await getOrderDetail(await getJoyworldToken(), orderId);
     sendSuccess(res, response.data || response, {

@@ -1,7 +1,9 @@
-import { db } from "../config/firebase.js";
 import { ExpenseCategory, ExpenseCostCenter } from "@bduck/shared-types";
 import type { ExpenseDocument } from "@bduck/shared-types";
+
+import { db } from "../config/firebase.js";
 import * as expenseRepo from "../repositories/expenseRepository.js";
+
 import {
   EXPENSE_CATEGORY_COST_CENTER,
   EXPENSE_COST_CENTER_COLORS,
@@ -9,6 +11,7 @@ import {
   getExpenseMonthLabel,
   getPreviousExpensePeriod,
 } from "./expenseDashboardPolicy.js";
+import { canonicalizeExternalWarehouseIds } from "./externalStoreBindingService.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -64,8 +67,12 @@ async function calculateRevenue(
   period: string,
 ): Promise<number> {
   if (warehouseIds.length === 0) return 0;
+  const canonicalWarehouseIds = await canonicalizeExternalWarehouseIds(
+    "JOYWORLD_LEGACY",
+    warehouseIds,
+  );
   const snapshots = await db.getAll(
-    ...warehouseIds.map((warehouseId) =>
+    ...canonicalWarehouseIds.map((warehouseId) =>
       db.collection("revenue_sync").doc(`${warehouseId}_${period}`),
     ),
   );

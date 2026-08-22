@@ -1,6 +1,7 @@
+import { InvoiceOrderSyncPurpose } from "@bduck/shared-types";
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { InvoiceOrderSyncPurpose } from "@bduck/shared-types";
+
 import {
   invoiceOrderDetailInputSchema,
   invoiceOrderListQuerySchema,
@@ -13,14 +14,15 @@ import {
   syncInvoiceOrdersForDate,
 } from "../../services/invoiceOrderSyncService.js";
 import { previewInvoiceSourceOrder } from "../../services/invoicePreviewService.js";
-import { MeInvoiceApiError } from "../../services/meInvoiceClient.js";
 import { reconcileInvoiceDay } from "../../services/invoiceReconciliationService.js";
+import { MeInvoiceApiError } from "../../services/meInvoiceClient.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
   requireRequestAuthorization,
 } from "../middlewares/requestAccessContext.js";
+
 import { toInvoicePreviewErrorResponse } from "./invoicePreviewError.js";
 
 const handleError = (res: Response, error: unknown) => {
@@ -126,16 +128,27 @@ export const syncInvoiceOrdersHandler = async (req: Request, res: Response) => {
       authorization,
       auditMetadata,
     );
-    const reconciliation = input.purpose === InvoiceOrderSyncPurpose.RECONCILIATION
-      ? await reconcileInvoiceDay(
-          input.warehouse_id,
+    const reconciliationWarehouseIds = input.purpose ===
+      InvoiceOrderSyncPurpose.RECONCILIATION
+      ? result.partition_warehouse_ids.filter((warehouseId) =>
+          authorization.can("invoices.reconcile", warehouseId),
+        )
+      : [];
+    const reconciliationEntries = await Promise.all(
+      reconciliationWarehouseIds.map(async (warehouseId) => [
+        warehouseId,
+        await reconcileInvoiceDay(
+          warehouseId,
           input.business_date,
           actorId,
           authorization,
           auditMetadata,
-        )
-      : null;
-    return sendSuccess(res, { ...result, reconciliation }, {
+        ),
+      ] as const),
+    );
+    const reconciliations = Object.fromEntries(reconciliationEntries);
+    const reconciliation = reconciliations[input.warehouse_id] ?? null;
+    return sendSuccess(res, { ...result, reconciliation, reconciliations }, {
       vi: "Đã đồng bộ đầy đủ dữ liệu đơn hàng trong ngày.",
       zh: "已完整同步当日订单数据。",
     });

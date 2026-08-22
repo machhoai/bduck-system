@@ -569,6 +569,18 @@ async function seedDocuments() {
         { warehouse_id: "store-d", period: "2026-07" },
       ],
       [
+        "external_store_bindings/joyworld-store-d-store-f",
+        {
+          source_system: "JOYWORLD_LEGACY",
+          source_account_key: "test-account",
+          mode: "CONSOLIDATED",
+          canonical_warehouse_id: "store-d",
+          member_warehouse_ids: ["store-d", "store-f"],
+          display_name: "Store D + Store F",
+          enabled: true,
+        },
+      ],
+      [
         "pos_orders/local-order-1",
         {
           localOrderId: "local-order-1",
@@ -898,6 +910,26 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(user, "products", "product-1")));
     await assertFails(getDoc(doc(user, "roles", "role-1")));
     await assertSucceeds(getDoc(doc(admin, "roles", "role-1")));
+    await assertFails(
+      getDoc(
+        doc(
+          anonymous,
+          "external_store_bindings",
+          "joyworld-store-d-store-f",
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDoc(
+        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
+        { enabled: false },
+      ),
+    );
   });
 
   it("allows only facility-constrained inventory queries", async () => {
