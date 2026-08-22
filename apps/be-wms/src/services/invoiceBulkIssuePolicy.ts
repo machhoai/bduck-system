@@ -18,6 +18,7 @@ import {
 } from "./invoiceDecimal.js";
 import { applyInvoiceDisplayMapping } from "./invoiceDisplayMapping.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
+import { canonicalJson } from "./invoiceOrderSyncUtils.js";
 
 const stringValue = (value: unknown, fallback = "") =>
   typeof value === "string" ? value : fallback;
@@ -47,34 +48,50 @@ export const bulkIssueSelectionFingerprint = (input: {
     )
     .digest("hex");
 
-export const bulkIssueConfigFingerprint = (
-  config: Pick<
-    MeInvoiceStoreConfig,
-    | "item_name_mapping"
-    | "item_unit_mapping"
-    | "unit_name_mapping"
-    | "default_unit_name"
-  >,
+export const bulkIssueConfigFingerprint = (config: MeInvoiceStoreConfig) =>
+  createHash("sha256")
+    .update(
+      canonicalJson({
+        meinvoice_account_id: config.meinvoice_account_id,
+        inv_series: config.inv_series,
+        invoice_with_code: config.invoice_with_code,
+        sign_type: config.sign_type,
+        seller_shop_code: config.seller_shop_code,
+        seller_shop_name: config.seller_shop_name,
+        price_includes_vat: config.price_includes_vat,
+        tax_rate_source: config.tax_rate_source,
+        default_vat_rate_name: config.default_vat_rate_name,
+        sku_mapping: config.sku_mapping,
+        category_vat_mapping: config.category_vat_mapping,
+        payment_method_mapping: config.payment_method_mapping,
+        item_name_mapping: config.item_name_mapping,
+        item_unit_mapping: config.item_unit_mapping ?? {},
+        unit_name_mapping: config.unit_name_mapping,
+        default_payment_method_name: config.default_payment_method_name,
+        default_unit_name: config.default_unit_name,
+        default_buyer_name: config.default_buyer_name,
+        default_buyer_address: config.default_buyer_address,
+        option_user_defined: config.option_user_defined,
+      }),
+    )
+    .digest("hex");
+
+export const bulkIssuePreviewFingerprint = (
+  configFingerprint: string,
+  payloads: Array<{
+    document_id: string;
+    revision: number;
+    source_payload_hash: string;
+    prepared_payload_hash: string;
+  }>,
 ) =>
   createHash("sha256")
     .update(
-      JSON.stringify({
-        item_name_mapping: Object.fromEntries(
-          Object.entries(config.item_name_mapping).sort(([left], [right]) =>
-            left.localeCompare(right),
-          ),
+      canonicalJson({
+        config_fingerprint: configFingerprint,
+        payloads: [...payloads].sort((left, right) =>
+          left.document_id.localeCompare(right.document_id),
         ),
-        item_unit_mapping: Object.fromEntries(
-          Object.entries(config.item_unit_mapping ?? {}).sort(
-            ([left], [right]) => left.localeCompare(right),
-          ),
-        ),
-        unit_name_mapping: Object.fromEntries(
-          Object.entries(config.unit_name_mapping).sort(([left], [right]) =>
-            left.localeCompare(right),
-          ),
-        ),
-        default_unit_name: config.default_unit_name,
       }),
     )
     .digest("hex");

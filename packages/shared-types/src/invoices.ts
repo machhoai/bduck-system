@@ -150,6 +150,7 @@ export interface InvoiceBulkIssuePreview {
   summary: InvoiceBulkIssueSummary;
   eligible_source_order_ids: string[];
   config_fingerprint: string;
+  preview_fingerprint: string;
   invoices: InvoiceBulkIssueInvoiceSummary[];
   product_summary: InvoiceBulkIssueProductSummary[];
   excluded: InvoiceBulkIssueExcludedOrder[];
@@ -163,6 +164,7 @@ export interface InvoiceBulkIssueRun {
   summary: InvoiceBulkIssueSummary;
   eligible_source_order_ids: string[];
   config_fingerprint: string;
+  preview_fingerprint: string;
   excluded: InvoiceBulkIssueExcludedOrder[];
   job_ids: string[];
   requested_by: string;

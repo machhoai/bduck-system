@@ -248,6 +248,39 @@ test("legacy review statuses issue directly without draft approval", () => {
   assert.deepEqual(issues, []);
 });
 
+test("issue policy blocks a draft whose VAT calculation is older than source", () => {
+  const normalizedLine = {
+    line_number: 1,
+    quantity: 1,
+    unit_price: 500_000,
+    discount_rate: null,
+    discount_amount: null,
+    vat_rate_name: "10%",
+  };
+  const issues = validateInvoiceIssueCandidate(
+    {
+      status: InvoiceDocumentStatus.READY_TO_ISSUE,
+      issue_eligible: true,
+      source_payload_hash: "same-raw-payload",
+      source_financial_fingerprint: "stale-zero-vat-fingerprint",
+      calculation: { calculation_hash: "zero-vat" },
+      payment_time: "2026-07-21T12:00:00+07:00",
+    },
+    {
+      source_payload_hash: "same-raw-payload",
+      normalized_items: [normalizedLine],
+      calculation: { calculation_hash: "ten-percent-vat" },
+      match_status: InvoiceOrderMatchStatus.NOT_CHECKED,
+    },
+    {
+      go_live_at: new Date("2026-07-20T00:00:00+07:00"),
+      sign_type: MeInvoiceSignType.CALCULATING_MACHINE,
+    } as MeInvoiceStoreConfig,
+    "issuer",
+  );
+  assert.ok(issues.some((issue) => issue.code === "SOURCE_FINANCIALS_STALE"));
+});
+
 test("job and lane keys are deterministic", () => {
   assert.equal(
     issueJobId("w1", "u1", "click-1"),
@@ -336,6 +369,7 @@ test("bulk issue validates scoped selection, OTP, and partitions MISA jobs", () 
       otp: "123456",
       idempotency_key: "bulk-request-1",
       config_fingerprint: "a".repeat(64),
+      preview_fingerprint: "b".repeat(64),
       action_time: "2026-07-21T10:00:00.000Z",
     }).success,
     true,

@@ -7,6 +7,7 @@ import {
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 
+import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
 export const issueJobId = (
@@ -76,6 +77,30 @@ export const validateInvoiceIssueCandidate = (
     issues.push({
       code: "SOURCE_STALE",
       message: "Source order changed after review.",
+    });
+  }
+  const sourceItems = Array.isArray(sourceOrder.normalized_items)
+    ? sourceOrder.normalized_items
+    : [];
+  const sourceCalculation =
+    sourceOrder.calculation && typeof sourceOrder.calculation === "object"
+      ? (sourceOrder.calculation as Record<string, unknown>)
+      : null;
+  const documentCalculation =
+    document.calculation && typeof document.calculation === "object"
+      ? (document.calculation as Record<string, unknown>)
+      : null;
+  if (
+    sourceItems.length > 0 &&
+    (invoiceFinancialFingerprint(sourceItems) !==
+      document.source_financial_fingerprint ||
+      sourceCalculation?.calculation_hash !==
+        documentCalculation?.calculation_hash)
+  ) {
+    issues.push({
+      code: "SOURCE_FINANCIALS_STALE",
+      message:
+        "Draft tax or financial calculation is older than the source order.",
     });
   }
   if (sourceOrder.match_status === InvoiceOrderMatchStatus.MATCHED) {

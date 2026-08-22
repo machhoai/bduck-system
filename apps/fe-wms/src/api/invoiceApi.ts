@@ -365,6 +365,7 @@ export const invoiceApi = {
       otp: string;
       idempotency_key: string;
       config_fingerprint: string;
+      preview_fingerprint: string;
       action_time: string;
     },
   ) =>
@@ -448,6 +449,7 @@ export const invoiceApi = {
     warehouseId: string,
     businessDate: string,
     purpose: InvoiceOrderSyncPurpose,
+    includeReconciliation = false,
   ) =>
     request<InvoiceSyncResult>("/api/invoices/source-orders/sync", {
       method: "POST",
@@ -455,6 +457,7 @@ export const invoiceApi = {
         warehouse_id: warehouseId,
         business_date: businessDate,
         purpose,
+        include_reconciliation: includeReconciliation,
       }),
     }),
 

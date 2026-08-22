@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   InvoiceDocumentStatus,
   InvoicePreparationStatus,
@@ -8,15 +9,18 @@ import {
   type InvoiceSourceOrderLine,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
+
 import { calculateInvoice } from "./invoiceCalculationService.js";
+import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import {
   invoiceFinancialFingerprint,
+  invoiceDocumentShouldRefreshFromSource,
   statusAfterInvoiceEdit,
   validationStateWithoutSourceMoneyComparison,
 } from "./invoiceDocumentPolicy.js";
 import { invoiceDocumentUpdateSchema } from "./invoiceDocumentSchemas.js";
-import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 
 const option = {
   main_currency: "VND",
@@ -113,6 +117,49 @@ test("draft edits remain ready to issue without an approval state", () => {
     status: InvoiceDocumentStatus.READY_TO_ISSUE,
     financiallyEdited: true,
   });
+});
+
+test("an unedited draft refreshes when VAT configuration changes its calculation", () => {
+  const zeroVatLine = {
+    ...sourceLine,
+    vat_rate_name: "0%" as const,
+    vat_rate: 0,
+  };
+  assert.equal(
+    invoiceDocumentShouldRefreshFromSource(
+      {
+        status: InvoiceDocumentStatus.READY_TO_ISSUE,
+        financially_edited: false,
+        source_financial_fingerprint: invoiceFinancialFingerprint([
+          zeroVatLine,
+        ]),
+        calculation: { calculation_hash: "zero-vat" },
+        payment_method_name: "TM/CK",
+        meinvoice_account_id: "account-1",
+      },
+      {
+        source_financial_fingerprint: invoiceFinancialFingerprint([sourceLine]),
+        calculation: { calculation_hash: "ten-percent-vat" },
+        payment_method_name: "TM/CK",
+        meinvoice_account_id: "account-1",
+      },
+    ),
+    true,
+  );
+});
+
+test("a financially edited draft is never overwritten by automatic refresh", () => {
+  assert.equal(
+    invoiceDocumentShouldRefreshFromSource(
+      {
+        status: InvoiceDocumentStatus.READY_TO_ISSUE,
+        financially_edited: true,
+        source_financial_fingerprint: "old",
+      },
+      { source_financial_fingerprint: "new" },
+    ),
+    false,
+  );
 });
 
 test("legacy JoyWorld money mismatches no longer block an existing draft", () => {

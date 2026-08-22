@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
+
 import {
   InvoiceDocumentStatus,
   type InvoicePreflightIssue,
   type InvoiceSourceOrderLine,
   type InvoiceVatRateName,
 } from "@bduck/shared-types";
+
 import { canonicalJson } from "./invoiceOrderSyncUtils.js";
 
 const VAT_RATE_VALUES: Record<InvoiceVatRateName, number> = {
@@ -50,7 +52,8 @@ export const validationStateWithoutSourceMoneyComparison = (
 
   const hasError = remainingIssues.some((item) => item.severity === "ERROR");
   const needsTaxConfiguration = remainingIssues.some((item) =>
-    ["PRICE_VAT_MODE_UNCONFIRMED", "VAT_RATE_MISSING"].includes(item.code));
+    ["PRICE_VAT_MODE_UNCONFIRMED", "VAT_RATE_MISSING"].includes(item.code),
+  );
   return {
     status: needsTaxConfiguration
       ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
@@ -104,3 +107,30 @@ export const canEditInvoiceDocument = (
     InvoiceDocumentStatus.READY_TO_ISSUE,
     InvoiceDocumentStatus.REJECTED,
   ].includes(status);
+
+const calculationHash = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const hash = (value as Record<string, unknown>).calculation_hash;
+  return typeof hash === "string" && hash ? hash : null;
+};
+
+export const invoiceDocumentShouldRefreshFromSource = (
+  current: Record<string, unknown>,
+  next: Record<string, unknown>,
+): boolean => {
+  if (
+    !canEditInvoiceDocument(current.status as InvoiceDocumentStatus) ||
+    current.financially_edited === true ||
+    current.active_issue_job_id
+  ) {
+    return false;
+  }
+  return (
+    current.source_financial_fingerprint !==
+      next.source_financial_fingerprint ||
+    calculationHash(current.calculation) !==
+      calculationHash(next.calculation) ||
+    current.payment_method_name !== next.payment_method_name ||
+    current.meinvoice_account_id !== next.meinvoice_account_id
+  );
+};

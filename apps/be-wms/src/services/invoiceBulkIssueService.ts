@@ -4,25 +4,29 @@ import {
   type InvoiceBulkIssuePreview,
   type InvoiceBulkSelectionMode,
 } from "@bduck/shared-types";
-import type { AuthorizationService } from "./authorization/index.js";
+
 import { invoiceBulkIssueRepository } from "../repositories/invoiceBulkIssueRepository.js";
 import { invoiceDocumentRepository } from "../repositories/invoiceDocumentRepository.js";
 import { invoiceOrderRepository } from "../repositories/invoiceOrderRepository.js";
 import { meInvoiceConfigRepository } from "../repositories/meInvoiceConfigRepository.js";
+
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import type { AuthorizationService } from "./authorization/index.js";
 import {
   buildBulkIssueInvoiceSummaries,
   bulkIssueConfigFingerprint,
+  bulkIssuePreviewFingerprint,
   bulkIssueRunId,
   bulkIssueSelectionFingerprint,
   chunkInvoiceIds,
   summarizeBulkIssue,
 } from "./invoiceBulkIssuePolicy.js";
-import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
-import { createInvoiceIssueJob } from "./invoiceIssueService.js";
 import { validateInvoiceIssueCandidate } from "./invoiceIssuePolicy.js";
-import { verifyMfa } from "./mfaService.js";
+import { createInvoiceIssueJob } from "./invoiceIssueService.js";
+import { invoiceOrderShouldAppearInList } from "./invoiceOrderVisibilityPolicy.js";
+import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
+import { verifyMfa } from "./mfaService.js";
 
 interface BulkSelectionInput {
   warehouse_id: string;
@@ -31,7 +35,13 @@ interface BulkSelectionInput {
   source_order_ids: string[];
 }
 
-const serviceError = (statusCode: number, vi: string, zh: string, code: string, detail?: unknown) => ({
+const serviceError = (
+  statusCode: number,
+  vi: string,
+  zh: string,
+  code: string,
+  detail?: unknown,
+) => ({
   statusCode,
   messages: { vi, zh },
   data: { code, ...(detail ? { detail } : {}) },
@@ -55,12 +65,28 @@ const serializeRun = (run: Record<string, unknown>) => ({
 
 const loadReadyConfig = async (warehouseId: string) => {
   const stored = await meInvoiceConfigRepository.getStoreConfig(warehouseId);
-  if (!stored || stored.is_deleted === true || stored.enabled !== true || !stored.validated_at || stored.validation_error_code) {
-    throw serviceError(422, "Cấu hình meInvoice của cửa hàng chưa sẵn sàng.", "门店的 meInvoice 配置尚未就绪。", "STORE_CONFIG_NOT_READY");
+  if (
+    !stored ||
+    stored.is_deleted === true ||
+    stored.enabled !== true ||
+    !stored.validated_at ||
+    stored.validation_error_code
+  ) {
+    throw serviceError(
+      422,
+      "Cấu hình meInvoice của cửa hàng chưa sẵn sàng.",
+      "门店的 meInvoice 配置尚未就绪。",
+      "STORE_CONFIG_NOT_READY",
+    );
   }
   const config = toPublicStoreConfig(stored);
   if (!config.go_live_at) {
-    throw serviceError(422, "Chưa đặt thời điểm go-live nên đơn chưa thể phát hành.", "尚未设置启用时间，订单无法开票。", "GO_LIVE_NOT_SET");
+    throw serviceError(
+      422,
+      "Chưa đặt thời điểm go-live nên đơn chưa thể phát hành.",
+      "尚未设置启用时间，订单无法开票。",
+      "GO_LIVE_NOT_SET",
+    );
   }
   return config;
 };
@@ -75,52 +101,102 @@ const buildPreview = async (
   ]);
   const visibleOrders = orders.filter(invoiceOrderShouldAppearInList);
   const selectedIds = new Set(input.source_order_ids);
-  const selected = input.selection_mode === "ALL"
-    ? visibleOrders
-    : visibleOrders.filter((order) => selectedIds.has(String(order.id)));
+  const selected =
+    input.selection_mode === "ALL"
+      ? visibleOrders
+      : visibleOrders.filter((order) => selectedIds.has(String(order.id)));
   const foundIds = new Set(selected.map((order) => String(order.id)));
-  const excluded: InvoiceBulkIssueExcludedOrder[] = input.selection_mode === "SELECTED"
-    ? input.source_order_ids.filter((id) => !foundIds.has(id)).map((id) => ({
-        source_order_document_id: id,
-        source_order_id: id,
-        order_number: null,
-        issue_codes: ["SOURCE_ORDER_NOT_IN_SCOPE"],
-      }))
-    : [];
+  const excluded: InvoiceBulkIssueExcludedOrder[] =
+    input.selection_mode === "SELECTED"
+      ? input.source_order_ids
+          .filter((id) => !foundIds.has(id))
+          .map((id) => ({
+            source_order_document_id: id,
+            source_order_id: id,
+            order_number: null,
+            issue_codes: ["SOURCE_ORDER_NOT_IN_SCOPE"],
+          }))
+      : [];
 
-  const evaluated = await Promise.all(selected.map(async (order) => {
-    const id = String(order.id);
-    const document = await invoiceDocumentRepository.getDocument(id, input.warehouse_id);
-    if (!document) {
-      excluded.push({
-        source_order_document_id: id,
-        source_order_id: String(order.source_order_id),
-        order_number: order.order_number ? String(order.order_number) : null,
-        issue_codes: ["DOCUMENT_NOT_PREPARED"],
-      });
-      return null;
-    }
-    const issues = validateInvoiceIssueCandidate(document, order, config, actorId);
-    if (issues.length > 0) {
-      excluded.push({
-        source_order_document_id: id,
-        source_order_id: String(order.source_order_id),
-        order_number: order.order_number ? String(order.order_number) : null,
-        issue_codes: issues.map((issue) => issue.code),
-      });
-      return null;
-    }
-    return document;
-  }));
-  const eligibleDocuments = evaluated.filter((value): value is Record<string, unknown> => Boolean(value));
+  const evaluated = await Promise.all(
+    selected.map(async (order) => {
+      const id = String(order.id);
+      const document = await invoiceDocumentRepository.getDocument(
+        id,
+        input.warehouse_id,
+      );
+      if (!document) {
+        excluded.push({
+          source_order_document_id: id,
+          source_order_id: String(order.source_order_id),
+          order_number: order.order_number ? String(order.order_number) : null,
+          issue_codes: ["DOCUMENT_NOT_PREPARED"],
+        });
+        return null;
+      }
+      const issues = validateInvoiceIssueCandidate(
+        document,
+        order,
+        config,
+        actorId,
+      );
+      if (issues.length > 0) {
+        excluded.push({
+          source_order_document_id: id,
+          source_order_id: String(order.source_order_id),
+          order_number: order.order_number ? String(order.order_number) : null,
+          issue_codes: issues.map((issue) => issue.code),
+        });
+        return null;
+      }
+      return document;
+    }),
+  );
+  const eligibleDocuments = evaluated.filter(
+    (value): value is Record<string, unknown> => Boolean(value),
+  );
+  const account = await meInvoiceConfigRepository.getAccount(
+    config.meinvoice_account_id,
+  );
+  if (!account || account.is_deleted || !account.enabled) {
+    throw serviceError(
+      422,
+      "Tài khoản meInvoice chưa sẵn sàng.",
+      "meInvoice 账户尚未就绪。",
+      "MEINVOICE_ACCOUNT_NOT_READY",
+    );
+  }
+  const configFingerprint = bulkIssueConfigFingerprint(config);
+  const preparedPayloads = eligibleDocuments.map((document) => {
+    const built = buildMeInvoicePayload(document, config, account);
+    return {
+      document_id: String(document.id),
+      revision: Number(document.revision),
+      source_payload_hash: String(document.source_payload_hash),
+      prepared_payload_hash: built.prepared_payload_hash,
+    };
+  });
   const details = buildBulkIssueInvoiceSummaries(eligibleDocuments, config);
   return {
     warehouse_id: input.warehouse_id,
     business_date: input.business_date,
     selection_mode: input.selection_mode,
-    summary: summarizeBulkIssue(selected.length + excluded.filter((item) => item.issue_codes.includes("SOURCE_ORDER_NOT_IN_SCOPE")).length, eligibleDocuments, excluded),
-    eligible_source_order_ids: eligibleDocuments.map((document) => String(document.id)),
-    config_fingerprint: bulkIssueConfigFingerprint(config),
+    summary: summarizeBulkIssue(
+      selected.length +
+        excluded.filter((item) =>
+          item.issue_codes.includes("SOURCE_ORDER_NOT_IN_SCOPE"),
+        ).length,
+      eligibleDocuments,
+      excluded,
+    ),
+    eligible_source_order_ids: eligibleDocuments.map((document) =>
+      String(document.id),
+    ),
+    config_fingerprint: configFingerprint,
+    preview_fingerprint: bulkIssuePreviewFingerprint(
+      configFingerprint,
+      preparedPayloads,
+    ),
     ...details,
     excluded,
   };
@@ -140,6 +216,7 @@ export const createInvoiceBulkIssue = async (
     otp: string;
     idempotency_key: string;
     config_fingerprint: string;
+    preview_fingerprint: string;
     action_time: Date;
   },
   actorId: string,
@@ -156,26 +233,57 @@ export const createInvoiceBulkIssue = async (
       "BULK_DISPLAY_CONFIG_CHANGED",
     );
   }
+  if (preview.preview_fingerprint !== input.preview_fingerprint) {
+    throw serviceError(
+      409,
+      "Dữ liệu hóa đơn hoặc số tiền thuế đã thay đổi. Vui lòng xem trước lại trước khi nhập OTP.",
+      "发票数据或税额已更改，请在输入 OTP 前重新预览。",
+      "BULK_PREVIEW_CHANGED",
+    );
+  }
   if (preview.eligible_source_order_ids.length === 0) {
-    throw serviceError(422, "Không có hóa đơn đủ điều kiện để phát hành.", "没有符合开具条件的发票。", "NO_ELIGIBLE_INVOICES", preview.excluded);
+    throw serviceError(
+      422,
+      "Không có hóa đơn đủ điều kiện để phát hành.",
+      "没有符合开具条件的发票。",
+      "NO_ELIGIBLE_INVOICES",
+      preview.excluded,
+    );
   }
   const id = bulkIssueRunId(input.warehouse_id, actorId, input.idempotency_key);
   const fingerprint = bulkIssueSelectionFingerprint({
     warehouse_id: input.warehouse_id,
     business_date: input.business_date,
     selection_mode: input.selection_mode,
-    selected_ids: input.selection_mode === "ALL" ? preview.eligible_source_order_ids : input.source_order_ids,
+    selected_ids:
+      input.selection_mode === "ALL"
+        ? preview.eligible_source_order_ids
+        : input.source_order_ids,
     config_fingerprint: input.config_fingerprint,
   });
-  const existing = await invoiceBulkIssueRepository.getRun(id, input.warehouse_id);
+  const existing = await invoiceBulkIssueRepository.getRun(
+    id,
+    input.warehouse_id,
+  );
   if (existing && existing.selection_fingerprint !== fingerprint) {
-    throw serviceError(409, "Mã chống trùng đã được dùng cho một danh sách khác.", "防重复标识已用于其他发票列表。", "IDEMPOTENCY_KEY_REUSED");
+    throw serviceError(
+      409,
+      "Mã chống trùng đã được dùng cho một danh sách khác.",
+      "防重复标识已用于其他发票列表。",
+      "IDEMPOTENCY_KEY_REUSED",
+    );
   }
   if (existing?.status === "QUEUED") return serializeRun(existing);
 
   if (!existing) {
     const validOtp = await verifyMfa(actorId, input.otp);
-    if (!validOtp) throw serviceError(401, "Mã OTP không đúng hoặc đã hết hạn.", "OTP 验证码错误或已过期。", "INVALID_OTP");
+    if (!validOtp)
+      throw serviceError(
+        401,
+        "Mã OTP không đúng hoặc đã hết hạn.",
+        "OTP 验证码错误或已过期。",
+        "INVALID_OTP",
+      );
   }
   const now = new Date();
   const {
@@ -195,22 +303,33 @@ export const createInvoiceBulkIssue = async (
     updated_at: now,
   });
   if (!creation.created && creation.run.selection_fingerprint !== fingerprint) {
-    throw serviceError(409, "Mã chống trùng đã được dùng cho một danh sách khác.", "防重复标识已用于其他发票列表。", "IDEMPOTENCY_KEY_REUSED");
+    throw serviceError(
+      409,
+      "Mã chống trùng đã được dùng cho một danh sách khác.",
+      "防重复标识已用于其他发票列表。",
+      "IDEMPOTENCY_KEY_REUSED",
+    );
   }
 
   const jobIds: string[] = [];
   const chunks = chunkInvoiceIds(preview.eligible_source_order_ids);
   try {
     for (let index = 0; index < chunks.length; index += 1) {
-      const job = await createInvoiceIssueJob({
-        warehouse_id: input.warehouse_id,
-        invoice_document_ids: chunks[index]!,
-        idempotency_key: `${input.idempotency_key}:chunk:${index}`,
-      }, actorId, authorization, auditMetadata, {
-        permission: "invoices.bulk_issue",
-        bulkRunId: id,
-        expectedConfigFingerprint: input.config_fingerprint,
-      });
+      const job = await createInvoiceIssueJob(
+        {
+          warehouse_id: input.warehouse_id,
+          invoice_document_ids: chunks[index]!,
+          idempotency_key: `${input.idempotency_key}:chunk:${index}`,
+        },
+        actorId,
+        authorization,
+        auditMetadata,
+        {
+          permission: "invoices.bulk_issue",
+          bulkRunId: id,
+          expectedConfigFingerprint: input.config_fingerprint,
+        },
+      );
       jobIds.push(String((job as Record<string, unknown>).id));
     }
     await invoiceBulkIssueRepository.updateRun(id, {

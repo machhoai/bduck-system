@@ -1,5 +1,14 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+
 import { db } from "../config/firebase.js";
+
+import {
+  deduplicateSourceOrderWrites,
+  invoiceSourceOrderDocumentId,
+  sourceSystemForWrite,
+} from "./invoiceOrderIdentity.js";
+
+export { invoiceSourceOrderDocumentId } from "./invoiceOrderIdentity.js";
 
 const orders = db.collection("invoice_source_orders");
 const payloads = db.collection("invoice_source_order_payloads");
@@ -18,15 +27,6 @@ export interface SourceOrderWriteResult {
   updated_count: number;
   unchanged_count: number;
 }
-
-export const invoiceSourceOrderDocumentId = (
-  warehouseId: string,
-  sourceOrderId: string,
-  sourceSystem: "JOYWORLD" | "JPOS" = "JOYWORLD",
-) =>
-  createHash("sha256")
-    .update(`${warehouseId}:${sourceSystem}:${sourceOrderId}`)
-    .digest("hex");
 
 export const invoiceOrderRepository = {
   async createRun(value: Record<string, unknown>): Promise<string> {
@@ -51,14 +51,19 @@ export const invoiceOrderRepository = {
       unchanged_count: 0,
     };
 
-    for (let cursor = 0; cursor < values.length; cursor += WRITE_CHUNK_SIZE) {
-      const chunk = values.slice(cursor, cursor + WRITE_CHUNK_SIZE);
+    const uniqueValues = deduplicateSourceOrderWrites(values);
+    for (
+      let cursor = 0;
+      cursor < uniqueValues.length;
+      cursor += WRITE_CHUNK_SIZE
+    ) {
+      const chunk = uniqueValues.slice(cursor, cursor + WRITE_CHUNK_SIZE);
       const refs = chunk.map((value) =>
         orders.doc(
           invoiceSourceOrderDocumentId(
             warehouseId,
             value.source_order_id,
-            value.projection.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+            sourceSystemForWrite(value),
           ),
         ),
       );
@@ -181,8 +186,7 @@ export const invoiceOrderRepository = {
     const matches = snapshot.docs
       .map((item) => item.data() as Record<string, unknown>)
       .filter(
-        (item) =>
-          item.warehouse_id === warehouseId && item.is_deleted !== true,
+        (item) => item.warehouse_id === warehouseId && item.is_deleted !== true,
       );
     if (matches.length > 1) throw new Error("DUPLICATE_HK_ORDER_NUMBER");
     return matches[0] ?? null;

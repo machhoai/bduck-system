@@ -1,9 +1,13 @@
-import {
+import type {
   InvoiceDocumentStatus,
-  type InvoicePreflightIssue,
+  InvoicePreflightIssue,
 } from "@bduck/shared-types";
+
 import { db } from "../config/firebase.js";
-import { validationStateWithoutSourceMoneyComparison } from "../services/invoiceDocumentPolicy.js";
+import {
+  invoiceDocumentShouldRefreshFromSource,
+  validationStateWithoutSourceMoneyComparison,
+} from "../services/invoiceDocumentPolicy.js";
 
 const documents = db.collection("invoice_documents");
 const sourceOrders = db.collection("invoice_source_orders");
@@ -121,6 +125,51 @@ export const invoiceDocumentRepository = {
       if (documentSnapshot.exists) {
         const current = documentSnapshot.data() as Record<string, unknown>;
         assertScopedDocument(current, String(value.warehouse_id));
+        if (invoiceDocumentShouldRefreshFromSource(current, value)) {
+          const now = new Date();
+          const refreshed = {
+            ...current,
+            legal_entity_id: value.legal_entity_id,
+            meinvoice_account_id: value.meinvoice_account_id,
+            source_order_number: value.source_order_number,
+            source_payload_hash: value.source_payload_hash,
+            source_action_time: value.source_action_time,
+            payment_time: value.payment_time,
+            payment_method_name: value.payment_method_name,
+            items: value.items,
+            calculation: value.calculation,
+            issue_eligible: value.issue_eligible,
+            validation_issues: value.validation_issues,
+            source_financial_fingerprint: value.source_financial_fingerprint,
+            mapping_version: value.mapping_version,
+            calculation_version: value.calculation_version,
+            status: value.status,
+            revision: Number(current.revision ?? 1) + 1,
+            financially_edited: false,
+            ref_id: null,
+            prepared_payload_hash: null,
+            edited_by: null,
+            edited_at: null,
+            reviewed_by: null,
+            reviewed_at: null,
+            review_note: null,
+            rejected_by: null,
+            rejected_at: null,
+            updated_by: value.updated_by,
+            updated_at: now,
+          };
+          transaction.set(documentRef, refreshed);
+          transaction.create(
+            documentRef.collection("revisions").doc(String(refreshed.revision)),
+            revisionSnapshot(refreshed),
+          );
+          transaction.update(sourceRef, {
+            invoice_document_id: documentRef.id,
+            invoice_document_status: refreshed.status,
+            updated_at: now,
+          });
+          return { created: false, document: refreshed };
+        }
         const currentIssues = Array.isArray(current.validation_issues)
           ? (current.validation_issues as InvoicePreflightIssue[])
           : [];

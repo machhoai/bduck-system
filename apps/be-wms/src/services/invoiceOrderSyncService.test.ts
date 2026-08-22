@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { InvoiceOrderSyncPurpose } from "@bduck/shared-types";
+
 import { invoiceOrderSyncInputSchema } from "./invoiceOrderSyncSchemas.js";
 import {
   canonicalJson,
@@ -29,6 +31,16 @@ test("source order sync input accepts only a real business date", () => {
     purpose: InvoiceOrderSyncPurpose.RECONCILIATION,
   });
   assert.equal(valid.business_date, "2026-07-19");
+  assert.equal(valid.include_reconciliation, false);
+  assert.equal(
+    invoiceOrderSyncInputSchema.parse({
+      warehouse_id: "warehouse-1",
+      business_date: "2026-07-19",
+      purpose: InvoiceOrderSyncPurpose.ISSUE,
+      include_reconciliation: true,
+    }).include_reconciliation,
+    true,
+  );
   assert.equal(
     invoiceOrderSyncInputSchema.safeParse({
       warehouse_id: "warehouse-1",
