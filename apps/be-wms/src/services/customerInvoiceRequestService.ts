@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+
 import {
   InvoiceDocumentStatus,
   InvoiceOrderSyncPurpose,
@@ -6,6 +7,7 @@ import {
   type CustomerInvoiceRequestPublicView,
   type InvoiceDraftBuyer,
 } from "@bduck/shared-types";
+
 import { invoiceCustomerRequestRepository } from "../repositories/invoiceCustomerRequestRepository.js";
 import { invoiceDocumentRepository } from "../repositories/invoiceDocumentRepository.js";
 import {
@@ -20,15 +22,17 @@ import {
   posInvoiceOrderRepository,
   type PosInvoiceOrderRecord,
 } from "../repositories/posInvoiceOrderRepository.js";
-import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
-import { canEditInvoiceDocument } from "./invoiceDocumentPolicy.js";
-import { buildPosInvoiceSourceOrder, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
-import type { CustomerInvoiceRequestSubmission } from "./customerInvoiceRequestSchemas.js";
+
 import {
   customerInvoiceRequestBusinessDate,
   customerInvoiceRequestDeadline,
   customerInvoiceRequestIsExpired,
 } from "./customerInvoiceRequestDeadline.js";
+import type { CustomerInvoiceRequestSubmission } from "./customerInvoiceRequestSchemas.js";
+import { resolveExternalStoreBinding } from "./externalStoreBindingService.js";
+import { canEditInvoiceDocument } from "./invoiceDocumentPolicy.js";
+import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
+import { buildPosInvoiceSourceOrder, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -101,6 +105,10 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
   let source = await findSourceOrder(order);
   const { storeConfig, account } = await loadInvoiceConfig(order.warehouseId);
   if (!source) {
+    const externalBinding = await resolveExternalStoreBinding(
+      "JOYWORLD_LEGACY",
+      order.warehouseId,
+    );
     const businessDate = customerInvoiceRequestBusinessDate(
       order.paidAt ?? order.createdAt,
     );
@@ -109,6 +117,7 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
       businessDate,
       storeConfig,
       account as StoredMeInvoiceAccount,
+      externalBinding?.source_account_key,
     );
     const startedAt = new Date();
     const runId = await invoiceOrderRepository.createRun({

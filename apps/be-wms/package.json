@@ -29,7 +29,8 @@
     "test:meinvoice-contract": "tsx --test --env-file=../../.env.local src/services/meInvoiceClient.contract.test.ts",
     "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts",
     "rebuild:user-access": "tsx --env-file=../../.env.local src/scripts/rebuildUserAccess.ts",
-    "backfill:jpos-history": "tsx --env-file=../../.env.local src/scripts/backfillJoyworldPosOrdersProduction.ts"
+    "backfill:jpos-history": "tsx --env-file=../../.env.local src/scripts/backfillJoyworldPosOrdersProduction.ts",
+    "rollout:lm81-aeon-consolidation": "tsx --env-file=../../.env.local src/scripts/rolloutLm81AeonConsolidationProduction.ts"
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",

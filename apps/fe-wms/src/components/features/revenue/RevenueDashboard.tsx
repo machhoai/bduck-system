@@ -11,6 +11,8 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+
+import { useExternalStoreBindings } from "@/hooks/useExternalStoreBindings";
 import {
     buildRevenueComparisonFilters,
     getDefaultRevenueComparison,
@@ -27,15 +29,16 @@ import {
 } from "@/hooks/useRevenueDashboard";
 import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
-import RevenueCharts from "./RevenueCharts";
-import RevenueDateFilter from "./RevenueDateFilter";
-import RevenueDashboardSkeleton from "./RevenueDashboardSkeleton";
+
 import DeviceConsumptionTable from "./DeviceConsumptionTable";
 import OnlineRevenueSection from "./OnlineRevenueSection";
+import RevenueCharts from "./RevenueCharts";
+import RevenueDashboardSkeleton from "./RevenueDashboardSkeleton";
+import { formatCurrency, formatNumber } from "./revenueDashboardUtils";
+import RevenueDateFilter from "./RevenueDateFilter";
 import RevenueOrderTabs from "./RevenueOrderTabs";
 import RevenueStats from "./RevenueStats";
 import TopProductsByGroup from "./TopProductsByGroup";
-import { formatCurrency, formatNumber } from "./revenueDashboardUtils";
 
 type RevenueDashboardTab = "revenue" | "devices" | "orders";
 
@@ -45,10 +48,22 @@ export default function RevenueDashboard() {
     const [activeTab, setActiveTab] = useState<RevenueDashboardTab>("revenue");
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() => getDefaultRevenueFilter());
     const { stores, loading: storesLoading } = useStores();
+    const { bindings, loading: bindingsLoading, error: bindingsError } = useExternalStoreBindings();
+    const revenueStores = useMemo(
+        () => bindingsError ? [] : stores.filter((store) => {
+            const binding = bindings.find(
+                (item) =>
+                    item.source_system === "JOYWORLD_LEGACY" &&
+                    item.member_warehouse_ids.includes(store.id),
+            );
+            return !binding || binding.canonical_warehouse_id === store.id;
+        }),
+        [bindings, bindingsError, stores],
+    );
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-    const activeWarehouseId = stores.some((store) => store.id === selectedWarehouseId)
+    const activeWarehouseId = revenueStores.some((store) => store.id === selectedWarehouseId)
         ? selectedWarehouseId
-        : stores[0]?.id || "";
+        : revenueStores[0]?.id || "";
     const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
         getDefaultRevenueComparison(getDefaultRevenueFilter()),
     );
@@ -78,7 +93,7 @@ export default function RevenueDashboard() {
         }
     };
 
-    if (!storesLoading && stores.length === 0) {
+    if (!storesLoading && !bindingsLoading && revenueStores.length === 0) {
         return (
             <div className="flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 text-center">
                 <PackageSearch
@@ -99,20 +114,20 @@ export default function RevenueDashboard() {
                     <div>
                         <p className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">{d.filters.warehouse}</p>
                         <p className="mt-1 text-sm font-semibold text-[var(--color-text-primary)]">
-                            {data?.warehouseName || stores.find((item) => item.id === activeWarehouseId)?.name || d.filters.selectWarehouse}
+                            {data?.warehouseName || revenueStores.find((item) => item.id === activeWarehouseId)?.name || d.filters.selectWarehouse}
                         </p>
                     </div>
                     <select
                         aria-label={d.filters.warehouse}
                         value={activeWarehouseId}
                         onChange={(event) => setSelectedWarehouseId(event.target.value)}
-                        disabled={storesLoading || stores.length === 0}
+                        disabled={storesLoading || bindingsLoading || revenueStores.length === 0}
                         className="h-10 min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 text-sm font-semibold text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand-primary)] sm:w-80"
                     >
-                        {stores.length === 0 && <option value="">{d.filters.noWarehouse}</option>}
-                        {stores.map((store) => (
+                        {revenueStores.length === 0 && <option value="">{d.filters.noWarehouse}</option>}
+                        {revenueStores.map((store) => (
                             <option key={store.id} value={store.id}>
-                                {store.name}
+                                {bindings.find((item) => item.canonical_warehouse_id === store.id)?.display_name || store.name}
                             </option>
                         ))}
                     </select>

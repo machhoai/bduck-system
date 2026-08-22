@@ -33,6 +33,7 @@ export const syncPosInvoiceOrdersForDate = async (input: {
   runId: string;
   storeConfig: MeInvoiceStoreConfig | null;
   account: StoredMeInvoiceAccount | null;
+  externalSourceAccountKey?: string | null;
 }): Promise<PosOrderSyncResult> => {
   const range = vietnamDateRange(input.businessDate);
   const orders = (
@@ -66,6 +67,7 @@ export const syncPosInvoiceOrdersForDate = async (input: {
         input.businessDate,
         input.storeConfig,
         input.account,
+        input.externalSourceAccountKey,
       ),
     );
   const counts = await invoiceOrderRepository.upsertOrders(

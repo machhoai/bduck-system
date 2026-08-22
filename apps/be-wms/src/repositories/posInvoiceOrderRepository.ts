@@ -59,6 +59,14 @@ export const posInvoiceOrderRepository = {
       snapshot.docs.forEach((item) => {
         const order = asPosOrder(item.data());
         if (typeof order.hkOrderNumber === "string" && order.hkOrderNumber) {
+          const existing = result.get(order.hkOrderNumber);
+          if (
+            existing &&
+            (existing.localOrderId !== order.localOrderId ||
+              existing.warehouseId !== order.warehouseId)
+          ) {
+            throw new Error("DUPLICATE_POS_HK_ORDER_NUMBER");
+          }
           result.set(order.hkOrderNumber, order);
         }
       });
