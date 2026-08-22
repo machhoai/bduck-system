@@ -53,32 +53,75 @@ const normalizeRange = (
 };
 
 export function usePosRevenueStats(
-  warehouseId: string | undefined,
+  warehouseIds: readonly string[],
   filter: RevenueDashboardFilter,
 ) {
+  const warehouseKey = [...new Set(warehouseIds.filter(Boolean))]
+    .sort()
+    .join("|");
+  const normalizedWarehouseIds = useMemo(
+    () => (warehouseKey ? warehouseKey.split("|") : []),
+    [warehouseKey],
+  );
   const [data, setData] = useState<PosRevenueStatsSnapshot | null>(null);
-  const [loading, setLoading] = useState(Boolean(warehouseId));
+  const [loading, setLoading] = useState(normalizedWarehouseIds.length > 0);
   const [error, setError] = useState<string | null>(null);
   const range = useMemo(() => normalizeRange(filter), [filter]);
 
   useEffect(() => {
-    if (!warehouseId) {
+    if (normalizedWarehouseIds.length === 0) {
       setData(null);
       setLoading(false);
       setError(null);
       return;
     }
 
+    setData(null);
     setLoading(true);
     setError(null);
-    let unsubscribeOrders: (() => void) | undefined;
+    let unsubscribeOrders: Array<() => void> = [];
     let disposed = false;
+    let failed = false;
+    const recordsByWarehouse = new Map<string, PosRevenueOrderRecord[]>();
+    const loadedWarehouses = new Set<string>();
+
+    const emitAggregate = () => {
+      if (
+        disposed ||
+        failed ||
+        loadedWarehouses.size !== normalizedWarehouseIds.length
+      ) {
+        return;
+      }
+      const records = normalizedWarehouseIds.flatMap(
+        (warehouseId) => recordsByWarehouse.get(warehouseId) ?? [],
+      );
+      const generatedAt = new Date().toISOString();
+      const warehouseScopeId =
+        normalizedWarehouseIds.length === 1
+          ? normalizedWarehouseIds[0]
+          : "ALL";
+      setData({
+        ...aggregatePosRevenueStats(records),
+        generatedAt,
+        dashboard: buildPosRevenueDashboardData({
+          records,
+          warehouseId: warehouseScopeId,
+          filter,
+          range,
+          generatedAt,
+        }),
+      });
+      setLoading(false);
+      setError(null);
+    };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubscribeOrders) {
-        unsubscribeOrders();
-        unsubscribeOrders = undefined;
-      }
+      unsubscribeOrders.forEach((unsubscribe) => unsubscribe());
+      unsubscribeOrders = [];
+      recordsByWarehouse.clear();
+      loadedWarehouses.clear();
+      failed = false;
       if (!user) {
         setData(null);
         setLoading(false);
@@ -86,49 +129,45 @@ export function usePosRevenueStats(
       }
 
       const { startIso, endExclusiveIso } = toVietnamIsoRange(range);
-      const ordersQuery = query(
-        collection(db, "pos_orders"),
-        where("warehouseId", "==", warehouseId),
-        where("paidAt", ">=", startIso),
-        where("paidAt", "<", endExclusiveIso),
-      );
+      unsubscribeOrders = normalizedWarehouseIds.map((warehouseId) => {
+        const ordersQuery = query(
+          collection(db, "pos_orders"),
+          where("warehouseId", "==", warehouseId),
+          where("paidAt", ">=", startIso),
+          where("paidAt", "<", endExclusiveIso),
+        );
 
-      unsubscribeOrders = onSnapshot(
-        ordersQuery,
-        (snapshot) => {
-          if (disposed) return;
-          const records: PosRevenueOrderRecord[] = snapshot.docs.map(
-            (document) => ({ id: document.id, ...document.data() }),
-          );
-          const generatedAt = new Date().toISOString();
-          setData({
-            ...aggregatePosRevenueStats(records),
-            generatedAt,
-            dashboard: buildPosRevenueDashboardData({
-              records,
+        return onSnapshot(
+          ordersQuery,
+          (snapshot) => {
+            if (disposed) return;
+            recordsByWarehouse.set(
               warehouseId,
-              filter,
-              range,
-              generatedAt,
-            }),
-          });
-          setLoading(false);
-          setError(null);
-        },
-        (snapshotError) => {
-          if (disposed) return;
-          setError(snapshotError.message);
-          setLoading(false);
-        },
-      );
+              snapshot.docs.map((document) => ({
+                id: document.id,
+                ...document.data(),
+                warehouseId,
+              })),
+            );
+            loadedWarehouses.add(warehouseId);
+            emitAggregate();
+          },
+          (snapshotError) => {
+            if (disposed) return;
+            failed = true;
+            setError(snapshotError.message);
+            setLoading(false);
+          },
+        );
+      });
     });
 
     return () => {
       disposed = true;
       unsubscribeAuth();
-      if (unsubscribeOrders) unsubscribeOrders();
+      unsubscribeOrders.forEach((unsubscribe) => unsubscribe());
     };
-  }, [filter, range, warehouseId]);
+  }, [filter, normalizedWarehouseIds, range]);
 
   return { data, loading, error };
 }

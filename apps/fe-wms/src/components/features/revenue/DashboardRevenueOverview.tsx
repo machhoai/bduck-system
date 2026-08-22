@@ -100,9 +100,11 @@ interface DashboardTopProduct {
 
 export default function DashboardRevenueOverview({
     warehouseId,
+    warehouseIds,
     canSyncPartner = false,
 }: {
     warehouseId?: string;
+    warehouseIds: readonly string[];
     canSyncPartner?: boolean;
 }) {
     const { t, lang } = useTranslation();
@@ -118,7 +120,7 @@ export default function DashboardRevenueOverview({
         data: posData,
         loading,
         error,
-    } = usePosRevenueStats(warehouseId, filter);
+    } = usePosRevenueStats(warehouseIds, filter);
     const data = posData?.dashboard ?? null;
     const [syncingPartner, setSyncingPartner] = useState(false);
     const {

@@ -104,7 +104,14 @@ export default function DashboardPage() {
   const initialLoading = loading && !data;
 
   // ── Permissions ──
-  const hasRevenueAccess = hasPermission("revenue.read");
+  const revenueWarehouseIds = selectedWarehouseId
+    ? hasPermission("revenue.read", selectedWarehouseId)
+      ? [selectedWarehouseId]
+      : []
+    : stores
+        .filter((store) => hasPermission("revenue.read", store.id))
+        .map((store) => store.id);
+  const hasRevenueAccess = revenueWarehouseIds.length > 0;
   // ── Full skeleton while loading ──
   // ── No access state ──
   if (data && stores.length === 0 && !loading && !error) {
@@ -183,11 +190,12 @@ export default function DashboardPage() {
       {hasRevenueAccess && data && stores.length > 0 && (
         <div className="flex flex-col gap-3">
           <DashboardRevenueOverview
-            warehouseId={selectedWarehouseId || stores[0]?.id}
-            canSyncPartner={hasPermission(
-              "revenue.sync",
-              selectedWarehouseId || stores[0]?.id,
-            )}
+            warehouseId={selectedWarehouseId}
+            warehouseIds={revenueWarehouseIds}
+            canSyncPartner={
+              Boolean(selectedWarehouseId) &&
+              hasPermission("revenue.sync", selectedWarehouseId)
+            }
           />
         </div>
       )}
