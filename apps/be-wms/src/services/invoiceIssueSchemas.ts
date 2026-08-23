@@ -26,17 +26,9 @@ export const listInvoiceIssueRetryCandidatesSchema = z.object({
 
 export const retryInvoiceIssueItemsSchema = z.object({
   warehouse_id: z.string().trim().min(1),
+  business_date: z.iso.date(),
   otp: z
     .string()
     .trim()
     .regex(/^\d{6}$/u),
-  items: z
-    .array(
-      z.object({
-        job_id: z.string().trim().min(1),
-        item_id: z.string().trim().min(1),
-      }),
-    )
-    .min(1)
-    .max(300),
 });

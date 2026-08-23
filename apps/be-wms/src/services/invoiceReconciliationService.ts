@@ -45,10 +45,11 @@ const requireStoreConfig = async (warehouseId: string) => {
   return toPublicStoreConfig(stored);
 };
 
-const fetchMisaInvoicesForDate = async (
+export const fetchMisaInvoicesForDate = async (
   accountId: string,
   invoiceWithCode: boolean,
   businessDate: string,
+  invSeries?: string[],
 ): Promise<NormalizedMisaInvoice[]> =>
   executeWithMeInvoiceClient(accountId, async (client, token) => {
     const result: NormalizedMisaInvoice[] = [];
@@ -58,6 +59,7 @@ const fetchMisaInvoicesForDate = async (
         toDate: businessDate,
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
+        ...(invSeries ? { invSeries } : {}),
       });
       result.push(...response.items.map(normalizeMisaInvoice));
       if (response.items.length < PAGE_SIZE || result.length >= response.total)

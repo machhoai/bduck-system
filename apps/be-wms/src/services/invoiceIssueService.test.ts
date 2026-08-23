@@ -20,8 +20,10 @@ import {
 } from "./invoiceBulkIssueSchemas.js";
 import {
   classifyInvoiceIssueFailure,
+  findInvoiceRetryDuplicate,
   invoiceLaneId,
   isExplicitMisaRejection,
+  isUserRetryCandidate,
   issueJobId,
   sameInvoiceDocumentSet,
   statusIsIssued,
@@ -322,11 +324,11 @@ test("issue API accepts at most 30 unique candidates per request", () => {
   );
 });
 
-test("retry API requires OTP and supports multiple 30-item MISA jobs", () => {
+test("bulk stuck retry API requires a business date and OTP", () => {
   const input = {
     warehouse_id: "store-1",
+    business_date: "2026-08-24",
     otp: "123456",
-    items: [{ job_id: "job-1", item_id: "draft-1" }],
   };
   assert.equal(retryInvoiceIssueItemsSchema.safeParse(input).success, true);
   assert.equal(
@@ -336,12 +338,77 @@ test("retry API requires OTP and supports multiple 30-item MISA jobs", () => {
   assert.equal(
     retryInvoiceIssueItemsSchema.safeParse({
       ...input,
-      items: Array.from({ length: 301 }, (_, index) => ({
-        job_id: "job-1",
-        item_id: `draft-${index}`,
-      })),
+      business_date: "24/08/2026",
     }).success,
     false,
+  );
+});
+
+test("all stuck issue states are user retry candidates", () => {
+  for (const status of [
+    InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+    InvoiceIssueItemStatus.RETRYABLE_ERROR,
+    InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+  ]) {
+    assert.equal(isUserRetryCandidate({ status, ref_id: "ref-1" }), true);
+  }
+  assert.equal(
+    isUserRetryCandidate({
+      status: InvoiceIssueItemStatus.SUBMITTING,
+      ref_id: "ref-1",
+    }),
+    false,
+  );
+});
+
+test("duplicate retry check prioritizes RefID and strong business identities", () => {
+  const base = {
+    refId: "REF-1",
+    sourceOrderId: "SOURCE-1",
+    orderNumber: "ORDER-1",
+    invSeries: "1C26TAA",
+    businessDate: "2026-08-24",
+    totalAmount: 550_000,
+    buyerTaxCode: "0312345678",
+    buyerName: "Công ty Joy World",
+    sellerShopCode: "LM81",
+  };
+  const invoice = {
+    ref_id: "ref-1",
+    transaction_id: "transaction-1",
+    inv_series: "1C26TAA",
+    invoice_number: "000001",
+    invoice_date: "2026-08-24",
+    invoice_code: null,
+    buyer_name: null,
+    buyer_tax_code: "0312345678",
+    payment_method_name: null,
+    buyer_order_code: "ORDER-1",
+    seller_shop_code: "LM81",
+    total_amount: 550_000,
+    publish_status: 1,
+    send_tax_status: 2,
+    is_deleted: false,
+  };
+  assert.equal(findInvoiceRetryDuplicate(base, [invoice])?.reason, "REF_ID");
+  assert.equal(
+    findInvoiceRetryDuplicate({ ...base, refId: "new-ref" }, [
+      { ...invoice, ref_id: "other-ref" },
+    ])?.reason,
+    "ORDER_CODE",
+  );
+  assert.equal(
+    findInvoiceRetryDuplicate(
+      { ...base, refId: "new-ref", orderNumber: "new-order" },
+      [
+        {
+          ...invoice,
+          ref_id: "other-ref",
+          buyer_order_code: "other-order",
+        },
+      ],
+    )?.reason,
+    "BUSINESS_FINGERPRINT",
   );
 });
 

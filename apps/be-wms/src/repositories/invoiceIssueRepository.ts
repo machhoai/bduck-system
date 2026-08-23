@@ -10,6 +10,7 @@ import { db } from "../config/firebase.js";
 import {
   invoiceLaneId,
   isExplicitMisaRejection,
+  isUserRetryCandidate,
 } from "../services/invoiceIssuePolicy.js";
 
 const jobs = db.collection("invoice_issue_jobs");
@@ -251,13 +252,18 @@ export const invoiceIssueRepository = {
       const job = jobSnap.data()!;
       const item = itemSnap.data()!;
       const status = item.status as InvoiceIssueItemStatus;
+      const userRetryRequested = Boolean(item.manual_retry_requested_at);
       if (
-        ![
-          InvoiceIssueItemStatus.QUEUED,
-          InvoiceIssueItemStatus.RETRYABLE_ERROR,
-          InvoiceIssueItemStatus.PENDING_CONFIRMATION,
-          InvoiceIssueItemStatus.SUBMITTING,
-        ].includes(status)
+        !(
+          [
+            InvoiceIssueItemStatus.QUEUED,
+            InvoiceIssueItemStatus.RETRYABLE_ERROR,
+            InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+            InvoiceIssueItemStatus.SUBMITTING,
+          ].includes(status) ||
+          (status === InvoiceIssueItemStatus.MANUAL_RECONCILIATION &&
+            userRetryRequested)
+        )
       )
         return null;
       const nextAttempt =
@@ -381,6 +387,7 @@ export const invoiceIssueRepository = {
     errorCode?: string | null;
     lastError?: string | null;
     retryEligible?: boolean;
+    clearManualRetryRequest?: boolean;
   }) {
     const jobRef = jobs.doc(input.jobId);
     const itemRef = jobRef.collection("items").doc(input.itemId);
@@ -434,6 +441,15 @@ export const invoiceIssueRepository = {
         retry_eligible: input.retryEligible === true,
         completed_at: completedAt,
         updated_at: now,
+        ...(input.clearManualRetryRequest
+          ? {
+              manual_retry_requested_at: null,
+              manual_retry_requested_by: null,
+              manual_retry_allow_publish: null,
+              manual_retry_sign_type: null,
+              manual_retry_request_id: null,
+            }
+          : {}),
       });
       transaction.update(jobRef, {
         status: jobStatus,
@@ -513,7 +529,11 @@ export const invoiceIssueRepository = {
         if (
           !snapshot.exists ||
           document?.warehouse_id !== warehouseId ||
-          document.status !== InvoiceDocumentStatus.MANUAL_RECONCILIATION ||
+          ![
+            InvoiceDocumentStatus.PENDING_CONFIRMATION,
+            InvoiceDocumentStatus.RETRYABLE_ERROR,
+            InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+          ].includes(document.status as InvoiceDocumentStatus) ||
           typeof document.ref_id !== "string"
         ) {
           return null;
@@ -529,7 +549,7 @@ export const invoiceIssueRepository = {
           !job.exists ||
           job.data()?.warehouse_id !== warehouseId ||
           !item.exists ||
-          !isExplicitMisaRejection(item.data()!)
+          !isUserRetryCandidate(item.data()!)
         ) {
           return null;
         }
@@ -542,6 +562,105 @@ export const invoiceIssueRepository = {
     return reservations.filter(
       (value): value is NonNullable<typeof value> => value !== null,
     );
+  },
+
+  async requestVerifiedRetryItems(input: {
+    jobId: string;
+    warehouseId: string;
+    actorId: string;
+    requestId: string;
+    signType: number;
+    items: Array<{ itemId: string; allowPublish: boolean }>;
+  }) {
+    const uniqueItems = new Map(input.items.map((item) => [item.itemId, item]));
+    if (uniqueItems.size !== input.items.length) {
+      throw Object.assign(new Error("DUPLICATE_RETRY_ITEM"), {
+        statusCode: 400,
+      });
+    }
+    const selected = [...uniqueItems.values()];
+    const jobRef = jobs.doc(input.jobId);
+    const itemRefs = selected.map((item) =>
+      jobRef.collection("items").doc(item.itemId),
+    );
+    const documentRefs = selected.map((item) => documents.doc(item.itemId));
+    const sourceRefs = selected.map((item) => sourceOrders.doc(item.itemId));
+
+    return db.runTransaction(async (transaction) => {
+      const [jobSnap, itemSnaps, documentSnaps, sourceSnaps] =
+        await Promise.all([
+          transaction.get(jobRef),
+          Promise.all(itemRefs.map((ref) => transaction.get(ref))),
+          Promise.all(documentRefs.map((ref) => transaction.get(ref))),
+          Promise.all(sourceRefs.map((ref) => transaction.get(ref))),
+        ]);
+      if (
+        !jobSnap.exists ||
+        jobSnap.data()?.warehouse_id !== input.warehouseId
+      ) {
+        throw Object.assign(new Error("INVOICE_ISSUE_JOB_NOT_FOUND"), {
+          statusCode: 404,
+        });
+      }
+
+      itemSnaps.forEach((itemSnap, index) => {
+        const item = itemSnap.data();
+        const document = documentSnaps[index]?.data();
+        const source = sourceSnaps[index]?.data();
+        if (
+          !itemSnap.exists ||
+          !item ||
+          !isUserRetryCandidate(item) ||
+          !document ||
+          document.warehouse_id !== input.warehouseId ||
+          ![
+            InvoiceDocumentStatus.PENDING_CONFIRMATION,
+            InvoiceDocumentStatus.RETRYABLE_ERROR,
+            InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+          ].includes(document.status as InvoiceDocumentStatus) ||
+          document.ref_id !== item.ref_id ||
+          (document.active_issue_job_id &&
+            document.active_issue_job_id !== input.jobId) ||
+          !source ||
+          source.warehouse_id !== input.warehouseId ||
+          source.match_status === InvoiceOrderMatchStatus.MATCHED
+        ) {
+          throw Object.assign(new Error("INVOICE_RETRY_ITEM_NOT_ELIGIBLE"), {
+            statusCode: 409,
+          });
+        }
+      });
+
+      const now = new Date();
+      itemSnaps.forEach((itemSnap, index) => {
+        const selection = selected[index]!;
+        transaction.update(itemRefs[index]!, {
+          next_attempt_at: now,
+          manual_retry_requested_at: now,
+          manual_retry_requested_by: input.actorId,
+          manual_retry_allow_publish: selection.allowPublish,
+          manual_retry_sign_type: input.signType,
+          manual_retry_request_id: input.requestId,
+          updated_at: now,
+        });
+      });
+      transaction.set(
+        jobRef,
+        {
+          last_retry_by: input.actorId,
+          last_retry_at: now,
+          updated_at: now,
+        },
+        { merge: true },
+      );
+      return {
+        scheduled: itemSnaps.map((snapshot, index) => ({
+          itemId: selected[index]!.itemId,
+          attempt: Number(snapshot.data()?.attempt_count ?? 0),
+          allowPublish: selected[index]!.allowPublish,
+        })),
+      };
+    });
   },
 
   async requeueRejectedItems(input: {

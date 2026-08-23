@@ -8,6 +8,7 @@ import {
 } from "@bduck/shared-types";
 
 import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
+import type { NormalizedMisaInvoice } from "./invoiceReconciliationPolicy.js";
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
 export const issueJobId = (
@@ -217,4 +218,99 @@ export const isExplicitMisaRejection = (
     typeof item.last_error === "string" &&
     item.last_error.startsWith("MISA item error:")
   );
+};
+
+const USER_RETRY_STATUSES = new Set<InvoiceIssueItemStatus>([
+  InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+  InvoiceIssueItemStatus.RETRYABLE_ERROR,
+  InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+]);
+
+export const isUserRetryCandidate = (item: Record<string, unknown>): boolean =>
+  USER_RETRY_STATUSES.has(item.status as InvoiceIssueItemStatus) &&
+  !item.manual_retry_requested_at &&
+  typeof item.ref_id === "string" &&
+  Boolean(item.ref_id.trim());
+
+const normalizedIdentity = (value: unknown): string | null =>
+  typeof value === "string" && value.trim()
+    ? value.trim().toLocaleUpperCase("vi")
+    : null;
+
+const normalizedDate = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  return value.match(/^(\d{4}-\d{2}-\d{2})/u)?.[1] ?? null;
+};
+
+export type InvoiceRetryDuplicateReason =
+  | "REF_ID"
+  | "ORDER_CODE"
+  | "BUSINESS_FINGERPRINT";
+
+export const findInvoiceRetryDuplicate = (
+  input: {
+    refId: string;
+    sourceOrderId: string;
+    orderNumber: string | null;
+    invSeries: string;
+    businessDate: string;
+    totalAmount: number | null;
+    buyerTaxCode: string | null;
+    buyerName: string | null;
+    sellerShopCode: string | null;
+  },
+  invoices: NormalizedMisaInvoice[],
+): {
+  reason: InvoiceRetryDuplicateReason;
+  invoice: NormalizedMisaInvoice;
+} | null => {
+  const refId = normalizedIdentity(input.refId);
+  const orderCodes = new Set(
+    [input.sourceOrderId, input.orderNumber]
+      .map(normalizedIdentity)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const invSeries = normalizedIdentity(input.invSeries);
+  const buyerTaxCode = normalizedIdentity(input.buyerTaxCode);
+  const buyerName = normalizedIdentity(input.buyerName);
+  const buyerIdentity =
+    buyerTaxCode ||
+    (buyerName &&
+    !buyerName.includes("KHÁCH LẺ") &&
+    !buyerName.includes("KHACH LE")
+      ? buyerName
+      : null);
+  const sellerShopCode = normalizedIdentity(input.sellerShopCode);
+
+  for (const invoice of invoices) {
+    if (refId && normalizedIdentity(invoice.ref_id) === refId) {
+      return { reason: "REF_ID", invoice };
+    }
+  }
+  for (const invoice of invoices) {
+    const buyerOrderCode = normalizedIdentity(invoice.buyer_order_code);
+    if (buyerOrderCode && orderCodes.has(buyerOrderCode)) {
+      return { reason: "ORDER_CODE", invoice };
+    }
+  }
+  if (input.totalAmount === null || !buyerIdentity) return null;
+  for (const invoice of invoices) {
+    const sameSeller =
+      !sellerShopCode ||
+      !invoice.seller_shop_code ||
+      normalizedIdentity(invoice.seller_shop_code) === sellerShopCode;
+    if (
+      sameSeller &&
+      normalizedIdentity(invoice.inv_series) === invSeries &&
+      normalizedDate(invoice.invoice_date) === input.businessDate &&
+      (buyerTaxCode
+        ? normalizedIdentity(invoice.buyer_tax_code) === buyerTaxCode
+        : normalizedIdentity(invoice.buyer_name) === buyerIdentity) &&
+      invoice.total_amount !== null &&
+      Math.abs(invoice.total_amount - input.totalAmount) < 1
+    ) {
+      return { reason: "BUSINESS_FINGERPRINT", invoice };
+    }
+  }
+  return null;
 };

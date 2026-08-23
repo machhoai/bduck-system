@@ -233,19 +233,12 @@ export const InvoiceBulkIssuePanel = forwardRef<
     setLastError(null);
     try {
       const result = await showToast.promise(
-        invoiceApi.retryRejectedIssueItems(
-          warehouseId,
-          otp,
-          retryCandidates.map((item) => ({
-            job_id: item.job_id,
-            item_id: item.item_id,
-          })),
-        ),
+        invoiceApi.retryStuckIssueItems(warehouseId, businessDate, otp),
         {
           loading: d.retryChecking,
           success: d.retryStarted,
           error: d.retryFailed,
-          successDescription: d.retryStartedDescription(retryCandidates.length),
+          successDescription: d.retryStartedDescription,
           errorDescription: (retryError) =>
             invoiceErrorToast(retryError, "RETRY", d.issueErrorFallback)
               .description,
