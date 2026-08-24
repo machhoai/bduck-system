@@ -8,6 +8,7 @@ import {
 } from "@bduck/shared-types";
 
 import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
+import { INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS } from "./invoiceIssueDeadline.js";
 import type { NormalizedMisaInvoice } from "./invoiceReconciliationPolicy.js";
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
@@ -130,11 +131,17 @@ export type InvoiceFailureDecision =
   | {
       status: InvoiceIssueItemStatus.PENDING_CONFIRMATION;
       retryAfterMs: number;
+      cooldownMs?: number;
     }
-  | { status: InvoiceIssueItemStatus.RETRYABLE_ERROR; retryAfterMs: number }
+  | {
+      status: InvoiceIssueItemStatus.RETRYABLE_ERROR;
+      retryAfterMs: number;
+      cooldownMs?: number;
+    }
   | {
       status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION;
       retryAfterMs: null;
+      cooldownMs?: number;
     };
 
 const AMBIGUOUS_CODES = new Set([
@@ -163,6 +170,21 @@ export const classifyInvoiceIssueFailure = (
         : null;
   const boundedAttempt = Math.max(1, attempt);
   const backoff = Math.min(15 * 60_000, 15_000 * 2 ** (boundedAttempt - 1));
+  const rateLimited =
+    code === "TooManyRequest" ||
+    code === "MEINVOICE_RATE_LIMITED" ||
+    (error instanceof MeInvoiceApiError && error.httpStatus === 429);
+  if (rateLimited) {
+    const cooldownMs = Math.min(
+      15 * 60_000,
+      INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS * 2 ** (boundedAttempt - 1),
+    );
+    return {
+      status: InvoiceIssueItemStatus.RETRYABLE_ERROR,
+      retryAfterMs: cooldownMs,
+      cooldownMs,
+    };
+  }
   const ambiguousCode =
     code &&
     (AMBIGUOUS_CODES.has(code) ||
@@ -179,8 +201,7 @@ export const classifyInvoiceIssueFailure = (
   }
   if (
     (code && RETRYABLE_CODES.has(code)) ||
-    (error instanceof MeInvoiceApiError &&
-      (error.httpStatus === 401 || error.httpStatus === 429))
+    (error instanceof MeInvoiceApiError && error.httpStatus === 401)
   ) {
     return {
       status: InvoiceIssueItemStatus.RETRYABLE_ERROR,
@@ -192,6 +213,15 @@ export const classifyInvoiceIssueFailure = (
     retryAfterMs: null,
   };
 };
+
+export const publishResultConfirmsInvoice = (result: {
+  errorCode?: string | null;
+  transactionId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceCode?: string | null;
+}): boolean =>
+  !result.errorCode &&
+  Boolean(result.transactionId || result.invoiceNumber || result.invoiceCode);
 
 export const statusIsIssued = (publishStatus: number, isDeleted: boolean) =>
   publishStatus === 1 && !isDeleted;

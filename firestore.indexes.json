@@ -1477,6 +1477,16 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "invoice_documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "next_status_check_at", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "items",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

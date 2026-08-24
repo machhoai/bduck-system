@@ -1,15 +1,58 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   InvoiceOrderMatchStatus,
   InvoiceReconciliationCaseType,
 } from "@bduck/shared-types";
-import { MeInvoiceClient } from "./meInvoiceClient.js";
+
 import {
+  invoiceStatusMonitoringDecision,
   normalizeMisaInvoice,
   reconcileDailyInvoices,
   sourceOrderIsInvoiceEligible,
 } from "./invoiceReconciliationPolicy.js";
+import { MeInvoiceClient } from "./meInvoiceClient.js";
+
+test("issued invoice status monitoring stops after a final tax status", () => {
+  assert.deepEqual(
+    invoiceStatusMonitoringDecision({
+      publishStatus: 1,
+      sendTaxStatus: 2,
+      isDeleted: false,
+      checkedCount: 1,
+      deadlineExpired: false,
+    }),
+    { complete: true, nextCheckAfterMs: null },
+  );
+  assert.deepEqual(
+    invoiceStatusMonitoringDecision({
+      publishStatus: 1,
+      sendTaxStatus: 1,
+      isDeleted: false,
+      checkedCount: 1,
+      deadlineExpired: false,
+    }),
+    { complete: false, nextCheckAfterMs: 30 * 60_000 },
+  );
+});
+
+test("issued invoice status monitoring is bounded by deadline and attempt count", () => {
+  for (const input of [
+    { checkedCount: 4, deadlineExpired: false },
+    { checkedCount: 1, deadlineExpired: true },
+  ]) {
+    assert.deepEqual(
+      invoiceStatusMonitoringDecision({
+        publishStatus: 0,
+        sendTaxStatus: null,
+        isDeleted: false,
+        ...input,
+      }),
+      { complete: true, nextCheckAfterMs: null },
+    );
+  }
+});
 
 test("only completed, paid, positive-total orders are invoice eligible", () => {
   assert.equal(sourceOrderIsInvoiceEligible({

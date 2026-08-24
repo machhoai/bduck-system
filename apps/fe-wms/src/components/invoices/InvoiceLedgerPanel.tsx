@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   invoiceApi,
   type InvoiceLedgerEntryView,
+  type MisaInvoiceListResult,
   type InvoiceReconciliationCaseView,
 } from "@/api/invoiceApi";
 import { invoiceErrorToast } from "@/components/invoices/invoiceErrorPresentation";
@@ -64,6 +65,7 @@ export function InvoiceLedgerPanel({
   refreshToken,
   canDownload,
   canResolve,
+  onIssuedStatisticsLoaded,
 }: {
   warehouseId: string;
   businessDate: string;
@@ -71,6 +73,11 @@ export function InvoiceLedgerPanel({
   refreshToken: string;
   canDownload: boolean;
   canResolve: boolean;
+  onIssuedStatisticsLoaded?: (
+    warehouseId: string,
+    businessDate: string,
+    statistics: InvoiceIssuedStatistics,
+  ) => void;
 }) {
   const [ledger, setLedger] = useState<InvoiceLedgerEntryView[]>([]);
   const [cases, setCases] = useState<InvoiceReconciliationCaseView[]>([]);
@@ -86,16 +93,26 @@ export function InvoiceLedgerPanel({
     setLoading(true);
     setError(null);
     try {
-      const [nextLedger, nextCases] = await Promise.all([
+      const [nextLedger, nextMisaResult, nextCases] = await Promise.all([
         mode === "ISSUED"
           ? invoiceApi.listLedger(warehouseId, businessDate)
           : Promise.resolve([]),
+        mode === "ISSUED"
+          ? invoiceApi.listMisaInvoices(warehouseId, businessDate)
+          : Promise.resolve(null),
         mode === "EXCEPTIONS"
           ? invoiceApi.listReconciliationCases(warehouseId, businessDate)
           : Promise.resolve([]),
       ]);
       setLedger(nextLedger);
       setCases(nextCases);
+      if (mode === "ISSUED") {
+        onIssuedStatisticsLoaded?.(
+          warehouseId,
+          businessDate,
+          calculateIssuedStatistics(nextLedger, nextMisaResult?.invoices ?? []),
+        );
+      }
     } catch (nextError) {
       const presented = invoiceErrorToast(
         nextError,
@@ -107,7 +124,7 @@ export function InvoiceLedgerPanel({
     } finally {
       setLoading(false);
     }
-  }, [businessDate, mode, warehouseId]);
+  }, [businessDate, mode, onIssuedStatisticsLoaded, warehouseId]);
 
   useEffect(() => {
     void load();
@@ -456,6 +473,32 @@ export function InvoiceLedgerPanel({
     </div>
   );
 }
+
+export interface InvoiceIssuedStatistics {
+  misaIssuedCount: number;
+  matchedOrderCount: number;
+  matchedRevenue: number;
+}
+
+const calculateIssuedStatistics = (
+  ledger: InvoiceLedgerEntryView[],
+  misaInvoices: MisaInvoiceListResult["invoices"],
+): InvoiceIssuedStatistics => {
+  const matchedOrders = ledger.filter(
+    (item) => item.match_status === InvoiceOrderMatchStatus.MATCHED,
+  );
+
+  return {
+    misaIssuedCount: misaInvoices.filter(
+      (item) => item.publish_status === 1 && !item.is_deleted,
+    ).length,
+    matchedOrderCount: matchedOrders.length,
+    matchedRevenue: matchedOrders.reduce(
+      (total, item) => total + (item.total_amount ?? 0),
+      0,
+    ),
+  };
+};
 
 function ActionButton({
   label,

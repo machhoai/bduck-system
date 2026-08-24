@@ -51,6 +51,8 @@ test(
       refId,
       payloadHash: `payload-hash-${documentId}`,
       payload: { RefID: refId, InvSeries: invSeries },
+      businessDate: "2099-01-01",
+      issueDeadlineAt: new Date("2099-01-01T17:00:00.000Z"),
     });
 
     const document1 = `phase4-document-a-${suffix}`;

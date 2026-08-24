@@ -57,6 +57,8 @@ export interface InvoiceIssueJob {
   status: InvoiceIssueJobStatus;
   idempotency_key: string;
   requested_by: string;
+  business_dates?: string[];
+  issue_deadline_at?: Date;
   counts: InvoiceIssueJobCounts;
   created_at: Date;
   updated_at: Date;
@@ -71,6 +73,8 @@ export interface InvoiceIssueJobItem {
   source_order_id: string;
   ref_id: string;
   prepared_payload_hash: string;
+  business_date?: string;
+  issue_deadline_at?: Date;
   status: InvoiceIssueItemStatus;
   attempt_count: number;
   next_attempt_at: Date | null;

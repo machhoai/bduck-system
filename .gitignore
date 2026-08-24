@@ -62,10 +62,10 @@ $RECYCLE.BIN/
 # Logs
 # ========================
 logs/
+.codex-tmp/
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
 

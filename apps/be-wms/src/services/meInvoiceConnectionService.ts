@@ -1,23 +1,55 @@
 import { AuditAction, type MeInvoiceTemplate } from "@bduck/shared-types";
+
 import {
   meInvoiceConfigRepository,
   type StoredMeInvoiceAccount,
 } from "../repositories/meInvoiceConfigRepository.js";
+
+import { logAudit, type AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
+import { INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS } from "./invoiceIssueDeadline.js";
 import { MeInvoiceApiError, MeInvoiceClient } from "./meInvoiceClient.js";
-import { createMeInvoiceCredentialCrypto } from "./meInvoiceCredentialCrypto.js";
 import {
   credentialContext,
   dateFromValue,
 } from "./meInvoiceConfigService.js";
+import { createMeInvoiceCredentialCrypto } from "./meInvoiceCredentialCrypto.js";
 import {
   markMeInvoiceStoreConfigValidated,
   toPublicStoreConfig,
 } from "./meInvoiceStoreConfigService.js";
-import { logAudit, type AuditMetadata } from "./auditService.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const refreshFlights = new Map<string, Promise<string>>();
+const localRateLimitUntil = new Map<string, number>();
+
+const rateLimitError = () =>
+  new MeInvoiceApiError(
+    "MISA meInvoice account is cooling down after HTTP 429.",
+    "MEINVOICE_RATE_LIMITED",
+    429,
+  );
+
+const accountRateLimitUntil = (account: ResolvedMeInvoiceAccount) =>
+  Math.max(
+    localRateLimitUntil.get(account.stored.id) ?? 0,
+    dateFromValue(account.stored.rate_limited_until)?.getTime() ?? 0,
+  );
+
+const rememberRateLimit = async (accountId: string) => {
+  const now = new Date();
+  const until = new Date(now.getTime() + INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS);
+  localRateLimitUntil.set(accountId, until.getTime());
+  await meInvoiceConfigRepository
+    .setAccount(accountId, {
+      rate_limited_until: until,
+      last_rate_limited_at: now,
+      updated_at: now,
+    })
+    .catch((error) => {
+      console.error("[meInvoiceConnectionService] Failed to persist 429 cooldown", error);
+    });
+};
 
 interface ResolvedMeInvoiceAccount {
   stored: StoredMeInvoiceAccount & { credential_revision?: number };
@@ -118,15 +150,24 @@ export const executeWithMeInvoiceClient = async <T>(
   operation: (client: MeInvoiceClient, token: string) => Promise<T>,
 ): Promise<T> => {
   const account = await resolveAccount(accountId, true);
+  if (accountRateLimitUntil(account) > Date.now()) throw rateLimitError();
   const token = await getAccessToken(account);
   try {
     return await operation(account.client, token);
   } catch (error) {
+    let failure = error;
     if (error instanceof MeInvoiceApiError && error.httpStatus === 401) {
       const refreshedToken = await getAccessToken(account, true);
-      return operation(account.client, refreshedToken);
+      try {
+        return await operation(account.client, refreshedToken);
+      } catch (retryError) {
+        failure = retryError;
+      }
     }
-    throw error;
+    if (failure instanceof MeInvoiceApiError && failure.httpStatus === 429) {
+      await rememberRateLimit(accountId);
+    }
+    throw failure;
   }
 };
 

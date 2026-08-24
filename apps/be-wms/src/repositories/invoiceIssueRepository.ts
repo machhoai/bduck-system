@@ -28,7 +28,11 @@ export interface PreparedIssueItem {
   refId: string;
   payloadHash: string;
   payload: Record<string, unknown>;
+  businessDate: string;
+  issueDeadlineAt: Date;
 }
+
+const INITIAL_STATUS_CHECK_DELAY_MS = 15 * 60_000;
 
 const initialCounts = (total: number): InvoiceIssueJobCounts => ({
   total,
@@ -161,6 +165,10 @@ export const invoiceIssueRepository = {
         status: InvoiceIssueJobStatus.QUEUED,
         idempotency_key: input.idempotencyKey,
         requested_by: input.actorId,
+        business_dates: [...new Set(input.items.map((item) => item.businessDate))],
+        issue_deadline_at: new Date(
+          Math.min(...input.items.map((item) => item.issueDeadlineAt.getTime())),
+        ),
         bulk_run_id: input.bulkRunId ?? null,
         counts: initialCounts(input.items.length),
         created_at: now,
@@ -179,6 +187,8 @@ export const invoiceIssueRepository = {
           source_order_id: item.sourceOrderId,
           ref_id: item.refId,
           prepared_payload_hash: item.payloadHash,
+          business_date: item.businessDate,
+          issue_deadline_at: item.issueDeadlineAt,
           status: InvoiceIssueItemStatus.QUEUED,
           attempt_count: 0,
           next_attempt_at: now,
@@ -215,11 +225,14 @@ export const invoiceIssueRepository = {
           prepared_payload_hash: item.payloadHash,
           queued_by: input.actorId,
           queued_at: now,
+          business_date: item.businessDate,
+          issue_deadline_at: item.issueDeadlineAt,
           updated_by: input.actorId,
           updated_at: now,
         });
         transaction.update(sourceRefs[index]!, {
           invoice_document_status: InvoiceDocumentStatus.QUEUED,
+          issue_deadline_at: item.issueDeadlineAt,
           updated_at: now,
         });
       });
@@ -388,6 +401,7 @@ export const invoiceIssueRepository = {
     lastError?: string | null;
     retryEligible?: boolean;
     clearManualRetryRequest?: boolean;
+    circuitOpenMs?: number;
   }) {
     const jobRef = jobs.doc(input.jobId);
     const itemRef = jobRef.collection("items").doc(input.itemId);
@@ -422,6 +436,10 @@ export const invoiceIssueRepository = {
       counts[countKey(currentStatus)] -= 1;
       counts[countKey(input.status)] += 1;
       const now = new Date();
+      const nextStatusCheckAt =
+        input.status === InvoiceIssueItemStatus.ISSUED
+          ? new Date(now.getTime() + INITIAL_STATUS_CHECK_DELAY_MS)
+          : null;
       const jobStatus = terminalJobStatus(counts);
       const completedAt = [
         InvoiceIssueItemStatus.ISSUED,
@@ -473,6 +491,11 @@ export const invoiceIssueRepository = {
         issue_retry_eligible: input.retryEligible === true,
         last_issue_error_code: input.errorCode ?? null,
         last_issue_error: input.lastError ?? null,
+        next_status_check_at: nextStatusCheckAt,
+        status_check_count:
+          input.status === InvoiceIssueItemStatus.ISSUED ? 0 : null,
+        status_monitoring_complete:
+          input.status === InvoiceIssueItemStatus.ISSUED ? false : true,
         updated_at: now,
       });
       transaction.update(sourceRef, {
@@ -486,6 +509,11 @@ export const invoiceIssueRepository = {
         misa_invoice_number: input.invoiceNumber ?? item.invoice_number ?? null,
         issue_retry_eligible: input.retryEligible === true,
         misa_error_code: input.errorCode ?? null,
+        next_status_check_at: nextStatusCheckAt,
+        status_check_count:
+          input.status === InvoiceIssueItemStatus.ISSUED ? 0 : null,
+        status_monitoring_complete:
+          input.status === InvoiceIssueItemStatus.ISSUED ? false : true,
         updated_at: now,
       });
       if (laneSnap.exists && laneSnap.data()?.lease_owner === input.owner) {
@@ -504,7 +532,9 @@ export const invoiceIssueRepository = {
           heartbeat_at: now,
           consecutive_failures: nextFailures,
           circuit_open_until:
-            nextFailures >= 5
+            input.circuitOpenMs && input.circuitOpenMs > 0
+              ? new Date(now.getTime() + input.circuitOpenMs)
+              : nextFailures >= 5
               ? new Date(now.getTime() + 5 * 60_000)
               : input.status === InvoiceIssueItemStatus.ISSUED
                 ? null

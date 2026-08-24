@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import {
   InvoiceReconciliationCaseStatus,
   type InvoiceDailyControlSummary,
 } from "@bduck/shared-types";
+
 import { db } from "../config/firebase.js";
 import type {
   DailyReconciliationCaseCandidate,
@@ -296,10 +298,12 @@ export const invoiceReconciliationRepository = {
   },
 
   async listIssuedDocuments(limit: number) {
+    const now = new Date();
     const snapshot = await documents
       .where("status", "==", "ISSUED")
       .where("is_deleted", "==", false)
-      .orderBy("updated_at", "asc")
+      .where("next_status_check_at", "<=", now)
+      .orderBy("next_status_check_at", "asc")
       .limit(limit)
       .get();
     return snapshot.docs.map((item) => item.data());

@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  CircleDollarSign,
+  FileCheck2,
+  Link2,
   LoaderCircle,
   RefreshCw,
   ReceiptText,
@@ -48,7 +51,10 @@ import {
 import { InvoiceConfigurationPanel } from "./InvoiceConfigurationPanel";
 import { InvoiceDraftWorkflow } from "./InvoiceDraftWorkflow";
 import { invoiceErrorToast } from "./invoiceErrorPresentation";
-import { InvoiceLedgerPanel } from "./InvoiceLedgerPanel";
+import {
+  InvoiceLedgerPanel,
+  type InvoiceIssuedStatistics,
+} from "./InvoiceLedgerPanel";
 import {
   canSelectForInvoiceIssue,
   invoiceBusinessStatus,
@@ -291,6 +297,9 @@ export default function InvoiceManagementPage() {
   const [attentionFilter, setAttentionFilter] =
     useState<InvoiceAttentionFilter>("ALL");
   const [configurationOpen, setConfigurationOpen] = useState(false);
+  const [issuedStatisticsByDate, setIssuedStatisticsByDate] = useState<
+    Record<string, InvoiceIssuedStatistics>
+  >({});
   const loadGeneration = useRef(0);
   const bulkIssueRef = useRef<InvoiceBulkIssuePanelHandle>(null);
   const selectedDates = useMemo(
@@ -464,6 +473,42 @@ export default function InvoiceManagementPage() {
     }),
     [orders],
   );
+
+  const handleIssuedStatisticsLoaded = useCallback(
+    (
+      warehouseId: string,
+      date: string,
+      statistics: InvoiceIssuedStatistics,
+    ) => {
+      setIssuedStatisticsByDate((current) => ({
+        ...current,
+        [`${warehouseId}:${date}`]: statistics,
+      }));
+    },
+    [],
+  );
+
+  const issuedStatistics = useMemo(() => {
+    const dailyStatistics = selectedDates
+      .map((date) => issuedStatisticsByDate[`${activeStoreId}:${date}`])
+      .filter((value): value is InvoiceIssuedStatistics => Boolean(value));
+
+    return {
+      loading: dailyStatistics.length < selectedDates.length,
+      misaIssuedCount: dailyStatistics.reduce(
+        (total, item) => total + item.misaIssuedCount,
+        0,
+      ),
+      matchedOrderCount: dailyStatistics.reduce(
+        (total, item) => total + item.matchedOrderCount,
+        0,
+      ),
+      matchedRevenue: dailyStatistics.reduce(
+        (total, item) => total + item.matchedRevenue,
+        0,
+      ),
+    };
+  }, [activeStoreId, issuedStatisticsByDate, selectedDates]);
 
   const filteredOrders = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase(lang);
@@ -1076,6 +1121,43 @@ export default function InvoiceManagementPage() {
         </>
       ) : (
         <div className="grid gap-3">
+          <section
+            className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+            aria-label={
+              lang === "vi"
+                ? "Thống kê hóa đơn đã phát hành"
+                : "Issued invoice statistics"
+            }
+          >
+            <StatCard
+              label={
+                lang === "vi"
+                  ? "Hóa đơn phát hành từ MISA"
+                  : "Invoices issued by MISA"
+              }
+              value={issuedStatistics.misaIssuedCount}
+              icon={<FileCheck2 size={17} />}
+              loading={issuedStatistics.loading}
+            />
+            <StatCard
+              label={lang === "vi" ? "Đơn hàng đã khớp" : "Matched orders"}
+              value={issuedStatistics.matchedOrderCount}
+              icon={<Link2 size={17} />}
+              tone="success"
+              loading={issuedStatistics.loading}
+            />
+            <StatCard
+              label={
+                lang === "vi"
+                  ? "Doanh thu hóa đơn đã khớp"
+                  : "Matched invoice revenue"
+              }
+              value={money.format(issuedStatistics.matchedRevenue)}
+              icon={<CircleDollarSign size={17} />}
+              loading={issuedStatistics.loading}
+            />
+          </section>
+
           {selectedDates.map((date) => (
             <InvoiceLedgerPanel
               key={`issued-${date}`}
@@ -1085,6 +1167,7 @@ export default function InvoiceManagementPage() {
               refreshToken={syncResult?.id ?? ""}
               canDownload={hasPermission("invoices.download", activeStoreId)}
               canResolve={canReconcile}
+              onIssuedStatisticsLoaded={handleIssuedStatisticsLoaded}
             />
           ))}
         </div>
@@ -1416,11 +1499,13 @@ function StatCard({
   value,
   icon,
   tone = "default",
+  loading = false,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
   tone?: "default" | "success" | "warning" | "danger";
+  loading?: boolean;
 }) {
   const tones = {
     default: "bg-slate-100 text-slate-700",
@@ -1435,8 +1520,14 @@ function StatCard({
       >
         {icon}
       </span>
-      <div>
-        <p className="text-xl font-bold tabular-nums text-slate-900">{value}</p>
+      <div className="min-w-0">
+        {loading ? (
+          <div className="h-7 w-20 animate-pulse rounded bg-slate-200" />
+        ) : (
+          <p className="truncate text-xl font-bold tabular-nums text-slate-900">
+            {value}
+          </p>
+        )}
         <p className="text-xs text-slate-500">{label}</p>
       </div>
     </div>

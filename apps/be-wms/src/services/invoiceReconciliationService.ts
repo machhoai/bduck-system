@@ -9,7 +9,14 @@ import { meInvoiceConfigRepository } from "../repositories/meInvoiceConfigReposi
 import { logAudit, type AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import {
+  dateFromInvoiceValue,
+  invoiceIssueBusinessDate,
+  invoiceIssueDeadline,
+  invoiceIssueDeadlineExpired,
+} from "./invoiceIssueDeadline.js";
+import {
   normalizeMisaInvoice,
+  invoiceStatusMonitoringDecision,
   reconcileDailyInvoices,
   sourceOrderIsInvoiceEligible,
   taxStatusIsRejected,
@@ -26,6 +33,15 @@ import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 1_000;
 const MAX_DOWNLOAD_CHARACTERS = 28 * 1024 * 1024;
+const MISA_INVOICE_LIST_CACHE_MS = 60_000;
+const misaInvoiceListCache = new Map<
+  string,
+  { expiresAt: number; invoices: NormalizedMisaInvoice[] }
+>();
+const misaInvoiceListFlights = new Map<
+  string,
+  Promise<NormalizedMisaInvoice[]>
+>();
 
 const serviceError = (statusCode: number, vi: string, code: string) => ({
   statusCode,
@@ -50,8 +66,26 @@ export const fetchMisaInvoicesForDate = async (
   invoiceWithCode: boolean,
   businessDate: string,
   invSeries?: string[],
-): Promise<NormalizedMisaInvoice[]> =>
-  executeWithMeInvoiceClient(accountId, async (client, token) => {
+  options: { forceRefresh?: boolean; cacheTtlMs?: number } = {},
+): Promise<NormalizedMisaInvoice[]> => {
+  const key = [
+    accountId,
+    String(invoiceWithCode),
+    businessDate,
+    [...(invSeries ?? [])].sort().join(","),
+  ].join(":");
+  const cached = misaInvoiceListCache.get(key);
+  if (
+    !options.forceRefresh &&
+    cached &&
+    cached.expiresAt > Date.now()
+  ) {
+    return cached.invoices;
+  }
+  const existing = misaInvoiceListFlights.get(key);
+  if (existing) return existing;
+
+  const flight = executeWithMeInvoiceClient(accountId, async (client, token) => {
     const result: NormalizedMisaInvoice[] = [];
     for (let page = 0; page < MAX_PAGES; page += 1) {
       const response = await client.pageInvoices(token, invoiceWithCode, {
@@ -66,7 +100,26 @@ export const fetchMisaInvoicesForDate = async (
         return result;
     }
     throw new Error("MEINVOICE_PAGING_LIMIT_EXCEEDED");
-  });
+  })
+    .then((invoices) => {
+      const cacheTtlMs = Math.max(
+        0,
+        options.cacheTtlMs ?? MISA_INVOICE_LIST_CACHE_MS,
+      );
+      if (cacheTtlMs > 0) {
+        misaInvoiceListCache.set(key, {
+          expiresAt: Date.now() + cacheTtlMs,
+          invoices,
+        });
+      }
+      return invoices;
+    })
+    .finally(() => {
+      misaInvoiceListFlights.delete(key);
+    });
+  misaInvoiceListFlights.set(key, flight);
+  return flight;
+};
 
 const toIso = (value: unknown): string | null => {
   if (value instanceof Date) return value.toISOString();
@@ -439,12 +492,42 @@ export const sweepIssuedInvoiceStatuses = async (limit = 100) => {
     const status = statusByDocumentId.get(documentId);
     if (!status) continue;
     const now = new Date();
+    const checkedCount = Number(document.status_check_count ?? 0) + 1;
+    let issueDeadlineAt = dateFromInvoiceValue(document.issue_deadline_at);
+    if (!issueDeadlineAt) {
+      try {
+        issueDeadlineAt = invoiceIssueDeadline(
+          invoiceIssueBusinessDate(
+            document.business_date,
+            document.payment_time,
+          ),
+        );
+      } catch {
+        issueDeadlineAt = null;
+      }
+    }
+    const monitoring = invoiceStatusMonitoringDecision({
+      publishStatus: status.publishStatus,
+      sendTaxStatus: status.sendTaxStatus,
+      isDeleted: status.isDeleted,
+      checkedCount,
+      deadlineExpired: issueDeadlineAt
+        ? invoiceIssueDeadlineExpired(issueDeadlineAt, now)
+        : false,
+    });
+    const nextStatusCheckAt =
+      monitoring.nextCheckAfterMs === null
+        ? null
+        : new Date(now.getTime() + monitoring.nextCheckAfterMs);
     await invoiceReconciliationRepository.updateStatus(documentId, sourceId, {
       misa_publish_status: status.publishStatus,
       misa_send_tax_status: status.sendTaxStatus,
       misa_invoice_code: status.invoiceCode ?? null,
       misa_is_deleted: status.isDeleted,
       last_status_checked_at: now,
+      status_check_count: checkedCount,
+      status_monitoring_complete: monitoring.complete,
+      next_status_check_at: nextStatusCheckAt,
       updated_at: now,
     });
     const caseType = status.isDeleted

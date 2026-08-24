@@ -15,9 +15,18 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { bulkIssueConfigFingerprint } from "./invoiceBulkIssuePolicy.js";
 import {
+  dateFromInvoiceValue,
+  deadlineTerminalInvoiceIssueStatus,
+  invoiceIssueBusinessDate,
+  invoiceIssueDeadline,
+  invoiceIssueDeadlineExpired,
+  retryTimeBeforeInvoiceDeadline,
+} from "./invoiceIssueDeadline.js";
+import {
   classifyInvoiceIssueFailure,
   findInvoiceRetryDuplicate,
   issueJobId,
+  publishResultConfirmsInvoice,
   sameInvoiceDocumentSet,
   statusIsIssued,
   validateInvoiceIssueCandidate,
@@ -111,6 +120,7 @@ export const createInvoiceIssueJob = async (
     options.permission ?? "invoices.issue",
     input.warehouse_id,
   );
+  const requestedAt = new Date();
   const documentIds = [...new Set(input.invoice_document_ids)];
   if (documentIds.length !== input.invoice_document_ids.length) {
     throw serviceError(
@@ -214,6 +224,19 @@ export const createInvoiceIssueJob = async (
         );
       }
       const built = buildMeInvoicePayload(document, config, account);
+      const businessDate = invoiceIssueBusinessDate(
+        sourceOrder.business_date,
+        document.payment_time,
+      );
+      const issueDeadlineAt = invoiceIssueDeadline(businessDate);
+      if (invoiceIssueDeadlineExpired(issueDeadlineAt, requestedAt)) {
+        throw serviceError(
+          409,
+          "Đã qua 00:00 giờ Việt Nam của ngày kinh doanh nên hóa đơn không còn được phép phát hành hoặc thử lại.",
+          "INVOICE_ISSUE_DEADLINE_EXPIRED",
+          { document_id: documentId, business_date: businessDate },
+        );
+      }
       return {
         documentId,
         sourceOrderId: String(document.source_order_id),
@@ -222,6 +245,8 @@ export const createInvoiceIssueJob = async (
         refId: built.ref_id,
         payloadHash: built.prepared_payload_hash,
         payload: built.payload,
+        businessDate,
+        issueDeadlineAt,
       };
     }),
   );
@@ -304,19 +329,30 @@ const finalizeAndSchedule = async (input: {
   lastError?: string | null;
   retryEligible?: boolean;
   clearManualRetryRequest?: boolean;
+  issueDeadlineAt?: unknown;
+  circuitOpenMs?: number;
 }) => {
   const max =
     input.status === InvoiceIssueItemStatus.PENDING_CONFIRMATION
       ? PENDING_MAX_ATTEMPTS
       : MAX_ATTEMPTS;
+  const now = new Date();
+  const deadline = dateFromInvoiceValue(input.issueDeadlineAt);
   const exhausted = input.retryAfterMs !== null && input.attempt >= max;
-  const status = exhausted
-    ? InvoiceIssueItemStatus.MANUAL_RECONCILIATION
-    : input.status;
-  const nextAttemptAt =
+  const retryAt =
     !exhausted && input.retryAfterMs !== null
-      ? new Date(Date.now() + input.retryAfterMs)
+      ? deadline
+        ? retryTimeBeforeInvoiceDeadline(input.retryAfterMs, deadline, now)
+        : new Date(now.getTime() + input.retryAfterMs)
       : null;
+  const deadlineBlocked =
+    input.retryAfterMs !== null && Boolean(deadline) && retryAt === null;
+  const status = deadlineBlocked
+    ? deadlineTerminalInvoiceIssueStatus(input.status)
+    : exhausted
+      ? InvoiceIssueItemStatus.MANUAL_RECONCILIATION
+      : input.status;
+  const nextAttemptAt = deadlineBlocked ? null : retryAt;
   const completion = await invoiceIssueRepository.completeItem({
     jobId: input.jobId,
     itemId: input.itemId,
@@ -326,14 +362,21 @@ const finalizeAndSchedule = async (input: {
     transactionId: input.transactionId,
     invoiceNumber: input.invoiceNumber,
     invoiceCode: input.invoiceCode,
-    errorCode: input.errorCode,
-    lastError: exhausted
-      ? "Retry limit reached; manual reconciliation required."
-      : input.lastError,
-    retryEligible: !exhausted && input.retryEligible === true,
+    errorCode: deadlineBlocked
+      ? "INVOICE_ISSUE_DEADLINE_EXPIRED"
+      : input.errorCode,
+    lastError: deadlineBlocked
+      ? "Vietnam business-day issue deadline reached; no further retry is allowed."
+      : exhausted
+        ? "Retry limit reached; manual reconciliation required."
+        : input.lastError,
+    retryEligible:
+      !deadlineBlocked && !exhausted && input.retryEligible === true,
     clearManualRetryRequest:
       input.clearManualRetryRequest ||
-      (exhausted && input.status !== InvoiceIssueItemStatus.ISSUED),
+      ((deadlineBlocked || exhausted) &&
+        input.status !== InvoiceIssueItemStatus.ISSUED),
+    circuitOpenMs: deadlineBlocked ? undefined : input.circuitOpenMs,
   });
   if (completion?.applied && nextAttemptAt) {
     await dispatchInvoiceIssueItem({
@@ -363,11 +406,49 @@ export const processInvoiceIssueItem = async (
   if (claimed.busy) return { processed: false, reason: "LANE_BUSY" };
   const attempt = Number(claimed.item.attempt_count ?? 0);
   const previousStatus = claimed.previousStatus;
+  const storedIssueDeadlineAt = dateFromInvoiceValue(
+    claimed.item.issue_deadline_at ?? claimed.job.issue_deadline_at,
+  );
+  let issueDeadlineAt = storedIssueDeadlineAt;
+  if (!issueDeadlineAt) {
+    try {
+      const legacyBusinessDate = invoiceIssueBusinessDate(
+        claimed.item.business_date ??
+          claimed.job.business_dates?.[0] ??
+          claimed.payload.InvDate,
+        claimed.payload.InvDate,
+      );
+      issueDeadlineAt = invoiceIssueDeadline(legacyBusinessDate);
+    } catch {
+      // Legacy items may predate both the deadline fields and InvDate payload.
+    }
+  }
+  const finalizeClaimed = (input: Parameters<typeof finalizeAndSchedule>[0]) =>
+    finalizeAndSchedule({
+      ...input,
+      issueDeadlineAt,
+    });
+  if (issueDeadlineAt && invoiceIssueDeadlineExpired(issueDeadlineAt)) {
+    return finalizeClaimed({
+      jobId,
+      itemId,
+      owner,
+      status: deadlineTerminalInvoiceIssueStatus(previousStatus),
+      attempt,
+      retryAfterMs: null,
+      errorCode: "INVOICE_ISSUE_DEADLINE_EXPIRED",
+      lastError:
+        "Vietnam business-day issue deadline reached; no further retry is allowed.",
+      clearManualRetryRequest: Boolean(
+        claimed.item.manual_retry_requested_at,
+      ),
+    });
+  }
   if (
     process.env.MEINVOICE_ISSUE_ENABLED !== "true" &&
     previousStatus !== InvoiceIssueItemStatus.PENDING_CONFIRMATION
   ) {
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -398,7 +479,7 @@ export const processInvoiceIssueItem = async (
       );
       const status = statuses[0];
       if (status && statusIsIssued(status.publishStatus, status.isDeleted)) {
-        return finalizeAndSchedule({
+        return finalizeClaimed({
           jobId,
           itemId,
           owner,
@@ -411,7 +492,7 @@ export const processInvoiceIssueItem = async (
         });
       }
       if (status?.isDeleted) {
-        return finalizeAndSchedule({
+        return finalizeClaimed({
           jobId,
           itemId,
           owner,
@@ -429,7 +510,7 @@ export const processInvoiceIssueItem = async (
           misaStatusHasIssueTrace(status) ||
           claimed.item.manual_retry_allow_publish !== true
         ) {
-          return finalizeAndSchedule({
+          return finalizeClaimed({
             jobId,
             itemId,
             owner,
@@ -445,7 +526,7 @@ export const processInvoiceIssueItem = async (
           });
         }
       } else {
-        return finalizeAndSchedule({
+        return finalizeClaimed({
           jobId,
           itemId,
           owner,
@@ -476,9 +557,23 @@ export const processInvoiceIssueItem = async (
         ),
     );
     const result = results[0]!;
+    if (publishResultConfirmsInvoice(result)) {
+      return finalizeClaimed({
+        jobId,
+        itemId,
+        owner,
+        status: InvoiceIssueItemStatus.ISSUED,
+        attempt,
+        retryAfterMs: null,
+        transactionId: result.transactionId,
+        invoiceNumber: result.invoiceNumber,
+        invoiceCode: result.invoiceCode,
+        clearManualRetryRequest: manualRetryRequested,
+      });
+    }
     if (result.errorCode) {
       const decision = classifyInvoiceIssueFailure(result.errorCode, attempt);
-      return finalizeAndSchedule({
+      return finalizeClaimed({
         jobId,
         itemId,
         owner,
@@ -493,9 +588,10 @@ export const processInvoiceIssueItem = async (
         retryEligible:
           !result.transactionId && !result.invoiceNumber && !result.invoiceCode,
         clearManualRetryRequest: manualRetryRequested,
+        circuitOpenMs: decision.cooldownMs,
       });
     }
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -509,7 +605,7 @@ export const processInvoiceIssueItem = async (
     });
   } catch (error) {
     const decision = classifyInvoiceIssueFailure(error, attempt);
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -520,6 +616,7 @@ export const processInvoiceIssueItem = async (
         error instanceof MeInvoiceApiError ? error.code : "UNKNOWN_ERROR",
       lastError: error instanceof Error ? error.message : String(error),
       clearManualRetryRequest: manualRetryPublishStarted,
+      circuitOpenMs: decision.cooldownMs,
     });
   }
 };
@@ -582,6 +679,9 @@ export const listInvoiceIssueRetryCandidates = async (
   authorization: AuthorizationService,
 ) => {
   authorization.assert("invoices.retry", input.warehouse_id);
+  if (invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))) {
+    return [];
+  }
   const candidates = await loadInvoiceIssueRetryCandidates(input);
   return candidates.map(({ job, item, order }) => ({
     job_id: String(job.id),
@@ -644,6 +744,13 @@ export const retryRejectedInvoiceIssueItems = async (
 ) => {
   authorization.assert("invoices.retry", input.warehouse_id);
   requireIssueEnabled();
+  if (invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))) {
+    throw serviceError(
+      409,
+      "Đã qua 00:00 giờ Việt Nam của ngày kinh doanh nên hệ thống không thử phát hành lại.",
+      "INVOICE_ISSUE_DEADLINE_EXPIRED",
+    );
+  }
   if (!(await verifyMfa(actorId, input.otp))) {
     throw serviceError(
       401,
@@ -703,6 +810,7 @@ export const retryRejectedInvoiceIssueItems = async (
     config.invoice_with_code,
     input.business_date,
     [config.inv_series],
+    { forceRefresh: true },
   );
   const statusesByCandidate = new Map<string, MeInvoiceStatusResult>();
   const statusGroups = new Map<string, typeof candidates>();

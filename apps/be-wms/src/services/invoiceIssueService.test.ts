@@ -19,12 +19,20 @@ import {
   previewInvoiceBulkIssueSchema,
 } from "./invoiceBulkIssueSchemas.js";
 import {
+  deadlineTerminalInvoiceIssueStatus,
+  invoiceIssueBusinessDate,
+  invoiceIssueDeadline,
+  invoiceIssueDeadlineExpired,
+  retryTimeBeforeInvoiceDeadline,
+} from "./invoiceIssueDeadline.js";
+import {
   classifyInvoiceIssueFailure,
   findInvoiceRetryDuplicate,
   invoiceLaneId,
   isExplicitMisaRejection,
   isUserRetryCandidate,
   issueJobId,
+  publishResultConfirmsInvoice,
   sameInvoiceDocumentSet,
   statusIsIssued,
   validateInvoiceIssueCandidate,
@@ -125,6 +133,93 @@ test("ambiguous timeout and duplicate RefID never trigger immediate republish", 
   const duplicate = classifyInvoiceIssueFailure("DuplicateInvoiceRefID", 1);
   assert.equal(timeout.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
   assert.equal(duplicate.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
+});
+
+test("invoice issue deadline is the next Vietnam midnight", () => {
+  const deadline = invoiceIssueDeadline("2026-08-24");
+  assert.equal(deadline.toISOString(), "2026-08-24T17:00:00.000Z");
+  assert.equal(
+    invoiceIssueBusinessDate(null, "2026-08-24T16:59:59.999Z"),
+    "2026-08-24",
+  );
+  assert.equal(
+    invoiceIssueBusinessDate(null, "2026-08-24T17:00:00.000Z"),
+    "2026-08-25",
+  );
+  assert.equal(
+    invoiceIssueDeadlineExpired(
+      deadline,
+      new Date("2026-08-24T16:59:59.999Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    invoiceIssueDeadlineExpired(
+      deadline,
+      new Date("2026-08-24T17:00:00.000Z"),
+    ),
+    true,
+  );
+});
+
+test("invoice retries never cross the Vietnam midnight deadline", () => {
+  const deadline = invoiceIssueDeadline("2026-08-24");
+  assert.equal(
+    retryTimeBeforeInvoiceDeadline(
+      15_000,
+      deadline,
+      new Date("2026-08-24T16:59:40.000Z"),
+    )?.toISOString(),
+    "2026-08-24T16:59:55.000Z",
+  );
+  assert.equal(
+    retryTimeBeforeInvoiceDeadline(
+      15_000,
+      deadline,
+      new Date("2026-08-24T16:59:50.000Z"),
+    ),
+    null,
+  );
+  assert.equal(
+    deadlineTerminalInvoiceIssueStatus(
+      InvoiceIssueItemStatus.RETRYABLE_ERROR,
+    ),
+    InvoiceIssueItemStatus.CANCELLED,
+  );
+  assert.equal(
+    deadlineTerminalInvoiceIssueStatus(
+      InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+    ),
+    InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+  );
+});
+
+test("MISA 429 opens a five-minute cooldown instead of rapid retries", () => {
+  const decision = classifyInvoiceIssueFailure(
+    new MeInvoiceApiError("rate limited", null, 429),
+    1,
+  );
+  assert.equal(decision.status, InvoiceIssueItemStatus.RETRYABLE_ERROR);
+  assert.equal(decision.retryAfterMs, 5 * 60_000);
+  assert.equal(decision.cooldownMs, 5 * 60_000);
+});
+
+test("a positive MISA publish trace completes without a status poll", () => {
+  assert.equal(
+    publishResultConfirmsInvoice({
+      errorCode: null,
+      transactionId: "transaction-1",
+    }),
+    true,
+  );
+  assert.equal(
+    publishResultConfirmsInvoice({
+      errorCode: "InvalidTaxCode",
+      transactionId: null,
+    }),
+    false,
+  );
+  assert.equal(publishResultConfirmsInvoice({ errorCode: null }), false);
 });
 
 test("Cloud Tasks schedule never rounds a retry before next_attempt_at", () => {

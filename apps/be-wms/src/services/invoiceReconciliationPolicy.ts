@@ -264,3 +264,30 @@ export const taxStatusIsRejected = (
   sendTaxStatus: number | null,
   invoiceWithCode: boolean,
 ) => invoiceWithCode ? sendTaxStatus === 3 : sendTaxStatus === 3 || sendTaxStatus === 4;
+
+const STATUS_MONITOR_DELAYS_MS = [15 * 60_000, 30 * 60_000, 60 * 60_000];
+const MAX_STATUS_CHECKS = 4;
+
+export const invoiceStatusMonitoringDecision = (input: {
+  publishStatus: number;
+  sendTaxStatus: number | null;
+  isDeleted: boolean;
+  checkedCount: number;
+  deadlineExpired: boolean;
+}): { complete: boolean; nextCheckAfterMs: number | null } => {
+  const taxStatusFinal =
+    input.sendTaxStatus !== null && ![0, 1].includes(input.sendTaxStatus);
+  const complete =
+    input.isDeleted ||
+    (input.publishStatus === 1 && taxStatusFinal) ||
+    input.deadlineExpired ||
+    input.checkedCount >= MAX_STATUS_CHECKS;
+  if (complete) return { complete: true, nextCheckAfterMs: null };
+  return {
+    complete: false,
+    nextCheckAfterMs:
+      STATUS_MONITOR_DELAYS_MS[
+        Math.min(input.checkedCount, STATUS_MONITOR_DELAYS_MS.length - 1)
+      ]!,
+  };
+};
