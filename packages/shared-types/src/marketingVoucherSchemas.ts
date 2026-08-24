@@ -167,14 +167,35 @@ export const marketingVoucherEmailRecipientSchema = z.object({
   voucher_code_ids: z.array(identifierSchema).min(1).max(100),
 });
 
-export const createMarketingVoucherEmailJobSchema = z.object({
-  campaign_id: identifierSchema,
-  recipients: z.array(marketingVoucherEmailRecipientSchema).min(1).max(500),
-  subject: safeTextSchema(200).min(1),
-  introduction: safeTextSchema(5_000),
-  idempotency_key: marketingVoucherIdempotencyKeySchema,
-  action_time: z.coerce.date(),
-});
+export const createMarketingVoucherEmailJobSchema = z
+  .object({
+    campaign_id: identifierSchema,
+    recipients: z.array(marketingVoucherEmailRecipientSchema).min(1).max(400),
+    subject: safeTextSchema(200).min(1),
+    introduction: safeTextSchema(5_000),
+    idempotency_key: marketingVoucherIdempotencyKeySchema,
+    action_time: z.coerce.date(),
+  })
+  .superRefine((value, context) => {
+    const codeIds = value.recipients.flatMap(
+      (recipient) => recipient.voucher_code_ids,
+    );
+    if (codeIds.length > 500) {
+      context.addIssue({
+        code: "custom",
+        path: ["recipients"],
+        message: "EMAIL_VOUCHER_LIMIT_EXCEEDED",
+      });
+    }
+    const normalized = codeIds.map((codeId) => codeId.toUpperCase());
+    if (new Set(normalized).size !== normalized.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["recipients"],
+        message: "EMAIL_VOUCHER_DUPLICATED",
+      });
+    }
+  });
 
 export const retryMarketingVoucherJobItemsSchema = z.object({
   job_id: identifierSchema,

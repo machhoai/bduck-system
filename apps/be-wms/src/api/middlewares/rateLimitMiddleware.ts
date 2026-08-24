@@ -85,7 +85,9 @@ export const isPosDeviceWatchRequest = (
   request: Pick<Request, "method" | "originalUrl">,
 ): boolean =>
   request.method === "POST" &&
-  POS_DEVICE_WATCH_PATH_PATTERN.test(request.originalUrl.split("?", 1)[0] ?? "");
+  POS_DEVICE_WATCH_PATH_PATTERN.test(
+    request.originalUrl.split("?", 1)[0] ?? "",
+  );
 
 export const apiRateLimiter = createRateLimiter(
   parsePositiveInteger(process.env.BE_WMS_RATE_LIMIT_WINDOW_MS, 60_000),
@@ -139,10 +141,7 @@ export const publicInvoiceReadRateLimiter = createRateLimiter(
     process.env.BE_WMS_PUBLIC_INVOICE_READ_WINDOW_MS,
     60_000,
   ),
-  parsePositiveInteger(
-    process.env.BE_WMS_PUBLIC_INVOICE_READ_MAX_REQUESTS,
-    60,
-  ),
+  parsePositiveInteger(process.env.BE_WMS_PUBLIC_INVOICE_READ_MAX_REQUESTS, 60),
 );
 
 export const publicInvoiceSubmitRateLimiter = createRateLimiter(
@@ -164,5 +163,16 @@ export const marketingVoucherMutationRateLimiter = createRateLimiter(
   parsePositiveInteger(
     process.env.BE_WMS_MARKETING_VOUCHER_MUTATION_MAX_REQUESTS,
     30,
+  ),
+);
+
+export const marketingVoucherEmailRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_MARKETING_VOUCHER_EMAIL_WINDOW_MS,
+    60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_MARKETING_VOUCHER_EMAIL_MAX_REQUESTS,
+    10,
   ),
 );

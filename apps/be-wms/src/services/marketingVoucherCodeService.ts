@@ -58,7 +58,10 @@ export const generateMarketingVoucherCodes = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.codes.generate");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.codes.generate",
+  );
   const result = await createMarketingVoucherGenerationJobRecord({
     campaign_id: campaignId,
     request,
@@ -70,7 +73,10 @@ export const generateMarketingVoucherCodes = async (
     }),
   });
   if (result.job) {
-    await dispatchMarketingVoucherJob({ jobId: result.job.id, revision: result.job.revision });
+    await dispatchMarketingVoucherJob({
+      jobId: result.job.id,
+      revision: result.job.revision,
+    });
   }
   return result;
 };
@@ -81,7 +87,10 @@ export const revokeMarketingVoucherCodes = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.codes.revoke");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.codes.revoke",
+  );
   const codeIds = [...new Set(request.code_ids)];
   const chunks = Array.from(
     { length: Math.ceil(codeIds.length / 100) },

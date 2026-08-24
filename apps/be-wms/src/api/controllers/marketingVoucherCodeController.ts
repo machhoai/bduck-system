@@ -24,31 +24,51 @@ import {
   voucherAuditMetadata,
 } from "./marketingVoucherControllerUtils.js";
 
-export const listMarketingVoucherCodesHandler = async (req: Request, res: Response) => {
+export const listMarketingVoucherCodesHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const data = await getMarketingVoucherCodes(
       marketingVoucherCodeQuerySchema.parse(req.query),
       requireRequestAuthorization(req),
     );
-    return sendSuccess(res, data, { vi: "Đã tải kho mã voucher.", zh: "优惠券码库已加载。" });
+    return sendSuccess(res, data, {
+      vi: "Đã tải kho mã voucher.",
+      zh: "优惠券码库已加载。",
+    });
   } catch (error) {
     return handleMarketingVoucherError(res, error);
   }
 };
 
-export const getMarketingVoucherCodeHandler = async (req: Request, res: Response) => {
+export const getMarketingVoucherCodeHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { codeId } = marketingVoucherCodeParamsSchema.parse(req.params);
-    const data = await getMarketingVoucherCode(codeId, requireRequestAuthorization(req));
-    return sendSuccess(res, data, { vi: "Đã tải mã voucher.", zh: "优惠券码已加载。" });
+    const data = await getMarketingVoucherCode(
+      codeId,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data, {
+      vi: "Đã tải mã voucher.",
+      zh: "优惠券码已加载。",
+    });
   } catch (error) {
     return handleMarketingVoucherError(res, error);
   }
 };
 
-export const generateMarketingVoucherCodesHandler = async (req: Request, res: Response) => {
+export const generateMarketingVoucherCodesHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
-    const { campaignId } = marketingVoucherCampaignParamsSchema.parse(req.params);
+    const { campaignId } = marketingVoucherCampaignParamsSchema.parse(
+      req.params,
+    );
     const request = generateMarketingVoucherCodesSchema.parse(req.body);
     const data = await generateMarketingVoucherCodes(
       campaignId,
@@ -57,13 +77,24 @@ export const generateMarketingVoucherCodesHandler = async (req: Request, res: Re
       requireRequestAuthorization(req),
       voucherAuditMetadata(req),
     );
-    return sendSuccess(res, data, { vi: "Đã xếp hàng sinh thêm mã voucher.", zh: "追加券码生成任务已排队。" }, 202);
+    return sendSuccess(
+      res,
+      data,
+      {
+        vi: "Đã xếp hàng sinh thêm mã voucher.",
+        zh: "追加券码生成任务已排队。",
+      },
+      202,
+    );
   } catch (error) {
     return handleMarketingVoucherError(res, error);
   }
 };
 
-export const revokeMarketingVoucherCodesHandler = async (req: Request, res: Response) => {
+export const revokeMarketingVoucherCodesHandler = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const request = revokeMarketingVoucherCodesSchema.parse(req.body);
     const data = await revokeMarketingVoucherCodes(
@@ -72,7 +103,10 @@ export const revokeMarketingVoucherCodesHandler = async (req: Request, res: Resp
       requireRequestAuthorization(req),
       voucherAuditMetadata(req),
     );
-    return sendSuccess(res, data, { vi: "Đã vô hiệu các mã voucher hợp lệ.", zh: "符合条件的优惠券码已撤销。" });
+    return sendSuccess(res, data, {
+      vi: "Đã vô hiệu các mã voucher hợp lệ.",
+      zh: "符合条件的优惠券码已撤销。",
+    });
   } catch (error) {
     return handleMarketingVoucherError(res, error);
   }

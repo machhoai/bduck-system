@@ -1,5 +1,6 @@
 import type { ResumeMarketingVoucherJobInput } from "@bduck/shared-types";
 
+import { failMarketingVoucherEmailJob } from "../repositories/marketingVoucherEmailFailureRepository.js";
 import {
   failMarketingVoucherExtensionJob,
   processMarketingVoucherExtensionChunk,
@@ -16,6 +17,7 @@ import { resumeMarketingVoucherJobRecord } from "../repositories/marketingVouche
 
 import type { AuthorizationService } from "./authorization/index.js";
 import { assertMarketingVoucherPermission } from "./marketingVoucherAccessPolicy.js";
+import { processMarketingVoucherEmailChunk } from "./marketingVoucherEmailService.js";
 import {
   marketingVoucherOperationContext,
   type MarketingVoucherRequestMetadata,
@@ -64,6 +66,16 @@ export const resumeMarketingVoucherJob = async (
   metadata: MarketingVoucherRequestMetadata,
 ) => {
   const job = await requireJob(jobId);
+  if (job.type === "SEND_EMAIL" && job.status !== "PAUSED") {
+    throw {
+      code: "MARKETING_VOUCHER_EMAIL_RETRY_ITEMS_REQUIRED",
+      statusCode: 409,
+      messages: {
+        vi: "Hãy chọn các email lỗi cần gửi lại.",
+        zh: "请选择要重试的失败邮件项目。",
+      },
+    };
+  }
   const permission =
     job.type === "GENERATE_CODES"
       ? "marketing_vouchers.codes.generate"
@@ -84,7 +96,10 @@ export const resumeMarketingVoucherJob = async (
     }),
   });
   if (result.job) {
-    await dispatchMarketingVoucherJob({ jobId: result.job.id, revision: result.job.revision });
+    await dispatchMarketingVoucherJob({
+      jobId: result.job.id,
+      revision: result.job.revision,
+    });
   }
   return result;
 };
@@ -92,7 +107,9 @@ export const resumeMarketingVoucherJob = async (
 const failureOf = (error: unknown) => ({
   code:
     (error as { code?: string }).code ??
-    (error instanceof Error ? error.message : "MARKETING_VOUCHER_WORKER_FAILED"),
+    (error instanceof Error
+      ? error.message
+      : "MARKETING_VOUCHER_WORKER_FAILED"),
   message: error instanceof Error ? error.message : String(error),
 });
 
@@ -104,8 +121,10 @@ export const processMarketingVoucherJob = async (jobId: string) => {
         ? await processMarketingVoucherGenerationChunk(jobId)
         : job.type === "EXTEND_EXPIRY"
           ? await processMarketingVoucherExtensionChunk(jobId)
-          : { job, should_dispatch: false, no_op: true };
-    if (result.should_dispatch) {
+          : job.type === "SEND_EMAIL"
+            ? await processMarketingVoucherEmailChunk(jobId)
+            : { job, should_dispatch: false, no_op: true };
+    if (result.should_dispatch && result.job) {
       await dispatchMarketingVoucherJob({
         jobId: result.job.id,
         revision: result.job.revision,
@@ -118,6 +137,8 @@ export const processMarketingVoucherJob = async (jobId: string) => {
       await failMarketingVoucherGenerationJob(jobId, failure);
     } else if (job.type === "EXTEND_EXPIRY") {
       await failMarketingVoucherExtensionJob(jobId, failure);
+    } else if (job.type === "SEND_EMAIL") {
+      await failMarketingVoucherEmailJob(jobId, failure);
     }
     throw error;
   }

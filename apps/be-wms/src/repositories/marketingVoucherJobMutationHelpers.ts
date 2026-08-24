@@ -55,6 +55,8 @@ export const newMarketingVoucherJob = (input: {
   campaign_id: input.campaignId,
   generation_mode: input.generationMode,
   target_valid_to: input.targetValidTo,
+  email_subject: null,
+  email_introduction: null,
   idempotency_key: input.context.idempotency_key,
   cursor: null,
   progress: { total: input.total, processed: 0, succeeded: 0, failed: 0 },

@@ -367,19 +367,19 @@ Không sao chép các Next.js 16 Route Handler từ e-commerce sang JPULSE. JPUL
 
 ### Phase 3 — Frontend quản trị
 
-- [ ] Dashboard realtime.
-- [ ] Campaign list/create/edit.
-- [ ] Kho mã và bulk action.
-- [ ] Job progress.
-- [ ] Mobile-native UI, skeleton, i18n, Gooey Toast.
+- [x] Dashboard realtime.
+- [x] Campaign list/create/edit.
+- [x] Kho mã và bulk action.
+- [x] Job progress.
+- [x] Mobile-native UI, skeleton, i18n, Gooey Toast.
 
 ### Phase 4 — Màu voucher và email Brevo
 
-- [ ] Fixed voucher renderer.
-- [ ] Chọn một màu và preview.
-- [ ] Luồng email ba bước.
-- [ ] Mở rộng Brevo attachments.
-- [ ] Email jobs, results và retry failed.
+- [x] Fixed voucher renderer.
+- [x] Chọn một màu và preview.
+- [x] Luồng email ba bước.
+- [x] Mở rộng Brevo attachments.
+- [x] Email jobs, results và retry failed.
 
 ### Phase 5 — Excel job
 

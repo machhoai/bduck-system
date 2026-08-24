@@ -182,7 +182,10 @@ export const softDeleteMarketingVoucherCampaignRecord = async (input: {
       transaction,
       "SOFT_DELETE_CAMPAIGN",
       input.context,
-      { campaign_id: input.campaign_id, expected_revision: input.expected_revision },
+      {
+        campaign_id: input.campaign_id,
+        expected_revision: input.expected_revision,
+      },
     );
     if (operation.replay) {
       return { ...operation.replay, replayed: true } as {

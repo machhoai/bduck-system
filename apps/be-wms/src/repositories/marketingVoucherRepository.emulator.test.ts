@@ -14,7 +14,10 @@ test(
       { db },
       { createMarketingVoucherCampaignRecord },
       { changeMarketingVoucherCampaignStatusRecord },
-      { processMarketingVoucherGenerationChunk, failMarketingVoucherGenerationJob },
+      {
+        processMarketingVoucherGenerationChunk,
+        failMarketingVoucherGenerationJob,
+      },
       { createMarketingVoucherGenerationJobRecord },
       { revokeMarketingVoucherCodesRecord },
       { createMarketingVoucherExtensionJobRecord },
@@ -68,10 +71,16 @@ test(
     assert.equal(replayed.campaign.id, created.campaign.id);
     assert.ok(created.job);
 
-    const firstChunk = await processMarketingVoucherGenerationChunk(created.job!.id, 2);
+    const firstChunk = await processMarketingVoucherGenerationChunk(
+      created.job!.id,
+      2,
+    );
     assert.equal(firstChunk.job.progress.succeeded, 2);
     let campaign = (
-      await db.collection("marketing_voucher_campaigns").doc(created.campaign.id).get()
+      await db
+        .collection("marketing_voucher_campaigns")
+        .doc(created.campaign.id)
+        .get()
     ).data()!;
     assert.equal(campaign.status, "GENERATING");
     assert.equal(campaign.total_issued, 2);
@@ -88,7 +97,10 @@ test(
       context: context("pause"),
     });
     assert.equal(paused.campaign.status, "PAUSED");
-    const pausedWorker = await processMarketingVoucherGenerationChunk(created.job!.id, 2);
+    const pausedWorker = await processMarketingVoucherGenerationChunk(
+      created.job!.id,
+      2,
+    );
     assert.equal(pausedWorker.no_op, true);
     assert.equal(pausedWorker.job.progress.succeeded, 2);
 
@@ -105,7 +117,10 @@ test(
     assert.equal(activated.campaign.status, "GENERATING");
     await processMarketingVoucherGenerationChunk(created.job!.id, 10);
     campaign = (
-      await db.collection("marketing_voucher_campaigns").doc(created.campaign.id).get()
+      await db
+        .collection("marketing_voucher_campaigns")
+        .doc(created.campaign.id)
+        .get()
     ).data()!;
     assert.equal(campaign.status, "ACTIVE");
     assert.equal(campaign.total_issued, 5);
@@ -123,7 +138,10 @@ test(
     });
     await processMarketingVoucherGenerationChunk(append.job!.id, 10);
     campaign = (
-      await db.collection("marketing_voucher_campaigns").doc(created.campaign.id).get()
+      await db
+        .collection("marketing_voucher_campaigns")
+        .doc(created.campaign.id)
+        .get()
     ).data()!;
     assert.equal(campaign.total_issued, 7);
     assert.equal(campaign.code_counts.available, 7);
@@ -145,7 +163,10 @@ test(
     });
     assert.deepEqual(revoked.value.revoked_code_ids.sort(), codeIds.sort());
     campaign = (
-      await db.collection("marketing_voucher_campaigns").doc(created.campaign.id).get()
+      await db
+        .collection("marketing_voucher_campaigns")
+        .doc(created.campaign.id)
+        .get()
     ).data()!;
     assert.equal(campaign.code_counts.available, 5);
     assert.equal(campaign.code_counts.revoked, 2);
@@ -161,13 +182,22 @@ test(
       },
       context: context("extend"),
     });
-    let extensionResult = await processMarketingVoucherExtensionChunk(extension.job!.id, 2);
+    let extensionResult = await processMarketingVoucherExtensionChunk(
+      extension.job!.id,
+      2,
+    );
     while (extensionResult.should_dispatch) {
-      extensionResult = await processMarketingVoucherExtensionChunk(extension.job!.id, 2);
+      extensionResult = await processMarketingVoucherExtensionChunk(
+        extension.job!.id,
+        2,
+      );
     }
     assert.equal(extensionResult.job.progress.succeeded, 5);
     campaign = (
-      await db.collection("marketing_voucher_campaigns").doc(created.campaign.id).get()
+      await db
+        .collection("marketing_voucher_campaigns")
+        .doc(created.campaign.id)
+        .get()
     ).data()!;
     assert.equal(campaign.valid_to, "2026-10-20");
     const extendedCodes = await db
@@ -176,7 +206,9 @@ test(
       .where("status", "==", "AVAILABLE")
       .get();
     assert.equal(extendedCodes.size, 5);
-    extendedCodes.forEach((document) => assert.equal(document.get("valid_to"), "2026-10-20"));
+    extendedCodes.forEach((document) =>
+      assert.equal(document.get("valid_to"), "2026-10-20"),
+    );
 
     const failedCampaign = await createMarketingVoucherCampaignRecord({
       campaign: {
@@ -193,7 +225,10 @@ test(
       message: "Simulated failure",
     });
     const [failedCampaignDoc, failedJobDoc] = await Promise.all([
-      db.collection("marketing_voucher_campaigns").doc(failedCampaign.campaign.id).get(),
+      db
+        .collection("marketing_voucher_campaigns")
+        .doc(failedCampaign.campaign.id)
+        .get(),
       db.collection("marketing_voucher_jobs").doc(failedCampaign.job!.id).get(),
     ]);
     assert.equal(failedCampaignDoc.get("status"), "GENERATION_FAILED");
@@ -234,7 +269,8 @@ test(
         },
         context: context("stale"),
       }),
-      (error) => errorCode(error) === "MARKETING_VOUCHER_CAMPAIGN_REVISION_CONFLICT",
+      (error) =>
+        errorCode(error) === "MARKETING_VOUCHER_CAMPAIGN_REVISION_CONFLICT",
     );
   },
 );

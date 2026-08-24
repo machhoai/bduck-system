@@ -19,7 +19,8 @@ describe("marketing voucher pause guard", () => {
       assert.throws(
         () => assertCampaignActivityAllowed(campaign("PAUSED"), activity),
         (error: unknown) =>
-          (error as { code?: string }).code === "MARKETING_VOUCHER_CAMPAIGN_PAUSED",
+          (error as { code?: string }).code ===
+          "MARKETING_VOUCHER_CAMPAIGN_PAUSED",
       );
     }
   });
@@ -33,7 +34,9 @@ describe("marketing voucher pause guard", () => {
   });
 
   it("blocks activities after soft deletion or ending", () => {
-    assert.throws(() => assertCampaignActivityAllowed(campaign("ENDED"), "VIEW"));
+    assert.throws(() =>
+      assertCampaignActivityAllowed(campaign("ENDED"), "VIEW"),
+    );
     assert.throws(() =>
       assertCampaignActivityAllowed(
         { status: "ACTIVE", is_deleted: true },

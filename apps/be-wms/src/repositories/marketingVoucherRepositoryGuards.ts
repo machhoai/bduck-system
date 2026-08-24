@@ -33,10 +33,7 @@ export const assertCampaignActivityAllowed = (
       409,
     );
   }
-  if (
-    campaign.status === "PAUSED" &&
-    PAUSE_BLOCKED_ACTIVITIES.has(activity)
-  ) {
+  if (campaign.status === "PAUSED" && PAUSE_BLOCKED_ACTIVITIES.has(activity)) {
     throw marketingVoucherError(
       "MARKETING_VOUCHER_CAMPAIGN_PAUSED",
       {

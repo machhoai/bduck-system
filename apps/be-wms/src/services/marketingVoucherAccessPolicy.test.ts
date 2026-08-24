@@ -10,7 +10,10 @@ import {
   type MarketingVoucherPermission,
 } from "@bduck/shared-types";
 
-import { createAccessContext , AuthorizationService } from "./authorization/index.js";
+import {
+  createAccessContext,
+  AuthorizationService,
+} from "./authorization/index.js";
 import { canAccessMarketingVouchers } from "./marketingVoucherAccessPolicy.js";
 
 const directSource = (facilityId: string): FacilityAccessGrantSource => ({

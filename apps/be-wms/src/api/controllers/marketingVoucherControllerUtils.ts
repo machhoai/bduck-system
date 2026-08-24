@@ -6,7 +6,9 @@ import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
 import { sendError } from "../../utils/responseHelper.js";
 
-export const voucherAuditMetadata = (req: Request): MarketingVoucherRequestMetadata => {
+export const voucherAuditMetadata = (
+  req: Request,
+): MarketingVoucherRequestMetadata => {
   const metadata = getAuditRequestMetadata(req);
   return {
     ip_address: metadata.ip_address,
@@ -26,7 +28,8 @@ export const handleMarketingVoucherError = (res: Response, error: unknown) => {
     );
   }
   const firebaseError = mapFirebaseError(error);
-  if (firebaseError) return sendError(res, firebaseError.messages, firebaseError.statusCode);
+  if (firebaseError)
+    return sendError(res, firebaseError.messages, firebaseError.statusCode);
   const known = error as {
     statusCode?: number;
     messages?: { vi: string; zh: string };
@@ -41,6 +44,8 @@ export const handleMarketingVoucherError = (res: Response, error: unknown) => {
       zh: "无法处理优惠券请求。",
     },
     known.statusCode ?? 500,
-    known.data ?? { code: known.code ?? known.message ?? "MARKETING_VOUCHER_ERROR" },
+    known.data ?? {
+      code: known.code ?? known.message ?? "MARKETING_VOUCHER_ERROR",
+    },
   );
 };

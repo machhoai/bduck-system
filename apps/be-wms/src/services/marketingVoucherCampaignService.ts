@@ -2,6 +2,7 @@ import type {
   ChangeMarketingVoucherCampaignStatusInput,
   CreateMarketingVoucherCampaignInput,
   ExtendMarketingVoucherCampaignInput,
+  UpdateMarketingVoucherAppearanceInput,
   UpdateMarketingVoucherCampaignInput,
 } from "@bduck/shared-types";
 
@@ -9,6 +10,7 @@ import {
   createMarketingVoucherCampaignRecord,
   updateMarketingVoucherCampaignRecord,
 } from "../repositories/marketingVoucherCampaignMutationRepository.js";
+import { updateMarketingVoucherAppearanceRecord } from "../repositories/marketingVoucherAppearanceRepository.js";
 import {
   changeMarketingVoucherCampaignStatusRecord,
   softDeleteMarketingVoucherCampaignRecord,
@@ -40,7 +42,11 @@ const requireCampaign = async (campaignId: string) => {
 };
 
 const dispatchJob = async (job: { id: string; revision: number } | null) => {
-  if (job) await dispatchMarketingVoucherJob({ jobId: job.id, revision: job.revision });
+  if (job)
+    await dispatchMarketingVoucherJob({
+      jobId: job.id,
+      revision: job.revision,
+    });
 };
 
 export const getMarketingVoucherCampaigns = async (
@@ -65,8 +71,14 @@ export const createMarketingVoucherCampaign = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.campaigns.write");
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.codes.generate");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.campaigns.write",
+  );
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.codes.generate",
+  );
   const result = await createMarketingVoucherCampaignRecord({
     campaign: request,
     context: marketingVoucherOperationContext({
@@ -87,10 +99,36 @@ export const updateMarketingVoucherCampaign = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.campaigns.write");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.campaigns.write",
+  );
   return updateMarketingVoucherCampaignRecord({
     campaign_id: campaignId,
     patch: request,
+    context: marketingVoucherOperationContext({
+      actorId,
+      actionTime: request.action_time,
+      idempotencyKey: request.idempotency_key,
+      metadata,
+    }),
+  });
+};
+
+export const updateMarketingVoucherAppearance = async (
+  campaignId: string,
+  request: UpdateMarketingVoucherAppearanceInput,
+  actorId: string,
+  authorization: AuthorizationService,
+  metadata: MarketingVoucherRequestMetadata,
+) => {
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.appearance.write",
+  );
+  return updateMarketingVoucherAppearanceRecord({
+    campaign_id: campaignId,
+    request,
     context: marketingVoucherOperationContext({
       actorId,
       actionTime: request.action_time,
@@ -107,7 +145,10 @@ export const changeMarketingVoucherCampaignStatus = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.campaigns.write");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.campaigns.write",
+  );
   const result = await changeMarketingVoucherCampaignStatusRecord({
     campaign_id: campaignId,
     request,
@@ -124,12 +165,19 @@ export const changeMarketingVoucherCampaignStatus = async (
 
 export const deleteMarketingVoucherCampaign = async (
   campaignId: string,
-  request: { expected_revision: number; idempotency_key: string; action_time: Date },
+  request: {
+    expected_revision: number;
+    idempotency_key: string;
+    action_time: Date;
+  },
   actorId: string,
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.campaigns.write");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.campaigns.write",
+  );
   return softDeleteMarketingVoucherCampaignRecord({
     campaign_id: campaignId,
     expected_revision: request.expected_revision,
@@ -149,7 +197,10 @@ export const extendMarketingVoucherCampaign = async (
   authorization: AuthorizationService,
   metadata: MarketingVoucherRequestMetadata,
 ) => {
-  assertMarketingVoucherPermission(authorization, "marketing_vouchers.campaigns.extend");
+  assertMarketingVoucherPermission(
+    authorization,
+    "marketing_vouchers.campaigns.extend",
+  );
   const result = await createMarketingVoucherExtensionJobRecord({
     campaign_id: campaignId,
     request,

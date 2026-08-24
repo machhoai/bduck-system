@@ -52,7 +52,10 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
         { campaign_id: input.campaign_id, request: input.request },
       );
       if (operation.replay) {
-        return { ...operation.replay, replayed: true } as MarketingVoucherMutationPointer;
+        return {
+          ...operation.replay,
+          replayed: true,
+        } as MarketingVoucherMutationPointer;
       }
       const ref = campaignRef(input.campaign_id);
       const snapshot = await transaction.get(ref);
@@ -64,19 +67,31 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
         );
       }
       const previous = mapMarketingVoucherCampaign(snapshot);
-      assertMarketingVoucherRevision(previous.revision, input.request.expected_revision);
+      assertMarketingVoucherRevision(
+        previous.revision,
+        input.request.expected_revision,
+      );
       assertCampaignMutable(previous);
       if (input.request.valid_to <= previous.valid_to) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_EXTENSION_DATE_INVALID",
-          { vi: "Ngày gia hạn phải sau ngày hết hạn hiện tại.", zh: "延期日期必须晚于当前到期日。" },
+          {
+            vi: "Ngày gia hạn phải sau ngày hết hạn hiện tại.",
+            zh: "延期日期必须晚于当前到期日。",
+          },
           400,
         );
       }
-      if (previous.active_generation_job_id || previous.active_extension_job_id) {
+      if (
+        previous.active_generation_job_id ||
+        previous.active_extension_job_id
+      ) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_CAMPAIGN_JOB_CONFLICT",
-          { vi: "Chiến dịch đang có job thay đổi mã voucher.", zh: "活动已有券码变更任务。" },
+          {
+            vi: "Chiến dịch đang có job thay đổi mã voucher.",
+            zh: "活动已有券码变更任务。",
+          },
           409,
         );
       }

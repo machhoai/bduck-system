@@ -50,7 +50,8 @@ const reserveUniqueCodes = async (
     const refs = [...candidates].map(codeRef);
     const snapshots = await transaction.getAll(...refs);
     snapshots.forEach((snapshot) => {
-      if (!snapshot.exists && selected.size < quantity) selected.add(snapshot.id);
+      if (!snapshot.exists && selected.size < quantity)
+        selected.add(snapshot.id);
     });
   }
   if (selected.size < quantity) {
@@ -122,7 +123,8 @@ export const processMarketingVoucherGenerationChunk = async (
     const campaignSnapshot = await transaction.get(
       campaignRef(previousJob.campaign_id),
     );
-    if (!campaignSnapshot.exists) throw new Error("MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND");
+    if (!campaignSnapshot.exists)
+      throw new Error("MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND");
     const previousCampaign = mapMarketingVoucherCampaign(campaignSnapshot);
     if (previousCampaign.is_deleted || previousCampaign.status === "ENDED") {
       const now = new Date();
@@ -137,11 +139,15 @@ export const processMarketingVoucherGenerationChunk = async (
       transaction.set(jobSnapshot.ref, cancelled);
       return { job: cancelled, should_dispatch: false, no_op: false };
     }
-    if (previousCampaign.status === "PAUSED" || previousJob.status === "PAUSED") {
+    if (
+      previousCampaign.status === "PAUSED" ||
+      previousJob.status === "PAUSED"
+    ) {
       return { job: previousJob, should_dispatch: false, no_op: true };
     }
 
-    const remaining = previousJob.progress.total - previousJob.progress.succeeded;
+    const remaining =
+      previousJob.progress.total - previousJob.progress.succeeded;
     const requested = Math.min(Math.max(1, chunkSize), remaining);
     const codes = await reserveUniqueCodes(
       transaction,
@@ -152,12 +158,18 @@ export const processMarketingVoucherGenerationChunk = async (
     codes.forEach((code) => {
       transaction.create(
         codeRef(code),
-        codeDocument({ code, campaign: previousCampaign, job: previousJob, now }),
+        codeDocument({
+          code,
+          campaign: previousCampaign,
+          job: previousJob,
+          now,
+        }),
       );
     });
     const succeeded = previousJob.progress.succeeded + codes.length;
     const completed = succeeded === previousJob.progress.total;
-    const statusCountKey = previousCampaign.purpose === "PRINT" ? "distributed" : "available";
+    const statusCountKey =
+      previousCampaign.purpose === "PRINT" ? "distributed" : "available";
     const updatedCampaign: MarketingVoucherCampaign = {
       ...previousCampaign,
       status:
@@ -167,7 +179,8 @@ export const processMarketingVoucherGenerationChunk = async (
       active_generation_job_id: completed ? null : previousJob.id,
       code_counts: {
         ...previousCampaign.code_counts,
-        [statusCountKey]: previousCampaign.code_counts[statusCountKey] + codes.length,
+        [statusCountKey]:
+          previousCampaign.code_counts[statusCountKey] + codes.length,
         total: previousCampaign.code_counts.total + codes.length,
       },
       total_issued: previousCampaign.total_issued + codes.length,
@@ -222,7 +235,9 @@ export const failMarketingVoucherGenerationJob = async (
     if (!jobSnapshot.exists) return;
     const previousJob = mapMarketingVoucherJob(jobSnapshot);
     if (["COMPLETED", "CANCELLED"].includes(previousJob.status)) return;
-    const campaignSnapshot = await transaction.get(campaignRef(previousJob.campaign_id));
+    const campaignSnapshot = await transaction.get(
+      campaignRef(previousJob.campaign_id),
+    );
     const previousCampaign = campaignSnapshot.exists
       ? mapMarketingVoucherCampaign(campaignSnapshot)
       : null;

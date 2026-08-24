@@ -121,6 +121,8 @@ export const createMarketingVoucherCampaignRecord = async (input: {
       campaign_id: campaignId,
       generation_mode: "INITIAL",
       target_valid_to: null,
+      email_subject: null,
+      email_introduction: null,
       idempotency_key: input.context.idempotency_key,
       cursor: null,
       progress: {
@@ -208,7 +210,10 @@ export const updateMarketingVoucherCampaignRecord = async (input: {
       );
     }
     const previous = mapMarketingVoucherCampaign(snapshot);
-    assertMarketingVoucherRevision(previous.revision, input.patch.expected_revision);
+    assertMarketingVoucherRevision(
+      previous.revision,
+      input.patch.expected_revision,
+    );
     assertCampaignMutable(previous);
     if (
       input.patch.valid_to !== undefined &&
@@ -243,7 +248,10 @@ export const updateMarketingVoucherCampaignRecord = async (input: {
     if (updated.valid_from > updated.valid_to) {
       throw marketingVoucherError(
         "MARKETING_VOUCHER_DATE_RANGE_INVALID",
-        { vi: "Khoảng ngày chiến dịch không hợp lệ.", zh: "活动日期范围无效。" },
+        {
+          vi: "Khoảng ngày chiến dịch không hợp lệ.",
+          zh: "活动日期范围无效。",
+        },
         400,
       );
     }

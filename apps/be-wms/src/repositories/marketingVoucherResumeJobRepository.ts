@@ -37,7 +37,10 @@ export const resumeMarketingVoucherJobRecord = async (input: {
         { job_id: input.job_id, request: input.request },
       );
       if (operation.replay) {
-        return { ...operation.replay, replayed: true } as MarketingVoucherMutationPointer;
+        return {
+          ...operation.replay,
+          replayed: true,
+        } as MarketingVoucherMutationPointer;
       }
       const jobSnapshot = await transaction.get(jobRef(input.job_id));
       if (!jobSnapshot.exists || jobSnapshot.get("is_deleted") === true) {
@@ -48,8 +51,13 @@ export const resumeMarketingVoucherJobRecord = async (input: {
         );
       }
       const previousJob = mapMarketingVoucherJob(jobSnapshot);
-      const campaignSnapshot = await transaction.get(campaignRef(previousJob.campaign_id));
-      if (!campaignSnapshot.exists || campaignSnapshot.get("is_deleted") === true) {
+      const campaignSnapshot = await transaction.get(
+        campaignRef(previousJob.campaign_id),
+      );
+      if (
+        !campaignSnapshot.exists ||
+        campaignSnapshot.get("is_deleted") === true
+      ) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND",
           { vi: "Không tìm thấy chiến dịch.", zh: "未找到优惠券活动。" },
@@ -69,14 +77,23 @@ export const resumeMarketingVoucherJobRecord = async (input: {
       if (["COMPLETED", "PARTIAL", "CANCELLED"].includes(previousJob.status)) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_JOB_NOT_RESUMABLE",
-          { vi: "Job đã kết thúc và không thể tiếp tục.", zh: "任务已结束，无法恢复。" },
+          {
+            vi: "Job đã kết thúc và không thể tiếp tục.",
+            zh: "任务已结束，无法恢复。",
+          },
           409,
         );
       }
-      if (previousJob.type === "GENERATE_CODES" && previousCampaign.status === "PAUSED") {
+      if (
+        ["GENERATE_CODES", "SEND_EMAIL"].includes(previousJob.type) &&
+        previousCampaign.status === "PAUSED"
+      ) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_CAMPAIGN_PAUSED",
-          { vi: "Hãy kích hoạt lại chiến dịch trước khi tiếp tục sinh mã.", zh: "请先重新启用活动再恢复生成。" },
+          {
+            vi: "Hãy kích hoạt lại chiến dịch trước khi tiếp tục job.",
+            zh: "请先重新启用活动再恢复任务。",
+          },
           409,
         );
       }
@@ -95,7 +112,8 @@ export const resumeMarketingVoucherJobRecord = async (input: {
       const updatedCampaign = {
         ...previousCampaign,
         status:
-          previousJob.type === "GENERATE_CODES" && previousJob.generation_mode === "INITIAL"
+          previousJob.type === "GENERATE_CODES" &&
+          previousJob.generation_mode === "INITIAL"
             ? ("GENERATING" as const)
             : previousCampaign.status,
         active_generation_job_id:
@@ -112,7 +130,10 @@ export const resumeMarketingVoucherJobRecord = async (input: {
         action_time: input.context.action_time,
         sync_time: now,
       };
-      const result = { campaign_id: previousCampaign.id, job_id: previousJob.id };
+      const result = {
+        campaign_id: previousCampaign.id,
+        job_id: previousJob.id,
+      };
       transaction.set(jobSnapshot.ref, updatedJob);
       transaction.set(campaignSnapshot.ref, updatedCampaign);
       writeMarketingVoucherAudit(transaction, {

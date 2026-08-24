@@ -8,6 +8,7 @@ import {
   getMarketingVoucherCampaignHandler,
   listMarketingVoucherCampaignsHandler,
   updateMarketingVoucherCampaignHandler,
+  updateMarketingVoucherAppearanceHandler,
 } from "../controllers/marketingVoucherCampaignController.js";
 import {
   generateMarketingVoucherCodesHandler,
@@ -16,6 +17,10 @@ import {
   revokeMarketingVoucherCodesHandler,
 } from "../controllers/marketingVoucherCodeController.js";
 import {
+  createMarketingVoucherEmailJobHandler,
+  retryMarketingVoucherEmailItemsHandler,
+} from "../controllers/marketingVoucherEmailController.js";
+import {
   getMarketingVoucherJobHandler,
   listMarketingVoucherJobsHandler,
   processMarketingVoucherJobHandler,
@@ -23,7 +28,10 @@ import {
 } from "../controllers/marketingVoucherJobController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireMarketingVouchersFeatureEnabled } from "../middlewares/marketingVoucherFeatureGate.js";
-import { marketingVoucherMutationRateLimiter } from "../middlewares/rateLimitMiddleware.js";
+import {
+  marketingVoucherEmailRateLimiter,
+  marketingVoucherMutationRateLimiter,
+} from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
@@ -56,6 +64,12 @@ router.put(
   marketingVoucherMutationRateLimiter,
   requireAnyScopedPermission("marketing_vouchers.campaigns.write"),
   updateMarketingVoucherCampaignHandler,
+);
+router.put(
+  "/campaigns/:campaignId/appearance",
+  marketingVoucherMutationRateLimiter,
+  requireAnyScopedPermission("marketing_vouchers.appearance.write"),
+  updateMarketingVoucherAppearanceHandler,
 );
 router.post(
   "/campaigns/:campaignId/status",
@@ -97,6 +111,12 @@ router.post(
   requireAnyScopedPermission("marketing_vouchers.codes.revoke"),
   revokeMarketingVoucherCodesHandler,
 );
+router.post(
+  "/email-jobs",
+  marketingVoucherEmailRateLimiter,
+  requireAnyScopedPermission("marketing_vouchers.email.send"),
+  createMarketingVoucherEmailJobHandler,
+);
 router.get(
   "/jobs",
   requireAnyScopedPermission("marketing_vouchers.read"),
@@ -117,6 +137,12 @@ router.post(
     "marketing_vouchers.email.send",
   ]),
   resumeMarketingVoucherJobHandler,
+);
+router.post(
+  "/jobs/:jobId/email-items/retry",
+  marketingVoucherEmailRateLimiter,
+  requireAnyScopedPermission("marketing_vouchers.email.send"),
+  retryMarketingVoucherEmailItemsHandler,
 );
 
 export default router;

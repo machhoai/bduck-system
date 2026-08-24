@@ -6,7 +6,6 @@ import {
 } from "@bduck/shared-types";
 import { FieldPath } from "firebase-admin/firestore";
 
-
 import { db } from "../config/firebase.js";
 
 import type { MarketingVoucherWorkerResult } from "./marketingVoucherGenerationWorkerRepository.js";
@@ -59,12 +58,15 @@ export const processMarketingVoucherExtensionChunk = async (
   chunkSize = MARKETING_VOUCHER_EXTENSION_CHUNK_SIZE,
 ): Promise<MarketingVoucherWorkerResult> => {
   const initialJobSnapshot = await jobRef(jobId).get();
-  if (!initialJobSnapshot.exists) throw new Error("MARKETING_VOUCHER_JOB_NOT_FOUND");
+  if (!initialJobSnapshot.exists)
+    throw new Error("MARKETING_VOUCHER_JOB_NOT_FOUND");
   const initialJob = mapMarketingVoucherJob(initialJobSnapshot);
   if (initialJob.type !== "EXTEND_EXPIRY" || !initialJob.target_valid_to) {
     return { job: initialJob, should_dispatch: false, no_op: true };
   }
-  if (["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(initialJob.status)) {
+  if (
+    ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(initialJob.status)
+  ) {
     return { job: initialJob, should_dispatch: false, no_op: true };
   }
   const candidates = await loadEligibleCodes({
@@ -79,12 +81,17 @@ export const processMarketingVoucherExtensionChunk = async (
     const previousJob = mapMarketingVoucherJob(jobSnapshot);
     if (
       previousJob.revision !== initialJob.revision ||
-      ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(previousJob.status)
+      ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(
+        previousJob.status,
+      )
     ) {
       return { job: previousJob, should_dispatch: false, no_op: true };
     }
-    const campaignSnapshot = await transaction.get(campaignRef(previousJob.campaign_id));
-    if (!campaignSnapshot.exists) throw new Error("MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND");
+    const campaignSnapshot = await transaction.get(
+      campaignRef(previousJob.campaign_id),
+    );
+    if (!campaignSnapshot.exists)
+      throw new Error("MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND");
     const previousCampaign = mapMarketingVoucherCampaign(campaignSnapshot);
     if (previousCampaign.is_deleted || previousCampaign.status === "ENDED") {
       const now = new Date();
@@ -133,7 +140,9 @@ export const processMarketingVoucherExtensionChunk = async (
     const processed = completed
       ? previousJob.progress.total
       : previousJob.progress.processed + candidates.size;
-    const failed = completed ? Math.max(0, previousJob.progress.total - succeeded) : 0;
+    const failed = completed
+      ? Math.max(0, previousJob.progress.total - succeeded)
+      : 0;
     const updatedJob: MarketingVoucherJob = {
       ...previousJob,
       status: completed ? (failed > 0 ? "PARTIAL" : "COMPLETED") : "PROCESSING",
@@ -147,7 +156,9 @@ export const processMarketingVoucherExtensionChunk = async (
     };
     const updatedCampaign = {
       ...previousCampaign,
-      valid_to: completed ? previousJob.target_valid_to! : previousCampaign.valid_to,
+      valid_to: completed
+        ? previousJob.target_valid_to!
+        : previousCampaign.valid_to,
       active_extension_job_id: completed ? null : previousJob.id,
       revision: previousCampaign.revision + 1,
       updated_by: previousJob.requested_by,
@@ -186,7 +197,9 @@ export const failMarketingVoucherExtensionJob = async (
     if (!snapshot.exists) return;
     const job = mapMarketingVoucherJob(snapshot);
     if (["COMPLETED", "PARTIAL", "CANCELLED"].includes(job.status)) return;
-    const campaignSnapshot = await transaction.get(campaignRef(job.campaign_id));
+    const campaignSnapshot = await transaction.get(
+      campaignRef(job.campaign_id),
+    );
     const campaign = campaignSnapshot.exists
       ? mapMarketingVoucherCampaign(campaignSnapshot)
       : null;

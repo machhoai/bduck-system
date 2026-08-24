@@ -10,11 +10,16 @@ const getClient = () => {
 };
 
 export const marketingVoucherTaskConfig = () => ({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT_ID ?? "",
+  projectId:
+    process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT_ID ?? "",
   location: process.env.MARKETING_VOUCHER_TASK_LOCATION ?? "",
   queue: process.env.MARKETING_VOUCHER_TASK_QUEUE ?? "",
-  workerBaseUrl: (process.env.MARKETING_VOUCHER_WORKER_BASE_URL ?? "").replace(/\/+$/u, ""),
-  serviceAccountEmail: process.env.MARKETING_VOUCHER_WORKER_SERVICE_ACCOUNT ?? "",
+  workerBaseUrl: (process.env.MARKETING_VOUCHER_WORKER_BASE_URL ?? "").replace(
+    /\/+$/u,
+    "",
+  ),
+  serviceAccountEmail:
+    process.env.MARKETING_VOUCHER_WORKER_SERVICE_ACCOUNT ?? "",
   workerSecret: process.env.MARKETING_VOUCHER_WORKER_SECRET ?? "",
 });
 
@@ -22,11 +27,11 @@ export const marketingVoucherTasksConfigured = () => {
   const config = marketingVoucherTaskConfig();
   return Boolean(
     config.projectId &&
-      config.location &&
-      config.queue &&
-      config.workerBaseUrl &&
-      config.serviceAccountEmail &&
-      config.workerSecret,
+    config.location &&
+    config.queue &&
+    config.workerBaseUrl &&
+    config.serviceAccountEmail &&
+    config.workerSecret,
   );
 };
 
@@ -44,7 +49,11 @@ export const dispatchMarketingVoucherJob = async (input: {
   }
   const config = marketingVoucherTaskConfig();
   const tasks = getClient();
-  const parent = tasks.queuePath(config.projectId, config.location, config.queue);
+  const parent = tasks.queuePath(
+    config.projectId,
+    config.location,
+    config.queue,
+  );
   const name = tasks.taskPath(
     config.projectId,
     config.location,

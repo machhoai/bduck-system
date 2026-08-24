@@ -9,6 +9,7 @@ import {
   type MarketingVoucherCampaign,
   type MarketingVoucherCode,
   type MarketingVoucherJob,
+  type MarketingVoucherJobItem,
 } from "@bduck/shared-types";
 
 import { db } from "../config/firebase.js";
@@ -24,8 +25,7 @@ export interface MarketingVoucherAuditMetadata {
   session_token?: string | null;
 }
 
-export interface MarketingVoucherOperationContext
-  extends MarketingVoucherAuditMetadata {
+export interface MarketingVoucherOperationContext extends MarketingVoucherAuditMetadata {
   actor_id: string;
   action_time: Date;
   idempotency_key: string;
@@ -51,6 +51,8 @@ export const codeRef = (codeId: string) =>
   db.collection(MARKETING_VOUCHER_CODES_COLLECTION).doc(codeId);
 export const jobRef = (jobId: string) =>
   db.collection(MARKETING_VOUCHER_JOBS_COLLECTION).doc(jobId);
+export const jobItemRef = (jobId: string, itemId: string) =>
+  jobRef(jobId).collection("items").doc(itemId);
 
 const mapSnapshot = <T>(
   snapshot: FirebaseFirestore.DocumentSnapshot,
@@ -79,6 +81,10 @@ export const mapMarketingVoucherCode = (
 export const mapMarketingVoucherJob = (
   snapshot: FirebaseFirestore.DocumentSnapshot,
 ): MarketingVoucherJob => mapSnapshot(snapshot, ["completed_at"]);
+
+export const mapMarketingVoucherJobItem = (
+  snapshot: FirebaseFirestore.DocumentSnapshot,
+): MarketingVoucherJobItem => mapSnapshot(snapshot, ["completed_at"]);
 
 const stableValue = (value: unknown): unknown => {
   if (value instanceof Date) return value.toISOString();

@@ -9,8 +9,9 @@ export const MARKETING_VOUCHER_JOBS_COLLECTION =
 export const MARKETING_VOUCHER_JOB_ITEMS_SUBCOLLECTION = "items" as const;
 export const MARKETING_VOUCHER_CODE_ALPHABET_SIZE = 32;
 
-export const getMarketingVoucherSafeCodeCapacity = (codeLength: number): number =>
-  Math.floor(MARKETING_VOUCHER_CODE_ALPHABET_SIZE ** codeLength / 4);
+export const getMarketingVoucherSafeCodeCapacity = (
+  codeLength: number,
+): number => Math.floor(MARKETING_VOUCHER_CODE_ALPHABET_SIZE ** codeLength / 4);
 
 export const resolveMarketingVouchersFeatureEnabled = (
   value: string | undefined,
@@ -176,6 +177,8 @@ export interface MarketingVoucherJob extends SoftDeletable, ISOTimestamped {
   campaign_id: string;
   generation_mode: "INITIAL" | "APPEND" | null;
   target_valid_to: LocalDate | null;
+  email_subject: string | null;
+  email_introduction: string | null;
   idempotency_key: string;
   cursor: string | null;
   progress: MarketingVoucherJobProgress;
@@ -222,7 +225,7 @@ export type MarketingVoucherJobItemStatus =
   | "FAILED"
   | "CANCELLED";
 
-export interface MarketingVoucherJobItem extends SoftDeletable {
+export interface MarketingVoucherJobItem extends SoftDeletable, ISOTimestamped {
   id: string;
   job_id: string;
   campaign_id: string;
@@ -232,5 +235,6 @@ export interface MarketingVoucherJobItem extends SoftDeletable {
   attempt_count: number;
   last_error_code: string | null;
   last_error_message: string | null;
+  brevo_message_id: string | null;
   completed_at: Date | null;
 }

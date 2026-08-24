@@ -33,6 +33,8 @@
         "test:access-session": "pnpm --filter @bduck/be-wms exec tsx --test ../fe-wms/src/security/accessSession.test.ts",
         "test:marketing-vouchers-phase1": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/be-wms test:marketing-vouchers-phase1 && node --test apps/fe-wms/src/security/marketingVoucherIndexes.test.mjs && pnpm test:firestore-rules",
         "test:marketing-vouchers-phase2": "pnpm --filter @bduck/shared-types build && firebase emulators:exec --only firestore --project bduck-voucher-phase2 \"pnpm --filter @bduck/be-wms test:marketing-vouchers-phase2\" && node --test apps/fe-wms/src/security/marketingVoucherIndexes.test.mjs",
+        "test:marketing-vouchers-phase3": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/fe-wms typecheck && pnpm --filter @bduck/be-wms exec tsx --test ../fe-wms/src/utils/marketingVoucherUi.test.ts",
+        "test:marketing-vouchers-phase4": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/be-wms exec tsx --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherEmailRenderer.test.ts ../fe-wms/src/utils/marketingVoucherEmailDraft.test.ts && firebase emulators:exec --only firestore --project bduck-voucher-phase4 \"pnpm --filter @bduck/be-wms test:marketing-vouchers-phase4\"",
         "test:facility-partition": "pnpm test:authorization && pnpm test:access-matrix && pnpm test:access-session && pnpm test:firestore-rules",
         "test:facility-access-planner": "pnpm --filter @bduck/be-wms test:facility-access-planner",
         "test:authorization": "pnpm --filter @bduck/be-wms test:authorization",

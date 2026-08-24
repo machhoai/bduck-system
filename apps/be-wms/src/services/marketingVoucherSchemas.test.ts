@@ -96,5 +96,31 @@ describe("marketing voucher schemas", () => {
       action_time: "2026-08-20T08:00:00.000Z",
     });
     assert.equal(email.success, false);
+
+    const duplicateCodes = createMarketingVoucherEmailJobSchema.safeParse({
+      campaign_id: "campaign-a",
+      recipients: [
+        { email: "one@example.com", voucher_code_ids: ["CODE-A"] },
+        { email: "two@example.com", voucher_code_ids: ["code-a"] },
+      ],
+      subject: "Your voucher",
+      introduction: "Welcome",
+      idempotency_key: "email:duplicate",
+      action_time: "2026-08-20T08:00:00.000Z",
+    });
+    assert.equal(duplicateCodes.success, false);
+
+    const tooManyRecipients = createMarketingVoucherEmailJobSchema.safeParse({
+      campaign_id: "campaign-a",
+      recipients: Array.from({ length: 401 }, (_, index) => ({
+        email: `user-${index}@example.com`,
+        voucher_code_ids: [`CODE-${index}`],
+      })),
+      subject: "Your voucher",
+      introduction: "Welcome",
+      idempotency_key: "email:too-many",
+      action_time: "2026-08-20T08:00:00.000Z",
+    });
+    assert.equal(tooManyRecipients.success, false);
   });
 });
