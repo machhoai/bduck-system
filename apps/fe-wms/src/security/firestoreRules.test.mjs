@@ -1542,6 +1542,7 @@ describe("grant-aware Firestore rules", () => {
       "pos_device_enrollments",
       "pos_receipt_settings",
       "pos_ticket_settings",
+      "pos_lucky_draw_settings",
       "pos_payment_settings",
     ]) {
       await assertFails(getDoc(doc(storeUser, collectionName, "store-d")));

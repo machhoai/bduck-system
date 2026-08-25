@@ -2,6 +2,9 @@ import type {
   PosDevice,
   PosDeviceEnrollmentGrant,
   PosDeviceStatus,
+  PosLuckyDrawSettings,
+  PosLuckyDrawSettingsInput,
+  PosLuckyDrawSettingsView,
   PosPaymentSettings,
   PosPaymentSettingsInput,
   PosReceiptSettings,
@@ -41,6 +44,7 @@ export type PosTicketSettingsPayload = Omit<
   | "created_at"
   | "updated_at"
 >;
+export type PosLuckyDrawSettingsPayload = PosLuckyDrawSettingsInput;
 
 async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
@@ -113,6 +117,21 @@ export const posManagementApi = {
   saveTicketSettings: (warehouseId: string, value: PosTicketSettingsPayload) =>
     callPosApi<PosTicketSettings>(
       `/api/pos/stores/${warehouseId}/ticket-settings`,
+      {
+        method: "PUT",
+        body: JSON.stringify(value),
+      },
+    ),
+  getLuckyDrawSettings: (warehouseId: string) =>
+    callPosApi<PosLuckyDrawSettingsView>(
+      `/api/pos/stores/${warehouseId}/lucky-draw-settings`,
+    ),
+  saveLuckyDrawSettings: (
+    warehouseId: string,
+    value: PosLuckyDrawSettingsPayload,
+  ) =>
+    callPosApi<PosLuckyDrawSettings>(
+      `/api/pos/stores/${warehouseId}/lucky-draw-settings`,
       {
         method: "PUT",
         body: JSON.stringify(value),

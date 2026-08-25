@@ -21,6 +21,7 @@ import { useUserStore } from "@/stores/useUserStore";
 import { PosAccessPanel } from "./PosAccessPanel";
 import { PosAdvertisingPanel } from "./PosAdvertisingPanel";
 import { PosDevicePanel } from "./PosDevicePanel";
+import { PosLuckyDrawSettingsPanel } from "./PosLuckyDrawSettingsPanel";
 import {
   PosAuditLink,
   PosManagementSkeleton,
@@ -262,6 +263,15 @@ export default function PosManagementPage() {
                         warehouseId={activeStoreId}
                         storeName={activeStore?.name || ""}
                         settings={management.ticketSettings}
+                        canManage={canManageSettings}
+                        onChanged={management.refresh}
+                      />
+                    )}
+                    {settingsSubTab === "lucky-draw" && (
+                      <PosLuckyDrawSettingsPanel
+                        key={`${activeStoreId}:${management.luckyDrawView?.settings?.version ?? 0}:lucky-draw`}
+                        warehouseId={activeStoreId}
+                        view={management.luckyDrawView}
                         canManage={canManageSettings}
                         onChanged={management.refresh}
                       />

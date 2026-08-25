@@ -649,6 +649,9 @@ service cloud.firestore {
     match /pos_ticket_settings/{warehouseId} {
       allow read, write: if false;
     }
+    match /pos_lucky_draw_settings/{warehouseId} {
+      allow read, write: if false;
+    }
     match /pos_payment_settings/{deviceId} {
       allow read, write: if false;
     }

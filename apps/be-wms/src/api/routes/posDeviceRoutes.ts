@@ -28,6 +28,10 @@ import {
   watchPosTicketSettingsHandler,
 } from "../controllers/posDeviceController.js";
 import {
+  getPosLuckyDrawSettingsHandler,
+  savePosLuckyDrawSettingsHandler,
+} from "../controllers/posLuckyDrawSettingsController.js";
+import {
   getPosPaymentSettingsHandler,
   savePosPaymentSettingsHandler,
 } from "../controllers/posPaymentSettingsController.js";
@@ -138,6 +142,16 @@ router.put(
   "/stores/:warehouseId/ticket-settings",
   requireAnyScopedPermission("pos.settings.manage"),
   savePosTicketSettingsHandler,
+);
+router.get(
+  "/stores/:warehouseId/lucky-draw-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosLuckyDrawSettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/lucky-draw-settings",
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosLuckyDrawSettingsHandler,
 );
 router.get(
   "/devices/:deviceId/payment-settings",

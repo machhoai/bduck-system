@@ -210,6 +210,48 @@ export interface PosTicketSettings extends SoftDeletable {
   updated_by: string;
 }
 
+export type PosLuckyDrawPaperSize = "POS58" | "POS80" | "POS82";
+
+/** Shared contract persisted in pos_lucky_draw_settings for JPULSE and JPOS. */
+export interface PosLuckyDrawSettings {
+  warehouseId: string;
+  enabled: boolean;
+  paperSize: PosLuckyDrawPaperSize;
+  programName: string;
+  ticketTitle: string;
+  message: string;
+  footerMessage: string;
+  packageTicketCounts: Record<string, number>;
+  version: number;
+  updatedAt: string;
+  updatedByUid: string;
+}
+
+export type PosLuckyDrawSettingsInput = Pick<
+  PosLuckyDrawSettings,
+  | "enabled"
+  | "paperSize"
+  | "programName"
+  | "ticketTitle"
+  | "message"
+  | "footerMessage"
+  | "packageTicketCounts"
+>;
+
+export interface PosLuckyDrawPackageOption {
+  goodsId: string;
+  goodsName: string;
+  category: number;
+  typeName: string;
+  price: number;
+  afterTaxPrice: number;
+}
+
+export interface PosLuckyDrawSettingsView {
+  settings: PosLuckyDrawSettings | null;
+  packages: PosLuckyDrawPackageOption[];
+}
+
 export interface PosStoreOverview {
   warehouse_id: string;
   active_devices: number;
