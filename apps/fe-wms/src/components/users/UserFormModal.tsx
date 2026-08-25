@@ -5,6 +5,7 @@ import type React from "react";
 import { X } from "lucide-react";
 import { UserStatus } from "@bduck/shared-types";
 import type { Role, Warehouse } from "@bduck/shared-types";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import type { UserWithAssignments } from "@/hooks/useUsers";
 import { useTranslation } from "@/lib/i18n";
 import { EffectiveAccessPreview } from "./EffectiveAccessPreview";
@@ -39,6 +40,8 @@ export function UserFormModal({
 }: UserFormModalProps) {
   const { t } = useTranslation();
   const isEdit = Boolean(user);
+  const title = isEdit ? t.users.editUser : t.users.addUser;
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -120,174 +123,220 @@ export function UserFormModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-[94%] max-w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            {isEdit ? t.users.editUser : t.users.addUser}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+  const formFields = (
+    <>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {isEdit && user?.username && (
+          <Field label={t.users.username}>
+            <input
+              required
+              value={formData.username}
+              onChange={(event) =>
+                setFormData({ ...formData, username: event.target.value })
+              }
+              className={inputClassName}
+            />
+          </Field>
+        )}
+        <Field label={t.users.email}>
+          <input
+            required
+            type="email"
+            value={formData.email}
+            onChange={(event) =>
+              setFormData({ ...formData, email: event.target.value })
+            }
+            className={inputClassName}
+          />
+        </Field>
+        <Field label={t.users.fullName}>
+          <input
+            required
+            value={formData.full_name}
+            onChange={(event) =>
+              setFormData({ ...formData, full_name: event.target.value })
+            }
+            className={inputClassName}
+          />
+        </Field>
+        <Field label={t.users.employeeId}>
+          <input
+            required
+            value={formData.employee_id}
+            onChange={(event) =>
+              setFormData({ ...formData, employee_id: event.target.value })
+            }
+            className={inputClassName}
+          />
+        </Field>
+        <Field label={t.officeScope.workplace}>
+          <select
+            required
+            value={formData.workplace_facility_id}
+            onChange={(event) =>
+              setFormData({
+                ...formData,
+                workplace_facility_id: event.target.value,
+              })
+            }
+            className={inputClassName}
           >
-            <X size={18} />
-          </button>
-        </div>
+            <option value="" disabled>
+              {t.officeScope.selectWorkplace}
+            </option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name} · {t.warehouses.types[warehouse.type]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {isEdit && (
+          <Field label={t.users.password}>
+            <input
+              type="password"
+              minLength={8}
+              value={formData.password}
+              placeholder={t.users.passwordPlaceholder}
+              onChange={(event) =>
+                setFormData({ ...formData, password: event.target.value })
+              }
+              className={inputClassName}
+            />
+          </Field>
+        )}
+        <Field label={t.users.status}>
+          <select
+            value={formData.status}
+            onChange={(event) =>
+              setFormData({
+                ...formData,
+                status: event.target.value as UserStatus,
+              })
+            }
+            className={inputClassName}
+          >
+            {Object.values(UserStatus).map((status) => (
+              <option key={status} value={status}>
+                {t.users.statuses[status]}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
 
-        <form
-          id="userForm"
-          onSubmit={handleSubmit}
-          className="flex-1 space-y-5 overflow-y-auto p-5"
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {isEdit && user?.username && (
-              <Field label={t.users.username}>
-                <input
-                  required
-                  value={formData.username}
-                  onChange={(event) =>
-                    setFormData({ ...formData, username: event.target.value })
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-            )}
-            <Field label={t.users.email}>
-              <input
-                required
-                type="email"
-                value={formData.email}
-                onChange={(event) =>
-                  setFormData({ ...formData, email: event.target.value })
-                }
-                className={inputClassName}
-              />
-            </Field>
-            <Field label={t.users.fullName}>
-              <input
-                required
-                value={formData.full_name}
-                onChange={(event) =>
-                  setFormData({ ...formData, full_name: event.target.value })
-                }
-                className={inputClassName}
-              />
-            </Field>
-            <Field label={t.users.employeeId}>
-              <input
-                required
-                value={formData.employee_id}
-                onChange={(event) =>
-                  setFormData({ ...formData, employee_id: event.target.value })
-                }
-                className={inputClassName}
-              />
-            </Field>
-            <Field label={t.officeScope.workplace}>
-              <select
-                required
-                value={formData.workplace_facility_id}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    workplace_facility_id: event.target.value,
-                  })
-                }
-                className={inputClassName}
-              >
-                <option value="" disabled>
-                  {t.officeScope.selectWorkplace}
-                </option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name} · {t.warehouses.types[warehouse.type]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {isEdit && (
-              <Field label={t.users.password}>
-                <input
-                  type="password"
-                  minLength={8}
-                  value={formData.password}
-                  placeholder={t.users.passwordPlaceholder}
-                  onChange={(event) =>
-                    setFormData({ ...formData, password: event.target.value })
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-            )}
-            <Field label={t.users.status}>
-              <select
-                value={formData.status}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    status: event.target.value as UserStatus,
-                  })
-                }
-                className={inputClassName}
-              >
-                {Object.values(UserStatus).map((status) => (
-                  <option key={status} value={status}>
-                    {t.users.statuses[status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
+      <EffectiveAccessPreview
+        key={formData.workplace_facility_id}
+        userId={user?.id}
+        facilities={warehouses}
+        draft={{
+          workplaceFacilityId: formData.workplace_facility_id,
+          assignments,
+          roles,
+        }}
+      />
+
+      <details className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
+          {t.officeScope.directAssignments}
+        </summary>
+        <p className="mb-4 mt-2 text-xs text-[var(--color-text-muted)]">
+          {t.officeScope.directAssignmentsHint}
+        </p>
+        <UserAssignmentEditor
+          assignments={assignments}
+          roles={roles}
+          warehouses={warehouses}
+          defaultFacilityId={formData.workplace_facility_id}
+          onChange={setAssignments}
+        />
+      </details>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Modal Dialog (md and larger) */}
+      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4 backdrop-blur-[2px] md:flex">
+        <div className="flex max-h-[92vh] w-[90%] max-w-[760px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          <EffectiveAccessPreview
-            key={formData.workplace_facility_id}
-            userId={user?.id}
-            facilities={warehouses}
-            draft={{
-              workplaceFacilityId: formData.workplace_facility_id,
-              assignments,
-              roles,
-            }}
-          />
-
-          <details className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
-              {t.officeScope.directAssignments}
-            </summary>
-            <p className="mb-4 mt-2 text-xs text-[var(--color-text-muted)]">
-              {t.officeScope.directAssignmentsHint}
-            </p>
-            <UserAssignmentEditor
-              assignments={assignments}
-              roles={roles}
-              warehouses={warehouses}
-              defaultFacilityId={formData.workplace_facility_id}
-              onChange={setAssignments}
-            />
-          </details>
-        </form>
-
-        <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
+          <form
+            id="userFormDesktop"
+            onSubmit={handleSubmit}
+            className="flex-1 space-y-5 overflow-y-auto p-5"
           >
-            {t.common.cancel}
-          </button>
-          <button
-            type="submit"
-            form="userForm"
-            disabled={isSubmitting}
-            className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
-          >
-            {t.common.save}
-          </button>
+            {formFields}
+          </form>
+
+          <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="submit"
+              form="userFormDesktop"
+              disabled={isSubmitting}
+              className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all active:scale-95 disabled:opacity-50"
+            >
+              {t.common.save}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Native BottomSheet (< md) */}
+      <BottomSheet
+        title={title}
+        isOpen={isOpen}
+        onClose={onClose}
+        defaultSnap="full"
+        zIndex={50}
+        contentClassName="flex flex-col overflow-y-auto overscroll-contain px-4 pb-6"
+      >
+        <form
+          id="userFormMobile"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 pt-2 pb-2"
+        >
+          {formFields}
+
+          {/* Sticky Mobile Action Buttons at Bottom of Sheet */}
+          <div className="sticky bottom-0 -mx-4 -mb-6 mt-4 flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]/95 px-4 py-3 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-medium text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {isSubmitting ? t.users.saving : t.common.save}
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
+    </>
   );
 }
