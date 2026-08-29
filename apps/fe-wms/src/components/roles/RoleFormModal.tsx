@@ -333,7 +333,7 @@ const PERMISSION_PAGE_DEFINITIONS: PermissionPageDefinition[] = [
           vi: "Cho phép truy cập số liệu doanh thu và đơn hàng.",
           zh: "允许访问营收和订单数据。",
         },
-        keys: ["revenue.read"],
+        keys: ["revenue.read", "revenue.export"],
       },
     ],
   },
@@ -878,4 +878,3 @@ export function RoleFormModal({
     </>
   );
 }
-

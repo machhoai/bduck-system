@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 
-import { resolveCanonicalExternalWarehouseId } from "../../services/externalStoreBindingService.js";
+import { LANDMARK_81_WAREHOUSE_ID } from "../../services/revenueDashboardService.js";
 import {
-  LANDMARK_81_WAREHOUSE_ID,
-  getRevenueDashboardData,
-  type RevenueDateMode,
-} from "../../services/revenueDashboardService.js";
+  getRevenueSourceDashboardData,
+  listAvailableOpenApiWarehouseIds,
+  resolveRevenueWarehouseId,
+} from "../../services/revenueSourceDashboardService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
@@ -14,6 +14,7 @@ import {
 } from "../middlewares/requestAccessContext.js";
 
 const dashboardQuerySchema = z.object({
+  source: z.enum(["OPEN_API", "LOCAL_POS"]).default("OPEN_API"),
   mode: z.enum(["today", "date", "month", "year", "custom"]).default("today"),
   warehouseId: z.string().trim().min(1).optional(),
   date: z
@@ -38,22 +39,50 @@ const dashboardQuerySchema = z.object({
     .optional(),
 });
 
+export const getOpenApiRevenueWarehousesHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const warehouseIds = await listAvailableOpenApiWarehouseIds();
+    const authorization = requireRequestAuthorization(req);
+    const allowedWarehouseIds = warehouseIds.filter((warehouseId) =>
+      authorization.can("revenue.read", warehouseId),
+    );
+    return sendSuccess(res, allowedWarehouseIds, {
+      vi: "Tải danh sách cửa hàng OpenAPI thành công.",
+      zh: "OpenAPI 门店列表加载成功。",
+    });
+  } catch (error) {
+    console.error("[revenueDashboardController] openapi warehouses:", error);
+    return sendError(
+      res,
+      {
+        vi: "Không thể tải danh sách cửa hàng OpenAPI.",
+        zh: "无法加载 OpenAPI 门店列表。",
+      },
+      500,
+    );
+  }
+};
+
 export const getRevenueDashboardHandler = async (
   req: Request,
   res: Response,
 ) => {
   try {
     const query = dashboardQuerySchema.parse(req.query);
-    const warehouseId = await resolveCanonicalExternalWarehouseId(
-      "JOYWORLD_LEGACY",
+    const warehouseId = await resolveRevenueWarehouseId(
+      query.source,
       query.warehouseId || LANDMARK_81_WAREHOUSE_ID,
     );
 
     requireRequestAuthorization(req).assert("revenue.read", warehouseId);
     const user = requireAuthenticatedRequestUser(req);
-    const data = await getRevenueDashboardData(
+    const data = await getRevenueSourceDashboardData(
       {
-        mode: query.mode as RevenueDateMode,
+        source: query.source,
+        mode: query.mode,
         warehouseId,
         date: query.date,
         month: query.month,
@@ -65,7 +94,7 @@ export const getRevenueDashboardHandler = async (
     );
 
     return sendSuccess(res, data, {
-      vi: "Tai du lieu dashboard doanh thu thanh cong.",
+      vi: "Tải dữ liệu dashboard doanh thu thành công.",
       zh: "营收仪表板数据加载成功。",
     });
   } catch (error) {
@@ -74,7 +103,7 @@ export const getRevenueDashboardHandler = async (
     if (error instanceof z.ZodError) {
       return sendError(
         res,
-        { vi: "Bo loc ngay khong hop le.", zh: "日期筛选条件无效。" },
+        { vi: "Bộ lọc ngày không hợp lệ.", zh: "日期筛选条件无效。" },
         400,
         error.flatten(),
       );
@@ -87,7 +116,7 @@ export const getRevenueDashboardHandler = async (
     return sendError(
       res,
       apiError.messages ?? {
-        vi: "Loi tai du lieu doanh thu tu JoyWorld. Vui long thu lai sau.",
+        vi: "Lỗi tải dữ liệu doanh thu. Vui lòng thử lại sau.",
         zh: "从 JoyWorld 加载营收数据失败。请稍后重试。",
       },
       apiError.statusCode ?? 500,

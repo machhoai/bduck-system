@@ -93,6 +93,7 @@ export interface OpenApiWarehouseConfig {
   base_url: string;
   api_version: string;
   action_versions?: Record<string, string>;
+  payment_channel_mapping?: Record<string, "cash" | "transfer" | "other">;
   enabled: boolean;
   has_secret: boolean;
   secret_key_mask?: string | null;

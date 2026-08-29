@@ -3,54 +3,33 @@ import type {
   RevenueDashboardData,
   RevenueDashboardFilter,
   RevenueMetric,
+  RevenuePaymentCategory,
 } from "@/hooks/useRevenueDashboard";
 
-export const JPOS_REVENUE_PAID_STATUSES = new Set([
-  "LOCAL_PAID",
-  "SYNCING",
-  "SYNC_FAILED",
-  "SYNC_SUCCESS",
-]);
+import {
+  aggregatePosRevenueStats,
+  asRecord,
+  displayDate,
+  getPaidPosOrders,
+  itemRevenue,
+  itemTaxAmount,
+  orderQuantity,
+  orderTaxAmount,
+  posPaymentCategory,
+  posPaymentMethod,
+  text,
+  toFiniteNumber,
+  vietnamDateKey,
+  type PosRevenueOrderRecord,
+} from "./posRevenueDataUtils";
 
-export interface PosRevenueOrderRecord {
-  id: string;
-  warehouseId?: unknown;
-  localOrderId?: unknown;
-  hkOrderNumber?: unknown;
-  status?: unknown;
-  totalAmount?: unknown;
-  paidAt?: unknown;
-  createdAt?: unknown;
-  operatorName?: unknown;
-  paymentMethod?: unknown;
-  paymentMethodId?: unknown;
-  paymentMethodName?: unknown;
-  items?: unknown;
-}
-
-export interface PosRevenueStats {
-  totalRevenue: number;
-  totalOrders: number;
-  averageOrderValue: number;
-}
-
-export function aggregatePosRevenueStats(
-  records: readonly PosRevenueOrderRecord[],
-): PosRevenueStats {
-  const paidOrders = getPaidPosOrders(records);
-
-  const totalRevenue = [...paidOrders.values()].reduce(
-    (total, order) => total + toFiniteNumber(order.totalAmount),
-    0,
-  );
-  const totalOrders = paidOrders.size;
-
-  return {
-    totalRevenue,
-    totalOrders,
-    averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
-  };
-}
+export {
+  aggregatePosRevenueStats,
+  JPOS_REVENUE_PAID_STATUSES,
+  toVietnamIsoRange,
+  type PosRevenueOrderRecord,
+  type PosRevenueStats,
+} from "./posRevenueDataUtils";
 
 export function buildPosRevenueDashboardData(input: {
   records: readonly PosRevenueOrderRecord[];
@@ -63,18 +42,26 @@ export function buildPosRevenueDashboardData(input: {
   const summary = aggregatePosRevenueStats(orders);
   const paymentBuckets = new Map<
     string,
-    { amount: number; orderCount: number }
+    { category: RevenuePaymentCategory; amount: number; orderCount: number }
   >();
   const timelineBuckets = new Map<
     string,
-    { revenue: number; orderCount: number }
+    {
+      revenue: number;
+      cashRevenue: number;
+      transferRevenue: number;
+      otherRevenue: number;
+      taxAmount: number;
+      orderCount: number;
+    }
   >();
   const productGroups = new Map<
     string,
     {
       quantity: number;
       revenue: number;
-      items: Map<string, { quantity: number; revenue: number }>;
+      taxAmount: number;
+      items: Map<string, { quantity: number; revenue: number; taxAmount: number }>;
     }
   >();
 
@@ -83,7 +70,9 @@ export function buildPosRevenueDashboardData(input: {
   for (const order of orders) {
     const amount = toFiniteNumber(order.totalAmount);
     const paymentMethod = posPaymentMethod(order);
+    const paymentCategory = posPaymentCategory(paymentMethod);
     const payment = paymentBuckets.get(paymentMethod) ?? {
+      category: paymentCategory,
       amount: 0,
       orderCount: 0,
     };
@@ -94,9 +83,20 @@ export function buildPosRevenueDashboardData(input: {
     const paidAt = text(order.paidAt) ?? text(order.createdAt);
     const businessDate = paidAt ? vietnamDateKey(paidAt) : null;
     if (businessDate) {
-      const key = granularity === "month" ? businessDate.slice(0, 7) : businessDate;
-      const point = timelineBuckets.get(key) ?? { revenue: 0, orderCount: 0 };
+      const key = businessDate;
+      const point = timelineBuckets.get(key) ?? {
+        revenue: 0,
+        cashRevenue: 0,
+        transferRevenue: 0,
+        otherRevenue: 0,
+        taxAmount: 0,
+        orderCount: 0,
+      };
       point.revenue += amount;
+      if (paymentCategory === "cash") point.cashRevenue += amount;
+      else if (paymentCategory === "transfer") point.transferRevenue += amount;
+      else point.otherRevenue += amount;
+      point.taxAmount += orderTaxAmount(order);
       point.orderCount += 1;
       timelineBuckets.set(key, point);
     }
@@ -108,16 +108,24 @@ export function buildPosRevenueDashboardData(input: {
         text(item.categoryName) ?? text(item.goodsTypeName) ?? "Khác";
       const quantity = toFiniteNumber(item.quantity ?? item.qty);
       const revenue = itemRevenue(item, quantity);
+      const taxAmount = itemTaxAmount(item, quantity);
       const group = productGroups.get(groupName) ?? {
         quantity: 0,
         revenue: 0,
+        taxAmount: 0,
         items: new Map(),
       };
-      const product = group.items.get(name) ?? { quantity: 0, revenue: 0 };
+      const product = group.items.get(name) ?? {
+        quantity: 0,
+        revenue: 0,
+        taxAmount: 0,
+      };
       product.quantity += quantity;
       product.revenue += revenue;
+      product.taxAmount += taxAmount;
       group.quantity += quantity;
       group.revenue += revenue;
+      group.taxAmount += taxAmount;
       group.items.set(name, product);
       productGroups.set(groupName, group);
     }
@@ -126,6 +134,7 @@ export function buildPosRevenueDashboardData(input: {
   const paymentMethods: PaymentMethodMetric[] = [...paymentBuckets.entries()]
     .map(([method, value]) => ({
       method,
+      category: value.category,
       amount: value.amount,
       orderCount: value.orderCount,
       percentage:
@@ -140,8 +149,36 @@ export function buildPosRevenueDashboardData(input: {
     previousValue: 0,
     changePercent: 0,
   });
+  const totalTax = orders.reduce((sum, order) => sum + orderTaxAmount(order), 0);
+  const paymentTotal = (category: RevenuePaymentCategory) =>
+    paymentMethods
+      .filter((item) => item.category === category)
+      .reduce((sum, item) => sum + item.amount, 0);
+
+  const dailyRows = [...timelineBuckets.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, value]) => ({
+      date,
+      totalRevenue: value.revenue,
+      cashRevenue: value.cashRevenue,
+      transferRevenue: value.transferRevenue,
+      otherRevenue: value.otherRevenue,
+      totalTax: value.taxAmount,
+      amountBeforeTax: Math.max(0, value.revenue - value.taxAmount),
+      orderCount: value.orderCount,
+    }));
+  const chartBuckets = new Map<string, { revenue: number; orderCount: number }>();
+  dailyRows.forEach((row) => {
+    const key = granularity === "month" ? row.date.slice(0, 7) : row.date;
+    const point = chartBuckets.get(key) ?? { revenue: 0, orderCount: 0 };
+    point.revenue += row.totalRevenue;
+    point.orderCount += row.orderCount;
+    chartBuckets.set(key, point);
+  });
 
   return {
+    source: "LOCAL_POS",
+    taxSource: "LOCAL_POS",
     warehouseId: input.warehouseId,
     warehouseName: "",
     mode: input.filter.mode,
@@ -157,6 +194,11 @@ export function buildPosRevenueDashboardData(input: {
     comparisonLabel: "",
     stats: {
       totalRevenue: metric(summary.totalRevenue),
+      cashRevenue: metric(paymentTotal("cash")),
+      transferRevenue: metric(paymentTotal("transfer")),
+      otherRevenue: metric(paymentTotal("other")),
+      totalTax: metric(totalTax),
+      amountBeforeTax: metric(Math.max(0, summary.totalRevenue - totalTax)),
       totalOrders: metric(summary.totalOrders),
       averageOrderValue: metric(summary.averageOrderValue),
       memberCardSales: metric(0),
@@ -166,9 +208,10 @@ export function buildPosRevenueDashboardData(input: {
       memberGiftBalance: metric(0),
       paymentMethods,
     },
+    dailyRows,
     charts: {
       granularity,
-      points: [...timelineBuckets.entries()]
+      points: [...chartBuckets.entries()]
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([key, value]) => ({
           key,
@@ -188,7 +231,8 @@ export function buildPosRevenueDashboardData(input: {
       .map(([groupName, group]) => ({
         groupName,
         quantity: group.quantity,
-        revenue: group.revenue,
+      revenue: group.revenue,
+      taxAmount: group.taxAmount,
         items: [...group.items.entries()]
           .map(([name, item]) => ({ name, ...item }))
           .sort((left, right) => right.revenue - left.revenue),
@@ -210,110 +254,38 @@ export function buildPosRevenueDashboardData(input: {
       discountMoney: 0,
       realMoney: toFiniteNumber(order.totalAmount),
       cancelMoney: 0,
+      taxMoney: orderTaxAmount(order),
     })),
-    soldItems: [],
+    soldItems: orders.flatMap((order) => {
+      const orderId = text(order.localOrderId) ?? order.id;
+      const orderNumber = text(order.hkOrderNumber) ?? orderId;
+      return (Array.isArray(order.items) ? order.items : []).map((rawItem, index) => {
+        const item = asRecord(rawItem);
+        const quantity = toFiniteNumber(item.quantity ?? item.qty);
+        const groupName = text(item.categoryName) ?? text(item.goodsTypeName) ?? "Other";
+        return {
+          id: `${orderId}-${text(item.goodsId) ?? index}`,
+          orderId,
+          orderNumber,
+          status: 3,
+          statusLabel: "PAID",
+          createTime: text(order.paidAt) ?? text(order.createdAt) ?? "",
+          employeeName: text(order.operatorName) ?? "JPOS",
+          payMethod: posPaymentMethod(order),
+          goodsName: text(item.goodsName) ?? text(item.name) ?? "Product",
+          goodsTypeName: groupName,
+          categoryName: groupName,
+          price: toFiniteNumber(item.price ?? item.unitPrice),
+          qty: quantity,
+          sysMoney: itemRevenue(item, quantity),
+          discountMoney: 0,
+          realMoney: itemRevenue(item, quantity),
+          cancelQty: 0,
+          cancelMoney: 0,
+          taxMoney: itemTaxAmount(item, quantity),
+        };
+      });
+    }),
     generatedAt: input.generatedAt,
   };
-}
-
-export function toVietnamIsoRange(range: {
-  startDate: string;
-  endDate: string;
-}): { startIso: string; endExclusiveIso: string } {
-  const start = new Date(`${range.startDate}T00:00:00+07:00`);
-  const end = new Date(`${range.endDate}T00:00:00+07:00`);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return {
-    startIso: start.toISOString(),
-    endExclusiveIso: end.toISOString(),
-  };
-}
-
-function getPaidPosOrders(
-  records: readonly PosRevenueOrderRecord[],
-): Map<string, PosRevenueOrderRecord> {
-  const paidOrders = new Map<string, PosRevenueOrderRecord>();
-  for (const record of records) {
-    if (
-      typeof record.status !== "string" ||
-      !JPOS_REVENUE_PAID_STATUSES.has(record.status) ||
-      !Number.isFinite(Number(record.totalAmount))
-    ) {
-      continue;
-    }
-    const localOrderId = text(record.localOrderId) ?? record.id;
-    const warehouseId = text(record.warehouseId);
-    const businessIdentity = warehouseId
-      ? `${warehouseId}:${localOrderId}`
-      : localOrderId;
-    paidOrders.set(businessIdentity, record);
-  }
-  return paidOrders;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function text(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function toFiniteNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function itemRevenue(item: Record<string, unknown>, quantity: number): number {
-  for (const candidate of [
-    item.realMoney,
-    item.lineTotal,
-    item.totalAmount,
-    item.subtotal,
-  ]) {
-    const value = Number(candidate);
-    if (Number.isFinite(value)) return value;
-  }
-  return toFiniteNumber(item.price ?? item.unitPrice) * quantity;
-}
-
-function posPaymentMethod(order: PosRevenueOrderRecord): string {
-  return (
-    text(order.paymentMethodId) ??
-    text(order.paymentMethod) ??
-    text(order.paymentMethodName) ??
-    "OTHER"
-  );
-}
-
-function orderQuantity(order: PosRevenueOrderRecord): number {
-  return (Array.isArray(order.items) ? order.items : []).reduce(
-    (total, rawItem) => {
-      const item = asRecord(rawItem);
-      return total + toFiniteNumber(item.quantity ?? item.qty);
-    },
-    0,
-  );
-}
-
-function vietnamDateKey(value: string): string | null {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((candidate) => candidate.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-function displayDate(value: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/u.test(value)
-    ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}`
-    : value;
 }

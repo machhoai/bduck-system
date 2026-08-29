@@ -81,6 +81,7 @@ test("JPOS orders feed the legacy dashboard charts, payments and products", () =
             categoryName: "Ẩm thực",
             quantity: 2,
             price: 75_000,
+            taxAmount: 12_000,
           },
         ],
       },
@@ -100,11 +101,16 @@ test("JPOS orders feed the legacy dashboard charts, payments and products", () =
 
   assert.equal(dashboard.stats.totalRevenue.value, 150_000);
   assert.equal(dashboard.stats.totalOrders.value, 1);
+  assert.equal(dashboard.stats.transferRevenue.value, 150_000);
+  assert.equal(dashboard.stats.totalTax.value, 12_000);
+  assert.equal(dashboard.stats.amountBeforeTax.value, 138_000);
+  assert.equal(dashboard.dailyRows[0]?.transferRevenue, 150_000);
   assert.equal(dashboard.charts.paymentMethods[0]?.method, "QR_CODE");
   assert.equal(dashboard.charts.points[0]?.key, "2026-08-13");
   assert.deepEqual(dashboard.topProductGroups[0]?.items[0], {
     name: "Vịt quay",
     quantity: 2,
     revenue: 150_000,
+    taxAmount: 12_000,
   });
 });

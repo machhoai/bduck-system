@@ -1262,6 +1262,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "为授权范围内的门店同步营收数据。",
     },
   },
+  {
+    key: "revenue.export",
+    group: "revenue",
+    label: { vi: "Xuất báo cáo doanh thu", zh: "导出营收报表" },
+    description: {
+      vi: "Xuất Excel doanh thu và cơ cấu bán hàng trong phạm vi cửa hàng được phép.",
+      zh: "导出授权门店范围内的营收与销售结构 Excel 报表。",
+    },
+  },
 
   // ── Invoices ──
   {

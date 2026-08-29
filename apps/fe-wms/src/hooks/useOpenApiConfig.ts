@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import type { OpenApiWarehouseConfig } from "@bduck/shared-types";
-import { authenticatedFetch } from "@/utils/authenticatedFetch";
+import { useCallback, useEffect, useState } from "react";
+
 import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -19,6 +20,7 @@ export type OpenApiConfigPayload = {
   base_url: string;
   api_version: string;
   action_versions: Record<string, string>;
+  payment_channel_mapping: Record<string, "cash" | "transfer" | "other">;
   enabled: boolean;
 };
 
