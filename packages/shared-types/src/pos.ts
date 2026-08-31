@@ -131,6 +131,38 @@ export interface PosCustomerDisplaySettingsWatchResult {
   server_time: Date;
 }
 
+/** Warehouse-scoped visibility overrides applied on top of the JPOS catalog. */
+export interface PosProductVisibilitySettings extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  version: number;
+  disabled_group_keys: string[];
+  disabled_product_ids: string[];
+  updated_by: string;
+}
+
+/** Minimal catalog projection required by the JPOS visibility editors. */
+export interface PosProductVisibilityCatalogItem {
+  goods_id: string;
+  goods_name: string;
+  category: number;
+  group_key: string;
+  group_name: string;
+  type_id: string | null;
+}
+
+export interface PosProductVisibilitySettingsView {
+  settings: PosProductVisibilitySettings | null;
+  products: PosProductVisibilityCatalogItem[];
+}
+
+export interface PosProductVisibilitySettingsInput {
+  expected_version: number;
+  disabled_group_keys: string[];
+  disabled_product_ids: string[];
+  action_time: string;
+}
+
 export interface PosReceiptFontWeights {
   storeName: number;
   storeDetails: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Gift, Printer, QrCode, UtensilsCrossed } from "lucide-react";
+import { Gift, PackageSearch, Printer, QrCode, UtensilsCrossed } from "lucide-react";
 
 import { usePosManagementCopy } from "./usePosManagementCopy";
 
@@ -8,6 +8,7 @@ export type SettingsSubTab =
   | "receipt"
   | "ticket"
   | "lucky-draw"
+  | "products"
   | "payment";
 
 interface PosSettingsSubNavProps {
@@ -29,6 +30,7 @@ export function PosSettingsSubNav({
     { id: "receipt", label: copy.subTabReceipt, icon: Printer },
     { id: "ticket", label: copy.subTabTicket, icon: UtensilsCrossed },
     { id: "lucky-draw", label: copy.subTabLuckyDraw, icon: Gift },
+    { id: "products", label: copy.subTabProducts, icon: PackageSearch },
     { id: "payment", label: copy.subTabPayment, icon: QrCode },
   ];
 

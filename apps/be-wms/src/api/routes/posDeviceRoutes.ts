@@ -36,6 +36,12 @@ import {
   savePosPaymentSettingsHandler,
 } from "../controllers/posPaymentSettingsController.js";
 import {
+  getPosProductVisibilitySettingsFromDeviceHandler,
+  getPosProductVisibilitySettingsHandler,
+  savePosProductVisibilitySettingsFromDeviceHandler,
+  savePosProductVisibilitySettingsHandler,
+} from "../controllers/posProductVisibilityController.js";
+import {
   getPosReceiptSettingsHandler,
   savePosReceiptSettingsHandler,
 } from "../controllers/posReceiptSettingsController.js";
@@ -48,6 +54,7 @@ import {
   authRateLimiter,
   posDeviceSessionRateLimiter,
   posDeviceWatchRateLimiter,
+  posSettingsMutationRateLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
@@ -154,6 +161,17 @@ router.put(
   savePosLuckyDrawSettingsHandler,
 );
 router.get(
+  "/stores/:warehouseId/product-visibility-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosProductVisibilitySettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/product-visibility-settings",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosProductVisibilitySettingsHandler,
+);
+router.get(
   "/devices/:deviceId/payment-settings",
   requireAnyScopedPermission("pos.settings.read"),
   getPosPaymentSettingsHandler,
@@ -188,6 +206,17 @@ router.put(
   "/devices/customer-display-settings",
   requireAnyScopedPermission("pos.advertising.manage"),
   savePosCustomerDisplaySettingsFromDeviceHandler,
+);
+router.get(
+  "/devices/product-visibility-settings/editor",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosProductVisibilitySettingsFromDeviceHandler,
+);
+router.put(
+  "/devices/product-visibility-settings",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosProductVisibilitySettingsFromDeviceHandler,
 );
 router.post(
   "/devices/customer-display-media",

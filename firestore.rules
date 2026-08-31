@@ -652,6 +652,12 @@ service cloud.firestore {
     match /pos_lucky_draw_settings/{warehouseId} {
       allow read, write: if false;
     }
+    // JPULSE settings editors and JPOS cashiers observe the same per-store
+    // document. Mutations stay backend-only so versioning and audit are atomic.
+    match /pos_product_visibility_settings/{warehouseId} {
+      allow read: if readableFacilityDirectory(warehouseId);
+      allow write: if false;
+    }
     match /pos_payment_settings/{deviceId} {
       allow read, write: if false;
     }

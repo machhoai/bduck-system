@@ -13,10 +13,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import Forbidden403 from "@/components/shared/Forbidden403";
-import { usePosManagement } from "@/hooks/usePosManagement";
-import { useStores } from "@/hooks/useWarehouses";
-import { useUserStore } from "@/stores/useUserStore";
 
 import { PosAccessPanel } from "./PosAccessPanel";
 import { PosAdvertisingPanel } from "./PosAdvertisingPanel";
@@ -30,6 +26,7 @@ import {
 } from "./PosManagementSections";
 import { PosMobileStoreSheet } from "./PosMobileStoreSheet";
 import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
+import { PosProductVisibilityPanel } from "./PosProductVisibilityPanel";
 import { PosSettingsPanel } from "./PosSettingsPanel";
 import {
   PosSettingsSubNav,
@@ -39,6 +36,11 @@ import { PosStoreRail } from "./PosStoreRail";
 import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
 import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
+
+import Forbidden403 from "@/components/shared/Forbidden403";
+import { usePosManagement } from "@/hooks/usePosManagement";
+import { useStores } from "@/hooks/useWarehouses";
+import { useUserStore } from "@/stores/useUserStore";
 
 type Tab =
   | "overview"
@@ -280,6 +282,13 @@ export default function PosManagementPage() {
                       <PosPaymentSettingsPanel
                         key={`${activeStoreId}:payment`}
                         devices={management.devices}
+                        canManage={canManageSettings}
+                      />
+                    )}
+                    {settingsSubTab === "products" && (
+                      <PosProductVisibilityPanel
+                        key={`${activeStoreId}:products`}
+                        warehouseId={activeStoreId}
                         canManage={canManageSettings}
                       />
                     )}

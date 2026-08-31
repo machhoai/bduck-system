@@ -1632,6 +1632,32 @@ describe("grant-aware Firestore rules", () => {
     );
   });
 
+  it("allows facility-scoped product visibility snapshots but keeps writes backend-only", async () => {
+    const warehouseUser = environment.authenticatedContext("user-a").firestore();
+    const storeUser = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    await assertSucceeds(
+      getDoc(doc(storeUser, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertFails(
+      getDoc(doc(warehouseUser, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertFails(
+      setDoc(doc(storeUser, "pos_product_visibility_settings", "store-d"), {
+        warehouse_id: "store-d",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(admin, "pos_product_visibility_settings", "store-d"), {
+        warehouse_id: "store-d",
+      }),
+    );
+  });
+
   it("keeps access snapshots owner-private and internal collections backend-only", async () => {
     const user = environment.authenticatedContext("user-a").firestore();
     const otherUser = environment.authenticatedContext("user-b").firestore();

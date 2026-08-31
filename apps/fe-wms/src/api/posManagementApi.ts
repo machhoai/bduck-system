@@ -7,6 +7,9 @@ import type {
   PosLuckyDrawSettingsView,
   PosPaymentSettings,
   PosPaymentSettingsInput,
+  PosProductVisibilitySettings,
+  PosProductVisibilitySettingsInput,
+  PosProductVisibilitySettingsView,
   PosReceiptSettings,
   PosStoreOverview,
   PosTicketSettings,
@@ -45,6 +48,8 @@ export type PosTicketSettingsPayload = Omit<
   | "updated_at"
 >;
 export type PosLuckyDrawSettingsPayload = PosLuckyDrawSettingsInput;
+export type PosProductVisibilitySettingsPayload =
+  PosProductVisibilitySettingsInput;
 
 async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
@@ -53,12 +58,40 @@ async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const envelope = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || envelope.data === null) {
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After"));
+      const waitSeconds = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.ceil(retryAfter)
+        : 60;
+      throw new Error(`Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`);
+    }
     throw new Error(
       envelope.messages?.vi || "Không thể xử lý yêu cầu quản lý POS.",
     );
   }
   return envelope.data;
 }
+
+const productVisibilitySaves = new Map<
+  string,
+  Promise<PosProductVisibilitySettings>
+>();
+
+const saveProductVisibilitySettings = (
+  warehouseId: string,
+  value: PosProductVisibilitySettingsPayload,
+): Promise<PosProductVisibilitySettings> => {
+  const current = productVisibilitySaves.get(warehouseId);
+  if (current) return current;
+  const pending = callPosApi<PosProductVisibilitySettings>(
+    `/api/pos/stores/${warehouseId}/product-visibility-settings`,
+    { method: "PUT", body: JSON.stringify(value) },
+  ).finally(() => {
+    productVisibilitySaves.delete(warehouseId);
+  });
+  productVisibilitySaves.set(warehouseId, pending);
+  return pending;
+};
 
 export const posManagementApi = {
   getOverview: (warehouseId: string) =>
@@ -137,6 +170,15 @@ export const posManagementApi = {
         body: JSON.stringify(value),
       },
     ),
+  getProductVisibilitySettings: (warehouseId: string) =>
+    callPosApi<PosProductVisibilitySettingsView>(
+      `/api/pos/stores/${warehouseId}/product-visibility-settings`,
+    ),
+  saveProductVisibilitySettings: (
+    warehouseId: string,
+    value: PosProductVisibilitySettingsPayload,
+  ) =>
+    saveProductVisibilitySettings(warehouseId, value),
   getPaymentSettings: async (deviceId: string) => {
     const response = await authenticatedFetch(
       `${API_BASE_URL}/api/pos/devices/${deviceId}/payment-settings`,
