@@ -124,7 +124,7 @@ export default function ExpenseShell({ children }: ExpenseShellProps) {
                 </div>
             </header>
             {/* Selectors */}
-            <div className="flex flex-wrap z-10000 items-center gap-2">
+            <div className="flex flex-wrap relative z-20 items-center gap-2">
                 {/* Period */}
                 <div className="relative flex items-center">
                     <Calendar

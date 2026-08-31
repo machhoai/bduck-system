@@ -114,7 +114,7 @@ export default function NotificationBell({ glass = false }: { glass?: boolean })
       {/* Dropdown panel */}
       {isOpen && (
         <div
-          className="absolute right-0 top-full z-10000 mt-2 w-80 overflow-hidden rounded-xl
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl
             border border-gray-200/80 bg-white/95 backdrop-blur-lg shadow-xl shadow-gray-200/50
             animate-in fade-in slide-in-from-top-2 duration-200 sm:w-96"
         >

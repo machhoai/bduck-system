@@ -59,6 +59,7 @@ import {
     type ComparableRevenueChartPoint,
 } from "./revenueDashboardUtils";
 import RevenueDateFilter from "./RevenueDateFilter";
+import DashboardRevenueDateFilter from "./DashboardRevenueDateFilter";
 
 type StatKey =
     | "totalRevenue"
@@ -241,37 +242,8 @@ export default function DashboardRevenueOverview({
                         onClick={() => setDetail({ type: "stat", key: "totalRevenue", title: d.stats.totalRevenue })}
                     />
 
-                    <p
-                        role="status"
-                        className="px-1 text-center text-xxs font-medium tabular-nums text-[var(--color-text-muted)]"
-                    >
-                        JPOS · Realtime
-                    </p>
-
-                    <div className="flex justify-end gap-2 -mt-10 sm:mt-0 sm:mb-2">
-                        {canSyncPartner && (
-                            <button
-                                type="button"
-                                onClick={() => void syncPartnerOrders()}
-                                disabled={!warehouseId || syncingPartner}
-                                className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 text-xs font-semibold text-[var(--color-text-primary)] shadow-sm transition hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)] disabled:cursor-wait disabled:opacity-60"
-                            >
-                                <RefreshCw
-                                    size={15}
-                                    className={syncingPartner ? "animate-spin" : undefined}
-                                />
-                                <span className="hidden sm:inline">
-                                    {syncingPartner
-                                        ? lang === "vi"
-                                            ? "Đang đồng bộ..."
-                                            : "同步中..."
-                                        : lang === "vi"
-                                            ? "Đồng bộ POS đối tác"
-                                            : "同步合作方 POS"}
-                                </span>
-                            </button>
-                        )}
-                        <RevenueDateFilter
+                    <div className="flex justify-center relative z-10 gap-2 sm:mt-0 sm:mb-2">
+                        <DashboardRevenueDateFilter
                             filter={filter}
                             comparison={comparison}
                             comparisonLabel=""

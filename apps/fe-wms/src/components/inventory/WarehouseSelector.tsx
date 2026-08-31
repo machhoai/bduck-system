@@ -44,7 +44,7 @@ export default function WarehouseSelector({
     }, []);
 
     return (
-        <div ref={dropdownRef} className="relative">
+        <div ref={dropdownRef} className="relative z-50">
             <button
                 type="button"
                 aria-haspopup="listbox"
@@ -61,7 +61,7 @@ export default function WarehouseSelector({
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full  mt-1 min-w-[200px] overflow-hidden rounded-[var(--radius-sm)] border border-slate-200/80 bg-white/95 backdrop-blur-lg py-0.5 shadow-lg">
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] overflow-hidden rounded-[var(--radius-sm)] border border-slate-200/80 bg-white/95 backdrop-blur-lg py-0.5 shadow-lg">
                     {/* All stores option */}
                     <button
                         type="button"

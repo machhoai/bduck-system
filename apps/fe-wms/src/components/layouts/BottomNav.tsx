@@ -40,7 +40,7 @@ export default function BottomNav() {
     return (
         <nav
             className="
-        lg:hidden fixed bottom-0 left-0 right-0 z-100
+        lg:hidden fixed bottom-0 left-0 right-0 z-50
         bg-[var(--color-surface-frosted)] backdrop-blur-xl
         border-t border-[var(--color-border-subtle)]
         pb-[env(safe-area-inset-bottom,0px)]
