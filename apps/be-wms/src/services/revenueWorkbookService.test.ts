@@ -1,11 +1,33 @@
-import type { RevenueDashboardData, RevenueMetric } from "@bduck/shared-types";
 import assert from "node:assert/strict";
 import test from "node:test";
+
+import type { RevenueDashboardData, RevenueMetric } from "@bduck/shared-types";
 import ExcelJS from "exceljs";
 
 import { buildRevenueWorkbook } from "./revenueWorkbookService.js";
 
 const metric = (value: number): RevenueMetric => ({ value, previousValue: 0, changePercent: 0 });
+
+const rowValues = (
+  sheet: ExcelJS.Worksheet | undefined,
+  rowNumber: number,
+  columnCount: number,
+) => Array.from(
+  { length: columnCount },
+  (_, index) => sheet?.getCell(rowNumber, index + 1).value,
+);
+
+const workbookText = (workbook: ExcelJS.Workbook) => {
+  const values: string[] = [];
+  workbook.worksheets.forEach((sheet) => {
+    sheet.eachRow((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        values.push(String(cell.value ?? ""));
+      });
+    });
+  });
+  return values.join(" ");
+};
 
 function dashboard(): RevenueDashboardData {
   const paymentMethods = [
@@ -51,10 +73,20 @@ test("daily revenue workbook is a localized, formatted Excel file", async () => 
     "Tổng quan", "Doanh thu từng ngày", "Cơ cấu thanh toán",
   ]);
   const daily = workbook.getWorksheet("Doanh thu từng ngày");
+  assert.deepEqual(rowValues(daily, 2, 7), [
+    "Ngày",
+    "Tổng doanh thu",
+    "Doanh thu tiền mặt",
+    "Doanh thu chuyển khoản",
+    "Doanh thu phương thức khác",
+    "Số đơn",
+    "Giá trị đơn trung bình",
+  ]);
   assert.equal(daily?.getCell("B3").value, 1_000_000);
   assert.match(daily?.getCell("B3").numFmt ?? "", /₫/u);
   assert.equal(daily?.getCell("B4").formula, "SUM(B3:B3)");
   assert.equal(daily?.views[0]?.state, "frozen");
+  assert.doesNotMatch(workbookText(workbook), /thuế/iu);
 });
 
 test("sales composition workbook uses Chinese sheet names and numeric VND cells", async () => {
@@ -64,6 +96,15 @@ test("sales composition workbook uses Chinese sheet names and numeric VND cells"
 
   assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["汇总", "按商品组", "商品明细"]);
   const products = workbook.getWorksheet("商品明细");
+  assert.deepEqual(rowValues(products, 2, 6), [
+    "商品组",
+    "商品",
+    "数量",
+    "营收",
+    "平均售价",
+    "占比",
+  ]);
   assert.equal(typeof products?.getCell("D3").value, "number");
   assert.match(products?.getCell("D3").numFmt ?? "", /₫/u);
+  assert.doesNotMatch(workbookText(workbook), /税/u);
 });

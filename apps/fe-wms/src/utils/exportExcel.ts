@@ -1,3 +1,4 @@
+import type { RevenueExportReportType } from "@bduck/shared-types";
 import ExcelJS from "exceljs";
 
 const API_BASE_URL =
@@ -55,14 +56,37 @@ export interface ExportRequestOptions {
   productMaterial?: string;
   locationId?: string;
   slotId?: string;
+  reportType?: RevenueExportReportType;
 }
 
-export interface ExportDialogConfig {
+export interface WarehouseExportDialogConfig {
   type: "warehouse";
   title: string;
   description?: string;
   defaultOptions?: ExportRequestOptions;
   filterOptions?: ExportFilterOptions;
+}
+
+export interface RevenueExportDialogConfig {
+  type: "revenue";
+  title: string;
+  description?: string;
+  warehouseName?: string;
+  sourceLabel?: string;
+  rangeLabel?: string;
+}
+
+export type ExportDialogConfig =
+  | WarehouseExportDialogConfig
+  | RevenueExportDialogConfig;
+
+export interface ExportToastConfig {
+  loading: string;
+  success: string;
+  successDescription: string;
+  error: string;
+  errorDescription: string;
+  retry: string;
 }
 
 export interface ExportConfig {
@@ -74,7 +98,24 @@ export interface ExportConfig {
   warehouseId?: string;
   filters?: Record<string, any>;
   dialog?: ExportDialogConfig;
+  toast?: ExportToastConfig;
   prepare?: (options: ExportRequestOptions) => Promise<ExportConfig>;
+}
+
+export interface CustomExportConfig {
+  entityType: string;
+  warehouseId?: string;
+  dialog: RevenueExportDialogConfig;
+  toast?: ExportToastConfig;
+  execute: (options: ExportRequestOptions) => Promise<void>;
+}
+
+export type RegisteredExportConfig = ExportConfig | CustomExportConfig;
+
+export function isCustomExportConfig(
+  config: RegisteredExportConfig,
+): config is CustomExportConfig {
+  return "execute" in config;
 }
 
 export const formatExportDate = (val: any): string => {

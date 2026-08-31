@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useExportStore } from "../stores/useExportStore";
-import { ExportConfig } from "../utils/exportExcel";
 
-export function useExportRegistration(config: ExportConfig | null) {
+import { useExportStore } from "../stores/useExportStore";
+import type { RegisteredExportConfig } from "../utils/exportExcel";
+
+export function useExportRegistration(config: RegisteredExportConfig | null) {
   const setExportConfig = useExportStore((s) => s.setExportConfig);
 
   useEffect(() => {

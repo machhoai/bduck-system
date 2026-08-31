@@ -21,6 +21,7 @@ import {
   type RevenueComparisonSelection,
   type RevenueDashboardFilter,
 } from "@/hooks/useRevenueDashboard";
+import { useRevenueExportRegistration } from "@/hooks/useRevenueExportRegistration";
 import { useStores } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 
@@ -31,7 +32,6 @@ import {
   RevenueDashboardError,
 } from "./RevenueDashboardStates";
 import RevenueDateFilter from "./RevenueDateFilter";
-import RevenueExportMenu from "./RevenueExportMenu";
 import RevenueKpiGrid from "./RevenueKpiGrid";
 import RevenueOrderExplorer from "./RevenueOrderExplorer";
 import RevenueSourceTabs from "./RevenueSourceTabs";
@@ -141,6 +141,14 @@ export default function RevenueDashboard() {
       ? openApiWarehousesError || openApiDashboard.error
       : localDashboard.error;
 
+  useRevenueExportRegistration({
+    source,
+    warehouseId: activeWarehouseId,
+    warehouseName: activeStore?.name,
+    rangeLabel: getRevenueComparisonLabel(filter) || data?.range.label,
+    filter,
+  });
+
   const handleChartPointClick = (key: string) => {
     if (/^\d{4}-\d{2}$/u.test(key)) {
       setFilter((current) => ({ ...current, mode: "month", month: key }));
@@ -165,13 +173,6 @@ export default function RevenueDashboard() {
             </p>
           </div>
         </div>
-        {activeWarehouseId && (
-          <RevenueExportMenu
-            source={source}
-            warehouseId={activeWarehouseId}
-            filter={filter}
-          />
-        )}
       </header>
 
       <section className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
@@ -241,12 +242,6 @@ export default function RevenueDashboard() {
 
       {!loading && data && (
         <>
-          {source === "OPEN_API" && (
-            <p className="flex items-center gap-2 rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-              {copy.sources.taxFromLocal}
-            </p>
-          )}
           <RevenueKpiGrid data={data} />
           <RevenueCharts
             currentPeriod={{

@@ -135,8 +135,23 @@ const vi = {
         },
         export: {
             button: "Xuất dữ liệu",
+            modalTitle: "Xuất báo cáo doanh thu",
+            modalDescription:
+                "Chọn nội dung báo cáo Excel phù hợp với nhu cầu phân tích.",
             dailyRevenue: "Doanh thu từng ngày",
+            dailyRevenueDescription:
+                "Gồm tổng quan, doanh thu theo ngày và cơ cấu phương thức thanh toán.",
             salesComposition: "Cơ cấu bán hàng",
+            salesCompositionDescription:
+                "Gồm tổng quan, cơ cấu theo nhóm và chi tiết sản phẩm đã bán.",
+            reportTypeLabel: "Nội dung báo cáo",
+            warehouseLabel: "Cửa hàng",
+            sourceLabel: "Nguồn dữ liệu",
+            rangeLabel: "Phạm vi",
+            cancel: "Hủy",
+            close: "Đóng",
+            confirm: "Xuất Excel",
+            selectReportType: "Vui lòng chọn loại báo cáo cần xuất.",
             loading: "Đang tạo file Excel...",
             success: "Đã xuất file Excel",
             successDescription: "Báo cáo đã được tải xuống thiết bị.",

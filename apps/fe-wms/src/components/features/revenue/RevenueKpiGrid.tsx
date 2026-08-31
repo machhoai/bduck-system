@@ -6,8 +6,6 @@ import {
     ArrowUpRight,
     Calculator,
     ReceiptText,
-    ShieldCheck,
-    Sigma,
     Sparkles,
     type LucideIcon,
 } from "lucide-react";
@@ -32,20 +30,6 @@ export default function RevenueKpiGrid({
         tone: string;
     }> = [
             {
-                label: copy.amountBeforeTax,
-                metric: data.stats.amountBeforeTax,
-                icon: Sigma,
-                format: "currency",
-                tone: "bg-blue-50 text-blue-700",
-            },
-            {
-                label: copy.totalTax,
-                metric: data.stats.totalTax,
-                icon: ShieldCheck,
-                format: "currency",
-                tone: "bg-violet-50 text-violet-700",
-            },
-            {
                 label: copy.totalOrders,
                 metric: data.stats.totalOrders,
                 icon: ReceiptText,
@@ -66,7 +50,7 @@ export default function RevenueKpiGrid({
             aria-label={copy.totalRevenue}
             className="grid grid-cols-2 gap-3 xl:grid-cols-4"
         >
-            <article className="relative overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-brand-primary)] p-4 text-white shadow-[0_14px_34px_rgba(0,102,204,0.18)] col-span-2 xl:row-span-2">
+            <article className="relative col-span-2 overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-brand-primary)] p-4 text-white shadow-[0_14px_34px_rgba(0,102,204,0.18)]">
                 <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-white/10" />
                 <div className="absolute -bottom-16 right-16 h-32 w-32 rounded-full bg-white/5" />
                 <div className="relative flex h-full min-h-40 flex-col justify-between gap-4">
