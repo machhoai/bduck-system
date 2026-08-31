@@ -166,8 +166,11 @@ export function buildPosRevenueDashboardData(input: {
       totalTax: value.taxAmount,
       amountBeforeTax: Math.max(0, value.revenue - value.taxAmount),
       orderCount: value.orderCount,
-    }));
+  }));
   const chartBuckets = new Map<string, { revenue: number; orderCount: number }>();
+  buildTimelineKeys(input.range, granularity).forEach((key) => {
+    chartBuckets.set(key, { revenue: 0, orderCount: 0 });
+  });
   dailyRows.forEach((row) => {
     const key = granularity === "month" ? row.date.slice(0, 7) : row.date;
     const point = chartBuckets.get(key) ?? { revenue: 0, orderCount: 0 };
@@ -288,4 +291,37 @@ export function buildPosRevenueDashboardData(input: {
     }),
     generatedAt: input.generatedAt,
   };
+}
+
+function buildTimelineKeys(
+  range: { startDate: string; endDate: string },
+  granularity: "day" | "month",
+) {
+  const startDate =
+    range.startDate <= range.endDate ? range.startDate : range.endDate;
+  const endDate =
+    range.startDate <= range.endDate ? range.endDate : range.startDate;
+
+  if (granularity === "month") {
+    const keys: string[] = [];
+    const endMonth = endDate.slice(0, 7);
+    let currentMonth = startDate.slice(0, 7);
+    while (currentMonth <= endMonth) {
+      keys.push(currentMonth);
+      const [year, month] = currentMonth.split("-").map(Number);
+      const nextMonth = new Date(Date.UTC(year, month, 1));
+      currentMonth = nextMonth.toISOString().slice(0, 7);
+    }
+    return keys;
+  }
+
+  const keys: string[] = [];
+  let currentDate = startDate;
+  while (currentDate <= endDate) {
+    keys.push(currentDate);
+    const nextDate = new Date(`${currentDate}T00:00:00.000Z`);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    currentDate = nextDate.toISOString().slice(0, 10);
+  }
+  return keys;
 }

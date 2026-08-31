@@ -7,6 +7,11 @@ import type {
 import { BarChart3, Building2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  buildRevenueChartRangeFilter,
+  getRevenueChartAnchorDate,
+  type RevenueChartRange,
+} from "@/hooks/revenueChartRange";
 import { useExternalStoreBindings } from "@/hooks/useExternalStoreBindings";
 import { useOpenApiRevenueWarehouses } from "@/hooks/useOpenApiRevenueWarehouses";
 import { usePosRevenueStats } from "@/hooks/usePosRevenueStats";
@@ -44,6 +49,8 @@ export default function RevenueDashboard() {
   const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
     getDefaultRevenueFilter(),
   );
+  const [chartRange, setChartRange] =
+    useState<RevenueChartRange>("last7");
   const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
     getDefaultRevenueComparison(getDefaultRevenueFilter()),
   );
@@ -101,6 +108,26 @@ export default function RevenueDashboard() {
     source === "LOCAL_POS" && activeWarehouseId ? [activeWarehouseId] : [],
     filter,
   );
+  const chartFilter = useMemo(
+    () => buildRevenueChartRangeFilter(filter, chartRange),
+    [chartRange, filter],
+  );
+  const chartRangeEnabled = comparison.mode === "none";
+  const openApiChartDashboard = useRevenueDashboard(chartFilter, {
+    source: "OPEN_API",
+    warehouseId: activeWarehouseId,
+    enabled:
+      chartRangeEnabled &&
+      source === "OPEN_API" &&
+      Boolean(activeWarehouseId),
+    keepPreviousData: true,
+  });
+  const localChartDashboard = usePosRevenueStats(
+    chartRangeEnabled && source === "LOCAL_POS" && activeWarehouseId
+      ? [activeWarehouseId]
+      : [],
+    chartFilter,
+  );
   const comparisonFilters = useMemo(
     () => buildRevenueComparisonFilters(filter, comparison),
     [comparison, filter],
@@ -130,6 +157,25 @@ export default function RevenueDashboard() {
         : null,
     [activeStore?.name, rawData],
   );
+  const chartRawData =
+    source === "OPEN_API"
+      ? openApiChartDashboard.data
+      : (localChartDashboard.data?.dashboard ?? null);
+  const chartData = chartRangeEnabled ? chartRawData : data;
+  const chartAnchorDate = getRevenueChartAnchorDate(filter);
+  const chartPoints = useMemo(
+    () =>
+      (chartData?.charts.points ?? []).map((point) => ({
+        ...point,
+        highlighted: point.key === chartAnchorDate,
+      })),
+    [chartAnchorDate, chartData?.charts.points],
+  );
+  const chartLoading =
+    chartRangeEnabled &&
+    (source === "OPEN_API"
+      ? openApiChartDashboard.loading || openApiChartDashboard.syncing
+      : localChartDashboard.loading);
   const loading =
     storesLoading ||
     (source === "OPEN_API"
@@ -258,13 +304,18 @@ export default function RevenueDashboard() {
               orderCount: item.stats.totalOrders.value,
               memberCardAmount: 0,
             }))}
-            points={data.charts.points}
+            points={chartPoints}
             comparisonPoints={comparisons.data[0]?.charts.points}
             paymentMethods={data.charts.paymentMethods}
-            mode={data.mode}
+            mode={chartData?.mode ?? data.mode}
             comparisonLabel={comparisonLabel}
             comparisonCount={comparisons.data.length}
             onPointClick={handleChartPointClick}
+            chartRange={chartRangeEnabled ? chartRange : undefined}
+            onChartRangeChange={
+              chartRangeEnabled ? setChartRange : undefined
+            }
+            chartLoading={chartLoading}
           />
           <TopProductsByGroup groups={data.topProductGroups} />
           {source === "LOCAL_POS" && data.orders.length > 0 && (

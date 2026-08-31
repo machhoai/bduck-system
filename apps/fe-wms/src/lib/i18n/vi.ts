@@ -259,6 +259,13 @@ const vi = {
             tooltipComparison: "Kỳ so sánh",
             tooltipSelected: "Mốc đã chọn",
             highlightedDays: "Ngày đang chọn",
+            rangeLabel: "Phạm vi biểu đồ",
+            rangeOptions: {
+                week: "Tuần",
+                month: "Tháng",
+                last7: "7 ngày",
+                last30: "30 ngày",
+            },
         },
         online: {
             title: "Doanh thu online",

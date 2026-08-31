@@ -399,6 +399,13 @@ const zh: Dictionary = {
       tooltipComparison: "对比期间",
       tooltipSelected: "所选时间点",
       highlightedDays: "选中日期",
+      rangeLabel: "图表范围",
+      rangeOptions: {
+        week: "周",
+        month: "月",
+        last7: "近 7 天",
+        last30: "近 30 天",
+      },
     },
     online: {
       title: "线上营收",

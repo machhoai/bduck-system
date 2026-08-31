@@ -10,6 +10,7 @@ import {
   chartTooltipOptions,
   responsiveChartOptions,
 } from "@/components/charts/chartjs";
+import type { RevenueChartRange } from "@/hooks/revenueChartRange";
 import { useTranslation } from "@/lib/i18n";
 
 import {
@@ -19,6 +20,7 @@ import {
   RevenueEmptyChart,
   withRevenuePeriodLabel,
 } from "./RevenueChartPrimitives";
+import RevenueChartRangeSelector from "./RevenueChartRangeSelector";
 import {
   chartColors,
   formatAxisValue,
@@ -34,12 +36,18 @@ export default function RevenueTrendChart({
   comparisonLabel,
   variant,
   onPointClick,
+  range,
+  onRangeChange,
+  loading = false,
 }: {
   points: ComparableRevenueChartPoint[];
   title: string;
   comparisonLabel?: string;
   variant: "timeline" | "period";
   onPointClick?: (key: string) => void;
+  range?: RevenueChartRange;
+  onRangeChange?: (range: RevenueChartRange) => void;
+  loading?: boolean;
 }) {
   const { t } = useTranslation();
   const copy = t.revenue;
@@ -150,7 +158,13 @@ export default function RevenueTrendChart({
       },
       scales: {
         x: {
-          ticks: { color: chartAxisColor, font: { size: 10 } },
+          ticks: {
+            autoSkip: true,
+            color: chartAxisColor,
+            font: { size: 10 },
+            maxRotation: 0,
+            maxTicksLimit: points.length > 14 ? 8 : 12,
+          },
           grid: { display: false },
         },
         y: {
@@ -168,8 +182,18 @@ export default function RevenueTrendChart({
   );
 
   return (
-    <RevenueChartShell title={title} subtitle={copy.charts.revenueSubtitle}>
-      {points.length > 0 ? (
+    <RevenueChartShell
+      title={title}
+      subtitle={copy.charts.revenueSubtitle}
+      actions={
+        range && onRangeChange ? (
+          <RevenueChartRangeSelector value={range} onChange={onRangeChange} />
+        ) : undefined
+      }
+    >
+      {loading ? (
+        <div className="h-full min-h-[220px] animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-skeleton-base)]" />
+      ) : points.length > 0 ? (
         <ChartCanvas
           type="bar"
           data={data}

@@ -7,6 +7,7 @@ import type {
 } from "@bduck/shared-types";
 import { useMemo } from "react";
 
+import type { RevenueChartRange } from "@/hooks/revenueChartRange";
 import { useTranslation } from "@/lib/i18n";
 
 import { RevenueChartSummary } from "./RevenueChartPrimitives";
@@ -36,6 +37,9 @@ interface RevenueChartsProps {
   comparisonLabel?: string;
   comparisonCount?: number;
   onPointClick?: (key: string) => void;
+  chartRange?: RevenueChartRange;
+  onChartRangeChange?: (range: RevenueChartRange) => void;
+  chartLoading?: boolean;
 }
 
 export default function RevenueCharts({
@@ -48,6 +52,9 @@ export default function RevenueCharts({
   comparisonLabel,
   comparisonCount = 0,
   onPointClick,
+  chartRange,
+  onChartRangeChange,
+  chartLoading = false,
 }: RevenueChartsProps) {
   const { t } = useTranslation();
   const periodComparisonPoints = useMemo(
@@ -83,6 +90,9 @@ export default function RevenueCharts({
           variant={chartVariant}
           title={t.revenue.charts.revenueTitle}
           onPointClick={onPointClick}
+          range={chartRange}
+          onRangeChange={onChartRangeChange}
+          loading={chartLoading}
         />
       </div>
       <div className="min-w-0 xl:col-span-4">

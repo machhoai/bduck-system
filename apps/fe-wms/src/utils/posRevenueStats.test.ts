@@ -114,3 +114,41 @@ test("JPOS orders feed the legacy dashboard charts, payments and products", () =
     taxAmount: 12_000,
   });
 });
+
+test("JPOS dashboard fills missing dates so range charts keep every column", () => {
+  const dashboard = buildPosRevenueDashboardData({
+    records: [
+      {
+        id: "order-1",
+        status: "LOCAL_PAID",
+        totalAmount: 150_000,
+        paidAt: "2026-08-13T03:00:00.000Z",
+      },
+    ],
+    warehouseId: "store-1",
+    filter: {
+      mode: "custom",
+      date: "2026-08-13",
+      month: "2026-08",
+      year: "2026",
+      startDate: "2026-08-10",
+      endDate: "2026-08-16",
+    },
+    range: { startDate: "2026-08-10", endDate: "2026-08-16" },
+    generatedAt: "2026-08-13T04:00:00.000Z",
+  });
+
+  assert.equal(dashboard.charts.points.length, 7);
+  assert.deepEqual(
+    dashboard.charts.points.map((point) => [point.key, point.revenue]),
+    [
+      ["2026-08-10", 0],
+      ["2026-08-11", 0],
+      ["2026-08-12", 0],
+      ["2026-08-13", 150_000],
+      ["2026-08-14", 0],
+      ["2026-08-15", 0],
+      ["2026-08-16", 0],
+    ],
+  );
+});

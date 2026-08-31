@@ -28,6 +28,11 @@ import {
     PercentNumberFlow,
 } from "@/components/ui/NumberFlowValue";
 import {
+    buildRevenueChartRangeFilter,
+    getRevenueChartAnchorDate,
+    type RevenueChartRange,
+} from "@/hooks/revenueChartRange";
+import {
     useOnlineSalesReport,
     type OnlineSalesReport,
 } from "@/hooks/useOnlineSalesReport";
@@ -43,6 +48,7 @@ import {
 } from "@/hooks/useRevenueDashboard";
 import { useTranslation } from "@/lib/i18n";
 
+import RevenueChartRangeSelector from "./RevenueChartRangeSelector";
 import {
     chartColors,
     donutColors,
@@ -112,6 +118,8 @@ export default function DashboardRevenueOverview({
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
         getDefaultRevenueFilter(),
     );
+    const [chartRange, setChartRange] =
+        useState<RevenueChartRange>("last7");
     const comparison = useMemo(
         () => getDefaultRevenueComparison(filter),
         [filter],
@@ -122,6 +130,14 @@ export default function DashboardRevenueOverview({
         error,
     } = usePosRevenueStats(warehouseIds, filter);
     const data = posData?.dashboard ?? null;
+    const chartFilter = useMemo(
+        () => buildRevenueChartRangeFilter(filter, chartRange),
+        [chartRange, filter],
+    );
+    const {
+        data: chartPosData,
+        loading: chartLoading,
+    } = usePosRevenueStats(warehouseIds, chartFilter);
     const [syncingPartner, setSyncingPartner] = useState(false);
     const {
         data: onlineData,
@@ -279,7 +295,12 @@ export default function DashboardRevenueOverview({
 
                     <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
                         <RevenueTimelinePanel
-                            data={data}
+                            data={chartPosData?.dashboard ?? null}
+                            filter={chartFilter}
+                            anchorDate={getRevenueChartAnchorDate(filter)}
+                            range={chartRange}
+                            loading={chartLoading}
+                            onRangeChange={setChartRange}
                             onPointSelect={(point) =>
                                 setDetail({ type: "timeline", point })
                             }
@@ -514,9 +535,19 @@ function HeroStatButton({
 
 function RevenueTimelinePanel({
     data,
+    filter,
+    anchorDate,
+    range,
+    loading,
+    onRangeChange,
     onPointSelect,
 }: {
-    data: RevenueDashboardData;
+    data: RevenueDashboardData | null;
+    filter: RevenueDashboardFilter;
+    anchorDate: string;
+    range: RevenueChartRange;
+    loading: boolean;
+    onRangeChange: (range: RevenueChartRange) => void;
     onPointSelect: (point: ComparableRevenueChartPoint) => void;
 }) {
     const { t } = useTranslation();
@@ -524,11 +555,14 @@ function RevenueTimelinePanel({
     const prepared = useMemo(
         () =>
             prepareComparableRevenuePoints(
-                data.charts.points,
+                (data?.charts.points ?? []).map((point) => ({
+                    ...point,
+                    highlighted: point.key === anchorDate,
+                })),
                 undefined,
-                data.mode,
+                data?.mode ?? filter.mode,
             ),
-        [data.charts.points, data.mode],
+        [anchorDate, data?.charts.points, data?.mode, filter.mode],
     );
     const chartData = useMemo<ChartData<"bar" | "line", number[], string>>(
         () => ({
@@ -598,19 +632,18 @@ function RevenueTimelinePanel({
     return (
         <Panel
             title={d.charts.revenueTitle}
-            subtitle={
-                getRevenueComparisonLabel({
-                    mode: data.mode,
-                    date: data.range.endDate,
-                    month: data.range.startDate.slice(0, 7),
-                    year: data.range.startDate.slice(0, 4),
-                    startDate: data.range.startDate,
-                    endDate: data.range.endDate,
-                }) || data.range.label
+            subtitle={getRevenueComparisonLabel(filter)}
+            actions={
+                <RevenueChartRangeSelector
+                    value={range}
+                    onChange={onRangeChange}
+                />
             }
         >
             <div className="h-[300px]">
-                {prepared.points.length > 0 ? (
+                {loading ? (
+                    <div className="h-full animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-skeleton-base)]" />
+                ) : prepared.points.length > 0 ? (
                     <ChartCanvas
                         type="bar"
                         data={chartData}
@@ -1542,21 +1575,26 @@ function OnlineProductList({
 function Panel({
     title,
     subtitle,
+    actions,
     children,
 }: {
     title: string;
     subtitle: string;
+    actions?: ReactNode;
     children: ReactNode;
 }) {
     return (
         <section className="flex h-full flex-col gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4">
-            <div className="flex flex-col gap-0.5">
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {title}
-                </h3>
-                <p className="text-xxs text-[var(--color-text-muted)]">
-                    {subtitle}
-                </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        {title}
+                    </h3>
+                    <p className="text-xxs text-[var(--color-text-muted)]">
+                        {subtitle}
+                    </p>
+                </div>
+                {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
             </div>
             <div className="min-h-0 flex-1">{children}</div>
         </section>

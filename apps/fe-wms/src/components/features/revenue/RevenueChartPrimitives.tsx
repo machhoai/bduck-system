@@ -55,19 +55,24 @@ export function RevenueChartSummary({
 export function RevenueChartShell({
   title,
   subtitle,
+  actions,
   children,
 }: {
   title: string;
   subtitle: string;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="flex h-full min-h-[360px] flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4 shadow-sm">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {title}
-        </h2>
-        <p className="text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+            {title}
+          </h2>
+          <p className="text-xxs text-[var(--color-text-muted)]">{subtitle}</p>
+        </div>
+        {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
       </div>
       <div className="min-h-0 flex-1">{children}</div>
     </section>
