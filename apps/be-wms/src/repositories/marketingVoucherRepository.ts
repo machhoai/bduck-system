@@ -66,7 +66,11 @@ const mapSnapshot = <T>(
 
 export const mapMarketingVoucherCampaign = (
   snapshot: FirebaseFirestore.DocumentSnapshot,
-): MarketingVoucherCampaign => mapSnapshot(snapshot, []);
+): MarketingVoucherCampaign => ({
+  ...mapSnapshot<MarketingVoucherCampaign>(snapshot, []),
+  active_export_job_id:
+    (snapshot.get("active_export_job_id") as string | null | undefined) ?? null,
+});
 
 export const mapMarketingVoucherCode = (
   snapshot: FirebaseFirestore.DocumentSnapshot,
@@ -80,7 +84,28 @@ export const mapMarketingVoucherCode = (
 
 export const mapMarketingVoucherJob = (
   snapshot: FirebaseFirestore.DocumentSnapshot,
-): MarketingVoucherJob => mapSnapshot(snapshot, ["completed_at"]);
+): MarketingVoucherJob => {
+  const mapped = mapSnapshot<MarketingVoucherJob>(snapshot, ["completed_at"]);
+  const manifest = mapped.export_manifest
+    ? {
+        ...mapped.export_manifest,
+        generated_at:
+          snapshot.get("export_manifest.generated_at")?.toDate?.() ??
+          mapped.export_manifest.generated_at,
+      }
+    : null;
+  return {
+    ...mapped,
+    output_file_name: mapped.output_file_name ?? null,
+    output_content_type: mapped.output_content_type ?? null,
+    output_size_bytes: mapped.output_size_bytes ?? null,
+    output_manifest_storage_path:
+      mapped.output_manifest_storage_path ?? null,
+    export_locale: mapped.export_locale ?? null,
+    export_parts: mapped.export_parts ?? [],
+    export_manifest: manifest,
+  };
+};
 
 export const mapMarketingVoucherJobItem = (
   snapshot: FirebaseFirestore.DocumentSnapshot,

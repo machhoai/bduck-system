@@ -21,6 +21,10 @@ import {
   retryMarketingVoucherEmailItemsHandler,
 } from "../controllers/marketingVoucherEmailController.js";
 import {
+  createMarketingVoucherExportHandler,
+  downloadMarketingVoucherExportHandler,
+} from "../controllers/marketingVoucherExportController.js";
+import {
   getMarketingVoucherJobHandler,
   listMarketingVoucherJobsHandler,
   processMarketingVoucherJobHandler,
@@ -117,6 +121,12 @@ router.post(
   requireAnyScopedPermission("marketing_vouchers.email.send"),
   createMarketingVoucherEmailJobHandler,
 );
+router.post(
+  "/export-jobs",
+  marketingVoucherMutationRateLimiter,
+  requireAnyScopedPermission("marketing_vouchers.export"),
+  createMarketingVoucherExportHandler,
+);
 router.get(
   "/jobs",
   requireAnyScopedPermission("marketing_vouchers.read"),
@@ -137,6 +147,12 @@ router.post(
     "marketing_vouchers.email.send",
   ]),
   resumeMarketingVoucherJobHandler,
+);
+router.post(
+  "/jobs/:jobId/download",
+  marketingVoucherMutationRateLimiter,
+  requireAnyScopedPermission("marketing_vouchers.export"),
+  downloadMarketingVoucherExportHandler,
 );
 router.post(
   "/jobs/:jobId/email-items/retry",

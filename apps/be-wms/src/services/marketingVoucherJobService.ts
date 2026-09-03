@@ -1,6 +1,8 @@
 import type { ResumeMarketingVoucherJobInput } from "@bduck/shared-types";
 
 import { failMarketingVoucherEmailJob } from "../repositories/marketingVoucherEmailFailureRepository.js";
+import { failMarketingVoucherExportJob } from "../repositories/marketingVoucherExportFailureRepository.js";
+import { processMarketingVoucherExportChunk } from "../repositories/marketingVoucherExportWorkerRepository.js";
 import {
   failMarketingVoucherExtensionJob,
   processMarketingVoucherExtensionChunk,
@@ -123,7 +125,7 @@ export const processMarketingVoucherJob = async (jobId: string) => {
           ? await processMarketingVoucherExtensionChunk(jobId)
           : job.type === "SEND_EMAIL"
             ? await processMarketingVoucherEmailChunk(jobId)
-            : { job, should_dispatch: false, no_op: true };
+            : await processMarketingVoucherExportChunk(jobId);
     if (result.should_dispatch && result.job) {
       await dispatchMarketingVoucherJob({
         jobId: result.job.id,
@@ -139,6 +141,8 @@ export const processMarketingVoucherJob = async (jobId: string) => {
       await failMarketingVoucherExtensionJob(jobId, failure);
     } else if (job.type === "SEND_EMAIL") {
       await failMarketingVoucherEmailJob(jobId, failure);
+    } else if (job.type === "EXPORT_EXCEL") {
+      await failMarketingVoucherExportJob(jobId, failure);
     }
     throw error;
   }

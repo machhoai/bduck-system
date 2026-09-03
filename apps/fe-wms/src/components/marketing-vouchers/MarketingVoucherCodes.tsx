@@ -98,6 +98,13 @@ export function MarketingVoucherCodes({
     selectedCodes.length > 0 &&
     selectedCampaignIds.size === 1 &&
     emailCampaign?.status === "ACTIVE";
+  const canOpenRevoke =
+    canRevoke &&
+    selectedCodes.length > 0 &&
+    [...selectedCampaignIds].every((id) => {
+      const campaign = campaignMap.get(id);
+      return campaign?.status === "ACTIVE" && !campaign.active_export_job_id;
+    });
   const allSelected =
     selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const toggleAll = () =>
@@ -148,8 +155,10 @@ export function MarketingVoucherCodes({
             {canRevoke ? (
               <button
                 type="button"
+                disabled={!canOpenRevoke}
+                title={!canOpenRevoke ? copy.codes.activeOnlyRevoke : undefined}
                 onClick={() => setRevokeOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-500"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShieldOff size={17} />
                 {copy.codes.revoke} · {selected.size}

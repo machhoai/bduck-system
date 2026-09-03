@@ -65,7 +65,9 @@ export const processMarketingVoucherExtensionChunk = async (
     return { job: initialJob, should_dispatch: false, no_op: true };
   }
   if (
-    ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(initialJob.status)
+    ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "PAUSED"].includes(
+      initialJob.status,
+    )
   ) {
     return { job: initialJob, should_dispatch: false, no_op: true };
   }
@@ -81,7 +83,7 @@ export const processMarketingVoucherExtensionChunk = async (
     const previousJob = mapMarketingVoucherJob(jobSnapshot);
     if (
       previousJob.revision !== initialJob.revision ||
-      ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED"].includes(
+      ["COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "PAUSED"].includes(
         previousJob.status,
       )
     ) {

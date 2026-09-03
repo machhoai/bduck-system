@@ -383,10 +383,10 @@ Không sao chép các Next.js 16 Route Handler từ e-commerce sang JPULSE. JPUL
 
 ### Phase 5 — Excel job
 
-- [ ] Workbook có QR.
-- [ ] Chia file/ZIP.
-- [ ] Storage, signed URL và manifest.
-- [ ] Resume/retry và kiểm tra paused.
+- [x] Workbook có QR.
+- [x] Chia file/ZIP.
+- [x] Storage, signed URL và manifest.
+- [x] Resume/retry và kiểm tra paused.
 
 ### Phase 6 — Migration rehearsal
 

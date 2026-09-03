@@ -131,6 +131,16 @@ export const revokeMarketingVoucherCodesRecord = async (input: {
       }
       const campaign = mapMarketingVoucherCampaign(snapshot);
       assertCampaignActivityAllowed(campaign, "REVOKE");
+      if (campaign.active_export_job_id) {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_EXPORT_ALREADY_RUNNING",
+          {
+            vi: "Không thể vô hiệu mã khi chiến dịch đang xuất voucher.",
+            zh: "活动正在导出优惠券，无法撤销券码。",
+          },
+          409,
+        );
+      }
       return campaign;
     });
     const now = new Date();

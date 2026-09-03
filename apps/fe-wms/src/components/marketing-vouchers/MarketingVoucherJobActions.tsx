@@ -1,24 +1,28 @@
 "use client";
 
 import type { MarketingVoucherJob } from "@bduck/shared-types";
-import { Eye, RotateCcw } from "lucide-react";
+import { Download, Eye, RotateCcw } from "lucide-react";
 
 import type { Dictionary } from "@/lib/i18n/vi";
 
 export function MarketingVoucherJobActions({
   job,
   canResume,
+  canDownload,
   isPending,
   copy,
   onResume,
   onViewResults,
+  onDownload,
 }: {
   job: MarketingVoucherJob;
   canResume: boolean;
+  canDownload: boolean;
   isPending: boolean;
   copy: Dictionary["marketingVouchers"];
   onResume: () => void;
   onViewResults: () => void;
+  onDownload: () => void;
 }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
@@ -30,6 +34,19 @@ export function MarketingVoucherJobActions({
         >
           <Eye size={14} />
           {copy.jobs.viewResults}
+        </button>
+      ) : null}
+      {job.type === "EXPORT_EXCEL" &&
+      job.status === "COMPLETED" &&
+      canDownload ? (
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={onDownload}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+        >
+          <Download size={14} />
+          {copy.jobs.download}
         </button>
       ) : null}
       {canResume ? (

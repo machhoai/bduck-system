@@ -4,6 +4,11 @@ import type { MarketingVoucherCampaign } from "@bduck/shared-types";
 import { CalendarDays, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  createMarketingVoucherExportJob,
+  createMarketingVoucherIdempotencyKey,
+} from "@/api/marketingVoucherApi";
+import { useMarketingVoucherMutation } from "@/hooks/useMarketingVoucherMutation";
 import { useTranslation } from "@/lib/i18n";
 
 import { MarketingVoucherAppearanceSheet } from "./MarketingVoucherAppearanceSheet";
@@ -32,6 +37,7 @@ export function MarketingVoucherCampaigns({
 }) {
   const { t, lang } = useTranslation();
   const copy = t.marketingVouchers;
+  const { pendingKey, runMutation } = useMarketingVoucherMutation();
   const [search, setSearch] = useState("");
   const [formCampaign, setFormCampaign] = useState<
     MarketingVoucherCampaign | null | undefined
@@ -60,6 +66,29 @@ export function MarketingVoucherCampaigns({
     setAction(nextAction);
   };
 
+  const exportCampaign = async (campaign: MarketingVoucherCampaign) => {
+    await runMutation({
+      key: `export:${campaign.id}`,
+      task: () =>
+        createMarketingVoucherExportJob(
+          {
+            campaign_id: campaign.id,
+            locale: lang,
+            expected_revision: campaign.revision,
+            idempotency_key: createMarketingVoucherIdempotencyKey("export"),
+            action_time: new Date(),
+          },
+          copy.toasts.error,
+        ),
+      messages: {
+        ...copy.toasts,
+        loading: copy.export.queueing,
+        success: copy.export.queued,
+        retry: t.common.retry,
+      },
+    });
+  };
+
   const actionButtons = (campaign: MarketingVoucherCampaign) => (
     <MarketingVoucherCampaignActions
       campaign={campaign}
@@ -68,6 +97,8 @@ export function MarketingVoucherCampaigns({
       onEdit={() => setFormCampaign(campaign)}
       onAppearance={() => setAppearanceCampaign(campaign)}
       onAction={(nextAction) => openAction(campaign, nextAction)}
+      onExport={() => void exportCampaign(campaign)}
+      isPending={Boolean(pendingKey)}
     />
   );
 

@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   AuditAction,
-  MARKETING_VOUCHER_CODES_COLLECTION,
-  type ExtendMarketingVoucherCampaignInput,
+  type CreateMarketingVoucherExportJobInput,
   type MarketingVoucherCampaignMutationResult,
 } from "@bduck/shared-types";
 
@@ -25,30 +24,21 @@ import {
   type MarketingVoucherOperationContext,
 } from "./marketingVoucherRepository.js";
 import {
-  assertCampaignMutable,
   assertCampaignActivityAllowed,
   assertMarketingVoucherRevision,
 } from "./marketingVoucherRepositoryGuards.js";
 
-export const createMarketingVoucherExtensionJobRecord = async (input: {
+export async function createMarketingVoucherExportJobRecord(input: {
   campaign_id: string;
-  request: ExtendMarketingVoucherCampaignInput;
+  request: CreateMarketingVoucherExportJobInput & { expected_revision: number };
   context: MarketingVoucherOperationContext;
-}): Promise<MarketingVoucherCampaignMutationResult> => {
-  const eligibleCount = await db
-    .collection(MARKETING_VOUCHER_CODES_COLLECTION)
-    .where("campaign_id", "==", input.campaign_id)
-    .where("is_deleted", "==", false)
-    .where("status", "in", ["AVAILABLE", "DISTRIBUTED"])
-    .count()
-    .get();
-  const total = eligibleCount.data().count;
+}): Promise<MarketingVoucherCampaignMutationResult> {
   const jobId = randomUUID();
   const pointer = await db.runTransaction<MarketingVoucherMutationPointer>(
     async (transaction) => {
       const operation = await prepareMarketingVoucherOperation(
         transaction,
-        "EXTEND_EXPIRY",
+        "EXPORT_EXCEL",
         input.context,
         { campaign_id: input.campaign_id, request: input.request },
       );
@@ -58,8 +48,7 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
           replayed: true,
         } as MarketingVoucherMutationPointer;
       }
-      const ref = campaignRef(input.campaign_id);
-      const snapshot = await transaction.get(ref);
+      const snapshot = await transaction.get(campaignRef(input.campaign_id));
       if (!snapshot.exists || snapshot.get("is_deleted") === true) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_CAMPAIGN_NOT_FOUND",
@@ -72,16 +61,25 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
         previous.revision,
         input.request.expected_revision,
       );
-      assertCampaignMutable(previous);
-      assertCampaignActivityAllowed(previous, "EXTEND");
-      if (input.request.valid_to <= previous.valid_to) {
+      assertCampaignActivityAllowed(previous, "EXPORT");
+      if (previous.purpose !== "PRINT") {
         throw marketingVoucherError(
-          "MARKETING_VOUCHER_EXTENSION_DATE_INVALID",
+          "MARKETING_VOUCHER_EXPORT_PRINT_ONLY",
           {
-            vi: "Ngày gia hạn phải sau ngày hết hạn hiện tại.",
-            zh: "延期日期必须晚于当前到期日。",
+            vi: "Chỉ chiến dịch in ấn mới được xuất Excel voucher.",
+            zh: "只有印刷活动可以导出优惠券 Excel。",
           },
-          400,
+          409,
+        );
+      }
+      if (previous.status !== "ACTIVE") {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_EXPORT_NOT_ACTIVE",
+          {
+            vi: "Chiến dịch phải hoạt động trước khi xuất voucher.",
+            zh: "活动必须处于启用状态才能导出优惠券。",
+          },
+          409,
         );
       }
       if (
@@ -92,26 +90,39 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_CAMPAIGN_JOB_CONFLICT",
           {
-            vi: "Chiến dịch đang có job thay đổi mã voucher.",
-            zh: "活动已有券码变更任务。",
+            vi: "Chiến dịch đang có job thay đổi hoặc xuất mã voucher.",
+            zh: "活动已有券码变更或导出任务。",
+          },
+          409,
+        );
+      }
+      if (previous.code_counts.total < 1) {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_EXPORT_EMPTY",
+          {
+            vi: "Chiến dịch chưa có mã để xuất.",
+            zh: "活动没有可导出的券码。",
           },
           409,
         );
       }
       const now = new Date();
-      const job = newMarketingVoucherJob({
-        id: jobId,
-        campaignId: previous.id,
-        type: "EXTEND_EXPIRY",
-        generationMode: null,
-        targetValidTo: input.request.valid_to,
-        total,
-        context: input.context,
-        now,
-      });
+      const job = {
+        ...newMarketingVoucherJob({
+          id: jobId,
+          campaignId: previous.id,
+          type: "EXPORT_EXCEL",
+          generationMode: null,
+          targetValidTo: null,
+          total: previous.code_counts.total,
+          context: input.context,
+          now,
+        }),
+        export_locale: input.request.locale,
+      };
       const updated = {
         ...previous,
-        active_extension_job_id: jobId,
+        active_export_job_id: jobId,
         revision: previous.revision + 1,
         updated_by: input.context.actor_id,
         updated_at: now,
@@ -120,23 +131,23 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
       };
       const result = { campaign_id: previous.id, job_id: jobId };
       transaction.create(jobRef(jobId), job);
-      transaction.set(ref, updated);
+      transaction.set(snapshot.ref, updated);
       writeMarketingVoucherAudit(transaction, {
-        id: `${operation.id}:extend`,
-        action: AuditAction.MARKETING_VOUCHER_EXPIRY_EXTEND,
-        entity_type: "marketing_voucher_campaigns",
-        entity_id: previous.id,
+        id: `${operation.id}:export`,
+        action: AuditAction.MARKETING_VOUCHER_EXPORT_JOB_CREATE,
+        entity_type: "marketing_voucher_jobs",
+        entity_id: jobId,
         entity_name: previous.name,
         context: input.context,
-        old_value: previous,
-        new_value: updated,
+        old_value: null,
+        new_value: job,
         sync_time: now,
-        notes: `Queued expiry extension to ${input.request.valid_to}`,
+        notes: `Queued voucher export with ${job.progress.total} rows`,
       });
       writeMarketingVoucherOperation(
         transaction,
         operation,
-        "EXTEND_EXPIRY",
+        "EXPORT_EXCEL",
         input.context,
         result,
         now,
@@ -145,4 +156,4 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
     },
   );
   return loadMarketingVoucherMutationResult(pointer);
-};
+}

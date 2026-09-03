@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   createMarketingVoucherCampaignSchema,
   createMarketingVoucherEmailJobSchema,
+  createMarketingVoucherExportJobSchema,
   revokeMarketingVoucherCodesSchema,
   resolveMarketingVouchersFeatureEnabled,
 } from "@bduck/shared-types";
@@ -122,5 +123,26 @@ describe("marketing voucher schemas", () => {
       action_time: "2026-08-20T08:00:00.000Z",
     });
     assert.equal(tooManyRecipients.success, false);
+  });
+
+  it("requires revision and accepts only supported export locales", () => {
+    const valid = createMarketingVoucherExportJobSchema.safeParse({
+      campaign_id: "campaign-a",
+      locale: "vi",
+      expected_revision: 3,
+      idempotency_key: "export:campaign-a",
+      action_time: "2026-09-03T08:00:00.000Z",
+    });
+    assert.equal(valid.success, true);
+    assert.equal(
+      createMarketingVoucherExportJobSchema.safeParse({
+        campaign_id: "campaign-a",
+        locale: "en",
+        expected_revision: 3,
+        idempotency_key: "export:campaign-a-2",
+        action_time: "2026-09-03T08:00:00.000Z",
+      }).success,
+      false,
+    );
   });
 });

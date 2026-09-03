@@ -2901,6 +2901,7 @@ const vi = {
             generate: "Sinh thêm mã",
             extend: "Gia hạn",
             appearance: "Màu và mẫu voucher",
+            export: "Xuất Excel có QR",
             end: "Kết thúc chiến dịch",
         },
         appearance: {
@@ -2958,6 +2959,7 @@ const vi = {
             distributedTo: "Người nhận",
             selected: "đã chọn",
             revoke: "Vô hiệu mã",
+            activeOnlyRevoke: "Chỉ có thể vô hiệu mã khi chiến dịch đang hoạt động và không xuất file.",
             revokeTitle: "Vô hiệu mã đã chọn",
             revokeReason: "Lý do vô hiệu",
             revokeReasonPlaceholder: "Nhập lý do để lưu vào audit...",
@@ -3001,7 +3003,14 @@ const vi = {
             error: "Lỗi gần nhất",
             resume: "Tiếp tục job",
             viewResults: "Xem kết quả",
+            download: "Tải file",
             empty: "Chưa có công việc nền.",
+        },
+        export: {
+            queueing: "Đang tạo job xuất voucher...",
+            queued: "Đã bắt đầu xuất voucher",
+            preparingDownload: "Đang tạo liên kết tải an toàn...",
+            downloadReady: "File voucher đã sẵn sàng",
         },
         emailResults: {
             title: "Kết quả gửi email",

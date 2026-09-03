@@ -20,6 +20,7 @@
     "test:marketing-vouchers-phase1": "tsx --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts",
     "test:marketing-vouchers-phase2": "tsx --env-file=../../.env.local --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts src/repositories/marketingVoucherRepositoryGuards.test.ts src/repositories/marketingVoucherRepository.emulator.test.ts",
     "test:marketing-vouchers-phase4": "tsx --env-file=../../.env.local --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherEmailRenderer.test.ts src/repositories/marketingVoucherEmailRepository.emulator.test.ts",
+    "test:marketing-vouchers-phase5": "tsx --env-file=../../.env.local --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherWorkbookService.test.ts src/repositories/marketingVoucherExportRepository.emulator.test.ts",
     "test:security-foundation": "pnpm run test:facility-access-planner && pnpm run test:authorization && pnpm run test:identity-security && pnpm run test:scoped-query",
     "test:meinvoice-foundation": "tsx --test src/services/meInvoiceFoundation.test.ts src/services/meInvoiceStoreConfigValidation.test.ts src/services/invoiceOrderSyncService.test.ts",
     "test:customer-invoice-request": "tsx --test src/services/customerInvoiceRequest.test.ts src/repositories/invoiceCustomerRequestRepository.emulator.test.ts",
@@ -36,6 +37,7 @@
   "dependencies": {
     "@bduck/shared-types": "workspace:*",
     "@google-cloud/tasks": "^6.2.2",
+    "archiver": "^8.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "date-fns": "^4.3.0",
@@ -53,14 +55,18 @@
   "devDependencies": {
     "@bduck/eslint-config": "workspace:*",
     "@bduck/tsconfig": "workspace:*",
+    "@types/archiver": "^8.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^8.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/qrcode": "^1.5.6",
     "@types/uuid": "^11.0.0",
     "eslint": "^8.57.0",
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

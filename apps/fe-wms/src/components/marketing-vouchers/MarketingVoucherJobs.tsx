@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 
 import {
   createMarketingVoucherIdempotencyKey,
+  downloadMarketingVoucherExport,
   resumeMarketingVoucherJob,
 } from "@/api/marketingVoucherApi";
 import { useMarketingVoucherMutation } from "@/hooks/useMarketingVoucherMutation";
@@ -36,12 +37,14 @@ export function MarketingVoucherJobs({
   canGenerate,
   canExtend,
   canEmail,
+  canExport,
 }: {
   jobs: MarketingVoucherJob[];
   campaigns: MarketingVoucherCampaign[];
   canGenerate: boolean;
   canExtend: boolean;
   canEmail: boolean;
+  canExport: boolean;
 }) {
   const { t, lang } = useTranslation();
   const copy = t.marketingVouchers;
@@ -68,6 +71,8 @@ export function MarketingVoucherJobs({
   const canResume = (job: MarketingVoucherJob) =>
     (job.status === "FAILED" && job.type === "GENERATE_CODES" && canGenerate) ||
     (job.status === "FAILED" && job.type === "EXTEND_EXPIRY" && canExtend) ||
+    (job.status === "FAILED" && job.type === "EXPORT_EXCEL" && canExport) ||
+    (job.status === "PAUSED" && job.type === "EXPORT_EXCEL" && canExport) ||
     (job.status === "PAUSED" && job.type === "SEND_EMAIL" && canEmail);
   const emailResultJob = jobs.find((job) => job.id === emailResultJobId);
 
@@ -85,6 +90,36 @@ export function MarketingVoucherJobs({
       task: () => resumeMarketingVoucherJob(job.id, payload, copy.toasts.error),
       messages: { ...copy.toasts, retry: t.common.retry },
     });
+  };
+
+  const download = async (job: MarketingVoucherJob) => {
+    const result = await runMutation({
+      key: `download:${job.id}`,
+      task: () =>
+        downloadMarketingVoucherExport(
+          job.id,
+          {
+            idempotency_key:
+              createMarketingVoucherIdempotencyKey("export-download"),
+            action_time: new Date(),
+          },
+          copy.toasts.error,
+        ),
+      messages: {
+        ...copy.toasts,
+        loading: copy.export.preparingDownload,
+        success: copy.export.downloadReady,
+        retry: t.common.retry,
+      },
+    });
+    if (!result) return;
+    const anchor = document.createElement("a");
+    anchor.href = result.url;
+    anchor.download = result.file_name;
+    anchor.rel = "noopener noreferrer";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   };
 
   const progressCell = (job: MarketingVoucherJob) => {
@@ -215,10 +250,15 @@ export function MarketingVoucherJobs({
                       <MarketingVoucherJobActions
                         job={job}
                         canResume={canResume(job)}
+                        canDownload={
+                          canExport &&
+                          campaignMap.get(job.campaign_id)?.status === "ACTIVE"
+                        }
                         isPending={Boolean(pendingKey)}
                         copy={copy}
                         onResume={() => void resume(job)}
                         onViewResults={() => setEmailResultJobId(job.id)}
+                        onDownload={() => void download(job)}
                       />
                     </td>
                   </tr>
@@ -257,10 +297,15 @@ export function MarketingVoucherJobs({
                   <MarketingVoucherJobActions
                     job={job}
                     canResume={canResume(job)}
+                    canDownload={
+                      canExport &&
+                      campaignMap.get(job.campaign_id)?.status === "ACTIVE"
+                    }
                     isPending={Boolean(pendingKey)}
                     copy={copy}
                     onResume={() => void resume(job)}
                     onViewResults={() => setEmailResultJobId(job.id)}
+                    onDownload={() => void download(job)}
                   />
                 </div>
               </article>

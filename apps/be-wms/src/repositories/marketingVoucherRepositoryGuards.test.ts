@@ -15,7 +15,14 @@ const campaign = (status: "ACTIVE" | "PAUSED" | "ENDED") => ({
 
 describe("marketing voucher pause guard", () => {
   it("blocks every operational activity while paused", () => {
-    for (const activity of ["GENERATE", "EXPORT", "EMAIL", "REDEEM"] as const) {
+    for (const activity of [
+      "GENERATE",
+      "REVOKE",
+      "EXTEND",
+      "EXPORT",
+      "EMAIL",
+      "REDEEM",
+    ] as const) {
       assert.throws(
         () => assertCampaignActivityAllowed(campaign("PAUSED"), activity),
         (error: unknown) =>
@@ -25,8 +32,8 @@ describe("marketing voucher pause guard", () => {
     }
   });
 
-  it("still permits view, edit, revoke and extend while paused", () => {
-    for (const activity of ["VIEW", "EDIT", "REVOKE", "EXTEND"] as const) {
+  it("still permits administrative view and edit while paused", () => {
+    for (const activity of ["VIEW", "EDIT"] as const) {
       assert.doesNotThrow(() =>
         assertCampaignActivityAllowed(campaign("PAUSED"), activity),
       );

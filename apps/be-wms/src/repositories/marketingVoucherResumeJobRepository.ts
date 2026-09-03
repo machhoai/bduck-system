@@ -85,7 +85,12 @@ export const resumeMarketingVoucherJobRecord = async (input: {
         );
       }
       if (
-        ["GENERATE_CODES", "SEND_EMAIL"].includes(previousJob.type) &&
+        [
+          "GENERATE_CODES",
+          "EXTEND_EXPIRY",
+          "EXPORT_EXCEL",
+          "SEND_EMAIL",
+        ].includes(previousJob.type) &&
         previousCampaign.status === "PAUSED"
       ) {
         throw marketingVoucherError(
@@ -124,6 +129,10 @@ export const resumeMarketingVoucherJobRecord = async (input: {
           previousJob.type === "EXTEND_EXPIRY"
             ? previousJob.id
             : previousCampaign.active_extension_job_id,
+        active_export_job_id:
+          previousJob.type === "EXPORT_EXCEL"
+            ? previousJob.id
+            : previousCampaign.active_export_job_id,
         revision: previousCampaign.revision + 1,
         updated_by: input.context.actor_id,
         updated_at: now,

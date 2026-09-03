@@ -35,6 +35,7 @@ describe("marketing voucher Firestore indexes", () => {
       "marketing_voucher_jobs:campaign_id:ASCENDING,is_deleted:ASCENDING,created_at:DESCENDING",
       "marketing_voucher_jobs:type:ASCENDING,is_deleted:ASCENDING,created_at:DESCENDING",
       "marketing_voucher_codes:campaign_id:ASCENDING,status:ASCENDING,is_deleted:ASCENDING,__name__:ASCENDING",
+      "marketing_voucher_codes:campaign_id:ASCENDING,is_deleted:ASCENDING,__name__:ASCENDING",
       "marketing_voucher_jobs:campaign_id:ASCENDING,status:ASCENDING,is_deleted:ASCENDING,created_at:DESCENDING",
       "marketing_voucher_jobs:campaign_id:ASCENDING,type:ASCENDING,is_deleted:ASCENDING,created_at:DESCENDING",
       "marketing_voucher_jobs:status:ASCENDING,type:ASCENDING,is_deleted:ASCENDING,created_at:DESCENDING",

@@ -111,6 +111,7 @@ export interface MarketingVoucherCampaign
   total_issued: number;
   active_generation_job_id: string | null;
   active_extension_job_id: string | null;
+  active_export_job_id: string | null;
   revision: number;
   created_by: string;
   updated_by: string;
@@ -170,6 +171,30 @@ export interface MarketingVoucherJobProgress {
   failed: number;
 }
 
+export type MarketingVoucherExportLocale = "vi" | "zh";
+
+export interface MarketingVoucherExportPart {
+  index: number;
+  file_name: string;
+  storage_path: string;
+  row_count: number;
+  checksum: string;
+  size_bytes: number;
+}
+
+export interface MarketingVoucherExportManifest {
+  version: 1;
+  campaign_id: string;
+  campaign_name: string;
+  job_id: string;
+  locale: MarketingVoucherExportLocale;
+  generated_at: Date;
+  total_rows: number;
+  part_count: number;
+  format: "XLSX" | "ZIP";
+  files: MarketingVoucherExportPart[];
+}
+
 export interface MarketingVoucherJob extends SoftDeletable, ISOTimestamped {
   id: string;
   type: MarketingVoucherJobType;
@@ -187,9 +212,25 @@ export interface MarketingVoucherJob extends SoftDeletable, ISOTimestamped {
   last_error_message: string | null;
   output_storage_path: string | null;
   output_checksum: string | null;
+  output_file_name: string | null;
+  output_content_type: string | null;
+  output_size_bytes: number | null;
+  output_manifest_storage_path: string | null;
+  export_locale: MarketingVoucherExportLocale | null;
+  export_parts: MarketingVoucherExportPart[];
+  export_manifest: MarketingVoucherExportManifest | null;
   attempt_count: number;
   completed_at: Date | null;
   revision: number;
+}
+
+export interface MarketingVoucherExportDownload {
+  url: string;
+  file_name: string;
+  content_type: string;
+  checksum: string;
+  expires_at: Date;
+  manifest: MarketingVoucherExportManifest;
 }
 
 export interface MarketingVoucherMutationResult<T> {

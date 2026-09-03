@@ -17,6 +17,8 @@ export type MarketingVoucherCampaignActivity =
 
 const PAUSE_BLOCKED_ACTIVITIES = new Set<MarketingVoucherCampaignActivity>([
   "GENERATE",
+  "REVOKE",
+  "EXTEND",
   "EXPORT",
   "EMAIL",
   "REDEEM",
@@ -70,6 +72,16 @@ export const assertCampaignMutable = (campaign: MarketingVoucherCampaign) => {
       {
         vi: "Chiến dịch đã kết thúc hoặc bị xóa nên không thể chỉnh sửa.",
         zh: "活动已结束或删除，无法修改。",
+      },
+      409,
+    );
+  }
+  if (campaign.active_export_job_id) {
+    throw marketingVoucherError(
+      "MARKETING_VOUCHER_EXPORT_ALREADY_RUNNING",
+      {
+        vi: "Chiến dịch đang xuất voucher nên chưa thể thay đổi dữ liệu mã.",
+        zh: "活动正在导出优惠券，暂时无法更改券码数据。",
       },
       409,
     );

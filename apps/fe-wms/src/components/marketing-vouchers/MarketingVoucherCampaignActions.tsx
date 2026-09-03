@@ -1,6 +1,7 @@
 import type { MarketingVoucherCampaign } from "@bduck/shared-types";
 import {
   Edit3,
+  FileSpreadsheet,
   Paintbrush,
   Pause,
   Play,
@@ -18,6 +19,7 @@ export interface MarketingVoucherPermissions {
   canGenerate: boolean;
   canExtend: boolean;
   canAppearance: boolean;
+  canExport: boolean;
 }
 
 export function MarketingVoucherCampaignActions({
@@ -27,6 +29,8 @@ export function MarketingVoucherCampaignActions({
   onEdit,
   onAppearance,
   onAction,
+  onExport,
+  isPending,
 }: {
   campaign: MarketingVoucherCampaign;
   permissions: MarketingVoucherPermissions;
@@ -34,10 +38,25 @@ export function MarketingVoucherCampaignActions({
   onEdit: () => void;
   onAppearance: () => void;
   onAction: (action: MarketingVoucherCampaignAction) => void;
+  onExport: () => void;
+  isPending: boolean;
 }) {
   const actions = [
     {
-      show: permissions.canWrite,
+      show:
+        permissions.canExport &&
+        campaign.purpose === "PRINT" &&
+        campaign.status === "ACTIVE" &&
+        !campaign.active_generation_job_id &&
+        !campaign.active_extension_job_id &&
+        !campaign.active_export_job_id,
+      label: copy.campaigns.export,
+      icon: FileSpreadsheet,
+      tone: "hover:bg-emerald-50 hover:text-emerald-700",
+      onClick: onExport,
+    },
+    {
+      show: permissions.canWrite && !campaign.active_export_job_id,
       label: copy.campaigns.edit,
       icon: Edit3,
       tone: "hover:bg-slate-100 hover:text-slate-900",
@@ -64,7 +83,8 @@ export function MarketingVoucherCampaignActions({
         permissions.canGenerate &&
         campaign.status === "ACTIVE" &&
         !campaign.active_generation_job_id &&
-        !campaign.active_extension_job_id,
+        !campaign.active_extension_job_id &&
+        !campaign.active_export_job_id,
       label: copy.campaigns.generate,
       icon: Sparkles,
       tone: "hover:bg-sky-50 hover:text-sky-700",
@@ -80,9 +100,10 @@ export function MarketingVoucherCampaignActions({
     {
       show:
         permissions.canExtend &&
-        campaign.status !== "ENDED" &&
+        campaign.status === "ACTIVE" &&
         !campaign.active_generation_job_id &&
-        !campaign.active_extension_job_id,
+        !campaign.active_extension_job_id &&
+        !campaign.active_export_job_id,
       label: copy.campaigns.extend,
       icon: TimerReset,
       tone: "hover:bg-violet-50 hover:text-violet-700",
@@ -104,10 +125,11 @@ export function MarketingVoucherCampaignActions({
           <button
             key={label}
             type="button"
+            disabled={isPending}
             onClick={onClick}
             aria-label={label}
             title={label}
-            className={`rounded-xl p-2 text-slate-500 ${tone}`}
+            className={`rounded-xl p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40 ${tone}`}
           >
             <Icon size={16} />
           </button>

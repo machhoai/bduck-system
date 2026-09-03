@@ -44,6 +44,7 @@ export function MarketingVoucherWorkspace() {
     canRevoke: permitted("marketing_vouchers.codes.revoke"),
     canExtend: permitted("marketing_vouchers.campaigns.extend"),
     canAppearance: permitted("marketing_vouchers.appearance.write"),
+    canExport: permitted("marketing_vouchers.export"),
     canEmail: permitted("marketing_vouchers.email.send"),
   };
   const campaigns = useMarketingVoucherCampaigns(permissions.canRead);
@@ -160,6 +161,7 @@ export function MarketingVoucherWorkspace() {
               canGenerate={permissions.canGenerate}
               canExtend={permissions.canExtend}
               canEmail={permissions.canEmail}
+              canExport={permissions.canExport}
             />
           ) : null}
         </section>

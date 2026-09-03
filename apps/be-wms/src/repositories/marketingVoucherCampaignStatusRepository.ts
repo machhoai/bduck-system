@@ -97,19 +97,30 @@ export const changeMarketingVoucherCampaignStatusRecord = async (input: {
       );
     }
 
-    const activeJobId = previous.active_generation_job_id;
-    const activeJobSnapshot = activeJobId
-      ? await transaction.get(jobRef(activeJobId))
-      : null;
-    const activeJob = activeJobSnapshot?.exists
-      ? mapMarketingVoucherJob(activeJobSnapshot)
-      : null;
+    const activeJobIds = [
+      ...new Set(
+        [
+          previous.active_generation_job_id,
+          previous.active_extension_job_id,
+          previous.active_export_job_id,
+        ].filter((value): value is string => Boolean(value)),
+      ),
+    ];
+    const activeJobSnapshots = activeJobIds.length
+      ? await transaction.getAll(...activeJobIds.map(jobRef))
+      : [];
+    const activeJobs = activeJobSnapshots
+      .filter((jobSnapshot) => jobSnapshot.exists)
+      .map(mapMarketingVoucherJob);
     const now = new Date();
     const targetStatus =
       input.request.status === "PAUSED"
         ? "PAUSED"
-        : activeJob?.generation_mode === "INITIAL" &&
-            activeJob.progress.succeeded < activeJob.progress.total
+        : activeJobs.some(
+              (job) =>
+                job.generation_mode === "INITIAL" &&
+                job.progress.succeeded < job.progress.total,
+            )
           ? "GENERATING"
           : "ACTIVE";
     const updated = {
@@ -123,21 +134,23 @@ export const changeMarketingVoucherCampaignStatusRecord = async (input: {
     };
     transaction.set(ref, updated);
 
-    if (
-      activeJob &&
-      activeJob.status !== "FAILED" &&
-      !["COMPLETED", "CANCELLED"].includes(activeJob.status)
-    ) {
+    activeJobs.forEach((activeJob) => {
+      if (
+        activeJob.status === "FAILED" ||
+        ["COMPLETED", "CANCELLED"].includes(activeJob.status)
+      ) {
+        return;
+      }
       transaction.update(jobRef(activeJob.id), {
         status: input.request.status === "PAUSED" ? "PAUSED" : "QUEUED",
         revision: activeJob.revision + 1,
         updated_at: now,
         sync_time: now,
       });
-    }
+    });
     const operationResult = {
       campaign_id: updated.id,
-      job_id: activeJob?.id ?? null,
+      job_id: activeJobs[0]?.id ?? null,
     };
     writeMarketingVoucherAudit(transaction, {
       id: `${operation.id}:status`,
@@ -212,6 +225,7 @@ export const softDeleteMarketingVoucherCampaignRecord = async (input: {
       is_deleted: true,
       active_generation_job_id: null,
       active_extension_job_id: null,
+      active_export_job_id: null,
       revision: previous.revision + 1,
       updated_by: input.context.actor_id,
       updated_at: now,
@@ -221,6 +235,7 @@ export const softDeleteMarketingVoucherCampaignRecord = async (input: {
     const jobIds = [
       previous.active_generation_job_id,
       previous.active_extension_job_id,
+      previous.active_export_job_id,
     ].filter((value): value is string => Boolean(value));
     const jobSnapshots = await Promise.all(
       jobIds.map((id) => transaction.get(jobRef(id))),

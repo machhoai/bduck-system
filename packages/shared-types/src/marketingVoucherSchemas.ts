@@ -158,6 +158,13 @@ export const deleteMarketingVoucherCampaignSchema = mutationMetadataSchema;
 
 export const createMarketingVoucherExportJobSchema = z.object({
   campaign_id: identifierSchema,
+  locale: z.enum(["vi", "zh"]).default("vi"),
+  expected_revision: z.number().int().nonnegative(),
+  idempotency_key: marketingVoucherIdempotencyKeySchema,
+  action_time: z.coerce.date(),
+});
+
+export const createMarketingVoucherExportDownloadSchema = z.object({
   idempotency_key: marketingVoucherIdempotencyKeySchema,
   action_time: z.coerce.date(),
 });
@@ -270,6 +277,9 @@ export type ChangeMarketingVoucherCampaignStatusInput = z.infer<
 >;
 export type CreateMarketingVoucherExportJobInput = z.infer<
   typeof createMarketingVoucherExportJobSchema
+>;
+export type CreateMarketingVoucherExportDownloadInput = z.infer<
+  typeof createMarketingVoucherExportDownloadSchema
 >;
 export type CreateMarketingVoucherEmailJobInput = z.infer<
   typeof createMarketingVoucherEmailJobSchema

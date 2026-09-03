@@ -4,9 +4,12 @@ import type {
   ChangeMarketingVoucherCampaignStatusInput,
   CreateMarketingVoucherCampaignInput,
   CreateMarketingVoucherEmailJobInput,
+  CreateMarketingVoucherExportDownloadInput,
+  CreateMarketingVoucherExportJobInput,
   ExtendMarketingVoucherCampaignInput,
   GenerateMarketingVoucherCodesInput,
   MarketingVoucherCampaignMutationResult,
+  MarketingVoucherExportDownload,
   MarketingVoucherMutationResult,
   ResumeMarketingVoucherJobInput,
   RetryMarketingVoucherJobItemsInput,
@@ -158,6 +161,27 @@ export const createMarketingVoucherEmailJob = (
 ) =>
   voucherFetch<MarketingVoucherCampaignMutationResult>(
     "/email-jobs",
+    fallbackMessage,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+
+export const createMarketingVoucherExportJob = (
+  input: CreateMarketingVoucherExportJobInput,
+  fallbackMessage: string,
+) =>
+  voucherFetch<MarketingVoucherCampaignMutationResult>(
+    "/export-jobs",
+    fallbackMessage,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+
+export const downloadMarketingVoucherExport = (
+  jobId: string,
+  input: CreateMarketingVoucherExportDownloadInput,
+  fallbackMessage: string,
+) =>
+  voucherFetch<MarketingVoucherExportDownload>(
+    `/jobs/${encodeURIComponent(jobId)}/download`,
     fallbackMessage,
     { method: "POST", body: JSON.stringify(input) },
   );

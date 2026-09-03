@@ -2763,6 +2763,7 @@ const zh: Dictionary = {
         generate: "追加券码",
         extend: "延期",
         appearance: "优惠券颜色与样式",
+        export: "导出带二维码的 Excel",
         end: "结束活动",
       },
       appearance: {
@@ -2820,6 +2821,7 @@ const zh: Dictionary = {
         distributedTo: "接收人",
         selected: "已选择",
         revoke: "撤销券码",
+        activeOnlyRevoke: "仅可在活动启用且未导出文件时撤销券码。",
         revokeTitle: "撤销所选券码",
         revokeReason: "撤销原因",
         revokeReasonPlaceholder: "输入原因并写入审计记录...",
@@ -2863,7 +2865,14 @@ const zh: Dictionary = {
         error: "最近错误",
         resume: "恢复任务",
         viewResults: "查看结果",
+        download: "下载文件",
         empty: "尚无后台任务。",
+      },
+      export: {
+        queueing: "正在创建优惠券导出任务...",
+        queued: "优惠券导出已开始",
+        preparingDownload: "正在生成安全下载链接...",
+        downloadReady: "优惠券文件已准备就绪",
       },
       emailResults: {
         title: "邮件发送结果",
