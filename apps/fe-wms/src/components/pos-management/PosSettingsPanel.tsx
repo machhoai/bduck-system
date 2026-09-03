@@ -18,7 +18,11 @@ import { usePosReceiptEditorCopy } from "./usePosReceiptEditorCopy";
 const toPayload = (settings: PosReceiptSettings): PosReceiptSettingsPayload => {
     const {
         id: _id, warehouse_id: _warehouse, version: _version, updated_by: _user,
-        is_deleted: _deleted, created_at: _created, updated_at: _updated, ...payload
+        is_deleted: _deleted, created_at: _created, updated_at: _updated,
+        logo_storage_path: _logoPath, logo_checksum_sha256: _logoChecksum,
+        logo_content_type: _logoType, logo_file_size_bytes: _logoSize,
+        logo_content_url: _logoContentUrl,
+        ...payload
     } = settings;
     return payload;
 };

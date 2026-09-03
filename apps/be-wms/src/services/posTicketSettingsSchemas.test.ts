@@ -65,4 +65,11 @@ test("only accepts supported inline logo formats", () => {
     }).success,
     true,
   );
+  assert.equal(
+    posTicketSettingsSchema.safeParse({
+      ...validSettings,
+      logo_data_url: "https://storage.googleapis.com/example/logo.png?signature=test",
+    }).success,
+    true,
+  );
 });

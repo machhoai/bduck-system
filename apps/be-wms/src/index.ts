@@ -69,6 +69,7 @@ app.use(
       "tauri://localhost",
     ],
     credentials: true,
+    maxAge: 86_400,
   }),
 );
 app.use(express.json({ limit: "15mb" }));

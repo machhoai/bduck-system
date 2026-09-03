@@ -18,10 +18,13 @@ import {
   changePosDeviceStatusHandler,
   createPosEnrollmentHandler,
   getPosStoreOverviewHandler,
+  getPosSettingsLogoContentHandler,
+  heartbeatPosDeviceHandler,
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
   savePosReceiptSettingsFromDeviceHandler,
   savePosTicketSettingsFromDeviceHandler,
+  syncPosDeviceConfigHandler,
   transferPosDeviceHandler,
   watchPosCustomerDisplaySettingsHandler,
   watchPosReceiptSettingsHandler,
@@ -75,6 +78,21 @@ router.post(
   "/devices/session",
   posDeviceSessionRateLimiter,
   openPosDeviceSessionHandler,
+);
+router.post(
+  "/devices/heartbeat",
+  posDeviceSessionRateLimiter,
+  heartbeatPosDeviceHandler,
+);
+router.post(
+  "/devices/config",
+  posDeviceSessionRateLimiter,
+  syncPosDeviceConfigHandler,
+);
+router.get(
+  "/devices/settings-logo/:kind/:checksum/content",
+  posDeviceSessionRateLimiter,
+  getPosSettingsLogoContentHandler,
 );
 router.post(
   "/devices/receipt-settings/watch",

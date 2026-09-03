@@ -65,6 +65,33 @@ export interface PosDeviceSessionResult {
   server_time: Date;
 }
 
+export interface PosDeviceHeartbeatResult {
+  device: Omit<PosDevice, "credential_hash">;
+  server_time: Date;
+}
+
+export interface PosDeviceConfigVersions {
+  receipt_settings: number | null;
+  ticket_settings: number | null;
+  payment_settings: number | null;
+  customer_display_settings: number | null;
+}
+
+export interface PosDeviceConfigSyncResult {
+  versions: PosDeviceConfigVersions;
+  changed: {
+    receipt_settings: boolean;
+    ticket_settings: boolean;
+    payment_settings: boolean;
+    customer_display_settings: boolean;
+  };
+  receipt_settings: PosReceiptSettings | null;
+  ticket_settings: PosTicketSettings | null;
+  payment_settings: PosPaymentSettings | null;
+  customer_display_settings: PosCustomerDisplaySettingsView | null;
+  server_time: Date;
+}
+
 export interface PosReceiptSettingsWatchResult {
   changed: boolean;
   receipt_settings: PosReceiptSettings | null;
@@ -195,7 +222,14 @@ export interface PosReceiptSettings extends SoftDeletable {
   hotline: string;
   after_sales_text: string;
   footer_message: string;
+  /** Legacy input only. Persisted records use the Storage metadata below. */
   logo_data_url: string | null;
+  logo_storage_path: string | null;
+  logo_checksum_sha256: string | null;
+  logo_content_type: "image/jpeg" | "image/png" | "image/webp" | null;
+  logo_file_size_bytes: number | null;
+  /** Device-only URL; never persisted. */
+  logo_content_url?: string | null;
   logo_width_mm: number;
   logo_max_height_mm: number;
   logo_contrast_percent: number;
@@ -224,7 +258,14 @@ export interface PosTicketSettings extends SoftDeletable {
   subtitle: string;
   instructions: string;
   footer_message: string;
+  /** Legacy input only. Persisted records use the Storage metadata below. */
   logo_data_url: string | null;
+  logo_storage_path: string | null;
+  logo_checksum_sha256: string | null;
+  logo_content_type: "image/jpeg" | "image/png" | "image/webp" | null;
+  logo_file_size_bytes: number | null;
+  /** Device-only URL; never persisted. */
+  logo_content_url?: string | null;
   logo_width_mm: number;
   logo_max_height_mm: number;
   logo_contrast_percent: number;

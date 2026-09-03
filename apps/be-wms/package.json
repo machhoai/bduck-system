@@ -30,6 +30,8 @@
     "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts",
     "rebuild:user-access": "tsx --env-file=../../.env.local src/scripts/rebuildUserAccess.ts",
     "backfill:jpos-history": "tsx --env-file=../../.env.local src/scripts/backfillJoyworldPosOrdersProduction.ts",
+    "migrate:pos-settings-logos": "tsx --env-file=../../.env.local src/scripts/migratePosSettingsLogos.ts",
+    "migrate:pos-settings-logos:production": "tsx --env-file=../../.env.local src/scripts/migratePosSettingsLogosProduction.ts",
     "rollout:lm81-aeon-consolidation": "tsx --env-file=../../.env.local src/scripts/rolloutLm81AeonConsolidationProduction.ts"
   },
   "dependencies": {

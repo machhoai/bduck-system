@@ -6,10 +6,13 @@ import {
   changePosDeviceStatusSchema,
   createPosEnrollmentSchema,
   openPosDeviceSessionSchema,
+  posDeviceCredentialHeadersSchema,
   posDeviceParamsSchema,
+  posSettingsLogoParamsSchema,
   posWarehouseParamsSchema,
   savePosReceiptSettingsFromDeviceSchema,
   savePosTicketSettingsFromDeviceSchema,
+  syncPosDeviceConfigSchema,
   transferPosDeviceSchema,
   watchPosCustomerDisplaySettingsSchema,
   watchPosReceiptSettingsSchema,
@@ -25,12 +28,13 @@ import {
   transferPosDevice,
 } from "../../services/posDeviceService.js";
 import {
+  getPosSettingsLogoContent,
+  heartbeatPosDevice,
   openPosDeviceSession,
+  requireActivePosDevice,
   savePosReceiptSettingsFromDevice,
   savePosTicketSettingsFromDevice,
-  watchPosCustomerDisplaySettings,
-  watchPosReceiptSettings,
-  watchPosTicketSettings,
+  syncPosDeviceConfig,
 } from "../../services/posDeviceSessionService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -179,29 +183,89 @@ export const openPosDeviceSessionHandler = async (
   }
 };
 
+export const heartbeatPosDeviceHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = openPosDeviceSessionSchema.parse(req.body);
+    const result = await heartbeatPosDevice({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      appVersion: input.app_version,
+    });
+    return sendSuccess(res, result, {
+      vi: "Đã ghi nhận trạng thái máy POS.",
+      zh: "已记录 POS 设备状态。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const syncPosDeviceConfigHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = syncPosDeviceConfigSchema.parse(req.body);
+    const result = await syncPosDeviceConfig({
+      deviceId: input.device_id,
+      credential: input.device_credential,
+      knownVersions: input.known_versions,
+    });
+    return sendSuccess(res, result, {
+      vi: "Đã kiểm tra phiên bản cấu hình POS.",
+      zh: "已检查 POS 配置版本。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getPosSettingsLogoContentHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const headers = posDeviceCredentialHeadersSchema.parse(req.headers);
+    const params = posSettingsLogoParamsSchema.parse(req.params);
+    const content = await getPosSettingsLogoContent({
+      deviceId: headers["x-pos-device-id"],
+      credential: headers["x-pos-device-credential"],
+      kind: params.kind,
+      checksum: params.checksum,
+    });
+    res.setHeader("Content-Type", content.contentType);
+    res.setHeader("Content-Length", String(content.buffer.length));
+    res.setHeader("ETag", `"${content.checksum}"`);
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    return res.status(200).send(content.buffer);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
 export const watchPosReceiptSettingsHandler = async (
   req: Request,
   res: Response,
 ) => {
-  const abortController = new AbortController();
-  res.once("close", () => abortController.abort());
   try {
     const input = watchPosReceiptSettingsSchema.parse(req.body);
-    const result = await watchPosReceiptSettings({
+    await requireActivePosDevice({
       deviceId: input.device_id,
       credential: input.device_credential,
-      knownVersion: input.known_version,
-      signal: abortController.signal,
     });
-    if (abortController.signal.aborted || res.writableEnded) return;
-    return sendSuccess(res, result, {
-      vi: result.changed
-        ? "Đã nhận cấu hình hóa đơn POS mới."
-        : "Cấu hình hóa đơn POS chưa thay đổi.",
-      zh: result.changed ? "已收到新的 POS 小票配置。" : "POS 小票配置未变更。",
-    });
+    res.setHeader("Retry-After", "300");
+    return sendError(
+      res,
+      {
+        vi: "Kênh theo dõi cũ đã ngừng. Vui lòng cập nhật JPOS.",
+        zh: "旧版监听通道已停用，请更新 JPOS。",
+      },
+      410,
+    );
   } catch (error) {
-    if (abortController.signal.aborted || res.writableEnded) return;
     return handleError(res, error);
   }
 };
@@ -210,25 +274,22 @@ export const watchPosTicketSettingsHandler = async (
   req: Request,
   res: Response,
 ) => {
-  const abortController = new AbortController();
-  res.once("close", () => abortController.abort());
   try {
     const input = watchPosTicketSettingsSchema.parse(req.body);
-    const result = await watchPosTicketSettings({
+    await requireActivePosDevice({
       deviceId: input.device_id,
       credential: input.device_credential,
-      knownVersion: input.known_version,
-      signal: abortController.signal,
     });
-    if (abortController.signal.aborted || res.writableEnded) return;
-    return sendSuccess(res, result, {
-      vi: result.changed
-        ? "Đã nhận cấu hình vé POS mới."
-        : "Cấu hình vé POS chưa thay đổi.",
-      zh: result.changed ? "已收到新的 POS 票券配置。" : "POS 票券配置未更改。",
-    });
+    res.setHeader("Retry-After", "300");
+    return sendError(
+      res,
+      {
+        vi: "Kênh theo dõi cũ đã ngừng. Vui lòng cập nhật JPOS.",
+        zh: "旧版监听通道已停用，请更新 JPOS。",
+      },
+      410,
+    );
   } catch (error) {
-    if (abortController.signal.aborted || res.writableEnded) return;
     return handleError(res, error);
   }
 };
@@ -237,25 +298,22 @@ export const watchPosCustomerDisplaySettingsHandler = async (
   req: Request,
   res: Response,
 ) => {
-  const abortController = new AbortController();
-  res.once("close", () => abortController.abort());
   try {
     const input = watchPosCustomerDisplaySettingsSchema.parse(req.body);
-    const result = await watchPosCustomerDisplaySettings({
+    await requireActivePosDevice({
       deviceId: input.device_id,
       credential: input.device_credential,
-      knownVersion: input.known_version,
-      signal: abortController.signal,
     });
-    if (abortController.signal.aborted || res.writableEnded) return;
-    return sendSuccess(res, result, {
-      vi: result.changed
-        ? "Đã nhận playlist quảng cáo mới."
-        : "Playlist quảng cáo chưa thay đổi.",
-      zh: result.changed ? "已收到新的广告播放列表。" : "广告播放列表未变更。",
-    });
+    res.setHeader("Retry-After", "300");
+    return sendError(
+      res,
+      {
+        vi: "Kênh theo dõi cũ đã ngừng. Vui lòng cập nhật JPOS.",
+        zh: "旧版监听通道已停用，请更新 JPOS。",
+      },
+      410,
+    );
   } catch (error) {
-    if (abortController.signal.aborted || res.writableEnded) return;
     return handleError(res, error);
   }
 };

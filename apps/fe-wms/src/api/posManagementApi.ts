@@ -36,6 +36,11 @@ export type PosReceiptSettingsPayload = Omit<
   | "is_deleted"
   | "created_at"
   | "updated_at"
+  | "logo_storage_path"
+  | "logo_checksum_sha256"
+  | "logo_content_type"
+  | "logo_file_size_bytes"
+  | "logo_content_url"
 >;
 export type PosTicketSettingsPayload = Omit<
   PosTicketSettings,
@@ -46,6 +51,11 @@ export type PosTicketSettingsPayload = Omit<
   | "is_deleted"
   | "created_at"
   | "updated_at"
+  | "logo_storage_path"
+  | "logo_checksum_sha256"
+  | "logo_content_type"
+  | "logo_file_size_bytes"
+  | "logo_content_url"
 >;
 export type PosLuckyDrawSettingsPayload = PosLuckyDrawSettingsInput;
 export type PosProductVisibilitySettingsPayload =
