@@ -7,6 +7,10 @@ export const MARKETING_VOUCHER_CODES_COLLECTION =
 export const MARKETING_VOUCHER_JOBS_COLLECTION =
   "marketing_voucher_jobs" as const;
 export const MARKETING_VOUCHER_JOB_ITEMS_SUBCOLLECTION = "items" as const;
+export const MARKETING_VOUCHER_MIGRATIONS_COLLECTION =
+  "marketing_voucher_migrations" as const;
+export const MARKETING_VOUCHER_MIGRATION_REPORTS_COLLECTION =
+  "marketing_voucher_migration_reports" as const;
 export const MARKETING_VOUCHER_CODE_ALPHABET_SIZE = 32;
 
 export const getMarketingVoucherSafeCodeCapacity = (
@@ -88,6 +92,9 @@ export interface MarketingVoucherLegacyMetadata {
   source_total_issued?: number | null;
   purpose_defaulted?: boolean;
   source_actor_id?: string | null;
+  source_hash?: string;
+  source_image_sha256?: string | null;
+  target_image_sha256?: string | null;
 }
 
 export interface MarketingVoucherCampaign
@@ -278,4 +285,63 @@ export interface MarketingVoucherJobItem extends SoftDeletable, ISOTimestamped {
   last_error_message: string | null;
   brevo_message_id: string | null;
   completed_at: Date | null;
+}
+
+export const MARKETING_VOUCHER_MIGRATION_MODES = [
+  "DRY_RUN",
+  "APPLY",
+  "RESUME",
+  "VERIFY",
+  "RECONCILE",
+] as const;
+export type MarketingVoucherMigrationMode =
+  (typeof MARKETING_VOUCHER_MIGRATION_MODES)[number];
+
+export const MARKETING_VOUCHER_MIGRATION_STATUSES = [
+  "RUNNING",
+  "COMPLETED",
+  "FAILED",
+] as const;
+export type MarketingVoucherMigrationStatus =
+  (typeof MARKETING_VOUCHER_MIGRATION_STATUSES)[number];
+
+export interface MarketingVoucherMigrationCampaignReport {
+  campaign_id: string;
+  source_declared_total: number;
+  source_actual_total: number;
+  target_actual_total: number | null;
+  source_counts: MarketingVoucherCodeCounts;
+  target_counts: MarketingVoucherCodeCounts | null;
+  source_checksum: string;
+  target_checksum: string | null;
+  purpose_defaulted: boolean;
+  source_image_sha256: string | null;
+  target_image_sha256: string | null;
+  issues: string[];
+}
+
+export interface MarketingVoucherMigrationReport {
+  version: 1;
+  migration_id: string;
+  mode: MarketingVoucherMigrationMode;
+  status: MarketingVoucherMigrationStatus;
+  source_project_id: string;
+  target_project_id: string | null;
+  pii_redacted: boolean;
+  source_campaign_count: number;
+  target_campaign_count: number | null;
+  source_code_count: number;
+  target_code_count: number | null;
+  source_checksum: string;
+  target_checksum: string | null;
+  duplicate_or_conflicting_code_count: number;
+  image_success_count: number;
+  image_failure_count: number;
+  uat_campaign_ids: string[];
+  uat_passed: boolean | null;
+  uat_issues: string[];
+  campaigns: MarketingVoucherMigrationCampaignReport[];
+  issues: string[];
+  started_at: Date;
+  completed_at: Date;
 }

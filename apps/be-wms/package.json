@@ -21,6 +21,7 @@
     "test:marketing-vouchers-phase2": "tsx --env-file=../../.env.local --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts src/repositories/marketingVoucherRepositoryGuards.test.ts src/repositories/marketingVoucherRepository.emulator.test.ts",
     "test:marketing-vouchers-phase4": "tsx --env-file=../../.env.local --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherEmailRenderer.test.ts src/repositories/marketingVoucherEmailRepository.emulator.test.ts",
     "test:marketing-vouchers-phase5": "tsx --env-file=../../.env.local --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherWorkbookService.test.ts src/repositories/marketingVoucherExportRepository.emulator.test.ts",
+    "test:marketing-vouchers-phase6": "tsx --test src/scripts/marketingVoucherMigrationPolicy.test.ts src/scripts/marketingVoucherMigrationReportService.test.ts src/scripts/marketingVoucherMigration.emulator.test.ts",
     "test:security-foundation": "pnpm run test:facility-access-planner && pnpm run test:authorization && pnpm run test:identity-security && pnpm run test:scoped-query",
     "test:meinvoice-foundation": "tsx --test src/services/meInvoiceFoundation.test.ts src/services/meInvoiceStoreConfigValidation.test.ts src/services/invoiceOrderSyncService.test.ts",
     "test:customer-invoice-request": "tsx --test src/services/customerInvoiceRequest.test.ts src/repositories/invoiceCustomerRequestRepository.emulator.test.ts",
@@ -32,7 +33,8 @@
     "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts",
     "rebuild:user-access": "tsx --env-file=../../.env.local src/scripts/rebuildUserAccess.ts",
     "backfill:jpos-history": "tsx --env-file=../../.env.local src/scripts/backfillJoyworldPosOrdersProduction.ts",
-    "rollout:lm81-aeon-consolidation": "tsx --env-file=../../.env.local src/scripts/rolloutLm81AeonConsolidationProduction.ts"
+    "rollout:lm81-aeon-consolidation": "tsx --env-file=../../.env.local src/scripts/rolloutLm81AeonConsolidationProduction.ts",
+    "migrate:marketing-vouchers": "tsx --env-file=../../.env.local src/scripts/migrateMarketingVouchers.ts"
   },
   "dependencies": {
     "@bduck/shared-types": "workspace:*",

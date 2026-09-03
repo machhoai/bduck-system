@@ -68,4 +68,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Generated migration rehearsal reports (may contain production metadata)
+artifacts/marketing-voucher-migration/
+
 
