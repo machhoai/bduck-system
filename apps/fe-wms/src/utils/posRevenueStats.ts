@@ -1,3 +1,8 @@
+import {
+  resolveRevenueProductGroup,
+  type RevenueProductGroups,
+} from "@bduck/shared-types";
+
 import type {
   PaymentMethodMetric,
   RevenueDashboardData,
@@ -37,6 +42,7 @@ export function buildPosRevenueDashboardData(input: {
   filter: RevenueDashboardFilter;
   range: { startDate: string; endDate: string };
   generatedAt: string;
+  catalog?: RevenueProductGroups;
 }): RevenueDashboardData {
   const orders = [...getPaidPosOrders(input.records).values()];
   const summary = aggregatePosRevenueStats(orders);
@@ -61,7 +67,10 @@ export function buildPosRevenueDashboardData(input: {
       quantity: number;
       revenue: number;
       taxAmount: number;
-      items: Map<string, { quantity: number; revenue: number; taxAmount: number }>;
+      items: Map<
+        string,
+        { quantity: number; revenue: number; taxAmount: number }
+      >;
     }
   >();
 
@@ -104,8 +113,7 @@ export function buildPosRevenueDashboardData(input: {
     for (const rawItem of Array.isArray(order.items) ? order.items : []) {
       const item = asRecord(rawItem);
       const name = text(item.goodsName) ?? text(item.name) ?? "Sản phẩm";
-      const groupName =
-        text(item.categoryName) ?? text(item.goodsTypeName) ?? "Khác";
+      const groupName = resolveRevenueProductGroup(item, input.catalog);
       const quantity = toFiniteNumber(item.quantity ?? item.qty);
       const revenue = itemRevenue(item, quantity);
       const taxAmount = itemTaxAmount(item, quantity);
@@ -149,7 +157,10 @@ export function buildPosRevenueDashboardData(input: {
     previousValue: 0,
     changePercent: 0,
   });
-  const totalTax = orders.reduce((sum, order) => sum + orderTaxAmount(order), 0);
+  const totalTax = orders.reduce(
+    (sum, order) => sum + orderTaxAmount(order),
+    0,
+  );
   const paymentTotal = (category: RevenuePaymentCategory) =>
     paymentMethods
       .filter((item) => item.category === category)
@@ -166,8 +177,11 @@ export function buildPosRevenueDashboardData(input: {
       totalTax: value.taxAmount,
       amountBeforeTax: Math.max(0, value.revenue - value.taxAmount),
       orderCount: value.orderCount,
-  }));
-  const chartBuckets = new Map<string, { revenue: number; orderCount: number }>();
+    }));
+  const chartBuckets = new Map<
+    string,
+    { revenue: number; orderCount: number }
+  >();
   buildTimelineKeys(input.range, granularity).forEach((key) => {
     chartBuckets.set(key, { revenue: 0, orderCount: 0 });
   });
@@ -234,8 +248,8 @@ export function buildPosRevenueDashboardData(input: {
       .map(([groupName, group]) => ({
         groupName,
         quantity: group.quantity,
-      revenue: group.revenue,
-      taxAmount: group.taxAmount,
+        revenue: group.revenue,
+        taxAmount: group.taxAmount,
         items: [...group.items.entries()]
           .map(([name, item]) => ({ name, ...item }))
           .sort((left, right) => right.revenue - left.revenue),
@@ -243,8 +257,9 @@ export function buildPosRevenueDashboardData(input: {
       .sort((left, right) => right.revenue - left.revenue),
     deviceConsumptions: [],
     orders: orders.map((order) => ({
-      orderId: order.id,
-      orderNumber: text(order.hkOrderNumber) ?? text(order.localOrderId) ?? order.id,
+      orderId: `${text(order.warehouseId) ?? ""}:${text(order.localOrderId) ?? order.id}`,
+      orderNumber:
+        text(order.hkOrderNumber) ?? text(order.localOrderId) ?? order.id,
       status: 3,
       statusLabel: "Đã thanh toán",
       createTime: text(order.paidAt) ?? text(order.createdAt) ?? "",
@@ -260,34 +275,38 @@ export function buildPosRevenueDashboardData(input: {
       taxMoney: orderTaxAmount(order),
     })),
     soldItems: orders.flatMap((order) => {
-      const orderId = text(order.localOrderId) ?? order.id;
-      const orderNumber = text(order.hkOrderNumber) ?? orderId;
-      return (Array.isArray(order.items) ? order.items : []).map((rawItem, index) => {
-        const item = asRecord(rawItem);
-        const quantity = toFiniteNumber(item.quantity ?? item.qty);
-        const groupName = text(item.categoryName) ?? text(item.goodsTypeName) ?? "Other";
-        return {
-          id: `${orderId}-${text(item.goodsId) ?? index}`,
-          orderId,
-          orderNumber,
-          status: 3,
-          statusLabel: "PAID",
-          createTime: text(order.paidAt) ?? text(order.createdAt) ?? "",
-          employeeName: text(order.operatorName) ?? "JPOS",
-          payMethod: posPaymentMethod(order),
-          goodsName: text(item.goodsName) ?? text(item.name) ?? "Product",
-          goodsTypeName: groupName,
-          categoryName: groupName,
-          price: toFiniteNumber(item.price ?? item.unitPrice),
-          qty: quantity,
-          sysMoney: itemRevenue(item, quantity),
-          discountMoney: 0,
-          realMoney: itemRevenue(item, quantity),
-          cancelQty: 0,
-          cancelMoney: 0,
-          taxMoney: itemTaxAmount(item, quantity),
-        };
-      });
+      const localOrderId = text(order.localOrderId) ?? order.id;
+      const orderId = `${text(order.warehouseId) ?? ""}:${localOrderId}`;
+      const orderNumber = text(order.hkOrderNumber) ?? localOrderId;
+      return (Array.isArray(order.items) ? order.items : []).map(
+        (rawItem, index) => {
+          const item = asRecord(rawItem);
+          const quantity = toFiniteNumber(item.quantity ?? item.qty);
+          const groupName = resolveRevenueProductGroup(item, input.catalog);
+          return {
+            warehouseId: text(order.warehouseId) ?? undefined,
+            id: `${orderId}-${text(item.goodsId) ?? index}`,
+            orderId,
+            orderNumber,
+            status: 3,
+            statusLabel: "PAID",
+            createTime: text(order.paidAt) ?? text(order.createdAt) ?? "",
+            employeeName: text(order.operatorName) ?? "JPOS",
+            payMethod: posPaymentMethod(order),
+            goodsName: text(item.goodsName) ?? text(item.name) ?? "Product",
+            goodsTypeName: groupName,
+            categoryName: groupName,
+            price: toFiniteNumber(item.price ?? item.unitPrice),
+            qty: quantity,
+            sysMoney: itemRevenue(item, quantity),
+            discountMoney: 0,
+            realMoney: itemRevenue(item, quantity),
+            cancelQty: 0,
+            cancelMoney: 0,
+            taxMoney: itemTaxAmount(item, quantity),
+          };
+        },
+      );
     }),
     generatedAt: input.generatedAt,
   };

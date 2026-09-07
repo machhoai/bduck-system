@@ -61,11 +61,14 @@ export function resolvePosPayment(order: PosInvoiceOrderRecord): {
 }
 
 export function orderTaxAmount(order: PosInvoiceOrderRecord): number {
-  return (Array.isArray(order.items) ? order.items : []).reduce((sum, rawItem) => {
-    const item = asRecord(rawItem);
-    const quantity = finiteNumber(item.quantity ?? item.qty);
-    return sum + itemTaxAmount(item, quantity);
-  }, 0);
+  return (Array.isArray(order.items) ? order.items : []).reduce(
+    (sum, rawItem) => {
+      const item = asRecord(rawItem);
+      const quantity = finiteNumber(item.quantity ?? item.qty);
+      return sum + itemTaxAmount(item, quantity);
+    },
+    0,
+  );
 }
 
 export function itemTaxAmount(
@@ -143,12 +146,15 @@ export function buildProductGroups(groups: ProductGroups): TopProductGroup[] {
 export function vietnamDateKey(value: string): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Ho_Chi_Minh",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date);
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {

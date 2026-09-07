@@ -1,9 +1,13 @@
 export const REVENUE_DATA_SOURCES = ["OPEN_API", "LOCAL_POS"] as const;
 export type RevenueDataSource = (typeof REVENUE_DATA_SOURCES)[number];
 
+/** Selection marker; servers must resolve it to the authenticated user's stores. */
+export const ALL_REVENUE_WAREHOUSES = "ALL";
+
 export const REVENUE_EXPORT_REPORT_TYPES = [
   "DAILY_REVENUE",
   "SALES_COMPOSITION",
+  "INVOICE_PREPARATION",
 ] as const;
 export type RevenueExportReportType =
   (typeof REVENUE_EXPORT_REPORT_TYPES)[number];
@@ -118,6 +122,8 @@ export interface SoldOrderGoodsItem {
   cancelQty: number;
   cancelMoney: number;
   taxMoney?: number;
+  warehouseId?: string;
+  warehouseName?: string;
 }
 
 export interface RevenueDashboardData {
@@ -170,4 +176,6 @@ export interface RevenueExportRequest extends RevenueDashboardFilter {
   warehouseId: string;
   locale: "vi" | "zh";
   actionTime: string;
+  products?: import("./revenueProducts.js").RevenueExportProductSelection[];
+  roundMoney?: boolean;
 }

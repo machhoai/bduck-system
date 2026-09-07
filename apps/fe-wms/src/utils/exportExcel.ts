@@ -1,4 +1,10 @@
-import type { RevenueExportReportType } from "@bduck/shared-types";
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy generic exporter accepts multiple domain row shapes */
+import type {
+  RevenueExportReportType,
+  RevenueExportProductSelection,
+  RevenueExportProductOption,
+  RevenueDataSource,
+} from "@bduck/shared-types";
 import ExcelJS from "exceljs";
 
 const API_BASE_URL =
@@ -57,6 +63,8 @@ export interface ExportRequestOptions {
   locationId?: string;
   slotId?: string;
   reportType?: RevenueExportReportType;
+  products?: RevenueExportProductSelection[];
+  roundMoney?: boolean;
 }
 
 export interface WarehouseExportDialogConfig {
@@ -74,6 +82,11 @@ export interface RevenueExportDialogConfig {
   warehouseName?: string;
   sourceLabel?: string;
   rangeLabel?: string;
+  source?: RevenueDataSource;
+  contextKey?: string;
+  products?: RevenueExportProductOption[];
+  productsLoading?: boolean;
+  productsError?: string | null;
 }
 
 export type ExportDialogConfig =
@@ -150,7 +163,15 @@ const entityColorMap: Record<string, string> = {
 };
 
 export async function exportToExcel(config: ExportConfig): Promise<void> {
-  const { filename, columns, columnGroups, data, entityType, warehouseId, filters } = config;
+  const {
+    filename,
+    columns,
+    columnGroups,
+    data,
+    entityType,
+    warehouseId,
+    filters,
+  } = config;
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Data");
@@ -180,7 +201,9 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
 
     const groupedKeys = new Set<string>();
     for (const group of columnGroups) {
-      const fromIndex = columns.findIndex((column) => column.key === group.fromKey);
+      const fromIndex = columns.findIndex(
+        (column) => column.key === group.fromKey,
+      );
       const toIndex = columns.findIndex((column) => column.key === group.toKey);
       if (fromIndex < 0 || toIndex < 0) continue;
       for (let index = fromIndex; index <= toIndex; index += 1) {
@@ -222,7 +245,9 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
   data.forEach((row) => {
     const rowData: Record<string, any> = {};
     columns.forEach((col) => {
-      rowData[col.key] = col.format ? col.format(row[col.key], row) : row[col.key];
+      rowData[col.key] = col.format
+        ? col.format(row[col.key], row)
+        : row[col.key];
     });
     sheet.addRow(rowData);
   });

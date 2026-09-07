@@ -44,15 +44,21 @@ export function addTotalRow(
   row.getCell(1).value = label;
   sumColumns.forEach((column) => {
     const letter = sheet.getColumn(column).letter;
-    const result = dataLength > 0
-      ? Array.from({ length: dataLength }, (_, index) =>
-          Number(sheet.getCell(firstDataRow + index, column).value) || 0,
-        ).reduce((sum, value) => sum + value, 0)
-      : 0;
-    row.getCell(column).value = {
-      formula: `SUM(${letter}${firstDataRow}:${letter}${lastDataRow})`,
-      result,
-    };
+    const result =
+      dataLength > 0
+        ? Array.from(
+            { length: dataLength },
+            (_, index) =>
+              Number(sheet.getCell(firstDataRow + index, column).value) || 0,
+          ).reduce((sum, value) => sum + value, 0)
+        : 0;
+    row.getCell(column).value =
+      dataLength === 0
+        ? 0
+        : {
+            formula: `SUM(${letter}${firstDataRow}:${letter}${lastDataRow})`,
+            result,
+          };
   });
   row.height = 26;
   row.eachCell({ includeEmpty: true }, (cell) => {
@@ -82,7 +88,11 @@ export function finishTable(sheet: ExcelJS.Worksheet, columnCount: number) {
   sheet.pageSetup.printTitlesRow = "1:2";
 }
 
-export function title(sheet: ExcelJS.Worksheet, value: string, columns: number) {
+export function title(
+  sheet: ExcelJS.Worksheet,
+  value: string,
+  columns: number,
+) {
   sheet.mergeCells(1, 1, 1, columns);
   const cell = sheet.getCell(1, 1);
   cell.value = value;
@@ -116,7 +126,9 @@ export function styleMetricValue(cell: ExcelJS.Cell) {
   cell.alignment = { vertical: "middle", horizontal: "right" };
 }
 
-export function sheetOptions(fitToWidth: number): Partial<ExcelJS.AddWorksheetOptions> {
+export function sheetOptions(
+  fitToWidth: number,
+): Partial<ExcelJS.AddWorksheetOptions> {
   return {
     properties: { defaultRowHeight: 21 },
     pageSetup: {

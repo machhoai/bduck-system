@@ -7,6 +7,7 @@ import {
   listAvailableOpenApiWarehouseIds,
   resolveRevenueWarehouseId,
 } from "../../services/revenueSourceDashboardService.js";
+import { getAuthorizedRevenueWarehouseIds } from "../../services/revenueWarehouseScope.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
@@ -77,13 +78,19 @@ export const getRevenueDashboardHandler = async (
       query.warehouseId || LANDMARK_81_WAREHOUSE_ID,
     );
 
-    requireRequestAuthorization(req).assert("revenue.read", warehouseId);
+    const warehouseIds = getAuthorizedRevenueWarehouseIds(
+      requireRequestAuthorization(req),
+      query.source,
+      warehouseId,
+      "revenue.read",
+    );
     const user = requireAuthenticatedRequestUser(req);
     const data = await getRevenueSourceDashboardData(
       {
         source: query.source,
         mode: query.mode,
         warehouseId,
+        warehouseIds,
         date: query.date,
         month: query.month,
         year: query.year,

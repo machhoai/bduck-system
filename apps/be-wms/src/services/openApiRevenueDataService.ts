@@ -4,7 +4,10 @@ import type {
   TopProductGroup,
 } from "@bduck/shared-types";
 
-import { loadLocalTaxByDate, type RevenuePeriodData } from "./localRevenueDataService.js";
+import {
+  loadLocalTaxByDate,
+  type RevenuePeriodData,
+} from "./localRevenueDataService.js";
 import { getOpenApiConfig } from "./openApiConfigService.js";
 import {
   allocateOpenApiPaymentChannels,
@@ -22,16 +25,18 @@ export async function loadOpenApiRevenuePeriod(
   warehouseId: string,
   range: RevenueDateRange,
 ): Promise<RevenuePeriodData> {
-  const [revenueResponse, goodsResponse, taxByDate, config] = await Promise.all([
-    getOpenApiRevenueData(warehouseId, range.startDate, range.endDate),
-    getOpenApiGoodsStatisticsForRange(
-      warehouseId,
-      range.startDate,
-      range.endDate,
-    ),
-    loadLocalTaxByDate(warehouseId, range),
-    getOpenApiConfig(warehouseId),
-  ]);
+  const [revenueResponse, goodsResponse, taxByDate, config] = await Promise.all(
+    [
+      getOpenApiRevenueData(warehouseId, range.startDate, range.endDate),
+      getOpenApiGoodsStatisticsForRange(
+        warehouseId,
+        range.startDate,
+        range.endDate,
+      ),
+      loadLocalTaxByDate(warehouseId, range),
+      getOpenApiConfig(warehouseId),
+    ],
+  );
   const mapping = normalizeOpenApiPaymentMapping(
     config?.payment_channel_mapping ?? {},
   );
@@ -49,7 +54,11 @@ export async function loadOpenApiRevenuePeriod(
     const date = firstText(row, ["forDate", "date"]);
     const daily = rowsByDate.get(date);
     if (!daily) continue;
-    const total = firstNumber(row, ["realMoney", "shopRealMoney", "totalMoney"]);
+    const total = firstNumber(row, [
+      "realMoney",
+      "shopRealMoney",
+      "totalMoney",
+    ]);
     const channels = allocateOpenApiPaymentChannels(row, mapping, total);
     const categoryTotal = (category: RevenuePaymentCategory) =>
       channels
@@ -63,12 +72,20 @@ export async function loadOpenApiRevenuePeriod(
     daily.amountBeforeTax = Math.max(0, daily.totalRevenue - daily.totalTax);
 
     for (const channel of channels) {
-      addPayment(paymentBuckets, channel.method, channel.category, channel.amount);
+      addPayment(
+        paymentBuckets,
+        channel.method,
+        channel.category,
+        channel.amount,
+      );
     }
   }
 
   const dailyRows = [...rowsByDate.values()];
-  const totalRevenue = dailyRows.reduce((sum, row) => sum + row.totalRevenue, 0);
+  const totalRevenue = dailyRows.reduce(
+    (sum, row) => sum + row.totalRevenue,
+    0,
+  );
   return {
     dailyRows,
     paymentMethods: [...paymentBuckets.entries()]
@@ -77,8 +94,7 @@ export async function loadOpenApiRevenuePeriod(
         category: value.category,
         amount: value.amount,
         orderCount: 0,
-        percentage:
-          totalRevenue > 0 ? (value.amount / totalRevenue) * 100 : 0,
+        percentage: totalRevenue > 0 ? (value.amount / totalRevenue) * 100 : 0,
       }))
       .filter((item) => item.amount > 0)
       .sort((left, right) => right.amount - left.amount),
@@ -92,17 +108,32 @@ function parseProductGroups(response: JsonRecord): TopProductGroup[] {
   return extractRows(response)
     .map((rawGroup) => {
       const groupName =
-        firstText(rawGroup, ["goodsTypeName", "goodsCategory", "groupName"]) ||
-        "Other";
-      const items = (Array.isArray(rawGroup.goodsItems)
-        ? rawGroup.goodsItems
-        : []
+        firstText(rawGroup, [
+          "goodsTypeName",
+          "goodsCategory",
+          "groupName",
+          "categoryName",
+          "showCategoryName",
+          "typeName",
+        ]) || "Khác";
+      const items = (
+        Array.isArray(rawGroup.goodsItems) ? rawGroup.goodsItems : []
       ).map((raw) => {
         const item = asRecord(raw);
         return {
-          name: firstText(item, ["goodsName", "productName", "name"]) || "Product",
-          quantity: firstNumber(item, ["realQty", "totalQty", "qty", "quantity"]),
-          revenue: firstNumber(item, ["realMoney", "totalRealMoney", "totalMoney"]),
+          name:
+            firstText(item, ["goodsName", "productName", "name"]) || "Product",
+          quantity: firstNumber(item, [
+            "realQty",
+            "totalQty",
+            "qty",
+            "quantity",
+          ]),
+          revenue: firstNumber(item, [
+            "realMoney",
+            "totalRealMoney",
+            "totalMoney",
+          ]),
           taxAmount: 0,
         };
       });
@@ -112,8 +143,11 @@ function parseProductGroups(response: JsonRecord): TopProductGroup[] {
           firstNumber(rawGroup, ["totalRealQty", "realQty", "totalQty"]) ||
           items.reduce((sum, item) => sum + item.quantity, 0),
         revenue:
-          firstNumber(rawGroup, ["totalRealMoney", "realMoney", "totalMoney"]) ||
-          items.reduce((sum, item) => sum + item.revenue, 0),
+          firstNumber(rawGroup, [
+            "totalRealMoney",
+            "realMoney",
+            "totalMoney",
+          ]) || items.reduce((sum, item) => sum + item.revenue, 0),
         taxAmount: 0,
         items: items.sort((left, right) => right.revenue - left.revenue),
       };

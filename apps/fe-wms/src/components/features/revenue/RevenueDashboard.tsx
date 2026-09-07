@@ -4,7 +4,7 @@ import type {
   RevenueDashboardData,
   RevenueDataSource,
 } from "@bduck/shared-types";
-import { BarChart3, Building2 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -12,8 +12,6 @@ import {
   getRevenueChartAnchorDate,
   type RevenueChartRange,
 } from "@/hooks/revenueChartRange";
-import { useExternalStoreBindings } from "@/hooks/useExternalStoreBindings";
-import { useOpenApiRevenueWarehouses } from "@/hooks/useOpenApiRevenueWarehouses";
 import { usePosRevenueStats } from "@/hooks/usePosRevenueStats";
 import {
   buildRevenueComparisonFilters,
@@ -27,7 +25,8 @@ import {
   type RevenueDashboardFilter,
 } from "@/hooks/useRevenueDashboard";
 import { useRevenueExportRegistration } from "@/hooks/useRevenueExportRegistration";
-import { useStores } from "@/hooks/useWarehouses";
+import { useRevenueProductGroups } from "@/hooks/useRevenueProductGroups";
+import { useRevenueStoreSelection } from "@/hooks/useRevenueStoreSelection";
 import { useTranslation } from "@/lib/i18n";
 
 import RevenueCharts from "./RevenueCharts";
@@ -40,6 +39,7 @@ import RevenueDateFilter from "./RevenueDateFilter";
 import RevenueKpiGrid from "./RevenueKpiGrid";
 import RevenueOrderExplorer from "./RevenueOrderExplorer";
 import RevenueSourceTabs from "./RevenueSourceTabs";
+import RevenueWarehouseSelect from "./RevenueWarehouseSelect";
 import TopProductsByGroup from "./TopProductsByGroup";
 
 export default function RevenueDashboard() {
@@ -49,64 +49,26 @@ export default function RevenueDashboard() {
   const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
     getDefaultRevenueFilter(),
   );
-  const [chartRange, setChartRange] =
-    useState<RevenueChartRange>("last7");
+  const [chartRange, setChartRange] = useState<RevenueChartRange>("last7");
   const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
     getDefaultRevenueComparison(getDefaultRevenueFilter()),
   );
-  const [selectedWarehouses, setSelectedWarehouses] = useState<
-    Partial<Record<RevenueDataSource, string>>
-  >({});
-  const { stores, loading: storesLoading } = useStores();
-  const {
-    bindings,
-    loading: bindingsLoading,
-    error: bindingsError,
-  } = useExternalStoreBindings();
-  const {
-    warehouseIds: openApiWarehouseIds,
-    loading: openApiWarehousesLoading,
-    error: openApiWarehousesError,
-  } = useOpenApiRevenueWarehouses();
-
-  const openApiStores = useMemo(() => {
-    if (bindingsError || openApiWarehousesError) return [];
-    const configuredIds = new Set(openApiWarehouseIds);
-    return stores.filter((store) => {
-      const binding = bindings.find(
-        (item) =>
-          item.source_system === "JOYWORLD_LEGACY" &&
-          item.member_warehouse_ids.includes(store.id),
-      );
-      const canonicalId = binding?.canonical_warehouse_id ?? store.id;
-      return canonicalId === store.id && configuredIds.has(canonicalId);
-    });
-  }, [
-    bindings,
-    bindingsError,
-    openApiWarehouseIds,
-    openApiWarehousesError,
-    stores,
-  ]);
-  const sourceStores = source === "OPEN_API" ? openApiStores : stores;
-  const selectedWarehouseId = selectedWarehouses[source] ?? "";
-  const activeWarehouseId = sourceStores.some(
-    (store) => store.id === selectedWarehouseId,
-  )
-    ? selectedWarehouseId
-    : (sourceStores[0]?.id ?? "");
-  const activeStore = sourceStores.find(
-    (store) => store.id === activeWarehouseId,
+  const storeSelection = useRevenueStoreSelection(source);
+  const { activeWarehouseId, activeWarehouseName, localWarehouseIds } =
+    storeSelection;
+  const productCatalog = useRevenueProductGroups(
+    activeWarehouseId,
+    source === "LOCAL_POS" && Boolean(activeWarehouseId),
   );
-
   const openApiDashboard = useRevenueDashboard(filter, {
     source: "OPEN_API",
     warehouseId: activeWarehouseId,
     enabled: source === "OPEN_API" && Boolean(activeWarehouseId),
   });
   const localDashboard = usePosRevenueStats(
-    source === "LOCAL_POS" && activeWarehouseId ? [activeWarehouseId] : [],
+    localWarehouseIds,
     filter,
+    productCatalog.groups,
   );
   const chartFilter = useMemo(
     () => buildRevenueChartRangeFilter(filter, chartRange),
@@ -117,16 +79,13 @@ export default function RevenueDashboard() {
     source: "OPEN_API",
     warehouseId: activeWarehouseId,
     enabled:
-      chartRangeEnabled &&
-      source === "OPEN_API" &&
-      Boolean(activeWarehouseId),
+      chartRangeEnabled && source === "OPEN_API" && Boolean(activeWarehouseId),
     keepPreviousData: true,
   });
   const localChartDashboard = usePosRevenueStats(
-    chartRangeEnabled && source === "LOCAL_POS" && activeWarehouseId
-      ? [activeWarehouseId]
-      : [],
+    chartRangeEnabled ? localWarehouseIds : [],
     chartFilter,
+    productCatalog.groups,
   );
   const comparisonFilters = useMemo(
     () => buildRevenueComparisonFilters(filter, comparison),
@@ -136,6 +95,8 @@ export default function RevenueDashboard() {
     activeWarehouseId ? comparisonFilters : [],
     activeWarehouseId,
     source,
+    localWarehouseIds,
+    productCatalog.groups,
   );
   const comparisonLabels = useMemo(
     () => getRevenueComparisonLabels(comparisonFilters),
@@ -152,10 +113,10 @@ export default function RevenueDashboard() {
       rawData
         ? {
             ...rawData,
-            warehouseName: rawData.warehouseName || activeStore?.name || "",
+            warehouseName: rawData.warehouseName || activeWarehouseName || "",
           }
         : null,
-    [activeStore?.name, rawData],
+    [activeWarehouseName, rawData],
   );
   const chartRawData =
     source === "OPEN_API"
@@ -177,22 +138,25 @@ export default function RevenueDashboard() {
       ? openApiChartDashboard.loading || openApiChartDashboard.syncing
       : localChartDashboard.loading);
   const loading =
-    storesLoading ||
-    (source === "OPEN_API"
-      ? bindingsLoading || openApiWarehousesLoading || openApiDashboard.loading
-      : localDashboard.loading);
+    storeSelection.loading ||
+    productCatalog.loading ||
+    (source === "OPEN_API" ? openApiDashboard.loading : localDashboard.loading);
   const syncing = openApiDashboard.syncing || comparisons.syncing;
   const error =
     source === "OPEN_API"
-      ? openApiWarehousesError || openApiDashboard.error
-      : localDashboard.error;
+      ? storeSelection.error || openApiDashboard.error
+      : storeSelection.error || productCatalog.error || localDashboard.error;
 
   useRevenueExportRegistration({
     source,
     warehouseId: activeWarehouseId,
-    warehouseName: activeStore?.name,
+    warehouseName: activeWarehouseName,
+    warehouseIds: source === "LOCAL_POS" ? localWarehouseIds : undefined,
     rangeLabel: getRevenueComparisonLabel(filter) || data?.range.label,
     filter,
+    dashboard: data,
+    loading,
+    error,
   });
 
   const handleChartPointClick = (key: string) => {
@@ -224,42 +188,12 @@ export default function RevenueDashboard() {
       <section className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
         <RevenueSourceTabs value={source} onChange={setSource} />
 
-        <label className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-3 shadow-sm">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-card)] text-[var(--color-text-muted)]">
-            <Building2 size={16} aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xxs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              {copy.filters.warehouse}
-            </span>
-            <select
-              aria-label={copy.filters.warehouse}
-              value={activeWarehouseId}
-              disabled={loading || sourceStores.length === 0}
-              onChange={(event) =>
-                setSelectedWarehouses((current) => ({
-                  ...current,
-                  [source]: event.target.value,
-                }))
-              }
-              className="mt-0.5 h-6 w-full min-w-0 appearance-none bg-transparent text-sm font-semibold text-[var(--color-text-primary)] outline-none disabled:opacity-60"
-            >
-              {sourceStores.length === 0 && (
-                <option value="">{copy.filters.noWarehouse}</option>
-              )}
-              {sourceStores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {source === "OPEN_API"
-                    ? bindings.find(
-                        (binding) =>
-                          binding.canonical_warehouse_id === store.id,
-                      )?.display_name || store.name
-                    : store.name}
-                </option>
-              ))}
-            </select>
-          </span>
-        </label>
+        <RevenueWarehouseSelect
+          options={storeSelection.options}
+          value={activeWarehouseId}
+          disabled={storeSelection.loading}
+          onChange={storeSelection.selectWarehouse}
+        />
       </section>
 
       {activeWarehouseId && (
@@ -312,9 +246,7 @@ export default function RevenueDashboard() {
             comparisonCount={comparisons.data.length}
             onPointClick={handleChartPointClick}
             chartRange={chartRangeEnabled ? chartRange : undefined}
-            onChartRangeChange={
-              chartRangeEnabled ? setChartRange : undefined
-            }
+            onChartRangeChange={chartRangeEnabled ? setChartRange : undefined}
             chartLoading={chartLoading}
           />
           <TopProductsByGroup groups={data.topProductGroups} />

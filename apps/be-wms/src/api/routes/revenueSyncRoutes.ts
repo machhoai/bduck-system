@@ -14,6 +14,7 @@ import {
   getRevenueDashboardHandler,
 } from "../controllers/revenueDashboardController.js";
 import { exportRevenueHandler } from "../controllers/revenueExportController.js";
+import { getRevenueProductGroupsHandler } from "../controllers/revenueProductController.js";
 import {
   syncRevenueHandler,
   syncPartnerPosOrdersHandler,
@@ -26,6 +27,12 @@ import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 const router: ExpressRouter = Router();
 
 router.use(requireAuth);
+
+router.get(
+  "/product-groups",
+  requireAnyScopedPermission("revenue.read"),
+  getRevenueProductGroupsHandler,
+);
 
 router.get(
   "/openapi-warehouses",

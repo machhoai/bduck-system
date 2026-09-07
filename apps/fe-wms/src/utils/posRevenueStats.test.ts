@@ -9,9 +9,24 @@ import {
 
 test("JPOS revenue stats include paid orders and de-duplicate local ids", () => {
   const result = aggregatePosRevenueStats([
-    { id: "1", localOrderId: "order-1", status: "SYNC_SUCCESS", totalAmount: 120_000 },
-    { id: "2", localOrderId: "order-2", status: "LOCAL_PAID", totalAmount: 80_000 },
-    { id: "3", localOrderId: "order-1", status: "SYNC_SUCCESS", totalAmount: 120_000 },
+    {
+      id: "1",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 120_000,
+    },
+    {
+      id: "2",
+      localOrderId: "order-2",
+      status: "LOCAL_PAID",
+      totalAmount: 80_000,
+    },
+    {
+      id: "3",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 120_000,
+    },
     { id: "4", localOrderId: "draft", status: "DRAFT", totalAmount: 500_000 },
   ]);
 
@@ -53,6 +68,48 @@ test("JPOS revenue stats ignore invalid totals", () => {
       { id: "1", status: "SYNC_SUCCESS", totalAmount: "invalid" },
     ]),
     { totalRevenue: 0, totalOrders: 0, averageOrderValue: 0 },
+  );
+});
+
+test("all-store dashboard keeps unique item/order references across stores", () => {
+  const dashboard = buildPosRevenueDashboardData({
+    records: ["a", "b"].map((warehouseId) => ({
+      id: `${warehouseId}-document`,
+      warehouseId,
+      localOrderId: "same-order",
+      status: "LOCAL_PAID",
+      totalAmount: warehouseId === "a" ? 100_000 : 300_000,
+      paidAt: "2026-09-06T03:00:00.000Z",
+      paymentMethodId: "CASH",
+      items: [
+        {
+          goodsId: "ticket",
+          goodsName: "Vé",
+          quantity: 1,
+          price: warehouseId === "a" ? 100_000 : 300_000,
+        },
+      ],
+    })),
+    warehouseId: "ALL",
+    filter: {
+      mode: "date",
+      date: "2026-09-06",
+      month: "2026-09",
+      year: "2026",
+      startDate: "2026-09-06",
+      endDate: "2026-09-06",
+    },
+    range: { startDate: "2026-09-06", endDate: "2026-09-06" },
+    generatedAt: "2026-09-06T04:00:00.000Z",
+  });
+  assert.equal(dashboard.stats.totalRevenue.value, 400_000);
+  assert.equal(dashboard.stats.averageOrderValue.value, 200_000);
+  assert.equal(dashboard.charts.points[0].revenue, 400_000);
+  assert.equal(dashboard.topProductGroups[0].revenue, 400_000);
+  assert.equal(new Set(dashboard.soldItems.map((item) => item.id)).size, 2);
+  assert.deepEqual(
+    dashboard.soldItems.map((item) => item.orderId),
+    dashboard.orders.map((order) => order.orderId),
   );
 });
 

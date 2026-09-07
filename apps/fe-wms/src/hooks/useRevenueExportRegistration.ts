@@ -2,7 +2,9 @@ import type {
   RevenueDashboardFilter,
   RevenueDataSource,
   RevenueExportRequest,
+  RevenueDashboardData,
 } from "@bduck/shared-types";
+import { getRevenueProductKey } from "@bduck/shared-types";
 import { useMemo } from "react";
 
 import { useTranslation } from "@/lib/i18n";
@@ -15,22 +17,33 @@ import { useExportRegistration } from "./useExportRegistration";
 interface RevenueExportRegistrationOptions {
   source: RevenueDataSource;
   warehouseId: string;
+  warehouseIds?: readonly string[];
   warehouseName?: string;
   rangeLabel?: string;
   filter: RevenueDashboardFilter;
+  dashboard?: RevenueDashboardData | null;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export function useRevenueExportRegistration({
   source,
   warehouseId,
+  warehouseIds,
   warehouseName,
   rangeLabel,
   filter,
+  dashboard,
+  loading,
+  error,
 }: RevenueExportRegistrationOptions) {
   const { t, lang } = useTranslation();
   const copy = t.revenue.export;
+  const userId = useUserStore((state) => state.user?.id ?? "");
   const canExport = useUserStore((state) =>
-    state.hasPermission("revenue.export", warehouseId),
+    (warehouseIds?.length ? warehouseIds : [warehouseId]).every((id) =>
+      state.hasPermission("revenue.export", id),
+    ),
   );
 
   const config = useMemo<RegisteredExportConfig | null>(() => {
@@ -49,6 +62,25 @@ export function useRevenueExportRegistration({
             ? t.revenue.sources.openApi
             : t.revenue.sources.localPos,
         rangeLabel,
+        source,
+        contextKey: JSON.stringify([
+          userId,
+          source,
+          warehouseId,
+          warehouseIds,
+          filter,
+        ]),
+        products: (dashboard?.topProductGroups ?? []).flatMap((group) =>
+          group.items.map((item) => ({
+            key: getRevenueProductKey(group.groupName, item.name),
+            name: item.name,
+            groupName: group.groupName,
+            quantity: item.quantity,
+            revenue: item.revenue,
+          })),
+        ),
+        productsLoading: loading,
+        productsError: error,
       },
       toast: {
         loading: copy.loading,
@@ -58,7 +90,7 @@ export function useRevenueExportRegistration({
         errorDescription: copy.errorDescription,
         retry: copy.retry,
       },
-      execute: async ({ reportType }) => {
+      execute: async ({ reportType, products, roundMoney }) => {
         if (!reportType) throw new Error(copy.selectReportType);
 
         const request: RevenueExportRequest = {
@@ -68,6 +100,9 @@ export function useRevenueExportRegistration({
           reportType,
           locale: lang === "zh" ? "zh" : "vi",
           actionTime: new Date().toISOString(),
+          products: reportType === "DAILY_REVENUE" ? undefined : products,
+          roundMoney:
+            reportType === "INVOICE_PREPARATION" ? roundMoney : undefined,
         };
         await downloadRevenueExport(request, copy.errorDescription);
       },
@@ -83,6 +118,11 @@ export function useRevenueExportRegistration({
     t.revenue.sources.openApi,
     warehouseId,
     warehouseName,
+    warehouseIds,
+    dashboard,
+    loading,
+    error,
+    userId,
   ]);
 
   useExportRegistration(config);

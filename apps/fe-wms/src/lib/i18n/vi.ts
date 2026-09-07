@@ -1,6 +1,8 @@
 /**
  * Vietnamese dictionary - ERP WMS Layout
  */
+import { revenueExportVi } from "./revenueExportTranslations";
+
 const vi = {
     nav: {
         dashboard: "Trang chủ",
@@ -134,6 +136,7 @@ const vi = {
             noConfiguredWarehouse: "Chưa có cửa hàng được cấu hình OpenAPI",
         },
         export: {
+            ...revenueExportVi,
             button: "Xuất dữ liệu",
             modalTitle: "Xuất báo cáo doanh thu",
             modalDescription:
@@ -181,6 +184,7 @@ const vi = {
             warehouse: "Cửa hàng",
             selectWarehouse: "Chọn cửa hàng",
             noWarehouse: "Chưa có cửa hàng",
+            allWarehouses: "Tất cả cửa hàng",
             date: "Ngày",
             month: "Tháng",
             year: "Năm",

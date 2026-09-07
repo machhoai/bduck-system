@@ -1,15 +1,20 @@
-import type {
-  RevenueDashboardData,
-  RevenueDataSource,
+import {
+  ALL_REVENUE_WAREHOUSES,
+  type RevenueDashboardData,
+  type RevenueDataSource,
 } from "@bduck/shared-types";
 import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "../config/firebase.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
 
+import { authorizationError } from "./authorization/authorizationError.js";
 import { resolveCanonicalExternalWarehouseId } from "./externalStoreBindingService.js";
 import { loadLocalRevenuePeriod } from "./localRevenueDataService.js";
-import { getOpenApiConfig, listOpenApiConfigs } from "./openApiConfigService.js";
+import {
+  getOpenApiConfig,
+  listOpenApiConfigs,
+} from "./openApiConfigService.js";
 import { loadOpenApiRevenuePeriod } from "./openApiRevenueDataService.js";
 import { buildRevenueDashboard } from "./revenueDashboardBuilder.js";
 import { LANDMARK_81_WAREHOUSE_ID } from "./revenueDashboardService.js";
@@ -25,6 +30,8 @@ const CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 export interface RevenueSourceDashboardQuery extends RevenueDashboardQuery {
   source: RevenueDataSource;
   warehouseId?: string;
+  /** Trusted IDs supplied only after controller authorization, never from query/body. */
+  warehouseIds?: string[];
 }
 
 export async function resolveRevenueWarehouseId(
@@ -86,6 +93,13 @@ export async function getRevenueSourceDashboardData(
     query.warehouseId,
   );
   const canonicalQuery = { ...query, warehouseId };
+  const allStores = warehouseId === ALL_REVENUE_WAREHOUSES;
+  if (
+    allStores &&
+    (query.source !== "LOCAL_POS" || !query.warehouseIds?.length)
+  ) {
+    throw authorizationError("AUTHORIZATION_DENIED");
+  }
   const cacheKey = getRevenueSourceCacheKey(canonicalQuery, warehouseId);
   const cacheRef = db.collection(CACHE_COLLECTION).doc(cacheKey);
 
@@ -104,26 +118,41 @@ export async function getRevenueSourceDashboardData(
 
   const range = normalizeRevenueRange(canonicalQuery);
   const comparisonRange = previousRevenueRange(canonicalQuery, range);
-  const loader =
+  const warehouseIds = allStores ? query.warehouseIds! : [warehouseId];
+  const loader = (period: typeof range) =>
     query.source === "OPEN_API"
-      ? loadOpenApiRevenuePeriod
-      : loadLocalRevenuePeriod;
-  const warehouse = await warehouseRepository.findById(warehouseId);
+      ? loadOpenApiRevenuePeriod(warehouseId, period)
+      : loadLocalRevenuePeriod(warehouseIds, period);
+  const warehouses = await warehouseRepository.findWarehousesScoped({
+    isSystemAdmin: false,
+    facilityIds: warehouseIds,
+  });
   const [current, previous] = await Promise.all([
-    loader(warehouseId, range),
-    loader(warehouseId, comparisonRange),
+    loader(range),
+    loader(comparisonRange),
   ]);
   const dashboard = buildRevenueDashboard({
     source: query.source,
     taxSource: "LOCAL_POS",
     warehouseId,
-    warehouseName: warehouse?.name ?? warehouseId,
+    warehouseName:
+      warehouses.map((warehouse) => warehouse.name).join(", ") || warehouseId,
     mode: query.mode,
     range,
     comparisonRange,
     current,
     previous,
   });
+  const warehouseNames = new Map(
+    warehouses.map((warehouse) => [warehouse.id, warehouse.name]),
+  );
+  dashboard.soldItems = dashboard.soldItems.map((item) => ({
+    ...item,
+    warehouseName:
+      warehouseNames.get(item.warehouseId ?? warehouseId) ??
+      item.warehouseId ??
+      warehouseId,
+  }));
 
   if (query.source === "OPEN_API") {
     await cacheRef.set(

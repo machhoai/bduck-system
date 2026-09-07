@@ -1,14 +1,17 @@
 "use client";
 
 import type { RevenueExportReportType } from "@bduck/shared-types";
-import { CalendarRange, Download, PackageSearch, Store, X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { Download, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 
+import { useRevenueExportProducts } from "@/hooks/useRevenueExportProducts";
 import { useTranslation } from "@/lib/i18n";
 import type {
   ExportRequestOptions,
   RevenueExportDialogConfig,
 } from "@/utils/exportExcel";
+
+import { RevenueExportProductEditor } from "./RevenueExportProductEditor";
 
 interface RevenueExportModalProps {
   isOpen: boolean;
@@ -18,8 +21,13 @@ interface RevenueExportModalProps {
   onSubmit: (options: ExportRequestOptions) => Promise<void>;
 }
 
-export function RevenueExportModal({
-  isOpen,
+export function RevenueExportModal(props: RevenueExportModalProps) {
+  return props.isOpen ? (
+    <RevenueExportForm key={props.config.contextKey} {...props} />
+  ) : null;
+}
+
+function RevenueExportForm({
   config,
   isExporting,
   onClose,
@@ -29,61 +37,107 @@ export function RevenueExportModal({
   const copy = t.revenue.export;
   const titleId = useId();
   const descriptionId = useId();
+  const dialog = useRef<HTMLElement>(null);
   const [reportType, setReportType] =
     useState<RevenueExportReportType>("DAILY_REVENUE");
+  const [roundMoney, setRoundMoney] = useState(false);
+  const products = config.products ?? [];
+  const editor = useRevenueExportProducts(
+    products,
+    config.source ?? "LOCAL_POS",
+  );
+  const hasProducts = reportType !== "DAILY_REVENUE";
+  const disabled =
+    isExporting ||
+    (hasProducts &&
+      (Boolean(config.productsLoading || config.productsError) ||
+        editor.preferencesLoading ||
+        !editor.selected.length));
 
   useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isExporting) onClose();
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog.current?.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+      previous?.focus();
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isExporting, isOpen, onClose]);
-
-  if (!isOpen) return null;
-
+  }, []);
   const options = [
     {
       value: "DAILY_REVENUE" as const,
       label: copy.dailyRevenue,
       description: copy.dailyRevenueDescription,
-      icon: CalendarRange,
+      disabled: false,
     },
     {
       value: "SALES_COMPOSITION" as const,
       label: copy.salesComposition,
       description: copy.salesCompositionDescription,
-      icon: PackageSearch,
+      disabled: false,
+    },
+    {
+      value: "INVOICE_PREPARATION" as const,
+      label: copy.invoicePreparation,
+      description:
+        config.source === "LOCAL_POS"
+          ? copy.invoicePreparationDescription
+          : copy.invoiceLocalOnly,
+      disabled: config.source !== "LOCAL_POS",
     },
   ];
-
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isExporting) onClose();
       }}
     >
       <section
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="w-full max-w-xl overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-border-subtle)] bg-white shadow-2xl"
+        className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl outline-none sm:rounded-2xl"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !isExporting) onClose();
+          if (event.key !== "Tab") return;
+          const focusable = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not(:disabled), input:not(:disabled), [tabindex="0"]',
+            ),
+          );
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (
+            event.shiftKey &&
+            (document.activeElement === first ||
+              document.activeElement === dialog.current)
+          ) {
+            event.preventDefault();
+            last?.focus();
+          } else if (
+            !event.shiftKey &&
+            (document.activeElement === last ||
+              document.activeElement === dialog.current)
+          ) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-[var(--color-border-subtle)] px-5 py-4">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <h2
-              id={titleId}
-              className="text-lg font-bold text-[var(--color-text-primary)]"
-            >
+            <h2 id={titleId} className="text-lg font-bold text-slate-900">
               {config.title}
             </h2>
-            <p
-              id={descriptionId}
-              className="mt-1 text-sm text-[var(--color-text-muted)]"
-            >
+            <p id={descriptionId} className="mt-1 text-sm text-slate-500">
               {config.description}
             </p>
           </div>
@@ -92,105 +146,110 @@ export function RevenueExportModal({
             aria-label={copy.close}
             disabled={isExporting}
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-card)] disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
           >
             <X size={18} aria-hidden="true" />
           </button>
         </header>
-
-        <div className="space-y-4 p-5">
-          {(config.warehouseName ||
-            config.sourceLabel ||
-            config.rangeLabel) && (
-            <div className="grid gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface-pearl)] p-3 text-xs sm:grid-cols-3">
-              <ExportContext
-                label={copy.warehouseLabel}
-                value={config.warehouseName}
-              />
-              <ExportContext
-                label={copy.sourceLabel}
-                value={config.sourceLabel}
-              />
-              <ExportContext
-                label={copy.rangeLabel}
-                value={config.rangeLabel}
-              />
-            </div>
-          )}
-
-          <fieldset className="space-y-2">
-            <legend className="mb-2 text-sm font-semibold text-[var(--color-text-secondary)]">
+        <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain p-5">
+          <dl className="grid gap-3 rounded-lg bg-slate-50 p-3 text-xs sm:grid-cols-3">
+            {[
+              [copy.warehouseLabel, config.warehouseName],
+              [copy.sourceLabel, config.sourceLabel],
+              [copy.rangeLabel, config.rangeLabel],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="font-semibold text-slate-500">{label}</dt>
+                <dd className="mt-1 font-bold text-slate-800">
+                  {value || "—"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <fieldset disabled={isExporting}>
+            <legend className="mb-2 text-sm font-semibold text-slate-700">
               {copy.reportTypeLabel}
             </legend>
-            {options.map((option) => {
-              const Icon = option.icon;
-              const selected = reportType === option.value;
-              return (
-                <button
+            <div className="grid gap-2 sm:grid-cols-3">
+              {options.map((option) => (
+                <label
                   key={option.value}
-                  type="button"
-                  aria-pressed={selected}
-                  autoFocus={selected}
-                  onClick={() => setReportType(option.value)}
-                  className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border p-3 text-left transition ${
-                    selected
-                      ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500"
-                      : "border-[var(--color-border-subtle)] hover:bg-[var(--color-surface-card)]"
-                  }`}
+                  className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 ${option.disabled ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60" : reportType === option.value ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500" : "border-slate-200 hover:bg-slate-50"}`}
                 >
-                  <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${selected ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700"}`}
-                  >
-                    <Icon size={19} aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-[var(--color-text-primary)]">
+                  <input
+                    type="radio"
+                    name={titleId}
+                    value={option.value}
+                    checked={reportType === option.value}
+                    disabled={isExporting || option.disabled}
+                    onChange={() => setReportType(option.value)}
+                    className="mt-1 accent-emerald-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-slate-800">
                       {option.label}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-5 text-[var(--color-text-muted)]">
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
                       {option.description}
                     </span>
                   </span>
-                </button>
-              );
-            })}
+                </label>
+              ))}
+            </div>
           </fieldset>
+          {reportType === "INVOICE_PREPARATION" && (
+            <div className="space-y-2 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">
+              <p>{copy.invoiceSourceHint}</p>
+              <label className="flex min-h-9 items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={roundMoney}
+                  disabled={isExporting}
+                  onChange={(event) => setRoundMoney(event.target.checked)}
+                  className="h-4 w-4 accent-emerald-600"
+                />
+                {copy.roundMoney}
+              </label>
+              <p>{copy.roundMoneyDescription}</p>
+            </div>
+          )}
+          {hasProducts && (
+            <RevenueExportProductEditor
+              products={products}
+              editor={editor}
+              disabled={isExporting || editor.preferencesLoading}
+              loading={config.productsLoading}
+              error={config.productsError}
+            />
+          )}
         </div>
-
-        <footer className="flex justify-end gap-2 border-t border-[var(--color-border-subtle)] px-5 py-3">
+        <footer className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             disabled={isExporting}
             onClick={onClose}
-            className="h-9 rounded-full border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-card)] disabled:opacity-50"
+            className="h-11 rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           >
             {copy.cancel}
           </button>
           <button
             type="button"
-            disabled={isExporting}
-            onClick={() => void onSubmit({ reportType })}
-            className="flex h-9 items-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60"
+            disabled={disabled}
+            onClick={() =>
+              void onSubmit({
+                reportType,
+                products: hasProducts ? editor.payload : undefined,
+                roundMoney:
+                  reportType === "INVOICE_PREPARATION" ? roundMoney : undefined,
+              })
+            }
+            className="flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={16} aria-hidden="true" />
             {isExporting ? copy.loading : copy.confirm}
           </button>
         </footer>
       </section>
-    </div>
-  );
-}
-
-function ExportContext({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
-  return (
-    <div className="min-w-0">
-      <span className="flex items-center gap-1 font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-        <Store size={12} aria-hidden="true" /> {label}
-      </span>
-      <span className="mt-1 block truncate font-bold text-[var(--color-text-primary)]">
-        {value}
-      </span>
     </div>
   );
 }

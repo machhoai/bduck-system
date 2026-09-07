@@ -2,6 +2,7 @@
  * Chinese dictionary - WMS Layout
  */
 import type { Dictionary } from "./vi";
+import { revenueExportZh } from "./revenueExportTranslations";
 
 const zh: Dictionary = {
   nav: {
@@ -281,6 +282,7 @@ const zh: Dictionary = {
       noConfiguredWarehouse: "暂无已配置 OpenAPI 的门店",
     },
     export: {
+      ...revenueExportZh,
       button: "导出数据",
       modalTitle: "导出营收报表",
       modalDescription: "请选择适合分析需求的 Excel 报表内容。",
@@ -323,6 +325,7 @@ const zh: Dictionary = {
       warehouse: "门店",
       selectWarehouse: "选择门店",
       noWarehouse: "暂无门店",
+      allWarehouses: "所有门店",
       date: "日期",
       month: "月份",
       year: "年份",
