@@ -7,6 +7,8 @@ import type {
   PosLuckyDrawSettingsView,
   PosPaymentSettings,
   PosPaymentSettingsInput,
+  PosProductCatalogSyncInput,
+  PosProductCatalogSyncResult,
   PosProductVisibilitySettings,
   PosProductVisibilitySettingsInput,
   PosProductVisibilitySettingsView,
@@ -70,10 +72,13 @@ async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok || envelope.data === null) {
     if (response.status === 429) {
       const retryAfter = Number(response.headers.get("Retry-After"));
-      const waitSeconds = Number.isFinite(retryAfter) && retryAfter > 0
-        ? Math.ceil(retryAfter)
-        : 60;
-      throw new Error(`Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`);
+      const waitSeconds =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.ceil(retryAfter)
+          : 60;
+      throw new Error(
+        `Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`,
+      );
     }
     throw new Error(
       envelope.messages?.vi || "Không thể xử lý yêu cầu quản lý POS.",
@@ -187,8 +192,12 @@ export const posManagementApi = {
   saveProductVisibilitySettings: (
     warehouseId: string,
     value: PosProductVisibilitySettingsPayload,
-  ) =>
-    saveProductVisibilitySettings(warehouseId, value),
+  ) => saveProductVisibilitySettings(warehouseId, value),
+  syncProducts: (warehouseId: string, value: PosProductCatalogSyncInput) =>
+    callPosApi<PosProductCatalogSyncResult>(
+      `/api/pos/stores/${warehouseId}/products/sync`,
+      { method: "POST", body: JSON.stringify(value) },
+    ),
   getPaymentSettings: async (deviceId: string) => {
     const response = await authenticatedFetch(
       `${API_BASE_URL}/api/pos/devices/${deviceId}/payment-settings`,

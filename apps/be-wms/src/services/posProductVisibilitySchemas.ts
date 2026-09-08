@@ -23,3 +23,15 @@ export type PosProductVisibilitySettingsValue = z.infer<
   typeof posProductVisibilitySettingsSchema
 >;
 
+export const posProductCatalogSyncSchema = z.object({
+  request_id: z
+    .string()
+    .trim()
+    .uuid()
+    .refine((value) => !value.includes("$"), "Invalid request id"),
+  action_time: z.string().datetime({ offset: true }),
+});
+
+export type PosProductCatalogSyncValue = z.infer<
+  typeof posProductCatalogSyncSchema
+>;

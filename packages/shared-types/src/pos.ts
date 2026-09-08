@@ -190,6 +190,24 @@ export interface PosProductVisibilitySettingsInput {
   action_time: string;
 }
 
+export interface PosProductCatalogSyncInput {
+  request_id: string;
+  action_time: string;
+}
+
+export interface PosProductCatalogSyncResult {
+  success: true;
+  productCount: number;
+  souvenirProductCount: number;
+  disabledProductCount: number;
+  removedProductCount: number;
+  removedSouvenirCount: number;
+  newProductCount: number;
+  newProductIds: string[];
+  hiddenWarehouseCount: number;
+  syncedAt: string;
+}
+
 export interface PosReceiptFontWeights {
   storeName: number;
   storeDetails: number;
@@ -345,6 +363,140 @@ export interface PosPaymentSettings {
   version: number;
   updatedAt: string;
   updatedByUid: string;
+}
+
+export const POS_ORDER_PAYMENT_STATUSES = [
+  "DRAFT",
+  "PAID",
+  "REFUNDING",
+  "REFUNDED",
+  "REFUND_FAILED",
+  "REFUND_UNKNOWN",
+] as const;
+export type PosOrderPaymentStatus =
+  (typeof POS_ORDER_PAYMENT_STATUSES)[number];
+
+export const POS_ORDER_SYNC_STATUSES = [
+  "NOT_SYNCED",
+  "PENDING",
+  "SYNCING",
+  "SYNC_FAILED",
+  "SYNC_SUCCESS",
+  "CANCELLED",
+] as const;
+export type PosOrderSyncStatus = (typeof POS_ORDER_SYNC_STATUSES)[number];
+
+export const POS_ORDER_CANCELLATION_STATUSES = [
+  "PENDING",
+  "REFUNDING",
+  "SUCCEEDED",
+  "FAILED",
+  "UNKNOWN",
+] as const;
+export type PosOrderCancellationStatus =
+  (typeof POS_ORDER_CANCELLATION_STATUSES)[number];
+
+export type PosOrderSource = "JPOS" | "JOYWORLD_IMPORT";
+
+export interface PosOrderListItem {
+  goodsId: string;
+  goodsName: string;
+  quantity: number;
+  price: number;
+}
+
+export interface PosOrderSummary {
+  id: string;
+  localOrderId: string;
+  warehouseId: string;
+  source: PosOrderSource;
+  legacyStatus: string;
+  paymentStatus: PosOrderPaymentStatus;
+  syncStatus: PosOrderSyncStatus;
+  hkOrderNumber: string | null;
+  remoteOrderId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  normalizedPhone: string | null;
+  operatorId: string;
+  operatorName: string;
+  productNames: string[];
+  items: PosOrderListItem[];
+  totalAmount: number;
+  createdAt: string;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  version: number;
+}
+
+export interface PosOrderSyncDetail {
+  retryCount: number;
+  lastError: string | null;
+  syncedAt: string | null;
+  operationId: string | null;
+}
+
+export interface PosOrderInvoiceSummary {
+  sourceOrderDocumentId: string | null;
+  documentId: string | null;
+  status: string | null;
+  invoiceNumber: string | null;
+  blocked: boolean;
+}
+
+export interface PosOrderCancellationSummary {
+  operationId: string;
+  status: PosOrderCancellationStatus;
+  reason: string;
+  actionTime: string;
+  syncTime: string;
+  cancelledBy: string;
+  refundOrderNumber: string | null;
+  lastError: string | null;
+}
+
+export interface PosOrderDetail extends PosOrderSummary {
+  paymentMethod: string;
+  paymentMethodId: string;
+  paymentMethodName: string;
+  memberCode: string | null;
+  deviceId: string | null;
+  sync: PosOrderSyncDetail;
+  invoice: PosOrderInvoiceSummary;
+  cancellation: PosOrderCancellationSummary | null;
+}
+
+export interface PosOrderListCursor {
+  createdAt: string;
+  id: string;
+}
+
+export interface PosOrderListResult {
+  orders: PosOrderSummary[];
+  nextCursor: string | null;
+  employeeOptions: Array<{ id: string; name: string }>;
+}
+
+export interface PosOrderRefundPreview {
+  mode: "LOCAL_ONLY" | "REMOTE_REFUND";
+  refundable: boolean;
+  amount: number;
+  paymentMethodNames: string;
+  remoteOrderId: string | null;
+  remoteOrderNumber: string | null;
+  blockedReason: string | null;
+}
+
+export interface PosOrderCancelInput {
+  reason: string;
+  action_time: string;
+  expectedVersion: number;
+  refundConfirmed: boolean;
+}
+
+export interface PosOrderCancelResult {
+  order: PosOrderDetail;
+  idempotent: boolean;
 }
 
 export const POS_MEMBER_COMPENSATION_STATUSES = [

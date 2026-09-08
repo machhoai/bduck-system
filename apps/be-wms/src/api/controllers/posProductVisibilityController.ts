@@ -2,10 +2,14 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 
 import { posWarehouseParamsSchema } from "../../services/posDeviceSchemas.js";
-import { posProductVisibilitySettingsSchema } from "../../services/posProductVisibilitySchemas.js";
+import {
+  posProductCatalogSyncSchema,
+  posProductVisibilitySettingsSchema,
+} from "../../services/posProductVisibilitySchemas.js";
 import {
   getPosProductVisibilitySettings,
   savePosProductVisibilitySettings,
+  syncPosProductCatalog,
 } from "../../services/posProductVisibilityService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -21,7 +25,10 @@ const handleError = (response: Response, error: unknown) => {
   if (error instanceof z.ZodError) {
     return sendError(
       response,
-      { vi: "Cấu hình hiển thị sản phẩm không hợp lệ.", zh: "商品显示配置无效。" },
+      {
+        vi: "Cấu hình hiển thị sản phẩm không hợp lệ.",
+        zh: "商品显示配置无效。",
+      },
       400,
       error.flatten(),
     );
@@ -35,7 +42,10 @@ const handleError = (response: Response, error: unknown) => {
   }
   return sendError(
     response,
-    { vi: "Không thể xử lý cấu hình hiển thị sản phẩm.", zh: "无法处理商品显示配置。" },
+    {
+      vi: "Không thể xử lý cấu hình hiển thị sản phẩm.",
+      zh: "无法处理商品显示配置。",
+    },
     500,
   );
 };
@@ -81,6 +91,29 @@ export const savePosProductVisibilitySettingsHandler = async (
   }
 };
 
+export const syncPosProductCatalogHandler = async (
+  request: Request,
+  response: Response,
+) => {
+  try {
+    const { warehouseId } = posWarehouseParamsSchema.parse(request.params);
+    const actor = requireAuthenticatedRequestUser(request);
+    const value = posProductCatalogSyncSchema.parse(request.body);
+    const result = await syncPosProductCatalog({
+      warehouseId,
+      actorId: actor.id,
+      value,
+      authorization: requireRequestAuthorization(request),
+    });
+    return sendSuccess(response, result, {
+      vi: "Đã đồng bộ danh mục sản phẩm từ JPOS.",
+      zh: "已从 JPOS 同步商品目录。",
+    });
+  } catch (error) {
+    return handleError(response, error);
+  }
+};
+
 export const getPosProductVisibilitySettingsFromDeviceHandler = async (
   request: Request,
   response: Response,
@@ -110,7 +143,10 @@ export const savePosProductVisibilitySettingsFromDeviceHandler = async (
       actorId: actor.id,
       value,
       authorization: requireRequestAuthorization(request),
-      auditMetadata: { ...getAuditRequestMetadata(request), device_id: device.id },
+      auditMetadata: {
+        ...getAuditRequestMetadata(request),
+        device_id: device.id,
+      },
       source: "JPOS",
     });
     return sendSuccess(response, result, {
@@ -121,4 +157,3 @@ export const savePosProductVisibilitySettingsFromDeviceHandler = async (
     return handleError(response, error);
   }
 };
-

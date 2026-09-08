@@ -1,50 +1,67 @@
 "use client";
 
-import type {
-  PosProductVisibilityCatalogItem,
-  PosProductVisibilitySettings,
-} from "@bduck/shared-types";
-import { doc, onSnapshot } from "firebase/firestore";
 import { gooeyToast } from "goey-toast";
-import { Eye, EyeOff, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCw, Search } from "lucide-react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 
-import { posManagementApi } from "@/api/posManagementApi";
-import { db } from "@/lib/firebase";
+import { PosProductVisibilityGroup } from "./PosProductVisibilityGroup";
+import { PosProductVisibilitySkeleton } from "./PosProductVisibilitySkeleton";
+
+import { usePosProductVisibility } from "@/hooks/usePosProductVisibility";
 import { useTranslation } from "@/lib/i18n";
 
 const copy = {
   vi: {
     title: "Sản phẩm hiển thị trên JPOS",
-    hint: "Bật hoặc tắt từng sản phẩm hay toàn bộ nhóm phụ. Thay đổi được áp dụng ngay cho cửa hàng này.",
+    hint: "Sản phẩm mới được ẩn mặc định và chỉ xuất hiện trên POS sau khi bạn bật.",
     search: "Tìm sản phẩm hoặc nhóm phụ",
     shown: "Đang hiện",
     hidden: "Đã ẩn",
-    loading: "Đang tải danh mục…",
     empty: "Không có sản phẩm phù hợp.",
     productCount: "sản phẩm",
-    saved: "Đã đồng bộ tới JPOS.",
-    failed: "Không thể cập nhật. Cấu hình mới nhất sẽ được tải lại.",
+    saveLoading: "Đang cập nhật cấu hình…",
+    saveSuccess: "Đã đồng bộ tới JPOS",
+    saveError: "Không thể cập nhật cấu hình",
+    saveSuccessDescription:
+      "Thay đổi đang được gửi tức thì tới các máy JPOS của cửa hàng.",
+    saveErrorDescription:
+      "Cấu hình mới nhất sẽ được giữ nguyên. Vui lòng thử lại.",
+    sync: "Đồng bộ sản phẩm",
+    syncing: "Đang đồng bộ…",
+    syncSuccess: "Đồng bộ sản phẩm thành công",
+    syncError: "Không thể đồng bộ sản phẩm",
+    syncSuccessDescription: "Sản phẩm mới đã được tải về ở trạng thái ẩn.",
+    syncErrorDescription: "Không thể kết nối dịch vụ JPOS. Vui lòng thử lại.",
+    retry: "Thử lại",
+    newProducts: "sản phẩm mới đang ẩn",
+    expand: "Mở nhóm sản phẩm",
+    collapse: "Thu gọn nhóm sản phẩm",
   },
   zh: {
     title: "JPOS 显示商品",
-    hint: "按商品或子分组启用/停用；更改立即应用于当前门店。",
+    hint: "新商品默认隐藏，只有手动启用后才会显示在 POS 上。",
     search: "搜索商品或子分组",
     shown: "显示中",
     hidden: "已隐藏",
-    loading: "正在加载商品目录…",
     empty: "没有匹配的商品。",
     productCount: "件商品",
-    saved: "已同步到 JPOS。",
-    failed: "更新失败，将加载最新配置。",
+    saveLoading: "正在更新设置…",
+    saveSuccess: "已同步到 JPOS",
+    saveError: "无法更新设置",
+    saveSuccessDescription: "更改正在即时发送到该门店的 JPOS 设备。",
+    saveErrorDescription: "最新设置保持不变，请重试。",
+    sync: "同步商品",
+    syncing: "正在同步…",
+    syncSuccess: "商品同步成功",
+    syncError: "无法同步商品",
+    syncSuccessDescription: "新商品已下载并保持隐藏。",
+    syncErrorDescription: "无法连接 JPOS 服务，请重试。",
+    retry: "重试",
+    newProducts: "件新商品已隐藏",
+    expand: "展开商品组",
+    collapse: "收起商品组",
   },
 };
-
-const mapSnapshot = (
-  warehouseId: string,
-  value: Record<string, unknown>,
-): PosProductVisibilitySettings =>
-  ({ id: warehouseId, warehouse_id: warehouseId, ...value }) as PosProductVisibilitySettings;
 
 export function PosProductVisibilityPanel({
   warehouseId,
@@ -55,123 +72,165 @@ export function PosProductVisibilityPanel({
 }) {
   const { lang } = useTranslation();
   const t = copy[lang === "zh" ? "zh" : "vi"];
-  const [products, setProducts] = useState<PosProductVisibilityCatalogItem[]>([]);
-  const [settings, setSettings] = useState<PosProductVisibilitySettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const visibility = usePosProductVisibility(warehouseId, t.saveError);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    void posManagementApi
-      .getProductVisibilitySettings(warehouseId)
-      .then((view) => {
-        if (!active) return;
-        setProducts(view.products);
-        setSettings(view.settings);
-      })
-      .catch((error) => gooeyToast.error(error instanceof Error ? error.message : t.failed))
-      .finally(() => active && setLoading(false));
-
-    const unsubscribe = onSnapshot(
-      doc(db, "pos_product_visibility_settings", warehouseId),
-      (snapshot) => {
-        if (active) setSettings(snapshot.exists() ? mapSnapshot(warehouseId, snapshot.data()) : null);
-      },
-      (error) => console.error("[PosProductVisibilityPanel] snapshot failed:", error),
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [t.failed, warehouseId]);
+  const deferredSearch = useDeferredValue(search);
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const {
+    lastSyncResult,
+    loading,
+    products,
+    save,
+    saving,
+    settings,
+    sync,
+    syncing,
+  } = visibility;
 
   const groups = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase(lang === "zh" ? "zh" : "vi");
-    const grouped = new Map<string, PosProductVisibilityCatalogItem[]>();
+    const query = deferredSearch
+      .trim()
+      .toLocaleLowerCase(lang === "zh" ? "zh" : "vi");
+    const grouped = new Map<string, typeof products>();
     for (const product of products) {
-      if (
-        query &&
-        ![product.goods_name, product.goods_id, product.group_name].some((value) =>
-          value.toLocaleLowerCase().includes(query),
-        )
-      ) continue;
-      grouped.set(product.group_key, [...(grouped.get(product.group_key) ?? []), product]);
+      const matches =
+        !query ||
+        [product.goods_name, product.goods_id, product.group_name].some(
+          (value) => value.toLocaleLowerCase().includes(query),
+        );
+      if (!matches) continue;
+      grouped.set(product.group_key, [
+        ...(grouped.get(product.group_key) ?? []),
+        product,
+      ]);
     }
     return [...grouped.entries()];
-  }, [lang, products, search]);
+  }, [deferredSearch, lang, products]);
 
-  const save = useCallback(async (
-    disabledGroupKeys: string[],
-    disabledProductIds: string[],
-  ) => {
-    if (saving || !canManage) return;
-    setSaving(true);
-    try {
-      const next = await posManagementApi.saveProductVisibilitySettings(warehouseId, {
-        expected_version: settings?.version ?? 0,
-        disabled_group_keys: disabledGroupKeys,
-        disabled_product_ids: disabledProductIds,
-        action_time: new Date().toISOString(),
+  const runSave = useCallback(
+    (groupsToDisable: string[], productsToDisable: string[]) => {
+      const promise = save(groupsToDisable, productsToDisable);
+      gooeyToast.promise(promise, {
+        loading: t.saveLoading,
+        success: t.saveSuccess,
+        error: t.saveError,
+        description: {
+          success: t.saveSuccessDescription,
+          error: t.saveErrorDescription,
+        },
+        action: {
+          error: {
+            label: t.retry,
+            onClick: () => runSave(groupsToDisable, productsToDisable),
+          },
+        },
       });
-      setSettings(next);
-      gooeyToast.success(t.saved);
-    } catch (error) {
-      console.error("[PosProductVisibilityPanel] save failed:", error);
-      gooeyToast.error(t.failed);
-    } finally {
-      setSaving(false);
-    }
-  }, [canManage, saving, settings?.version, t.failed, t.saved, warehouseId]);
+      void promise.catch((error) =>
+        console.error("[PosProductVisibilityPanel] save failed:", error),
+      );
+    },
+    [save, t],
+  );
+
+  const runSync = useCallback(
+    (requestId = crypto.randomUUID()) => {
+      const promise = sync(requestId);
+      gooeyToast.promise(promise, {
+        loading: t.syncing,
+        success: t.syncSuccess,
+        error: t.syncError,
+        description: {
+          success: t.syncSuccessDescription,
+          error: t.syncErrorDescription,
+        },
+        action: {
+          error: { label: t.retry, onClick: () => runSync(requestId) },
+        },
+      });
+      void promise.catch((error) =>
+        console.error("[PosProductVisibilityPanel] sync failed:", error),
+      );
+    },
+    [sync, t],
+  );
 
   const disabledGroups = new Set(settings?.disabled_group_keys ?? []);
   const disabledProducts = new Set(settings?.disabled_product_ids ?? []);
+  const controlsDisabled = !canManage || saving || syncing;
 
-  if (loading) {
-    return <div className="h-52 animate-pulse rounded-xl bg-slate-100" aria-label={t.loading} />;
-  }
+  if (loading) return <PosProductVisibilitySkeleton />;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-sm font-bold text-slate-900">{t.title}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t.hint}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">{t.title}</h2>
+          <p className="mt-1 text-xs text-slate-500">{t.hint}</p>
+          {lastSyncResult ? (
+            <p className="mt-1 text-xs font-semibold text-amber-700">
+              {lastSyncResult.newProductCount} {t.newProducts}
+            </p>
+          ) : null}
+        </div>
+        {canManage && (
+          <button
+            type="button"
+            disabled={controlsDisabled}
+            onClick={() => runSync()}
+            className="flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-600 disabled:opacity-50 sm:h-9 sm:w-auto sm:rounded-lg"
+          >
+            <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+            {syncing ? t.syncing : t.sync}
+          </button>
+        )}
       </div>
       <label className="relative block">
         <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.search} className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-amber-400" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t.search}
+          className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition-colors focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+        />
       </label>
       <div className="space-y-3">
-        {groups.map(([groupKey, items]) => {
-          const groupDisabled = disabledGroups.has(groupKey);
-          return (
-            <section key={groupKey} className="overflow-hidden rounded-xl border border-slate-200">
-              <button type="button" disabled={!canManage || saving} onClick={() => {
-                const next = new Set(disabledGroups);
-                if (groupDisabled) next.delete(groupKey);
-                else next.add(groupKey);
-                void save([...next], [...disabledProducts]);
-              }} className="flex w-full items-center justify-between bg-slate-50 px-4 py-3 text-left disabled:opacity-60">
-                <span><span className="block text-xs font-bold text-slate-900">{items[0]?.group_name}</span><span className="text-xxs text-slate-500">{items.length} {t.productCount}</span></span>
-                <span className={`flex items-center gap-1 text-xs font-bold ${groupDisabled ? "text-slate-500" : "text-emerald-700"}`}>{groupDisabled ? <EyeOff size={15} /> : <Eye size={15} />}{groupDisabled ? t.hidden : t.shown}</span>
-              </button>
-              <div className="divide-y divide-slate-100">
-                {items.map((product) => {
-                  const productDisabled = disabledProducts.has(product.goods_id);
-                  const effectivelyDisabled = groupDisabled || productDisabled;
-                  return <button key={product.goods_id} type="button" disabled={!canManage || saving || groupDisabled} onClick={() => {
-                    const next = new Set(disabledProducts);
-                    if (productDisabled) next.delete(product.goods_id);
-                    else next.add(product.goods_id);
-                    void save([...disabledGroups], [...next]);
-                  }} className="flex w-full items-center justify-between px-4 py-2.5 text-left disabled:opacity-50"><span><span className="block text-xs font-semibold text-slate-800">{product.goods_name}</span><span className="text-xxs text-slate-400">{product.goods_id}</span></span><span className={effectivelyDisabled ? "text-slate-400" : "text-emerald-600"}>{effectivelyDisabled ? <EyeOff size={15} /> : <Eye size={15} />}</span></button>;
-                })}
-              </div>
-            </section>
-          );
-        })}
-        {groups.length === 0 && <p className="py-8 text-center text-xs text-slate-500">{t.empty}</p>}
+        {groups.map(([groupKey, items]) => (
+          <PosProductVisibilityGroup
+            key={groupKey}
+            groupKey={groupKey}
+            items={items}
+            collapsed={search.trim() ? false : collapsedGroupKeys.has(groupKey)}
+            groupDisabled={disabledGroups.has(groupKey)}
+            disabledProductIds={disabledProducts}
+            disabled={controlsDisabled}
+            labels={t}
+            onCollapse={(key) =>
+              setCollapsedGroupKeys((current) => {
+                const next = new Set(current);
+                if (next.has(key)) next.delete(key);
+                else next.add(key);
+                return next;
+              })
+            }
+            onToggleGroup={(key) => {
+              const next = new Set(disabledGroups);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              runSave([...next], [...disabledProducts]);
+            }}
+            onToggleProduct={(productId) => {
+              const next = new Set(disabledProducts);
+              if (next.has(productId)) next.delete(productId);
+              else next.add(productId);
+              runSave([...disabledGroups], [...next]);
+            }}
+          />
+        ))}
+        {groups.length === 0 && (
+          <p className="py-8 text-center text-xs text-slate-500">{t.empty}</p>
+        )}
       </div>
     </div>
   );

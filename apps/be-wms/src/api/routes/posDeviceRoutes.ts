@@ -43,6 +43,7 @@ import {
   getPosProductVisibilitySettingsHandler,
   savePosProductVisibilitySettingsFromDeviceHandler,
   savePosProductVisibilitySettingsHandler,
+  syncPosProductCatalogHandler,
 } from "../controllers/posProductVisibilityController.js";
 import {
   getPosReceiptSettingsHandler,
@@ -117,10 +118,7 @@ router.put(
   "/devices/receipt-settings",
   savePosReceiptSettingsFromDeviceHandler,
 );
-router.put(
-  "/devices/ticket-settings",
-  savePosTicketSettingsFromDeviceHandler,
-);
+router.put("/devices/ticket-settings", savePosTicketSettingsFromDeviceHandler);
 
 router.use(requireAuth);
 router.get(
@@ -188,6 +186,12 @@ router.put(
   posSettingsMutationRateLimiter,
   requireAnyScopedPermission("pos.settings.manage"),
   savePosProductVisibilitySettingsHandler,
+);
+router.post(
+  "/stores/:warehouseId/products/sync",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  syncPosProductCatalogHandler,
 );
 router.get(
   "/devices/:deviceId/payment-settings",

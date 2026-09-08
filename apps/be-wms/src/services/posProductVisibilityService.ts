@@ -7,7 +7,11 @@ import { posProductVisibilityRepository } from "../repositories/posProductVisibi
 
 import type { AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
-import type { PosProductVisibilitySettingsValue } from "./posProductVisibilitySchemas.js";
+import { requestJposProductSync } from "./jposProductSyncClient.js";
+import type {
+  PosProductCatalogSyncValue,
+  PosProductVisibilitySettingsValue,
+} from "./posProductVisibilitySchemas.js";
 import { loadWarehouseById } from "./warehouseService.js";
 
 export const getPosProductVisibilitySettings = async (
@@ -42,3 +46,18 @@ export const savePosProductVisibilitySettings = async (input: {
   });
 };
 
+export const syncPosProductCatalog = async (input: {
+  warehouseId: string;
+  actorId: string;
+  value: PosProductCatalogSyncValue;
+  authorization: AuthorizationService;
+}) => {
+  input.authorization.assert("pos.settings.manage", input.warehouseId);
+  await loadWarehouseById(input.warehouseId);
+  return requestJposProductSync({
+    actorId: input.actorId,
+    warehouseId: input.warehouseId,
+    requestId: input.value.request_id,
+    actionTime: input.value.action_time,
+  });
+};

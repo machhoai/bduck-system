@@ -912,17 +912,11 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(admin, "roles", "role-1")));
     await assertFails(
       getDoc(
-        doc(
-          anonymous,
-          "external_store_bindings",
-          "joyworld-store-d-store-f",
-        ),
+        doc(anonymous, "external_store_bindings", "joyworld-store-d-store-f"),
       ),
     );
     await assertSucceeds(
-      getDoc(
-        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
-      ),
+      getDoc(doc(user, "external_store_bindings", "joyworld-store-d-store-f")),
     );
     await assertFails(
       updateDoc(
@@ -1544,6 +1538,7 @@ describe("grant-aware Firestore rules", () => {
       "pos_ticket_settings",
       "pos_lucky_draw_settings",
       "pos_payment_settings",
+      "pos_product_sync_runs",
     ]) {
       await assertFails(getDoc(doc(storeUser, collectionName, "store-d")));
       await assertFails(getDoc(doc(admin, collectionName, "store-d")));
@@ -1633,7 +1628,9 @@ describe("grant-aware Firestore rules", () => {
   });
 
   it("allows facility-scoped product visibility snapshots but keeps writes backend-only", async () => {
-    const warehouseUser = environment.authenticatedContext("user-a").firestore();
+    const warehouseUser = environment
+      .authenticatedContext("user-a")
+      .firestore();
     const storeUser = environment.authenticatedContext("user-b").firestore();
     const admin = environment.authenticatedContext("system-admin").firestore();
 

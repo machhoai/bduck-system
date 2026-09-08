@@ -658,6 +658,9 @@ service cloud.firestore {
       allow read: if readableFacilityDirectory(warehouseId);
       allow write: if false;
     }
+    match /pos_product_sync_runs/{runId} {
+      allow read, write: if false;
+    }
     match /pos_payment_settings/{deviceId} {
       allow read, write: if false;
     }

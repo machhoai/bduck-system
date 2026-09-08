@@ -2,10 +2,7 @@ const text = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
 
 const normalizeName = (value: unknown): string =>
-  text(value)
-    .normalize("NFKC")
-    .toLocaleLowerCase("vi")
-    .replace(/\s+/g, " ");
+  text(value).normalize("NFKC").toLocaleLowerCase("vi").replace(/\s+/g, " ");
 
 export const buildPosProductGroupKey = (value: {
   category?: unknown;
@@ -26,8 +23,8 @@ export const buildPosProductGroupKey = (value: {
 export const isPosProductUpstreamVisible = (
   value: Record<string, unknown>,
 ): boolean =>
+  value.is_deleted !== true &&
   value.isEnabled !== false &&
   value.isOpenSales !== false &&
   value.isCategoryEnabled !== false &&
   value.syncStatus !== "disabled";
-
