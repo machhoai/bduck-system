@@ -1,3 +1,5 @@
+import type { RevenueExportProductSelection } from "./revenueProducts.js";
+
 export const REVENUE_DATA_SOURCES = ["OPEN_API", "LOCAL_POS"] as const;
 export type RevenueDataSource = (typeof REVENUE_DATA_SOURCES)[number];
 
@@ -176,6 +178,6 @@ export interface RevenueExportRequest extends RevenueDashboardFilter {
   warehouseId: string;
   locale: "vi" | "zh";
   actionTime: string;
-  products?: import("./revenueProducts.js").RevenueExportProductSelection[];
+  products?: RevenueExportProductSelection[];
   roundMoney?: boolean;
 }
