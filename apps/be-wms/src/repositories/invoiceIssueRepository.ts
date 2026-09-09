@@ -121,10 +121,22 @@ export const invoiceIssueRepository = {
         Promise.all(sourceRefs.map((ref) => transaction.get(ref))),
         Promise.all(registryRefs.map((ref) => transaction.get(ref))),
       ]);
+      const posOrderRefs = sourceSnaps.map((sourceSnapshot) => {
+        const localOrderId = sourceSnapshot.data()?.local_order_id;
+        return typeof localOrderId === "string" && localOrderId
+          ? db.collection("pos_orders").doc(localOrderId)
+          : null;
+      });
+      const posOrderSnaps = await Promise.all(
+        posOrderRefs.map((reference) =>
+          reference ? transaction.get(reference) : Promise.resolve(null),
+        ),
+      );
       const now = new Date();
       input.items.forEach((item, index) => {
         const document = documentSnaps[index]?.data();
         const source = sourceSnaps[index]?.data();
+        const posOrder = posOrderSnaps[index]?.data();
         if (
           !document ||
           !source ||
@@ -140,7 +152,12 @@ export const invoiceIssueRepository = {
           document.source_payload_hash !== item.sourcePayloadHash ||
           source.source_payload_hash !== item.sourcePayloadHash ||
           source.match_status === InvoiceOrderMatchStatus.MATCHED ||
-          document.active_issue_job_id
+          document.active_issue_job_id ||
+          posOrder?.cancellationOperationId ||
+          ["REFUNDING", "REFUNDED", "REFUND_UNKNOWN"].includes(
+            posOrder?.paymentStatus,
+          ) ||
+          posOrder?.syncStatus === "CANCELLED"
         ) {
           throw Object.assign(new Error("INVOICE_ISSUE_CONFLICT"), {
             statusCode: 409,

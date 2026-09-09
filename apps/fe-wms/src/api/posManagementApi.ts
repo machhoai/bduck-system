@@ -5,6 +5,11 @@ import type {
   PosLuckyDrawSettings,
   PosLuckyDrawSettingsInput,
   PosLuckyDrawSettingsView,
+  PosOrderCancelInput,
+  PosOrderCancelResult,
+  PosOrderDetail,
+  PosOrderListResult,
+  PosOrderRefundPreview,
   PosPaymentSettings,
   PosPaymentSettingsInput,
   PosProductCatalogSyncInput,
@@ -109,6 +114,27 @@ const saveProductVisibilitySettings = (
 };
 
 export const posManagementApi = {
+  listOrders: (warehouseId: string, query = "") =>
+    callPosApi<PosOrderListResult>(
+      `/api/pos/stores/${warehouseId}/orders${query ? `?${query}` : ""}`,
+    ),
+  getOrder: (warehouseId: string, localOrderId: string) =>
+    callPosApi<PosOrderDetail>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}`,
+    ),
+  getOrderRefundPreview: (warehouseId: string, localOrderId: string) =>
+    callPosApi<PosOrderRefundPreview>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}/refund-preview`,
+    ),
+  cancelOrder: (
+    warehouseId: string,
+    localOrderId: string,
+    value: PosOrderCancelInput,
+  ) =>
+    callPosApi<PosOrderCancelResult>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}/cancel`,
+      { method: "POST", body: JSON.stringify(value) },
+    ),
   getOverview: (warehouseId: string) =>
     callPosApi<PosStoreOverview>(`/api/pos/stores/${warehouseId}/overview`),
   listDevices: (warehouseId: string) =>

@@ -7,7 +7,12 @@
  * @see joyworld.ts (project root) for original API documentation
  */
 
-const BASE_URL = "http://joyworld.jingjianx.vip";
+export const getJoyworldManagerBaseUrl = (): string =>
+  (process.env.JOYWORLD_MANAGER_BASE_URL || "http://joyworld.jingjianx.vip")
+    .trim()
+    .replace(/\/$/, "");
+
+const BASE_URL = getJoyworldManagerBaseUrl();
 
 // ─────────────────────────────────────────────
 // Token Management (cached, auto-refreshed)

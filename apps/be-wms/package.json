@@ -17,6 +17,7 @@
     "test:identity-security": "tsx --test src/services/roleAssignmentValidity.test.ts src/services/rolePermissionUtils.test.ts src/services/authAccessBootstrapService.test.ts src/services/authSessionFlow.test.ts src/api/middlewares/authIdentityMiddleware.test.ts src/api/middlewares/localIntegrationBypass.test.ts src/api/middlewares/rateLimitMiddleware.test.ts src/config/firebaseTargetContext.test.ts src/utils/secureSecret.test.ts src/utils/authSessionCookie.test.ts",
     "test:scoped-query": "tsx --test src/repositories/facilityScopedQuery.test.ts",
     "test:pos-advertising": "tsx --test src/services/posCustomerDisplayMediaValidation.test.ts",
+    "test:joyworld-refund-contract": "tsx --test src/services/joyworldRefundSchemas.test.ts",
     "test:marketing-vouchers-phase1": "tsx --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts",
     "test:marketing-vouchers-phase2": "tsx --env-file=../../.env.local --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts src/repositories/marketingVoucherRepositoryGuards.test.ts src/repositories/marketingVoucherRepository.emulator.test.ts",
     "test:security-foundation": "pnpm run test:facility-access-planner && pnpm run test:authorization && pnpm run test:identity-security && pnpm run test:scoped-query",
@@ -30,6 +31,7 @@
     "migrate:facility-access": "tsx --env-file=../../.env.local src/scripts/backfillFacilityAccess.ts",
     "rebuild:user-access": "tsx --env-file=../../.env.local src/scripts/rebuildUserAccess.ts",
     "backfill:jpos-history": "tsx --env-file=../../.env.local src/scripts/backfillJoyworldPosOrdersProduction.ts",
+    "backfill:pos-order-lifecycle": "tsx --env-file=../../.env.local src/scripts/backfillPosOrderLifecycle.ts",
     "migrate:pos-settings-logos": "tsx --env-file=../../.env.local src/scripts/migratePosSettingsLogos.ts",
     "migrate:pos-settings-logos:production": "tsx --env-file=../../.env.local src/scripts/migratePosSettingsLogosProduction.ts",
     "rollout:lm81-aeon-consolidation": "tsx --env-file=../../.env.local src/scripts/rolloutLm81AeonConsolidationProduction.ts"

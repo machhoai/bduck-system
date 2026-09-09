@@ -8,11 +8,16 @@ import {
   MonitorSmartphone,
   Settings2,
   ShieldCheck,
+  ShoppingBag,
   Store,
   Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import Forbidden403 from "@/components/shared/Forbidden403";
+import { usePosManagement } from "@/hooks/usePosManagement";
+import { useStores } from "@/hooks/useWarehouses";
+import { useUserStore } from "@/stores/useUserStore";
 
 import { PosAccessPanel } from "./PosAccessPanel";
 import { PosAdvertisingPanel } from "./PosAdvertisingPanel";
@@ -25,6 +30,7 @@ import {
   PosOverview,
 } from "./PosManagementSections";
 import { PosMobileStoreSheet } from "./PosMobileStoreSheet";
+import { PosOrderPanel } from "./PosOrderPanel";
 import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
 import { PosProductVisibilityPanel } from "./PosProductVisibilityPanel";
 import { PosSettingsPanel } from "./PosSettingsPanel";
@@ -36,15 +42,12 @@ import { PosStoreRail } from "./PosStoreRail";
 import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
 import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
-
-import Forbidden403 from "@/components/shared/Forbidden403";
-import { usePosManagement } from "@/hooks/usePosManagement";
-import { useStores } from "@/hooks/useWarehouses";
-import { useUserStore } from "@/stores/useUserStore";
+import { usePosOrderCopy } from "./usePosOrderCopy";
 
 type Tab =
   | "overview"
   | "devices"
+  | "orders"
   | "settings"
   | "advertising"
   | "access"
@@ -53,6 +56,7 @@ type Tab =
 export default function PosManagementPage() {
   const copy = usePosManagementCopy();
   const advertisingCopy = usePosAdvertisingCopy();
+  const orderCopy = usePosOrderCopy();
   const { stores, loading: storesLoading } = useStores();
   const hasPermission = useUserStore((state) => state.hasPermission);
   const [selectedStoreId, setSelectedStoreId] = useState("");
@@ -69,6 +73,15 @@ export default function PosManagementPage() {
   const canReadDevices = hasPermission("pos.devices.read", activeStoreId);
   const canManageDevices = hasPermission("pos.devices.manage", activeStoreId);
   const canReadSettings = hasPermission("pos.settings.read", activeStoreId);
+  const canReadOrders = hasPermission("pos.orders.read", activeStoreId);
+  const canCancelLocal = hasPermission(
+    "pos.orders.cancel_local",
+    activeStoreId,
+  );
+  const canRefundRemote = hasPermission(
+    "pos.orders.refund_remote",
+    activeStoreId,
+  );
   const canManageSettings = hasPermission("pos.settings.manage", activeStoreId);
   const canReadAdvertising = hasPermission(
     "pos.advertising.read",
@@ -85,6 +98,7 @@ export default function PosManagementPage() {
   const canEnter =
     hasPermission("pos.devices.read") ||
     hasPermission("pos.settings.read") ||
+    hasPermission("pos.orders.read") ||
     hasPermission("pos.advertising.read") ||
     hasPermission("pos.access.manage") ||
     hasPermission("pos.audit.read");
@@ -105,6 +119,7 @@ export default function PosManagementPage() {
   const tabs: Array<{ id: Tab; label: string; icon: typeof LayoutDashboard }> = [
     { id: "overview", label: copy.overview, icon: LayoutDashboard },
     { id: "devices", label: copy.devices, icon: MonitorSmartphone },
+    { id: "orders", label: orderCopy.tab, icon: ShoppingBag },
     { id: "settings", label: copy.settings, icon: Settings2 },
     { id: "advertising", label: advertisingCopy.tab, icon: Megaphone },
     { id: "access", label: copy.access, icon: Users },
@@ -238,6 +253,18 @@ export default function PosManagementPage() {
                     transferTargets={deviceTransferTargets}
                     canManage={canManageDevices}
                     onChanged={management.refresh}
+                  />
+                ) : (
+                  <PosNoAccess />
+                ))}
+              {tab === "orders" &&
+                (canReadOrders ? (
+                  <PosOrderPanel
+                    key={activeStoreId}
+                    warehouseId={activeStoreId}
+                    canRead={canReadOrders}
+                    canCancelLocal={canCancelLocal}
+                    canRefundRemote={canRefundRemote}
                   />
                 ) : (
                   <PosNoAccess />

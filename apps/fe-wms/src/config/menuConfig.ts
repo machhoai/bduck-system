@@ -229,6 +229,7 @@ export const menuItems: MenuItem[] = [
         permissionsAny: [
             "pos.devices.read",
             "pos.settings.read",
+            "pos.orders.read",
             "pos.access.manage",
             "pos.audit.read",
         ],

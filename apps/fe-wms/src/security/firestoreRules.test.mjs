@@ -591,6 +591,22 @@ async function seedDocuments() {
         },
       ],
       [
+        "pos_order_summaries/local-order-1",
+        {
+          id: "local-order-1",
+          localOrderId: "local-order-1",
+          warehouseId: "store-d",
+          paymentStatus: "PAID",
+          syncStatus: "SYNC_SUCCESS",
+          totalAmount: 100000,
+          createdAt: "2026-07-01T03:00:00.000Z",
+        },
+      ],
+      [
+        "pos_order_cancellations/local-order-1",
+        { local_order_id: "local-order-1", warehouse_id: "store-d" },
+      ],
+      [
         "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
         {
           warehouse_id: "store-d",
@@ -756,6 +772,7 @@ beforeEach(async () => {
       "transfers.read": true,
       "warehouses.read": true,
       "revenue.read": true,
+      "pos.orders.read": true,
       "invoices.read": true,
       "invoices.config": true,
       "pos.advertising.read": true,
@@ -1527,6 +1544,12 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
     await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
     await assertSucceeds(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
+    await assertSucceeds(
+      getDoc(doc(storeUser, "pos_order_summaries", "local-order-1")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "pos_order_cancellations", "local-order-1")),
+    );
     await assertSucceeds(getDoc(doc(admin, "pos_orders", "local-order-1")));
     await assertFails(
       getDoc(doc(warehouseUser, "pos_orders", "local-order-1")),

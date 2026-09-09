@@ -1,0 +1,46 @@
+{
+  "success": true,
+  "msg": "",
+  "code": 0,
+  "data": {
+    "orderId": "11111111-1111-4111-8111-111111111111",
+    "orderNumber": "O00000000000000000000001",
+    "buyTime": "2026-09-07 16:47:05.896",
+    "totalNumber": 1,
+    "totalMoney": 180000,
+    "payMethodNames": "Thanh toán bằng tiền mặt",
+    "refundMode": "Hoàn tiền theo phương thức thanh toán ban đầu",
+    "items": [
+      {
+        "goodsId": "22222222-2222-4222-8222-222222222222",
+        "goodsName": "Vé lượt",
+        "category": 1,
+        "goodsCategoryName": "Hàng hóa ảo",
+        "price": 180000,
+        "qty": 1,
+        "surplusQty": 1,
+        "returnQty": 1,
+        "businessType": 0
+      }
+    ],
+    "payModeInfo": [
+      {
+        "payOrderNumber": "P00000000000000000000001",
+        "payMethodId": "33333333-3333-4333-8333-333333333333",
+        "payMethodCode": "CashPaymentExecutor",
+        "payMethodName": "Thanh toán bằng tiền mặt",
+        "money": 180000,
+        "payStatus": 2,
+        "payStatusName": "Thanh toán thành công",
+        "payTime": "2026-09-07 16:47:06",
+        "outTradeNO": "",
+        "thirdPartyTerminalId": null,
+        "paymentMode": 1
+      }
+    ],
+    "invoiceNumber": "",
+    "invoiceSystemType": 0,
+    "isInterFactuSpainInvoice": false
+  },
+  "desc": ""
+}

@@ -88,6 +88,11 @@ export const buildHistoricalPosOrder = (input: {
       warehouseId: input.warehouseId,
       shopId: input.shopId,
       status: "SYNC_SUCCESS",
+      source: "JOYWORLD_IMPORT",
+      paymentStatus: "PAID",
+      syncStatus: "SYNC_SUCCESS",
+      version: 0,
+      remoteOrderId: sourceOrderId,
       totalAmount: number(input.order.realMoney),
       voucherDiscount: number(input.order.discountMoney),
       items: input.goods.map(buildHistoricalItem),
@@ -101,8 +106,7 @@ export const buildHistoricalPosOrder = (input: {
       paymentMethodName: payment.name,
       paidAt,
       createdAt: paidAt,
-      updatedAt:
-        parseJoyworldLocalDateToIso(input.order.updateTime) ?? paidAt,
+      updatedAt: parseJoyworldLocalDateToIso(input.order.updateTime) ?? paidAt,
       createdBy: "system:jpos-history-backfill",
       sync: {
         retryCount: 0,

@@ -259,6 +259,27 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "pos.orders.cancel_local",
+    group: "pos",
+    label: { vi: "Hủy đơn POS tại local", zh: "本地取消 POS 订单" },
+    description: {
+      vi: "Hủy đơn chưa đồng bộ lên JoyWorld trong phạm vi cửa hàng.",
+      zh: "取消授权门店中尚未同步到 JoyWorld 的 POS 订单。",
+    },
+  },
+  {
+    key: "pos.orders.refund_remote",
+    group: "pos",
+    label: {
+      vi: "Hoàn tiền đơn POS trên JoyWorld",
+      zh: "JoyWorld POS 订单退款",
+    },
+    description: {
+      vi: "Hoàn tiền đơn POS đã đồng bộ và ghi nhận kết quả tại JoyWorld.",
+      zh: "为已同步的 POS 订单退款并在 JoyWorld 记录结果。",
+    },
+  },
+  {
     key: "pos.payments.manual_confirm",
     group: "pos",
     label: { vi: "Xác nhận chuyển khoản thủ công", zh: "手动确认转账" },

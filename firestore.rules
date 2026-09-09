@@ -630,11 +630,18 @@ service cloud.firestore {
     match /invoice_source_identities/{docId} {
       allow read, write: if false;
     }
-    // Revenue readers can observe paid JPOS orders for realtime dashboard
-    // aggregation. All order mutations remain backend-only.
+    // POS order readers can observe local order data in their store scope.
+    // All order mutations remain backend-only.
     match /pos_orders/{orderId} {
-      allow read: if hasResourceFacility('warehouseId', 'revenue.read');
+      allow read: if hasResourceFacility('warehouseId', 'pos.orders.read');
       allow write: if false;
+    }
+    match /pos_order_summaries/{orderId} {
+      allow read: if hasResourceFacility('warehouseId', 'pos.orders.read');
+      allow write: if false;
+    }
+    match /pos_order_cancellations/{operationId} {
+      allow read, write: if false;
     }
     // JPOS device credentials, pairing grants and configuration are backend-only.
     match /pos_devices/{deviceId} {

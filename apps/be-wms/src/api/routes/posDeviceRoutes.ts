@@ -35,6 +35,12 @@ import {
   savePosLuckyDrawSettingsHandler,
 } from "../controllers/posLuckyDrawSettingsController.js";
 import {
+  cancelPosOrderHandler,
+  getPosOrderHandler,
+  getPosOrderRefundPreviewHandler,
+  listPosOrdersHandler,
+} from "../controllers/posOrderController.js";
+import {
   getPosPaymentSettingsHandler,
   savePosPaymentSettingsHandler,
 } from "../controllers/posPaymentSettingsController.js";
@@ -125,6 +131,30 @@ router.get(
   "/stores/:warehouseId/overview",
   requireAnyScopedPermission("pos.devices.read"),
   getPosStoreOverviewHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders",
+  requireAnyScopedPermission("pos.orders.read"),
+  listPosOrdersHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders/:localOrderId",
+  requireAnyScopedPermission("pos.orders.read"),
+  getPosOrderHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders/:localOrderId/refund-preview",
+  requireAnyScopedPermission("pos.orders.read"),
+  getPosOrderRefundPreviewHandler,
+);
+router.post(
+  "/stores/:warehouseId/orders/:localOrderId/cancel",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission([
+    "pos.orders.cancel_local",
+    "pos.orders.refund_remote",
+  ]),
+  cancelPosOrderHandler,
 );
 router.get(
   "/stores/:warehouseId/devices",
