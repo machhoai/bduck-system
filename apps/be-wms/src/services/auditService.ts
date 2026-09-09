@@ -1,6 +1,8 @@
-import { db } from "../config/firebase.js";
-import { AuditAction } from "@bduck/shared-types";
 import { randomUUID } from "crypto";
+
+import type { AuditAction } from "@bduck/shared-types";
+
+import { db } from "../config/firebase.js";
 
 interface AuditLogParams {
   entity_type: string;
@@ -44,6 +46,9 @@ const ENTITY_COLLECTION_MAP: Record<string, string> = {
   employee_contract_import_batches: "employee_contract_import_batches",
   employee_contract_import_rows: "employee_contract_import_rows",
   employee_employment_transitions: "employee_employment_transitions",
+  employee_identity_sync_jobs: "employee_identity_sync_jobs",
+  user_warehouse_roles: "user_warehouse_roles",
+  user_access: "user_access",
   leave_balance_buckets: "leave_balance_buckets",
   leave_ledger_entries: "leave_ledger_entries",
   company_holidays: "company_holidays",

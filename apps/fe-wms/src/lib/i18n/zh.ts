@@ -168,6 +168,9 @@ const zh: Dictionary = {
       targetStatus: "新状态",
       selectTarget: "选择状态",
       effectiveDate: "生效日期",
+      resignationImpactTitle: "离职指令生效后的影响",
+      resignationImpactDescription:
+        "员工档案和账户将停用，现有登录会话将被撤销，当前权限将结束，并且从生效日期起不再计入考勤。",
       probationEndDate: "试用结束日期",
       reason: "原因",
       reasonPlaceholder: "请输入状态变更的详细原因...",
@@ -3429,6 +3432,7 @@ Object.assign(zh, {
     checkedInStatus: "已打卡",
     waitingStatus: "等待打卡",
     noLogStatus: "缺卡",
+    notApplicable: "不适用",
     allWarehouses: "全部仓库",
     allEmployees: "全部员工",
     calendar: "考勤日历",

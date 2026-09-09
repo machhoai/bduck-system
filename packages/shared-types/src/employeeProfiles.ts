@@ -23,6 +23,13 @@ export enum EmployeeEmploymentTransitionStatus {
   CANCELLED = "CANCELLED",
 }
 
+export enum EmployeeIdentitySyncJobStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  SUCCEEDED = "SUCCEEDED",
+  FAILED = "FAILED",
+}
+
 export interface EmployeeProfile {
   id: string;
   user_id: string | null;
@@ -68,6 +75,62 @@ export interface EmployeeEmploymentTransition
   cancelled_at: Date | null;
   cancellation_reason: string | null;
 }
+
+/**
+ * Transactional outbox record used to synchronize the canonical Firestore
+ * account state with Firebase Authentication. The deterministic transition
+ * relationship makes processing idempotent and safe to retry.
+ */
+export interface EmployeeIdentitySyncJob
+  extends SoftDeletable, ISOTimestamped {
+  id: string;
+  employee_profile_id: string;
+  employee_user_id: string;
+  employment_transition_id: string;
+  desired_disabled: boolean;
+  status: EmployeeIdentitySyncJobStatus;
+  retry_count: number;
+  next_retry_at: Date;
+  lease_expires_at: Date | null;
+  last_error: string | null;
+  requested_by: string;
+  completed_at: Date | null;
+}
+
+/**
+ * Date-effective attendance eligibility. Historical dates before resignation
+ * remain eligible even though the current profile projection is INACTIVE.
+ */
+export const isEmployeeAttendanceEligibleOnDate = (
+  profile: Pick<
+    EmployeeProfile,
+    | "status"
+    | "employment_status"
+    | "probation_start_date"
+    | "official_start_date"
+    | "resignation_date"
+    | "is_deleted"
+  >,
+  attendanceDate: LocalDate,
+): boolean => {
+  if (profile.is_deleted || !/^\d{4}-\d{2}-\d{2}$/u.test(attendanceDate)) {
+    return false;
+  }
+
+  const firstWorkingDate =
+    profile.probation_start_date ?? profile.official_start_date;
+  if (firstWorkingDate && attendanceDate < firstWorkingDate) return false;
+
+  if (profile.resignation_date) {
+    return attendanceDate < profile.resignation_date;
+  }
+
+  if (profile.employment_status === EmployeeEmploymentStatus.RESIGNED) {
+    return false;
+  }
+
+  return profile.status !== EmployeeProfileStatus.INACTIVE;
+};
 
 export interface CreateEmployeeEmploymentTransitionInput {
   to_status: Exclude<

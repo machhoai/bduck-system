@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import type { AttendanceLateReport, AttendanceLog } from "@bduck/shared-types";
+import {
+    isEmployeeAttendanceEligibleOnDate,
+    type AttendanceLateReport,
+    type AttendanceLog,
+} from "@bduck/shared-types";
 import { motion } from "framer-motion";
 import { AlertTriangle, CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+
 import {
     buildLatestLateReportMap,
     buildSuccessLogMap,
@@ -89,6 +94,7 @@ export function TimeAttendanceCalendar({
     const txtCheckedIn = labels.checkedInStatus || (isVi ? "Đã check-in" : "已打卡");
     const txtWaiting = labels.waitingStatus || (isVi ? "Chờ check-in" : "等待打卡");
     const txtNoLog = labels.noLogStatus || (isVi ? "Vắng" : "缺卡");
+    const txtNotApplicable = labels.notApplicable || (isVi ? "Không áp dụng" : "不适用");
 
     const mobileContainerRef = useRef<HTMLDivElement>(null);
     const desktopContainerRef = useRef<HTMLDivElement>(null);
@@ -331,6 +337,10 @@ export function TimeAttendanceCalendar({
                                 const lateReport = lateReportMap.get(`${row.user.id}:${activeSelectedKey}`);
                                 const isFuture = activeSelectedDay?.isFuture || false;
                                 const isToday = activeSelectedKey === todayKey;
+                                const isEligible = isEmployeeAttendanceEligibleOnDate(
+                                    row.profile,
+                                    activeSelectedKey,
+                                );
 
                                 return (
                                     <article
@@ -353,7 +363,11 @@ export function TimeAttendanceCalendar({
                                                 </div>
                                             </div>
                                             <div className="shrink-0">
-                                                {dayLog ? (
+                                                {!isEligible ? (
+                                                    <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                                                        {txtNotApplicable}
+                                                    </span>
+                                                ) : dayLog ? (
                                                     <div className="flex flex-col items-end">
                                                         <span className="rounded-full bg-[#257a3e10] border border-[#257a3e20] px-2.5 py-0.5 text-xs font-semibold tabular-nums text-[#257a3e]">
                                                             {formatCheckInTime(dayLog.check_in_at)}
@@ -452,6 +466,10 @@ export function TimeAttendanceCalendar({
                                             const log = successMap.get(`${row.user.id}:${day.key}`);
                                             const lateReport = lateReportMap.get(`${row.user.id}:${day.key}`);
                                             const isToday = day.key === todayKey;
+                                            const isEligible = isEmployeeAttendanceEligibleOnDate(
+                                                row.profile,
+                                                day.key,
+                                            );
                                             return (
                                                 <td
                                                     key={`${row.profile.id}-${day.key}`}
@@ -466,7 +484,11 @@ export function TimeAttendanceCalendar({
                                                                     : "bg-[var(--color-surface-card)]"
                                                         } ${day.isFuture ? "opacity-45" : ""}`}
                                                 >
-                                                    {log ? (
+                                                    {!isEligible ? (
+                                                        <span className="text-micro font-medium text-[var(--color-text-muted)]">
+                                                            {txtNotApplicable}
+                                                        </span>
+                                                    ) : log ? (
                                                         <div className="flex flex-col items-center justify-center gap-1">
                                                             <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-micro font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
                                                                 <span className="h-1.5 w-1.5 rounded-full bg-[#257a3e]" />
@@ -496,7 +518,7 @@ export function TimeAttendanceCalendar({
                                                     ) : !day.isFuture ? (
                                                         <span className="text-slate-300 font-bold select-none text-xs">•</span>
                                                     ) : null}
-                                                    {!log && !isToday && !day.isFuture && lateReport ? (
+                                                    {isEligible && !log && !isToday && !day.isFuture && lateReport ? (
                                                         <div className="mt-1 flex justify-center">
                                                             <LateReportChip
                                                                 label={labels.reportLate || "Late"}

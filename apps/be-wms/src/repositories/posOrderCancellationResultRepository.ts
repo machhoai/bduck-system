@@ -33,6 +33,7 @@ export const finalizePosOrderCancellation = async (input: {
     if (operation.status === "SUCCEEDED") return;
     const now = new Date().toISOString();
     const orderUpdate = {
+      status: "CANCELLED",
       paymentStatus: "REFUNDED",
       syncStatus: "CANCELLED",
       remoteOrderId: input.remoteOrderId,

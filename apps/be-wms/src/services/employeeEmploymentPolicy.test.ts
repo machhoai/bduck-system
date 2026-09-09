@@ -1,17 +1,22 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   EmployeeEmploymentStatus,
   EmployeeProfileStatus,
+  isEmployeeAttendanceEligibleOnDate,
   type EmployeeProfile,
 } from "@bduck/shared-types";
-import assert from "node:assert/strict";
-import test from "node:test";
+
+import { planEmployeeEmploymentStatusBackfill } from "../scripts/employeeEmploymentBackfillPlanner.js";
+
 import {
   canTransitionEmploymentStatus,
   employmentDatePatchForTransition,
   getVietnamLocalDate,
   validateEmployeeEmploymentProfile,
 } from "./employeeEmploymentPolicy.js";
-import { planEmployeeEmploymentStatusBackfill } from "../scripts/employeeEmploymentBackfillPlanner.js";
+
 
 const profile = (values: Partial<EmployeeProfile> = {}): EmployeeProfile => ({
   id: "employee-1",
@@ -128,6 +133,46 @@ test("Vietnam local date is stable around the UTC day boundary", () => {
   assert.equal(
     getVietnamLocalDate(new Date("2026-07-22T18:00:00.000Z")),
     "2026-07-23",
+  );
+});
+
+test("attendance remains historical and stops on the resignation date", () => {
+  const resignedProfile = profile({
+    status: EmployeeProfileStatus.INACTIVE,
+    employment_status: EmployeeEmploymentStatus.RESIGNED,
+    official_start_date: "2026-01-01",
+    resignation_date: "2026-08-20",
+  });
+
+  assert.equal(
+    isEmployeeAttendanceEligibleOnDate(resignedProfile, "2025-12-31"),
+    false,
+  );
+  assert.equal(
+    isEmployeeAttendanceEligibleOnDate(resignedProfile, "2026-08-19"),
+    true,
+  );
+  assert.equal(
+    isEmployeeAttendanceEligibleOnDate(resignedProfile, "2026-08-20"),
+    false,
+  );
+  assert.equal(
+    isEmployeeAttendanceEligibleOnDate(resignedProfile, "2026-08-21"),
+    false,
+  );
+});
+
+test("inactive profile without a resignation date is not attendance eligible", () => {
+  assert.equal(
+    isEmployeeAttendanceEligibleOnDate(
+      profile({
+        status: EmployeeProfileStatus.INACTIVE,
+        employment_status: EmployeeEmploymentStatus.OFFICIAL,
+        official_start_date: "2026-01-01",
+      }),
+      "2026-08-19",
+    ),
+    false,
   );
 });
 

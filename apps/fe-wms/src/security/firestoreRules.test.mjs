@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it } from "node:test";
 import { readFile } from "node:fs/promises";
+import { after, before, beforeEach, describe, it } from "node:test";
+
 import {
   assertFails,
   assertSucceeds,
@@ -46,6 +47,11 @@ async function seedAccess(userId, grants, isSystemAdmin = false) {
   await environment.withSecurityRulesDisabled(async (context) => {
     const firestore = context.firestore();
     const versionId = "access-v1";
+    await firestore.doc(`users/${userId}`).set({
+      status: "ACTIVE",
+      is_deleted: false,
+      workplace_facility_id: Object.keys(grants)[0] || null,
+    });
     await context
       .firestore()
       .doc(`user_access/${userId}`)
@@ -209,9 +215,20 @@ async function seedDocuments() {
       ],
       [
         "users/user-a",
-        { workplace_facility_id: "warehouse-c", is_deleted: false },
+        {
+          workplace_facility_id: "warehouse-c",
+          status: "ACTIVE",
+          is_deleted: false,
+        },
       ],
-      ["users/user-b", { workplace_facility_id: "store-d", is_deleted: false }],
+      [
+        "users/user-b",
+        {
+          workplace_facility_id: "store-d",
+          status: "ACTIVE",
+          is_deleted: false,
+        },
+      ],
       [
         "employee_profiles/profile-a",
         {
@@ -1327,6 +1344,7 @@ describe("grant-aware Firestore rules", () => {
       ["employee_contract_status_operations", "status-operation-a"],
       ["employee_contract_expiry_notification_locks", "warning-a"],
       ["employee_contract_migration_operations", "migration-operation-a"],
+      ["employee_identity_sync_jobs", "identity-sync-a"],
     ]) {
       await assertFails(getDoc(doc(hr, ...path)));
       await assertFails(getDoc(doc(admin, ...path)));
@@ -1697,6 +1715,17 @@ describe("grant-aware Firestore rules", () => {
     });
     const user = environment.authenticatedContext("user-a").firestore();
     await assertFails(getDoc(doc(user, "inventory", "inventory-c")));
+  });
+
+  it("denies direct Firestore reads immediately for an inactive account", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/user-a").update({
+        status: "INACTIVE",
+      });
+    });
+    const inactiveUser = environment.authenticatedContext("user-a").firestore();
+    await assertFails(getDoc(doc(inactiveUser, "products", "product-1")));
+    await assertFails(getDoc(doc(inactiveUser, "users", "user-a")));
   });
 
   it("allows a materialized system admin to read facility-scoped data globally", async () => {

@@ -243,6 +243,7 @@ export const posOrderCancellationRepository = {
         is_deleted: false,
       };
       const orderUpdate = {
+        ...(localOnly ? { status: "CANCELLED" } : {}),
         paymentStatus,
         syncStatus: localOnly ? "CANCELLED" : order.syncStatus,
         cancellationOperationId: input.operationId,

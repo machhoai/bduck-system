@@ -2926,6 +2926,9 @@ const vi = {
             targetStatus: "Trạng thái mới",
             selectTarget: "Chọn trạng thái",
             effectiveDate: "Ngày hiệu lực",
+            resignationImpactTitle: "Tác động khi lệnh nghỉ việc có hiệu lực",
+            resignationImpactDescription:
+                "Hồ sơ nhân sự và tài khoản sẽ ngừng hoạt động, các phiên đăng nhập bị thu hồi, phân quyền hiện tại được kết thúc và nhân sự không còn được tính chấm công từ ngày hiệu lực.",
             probationEndDate: "Ngày kết thúc thử việc",
             reason: "Lý do",
             reasonPlaceholder:
@@ -3529,6 +3532,7 @@ Object.assign(vi, {
         allEmployees: "Tất cả nhân viên",
         calendar: "Lịch chấm công",
         blankMeansNoCheckIn: "Ô trống nghĩa là chưa có check-in thành công.",
+        notApplicable: "Không áp dụng",
         employees: "nhân viên",
         employee: "Nhân viên",
         employeeCode: "Mã nhân viên",

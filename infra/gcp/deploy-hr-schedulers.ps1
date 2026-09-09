@@ -77,6 +77,14 @@ Set-HttpSchedulerJob `
     -Region $region
 
 Set-HttpSchedulerJob `
+    -JobName "employee-identity-sync-every-five-minutes" `
+    -Schedule "*/5 * * * *" `
+    -Uri "$baseUrl/api/employee-profiles/cron/identity-sync/process-pending" `
+    -Secret $employmentSecret `
+    -ProjectId $projectId `
+    -Region $region
+
+Set-HttpSchedulerJob `
     -JobName "leave-maintenance-daily" `
     -Schedule "5 0 * * *" `
     -Uri "$baseUrl/api/leave/cron/maintenance" `

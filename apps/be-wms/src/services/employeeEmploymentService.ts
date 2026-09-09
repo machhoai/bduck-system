@@ -5,30 +5,33 @@ import {
   type EmployeeProfile,
 } from "@bduck/shared-types";
 import type { z } from "zod";
-import {
-  applyScheduledEmployeeEmploymentTransition,
-  createEmployeeEmploymentTransitionRecord,
-} from "../repositories/employeeEmploymentTransitionRepository.js";
+
 import { cancelScheduledEmployeeEmploymentTransition } from "../repositories/employeeEmploymentTransitionCancellationRepository.js";
 import {
   findDueEmployeeEmploymentTransitions,
   findEmployeeEmploymentTransitions,
   getEmployeeEmploymentTransitionById,
 } from "../repositories/employeeEmploymentTransitionQueryRepository.js";
+import {
+  applyScheduledEmployeeEmploymentTransition,
+  createEmployeeEmploymentTransitionRecord,
+} from "../repositories/employeeEmploymentTransitionRepository.js";
 import { getEmployeeProfileById } from "../repositories/employeeProfileRepository.js";
+
 import type { AuditMetadata } from "./auditService.js";
 import { logAudit } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
-import {
-  createEmployeeEmploymentTransitionSchema,
-  cancelEmployeeEmploymentTransitionSchema,
-} from "./employeeEmploymentSchemas.js";
 import {
   canTransitionEmploymentStatus,
   employmentDatePatchForTransition,
   getVietnamLocalDate,
   validateEmployeeEmploymentProfile,
 } from "./employeeEmploymentPolicy.js";
+import type {
+  createEmployeeEmploymentTransitionSchema,
+  cancelEmployeeEmploymentTransitionSchema,
+} from "./employeeEmploymentSchemas.js";
+import { processEmployeeIdentitySyncJob } from "./employeeIdentitySyncService.js";
 import { releaseProbationLeaveForProfile } from "./leaveBalanceService.js";
 
 type CreateTransitionInput = z.infer<
@@ -174,6 +177,9 @@ export const createEmployeeEmploymentTransition = async (
       reason: input.reason,
       requested_by: actorId,
       action_time: auditMetadata?.action_time,
+      ip_address: auditMetadata?.ip_address,
+      device_id: auditMetadata?.device_id,
+      session_token: auditMetadata?.session_token,
     },
     isImmediate ? patch : null,
   );
@@ -184,7 +190,12 @@ export const createEmployeeEmploymentTransition = async (
       input.effective_date,
       actorId,
     );
-    await writeAppliedAudits(result, actorId, auditMetadata);
+    if (!result.auditsWritten) {
+      await writeAppliedAudits(result, actorId, auditMetadata);
+    }
+    if (result.identitySyncJobId) {
+      await processEmployeeIdentitySyncJob(result.identitySyncJobId);
+    }
   } else {
     await logAudit({
       entity_type: "employee_employment_transitions",
@@ -270,7 +281,12 @@ export const applyDueEmployeeEmploymentTransitions = async (
         transition.effective_date,
         actorId,
       );
-      await writeAppliedAudits(result, actorId);
+      if (!result.auditsWritten) {
+        await writeAppliedAudits(result, actorId);
+      }
+      if (result.identitySyncJobId) {
+        await processEmployeeIdentitySyncJob(result.identitySyncJobId);
+      }
       applied += 1;
     } catch (error) {
       failed += 1;

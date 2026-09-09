@@ -82,10 +82,22 @@ async function run() {
       }
 
       const previousSummary = summarySnapshot.data() ?? {};
+      const repairedAt = new Date().toISOString();
+      const repairedOrder = {
+        ...order,
+        status: "CANCELLED",
+        version: Number(order.version ?? 0) + 1,
+        updatedAt: repairedAt,
+      };
       const repairedSummary = buildPosOrderSummaryDocument(
         validatedOrderId,
-        order,
+        repairedOrder,
       );
+      transaction.update(orderRef, {
+        status: repairedOrder.status,
+        version: repairedOrder.version,
+        updatedAt: repairedOrder.updatedAt,
+      });
       transaction.set(summaryRef, repairedSummary, { merge: false });
       const auditId = randomUUID();
       transaction.create(
@@ -97,12 +109,14 @@ async function run() {
           actorName: "System POS order repair",
           actionTime: new Date().toISOString(),
           oldValue: {
+            status: order.status ?? null,
             paymentStatus: previousSummary.paymentStatus ?? null,
             syncStatus: previousSummary.syncStatus ?? null,
             version: previousSummary.version ?? null,
             updatedAt: previousSummary.updatedAt ?? null,
           },
           newValue: {
+            status: repairedOrder.status,
             paymentStatus: repairedSummary.paymentStatus ?? null,
             syncStatus: repairedSummary.syncStatus ?? null,
             version: repairedSummary.version ?? null,
