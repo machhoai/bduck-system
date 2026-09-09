@@ -11,7 +11,10 @@ import {
   finalizePosOrderCancellation,
   markPosOrderCancellationFailure,
 } from "./posOrderCancellationResultRepository.js";
-import type { RawPosOrder } from "./posOrderRepository.js";
+import {
+  buildPosOrderSummaryDocument,
+  type RawPosOrder,
+} from "./posOrderRepository.js";
 
 export interface PosOrderCancellationOperation {
   operation_id: string;
@@ -133,6 +136,11 @@ export const posOrderCancellationRepository = {
             version: resumedOrder.version,
             updatedAt: now,
           });
+          transaction.set(
+            db.collection("pos_order_summaries").doc(input.localOrderId),
+            buildPosOrderSummaryDocument(input.localOrderId, resumedOrder),
+            { merge: false },
+          );
           const auditId = randomUUID();
           transaction.create(
             db.collection("audit_logs").doc(auditId),
@@ -246,6 +254,14 @@ export const posOrderCancellationRepository = {
       };
       transaction.create(operationRef, operation);
       transaction.update(orderRef, orderUpdate);
+      transaction.set(
+        db.collection("pos_order_summaries").doc(input.localOrderId),
+        buildPosOrderSummaryDocument(input.localOrderId, {
+          ...order,
+          ...orderUpdate,
+        }),
+        { merge: false },
+      );
       const auditId = randomUUID();
       transaction.create(
         db.collection("audit_logs").doc(auditId),

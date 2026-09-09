@@ -82,21 +82,9 @@ export const assertJoyworldRefundMatchesLocal = (input: {
   }
 };
 
-const assertRefundFeature = (warehouseId: string): void => {
+const assertRefundFeature = (): void => {
   if (process.env.JOYWORLD_REFUND_ENABLED !== "true") {
     throw new JoyworldRefundError("REMOTE_REFUND_DISABLED");
-  }
-  const allowedWarehouses = (
-    process.env.JOYWORLD_REFUND_CANARY_WAREHOUSE_IDS ?? ""
-  )
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  if (
-    allowedWarehouses.length > 0 &&
-    !allowedWarehouses.includes(warehouseId)
-  ) {
-    throw new JoyworldRefundError("REMOTE_REFUND_NOT_ENABLED_FOR_STORE");
   }
   const baseUrl = new URL(getJoyworldManagerBaseUrl());
   if (
@@ -185,7 +173,7 @@ export class JoyworldRefundClient {
     paidAt: string;
     totalAmount: number;
   }): Promise<string> {
-    assertRefundFeature(input.warehouseId);
+    assertRefundFeature();
     if (input.remoteOrderId) return input.remoteOrderId;
     const token = await getJoyworldToken();
     const window = dateWindow(input.paidAt);
@@ -218,7 +206,7 @@ export class JoyworldRefundClient {
     warehouseId: string,
     remoteOrderId: string,
   ): Promise<JoyworldRefundDetailsResponse["data"]> {
-    assertRefundFeature(warehouseId);
+    assertRefundFeature();
     const payload = await managerRequest(
       `/order/manager/orderrefund/getdetails?orderId=${encodeURIComponent(remoteOrderId)}`,
     );
@@ -229,7 +217,7 @@ export class JoyworldRefundClient {
   }
 
   async check(warehouseId: string, remoteOrderId: string): Promise<void> {
-    assertRefundFeature(warehouseId);
+    assertRefundFeature();
     const payload = await managerRequest("/order/manager/orderrefund/check", {
       method: "POST",
       body: JSON.stringify({ orderId: remoteOrderId }),
@@ -246,7 +234,7 @@ export class JoyworldRefundClient {
     reason: string;
     details: JoyworldRefundDetailsResponse["data"];
   }): Promise<string> {
-    assertRefundFeature(input.warehouseId);
+    assertRefundFeature();
     const request = joyworldRefundSubmitRequestSchema.parse({
       orderId: input.remoteOrderId,
       totalMoney: input.details.totalMoney,

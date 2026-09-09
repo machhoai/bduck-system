@@ -71,6 +71,31 @@ test("JPOS revenue stats ignore invalid totals", () => {
   );
 });
 
+test("JPOS revenue stats exclude refunded and cancelled orders", () => {
+  const result = aggregatePosRevenueStats([
+    {
+      id: "refunded",
+      status: "SYNC_SUCCESS",
+      paymentStatus: "REFUNDED",
+      syncStatus: "CANCELLED",
+      totalAmount: 222,
+    },
+    {
+      id: "paid",
+      status: "SYNC_SUCCESS",
+      paymentStatus: "PAID",
+      syncStatus: "SYNC_SUCCESS",
+      totalAmount: 100,
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    totalRevenue: 100,
+    totalOrders: 1,
+    averageOrderValue: 100,
+  });
+});
+
 test("all-store dashboard keeps unique item/order references across stores", () => {
   const dashboard = buildPosRevenueDashboardData({
     records: ["a", "b"].map((warehouseId) => ({

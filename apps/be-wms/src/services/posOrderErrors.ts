@@ -52,10 +52,6 @@ const ERROR_MESSAGES: Record<string, Messages> = {
     vi: "Hoàn tiền JoyWorld bị khóa vì chưa có đường truyền bảo mật.",
     zh: "由于尚无安全传输通道，JoyWorld 退款已锁定。",
   },
-  REMOTE_REFUND_NOT_ENABLED_FOR_STORE: {
-    vi: "Hoàn tiền JoyWorld chưa được bật cho cửa hàng này.",
-    zh: "此门店尚未启用 JoyWorld 退款。",
-  },
   REMOTE_ORDER_NOT_FOUND: {
     vi: "Không tìm thấy chính xác đơn tương ứng trên JoyWorld.",
     zh: "在 JoyWorld 中未找到准确匹配的订单。",

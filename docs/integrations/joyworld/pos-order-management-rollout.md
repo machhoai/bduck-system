@@ -30,12 +30,13 @@ JOYWORLD_REFUND_ALLOW_INSECURE_HTTP=false
 
 After secure transport is available:
 
-1. Configure `JOYWORLD_MANAGER_BASE_URL`, credentials, and exactly one canary
-   store in `JOYWORLD_REFUND_CANARY_WAREHOUSE_IDS`.
+1. Configure `JOYWORLD_MANAGER_BASE_URL` and credentials.
 2. Verify `JJ-BizCode` replay/expiry behavior with one separately approved
    sandbox refund. Never perform a live refund from CI.
-3. Set `JOYWORLD_REFUND_ENABLED=true` only for the canary, monitor cancellation
-   audit records and revenue reconciliation, then expand the canary list.
+3. Set `JOYWORLD_REFUND_ENABLED=true`. This enables the integration for every
+   store; warehouse-scoped `pos.orders.refund_remote` permissions remain the
+   authorization boundary. Monitor cancellation audit records and revenue
+   reconciliation after rollout.
 
 An order in `SYNCING`, `REFUNDING`, or `REFUND_UNKNOWN` is fail-closed. An order
 linked to an in-flight or issued MISA invoice is also fail-closed. Operators

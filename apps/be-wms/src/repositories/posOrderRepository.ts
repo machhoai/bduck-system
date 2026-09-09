@@ -79,6 +79,15 @@ export const mapPosOrderSummary = (
   };
 };
 
+export const buildPosOrderSummaryDocument = (
+  id: string,
+  value: Record<string, unknown>,
+) => ({
+  ...mapPosOrderSummary(id, value),
+  is_deleted: false as const,
+  updatedAt: text(value.updatedAt) ?? new Date(0).toISOString(),
+});
+
 const matches = (order: PosOrderSummary, query: PosOrderListQuery): boolean => {
   const orderCode = query.orderCode?.toLocaleLowerCase("vi");
   const product = query.product?.toLocaleLowerCase("vi");

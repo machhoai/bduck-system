@@ -4,7 +4,10 @@ import { db } from "../config/firebase.js";
 
 import { buildPosOrderCancellationAudit } from "./posOrderCancellationAudit.js";
 import { type PosOrderCancellationOperation } from "./posOrderCancellationRepository.js";
-import type { RawPosOrder } from "./posOrderRepository.js";
+import {
+  buildPosOrderSummaryDocument,
+  type RawPosOrder,
+} from "./posOrderRepository.js";
 
 export const finalizePosOrderCancellation = async (input: {
   localOrderId: string;
@@ -41,6 +44,14 @@ export const finalizePosOrderCancellation = async (input: {
       updatedAt: now,
     };
     transaction.update(orderRef, orderUpdate);
+    transaction.set(
+      db.collection("pos_order_summaries").doc(input.localOrderId),
+      buildPosOrderSummaryDocument(input.localOrderId, {
+        ...order,
+        ...orderUpdate,
+      }),
+      { merge: false },
+    );
     transaction.update(operationRef, {
       status: "SUCCEEDED",
       remote_order_id: input.remoteOrderId,
@@ -108,6 +119,14 @@ export const markPosOrderCancellationFailure = async (input: {
       updatedAt: now,
     };
     transaction.update(orderRef, orderUpdate);
+    transaction.set(
+      db.collection("pos_order_summaries").doc(input.localOrderId),
+      buildPosOrderSummaryDocument(input.localOrderId, {
+        ...order,
+        ...orderUpdate,
+      }),
+      { merge: false },
+    );
     transaction.update(operationRef, {
       status: input.unknown ? "UNKNOWN" : "FAILED",
       last_error: input.error.slice(0, 1_000),

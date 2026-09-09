@@ -13,6 +13,8 @@ export interface PosRevenueOrderRecord {
   localOrderId?: unknown;
   hkOrderNumber?: unknown;
   status?: unknown;
+  paymentStatus?: unknown;
+  syncStatus?: unknown;
   totalAmount?: unknown;
   paidAt?: unknown;
   createdAt?: unknown;
@@ -53,8 +55,7 @@ export function getPaidPosOrders(
   const paidOrders = new Map<string, PosRevenueOrderRecord>();
   for (const record of records) {
     if (
-      typeof record.status !== "string" ||
-      !JPOS_REVENUE_PAID_STATUSES.has(record.status) ||
+      !isPosOrderRevenueEligible(record) ||
       !Number.isFinite(Number(record.totalAmount))
     ) {
       continue;
@@ -64,6 +65,18 @@ export function getPaidPosOrders(
     paidOrders.set(warehouseId ? `${warehouseId}:${localOrderId}` : localOrderId, record);
   }
   return paidOrders;
+}
+
+export function isPosOrderRevenueEligible(
+  order: PosRevenueOrderRecord,
+): boolean {
+  if (order.syncStatus === "CANCELLED") return false;
+  if (typeof order.paymentStatus === "string") {
+    return order.paymentStatus !== "DRAFT" &&
+      order.paymentStatus !== "REFUNDED";
+  }
+  return typeof order.status === "string" &&
+    JPOS_REVENUE_PAID_STATUSES.has(order.status);
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {
