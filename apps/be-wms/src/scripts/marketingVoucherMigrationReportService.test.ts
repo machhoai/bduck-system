@@ -46,6 +46,43 @@ test("declared total differences are reported but do not fail a valid dry run", 
   ]);
 });
 
+test("status reconciliation ignores Firestore map key insertion order", () => {
+  const report = buildMarketingVoucherMigrationReport({
+    migrationId: "migration-1",
+    mode: "RECONCILE",
+    sourceProjectId: "e-commerce-72a4b",
+    targetProjectId: "test-jw-system",
+    piiRedacted: true,
+    expectedCampaigns: 1,
+    expectedCodes: 10,
+    source,
+    target: {
+      campaignCount: 1,
+      codeCount: 10,
+      checksum: "global-checksum",
+      campaignCounts: {
+        "campaign-1": {
+          total: 10,
+          revoked: 0,
+          used: 1,
+          distributed: 1,
+          available: 8,
+        },
+      },
+      campaignChecksums: { "campaign-1": "code-checksum" },
+      campaignSourceHashes: { "campaign-1": "campaign-hash" },
+      issues: [],
+    },
+    images: new Map(),
+    uat: { campaignIds: ["campaign-1"], passed: true, issues: [] },
+    startedAt: new Date("2026-09-03T00:00:00.000Z"),
+  });
+  assert.equal(report.status, "COMPLETED");
+  assert.ok(
+    !report.issues.includes("TARGET_STATUS_COUNTS_MISMATCH:campaign-1"),
+  );
+});
+
 test("reconciliation fails closed on checksum or UAT differences", () => {
   const report = buildMarketingVoucherMigrationReport({
     migrationId: "migration-1",

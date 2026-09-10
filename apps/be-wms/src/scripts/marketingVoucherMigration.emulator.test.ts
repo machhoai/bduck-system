@@ -29,7 +29,11 @@ const campaign = (id: string, purpose?: "event" | "print") => ({
   createdBy: "legacy-owner",
 });
 
-test("phase 6 apply reconciles counts, writes audit and redacts staging PII", async () => {
+test("phase 6 apply reconciles counts, writes audit and redacts staging PII", async (context) => {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    context.skip("requires FIRESTORE_EMULATOR_HOST");
+    return;
+  }
   const suffix = `${process.pid}-${Date.now()}`;
   const sourceApp = initializeApp(
     { projectId: `legacy-${suffix}` },

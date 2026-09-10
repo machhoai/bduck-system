@@ -212,6 +212,11 @@ export const scanMarketingVoucherTarget = async (input: {
       codeCount += 1;
     }
     cursor = documents.at(-1)!.id;
+    if (codeCount % 100_000 < documents.length) {
+      console.info(
+        `[voucher-migration] reconciled ${codeCount.toLocaleString("en-US")} target codes`,
+      );
+    }
   }
   return {
     campaignCount: campaignDocuments.length,

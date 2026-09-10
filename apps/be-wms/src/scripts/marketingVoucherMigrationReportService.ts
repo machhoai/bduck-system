@@ -1,4 +1,5 @@
 import type {
+  MarketingVoucherCodeCounts,
   MarketingVoucherMigrationMode,
   MarketingVoucherMigrationReport,
 } from "@bduck/shared-types";
@@ -10,8 +11,15 @@ import type {
 import type { MigrationImageResult } from "./marketingVoucherMigrationTypes.js";
 import type { MigrationUatResult } from "./marketingVoucherMigrationUatService.js";
 
-const countsEqual = (left: unknown, right: unknown): boolean =>
-  JSON.stringify(left) === JSON.stringify(right);
+const countsEqual = (
+  left: MarketingVoucherCodeCounts,
+  right: MarketingVoucherCodeCounts,
+): boolean =>
+  left.available === right.available &&
+  left.distributed === right.distributed &&
+  left.used === right.used &&
+  left.revoked === right.revoked &&
+  left.total === right.total;
 
 export const buildMarketingVoucherMigrationReport = (input: {
   migrationId: string;

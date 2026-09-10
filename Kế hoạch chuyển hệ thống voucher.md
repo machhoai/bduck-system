@@ -390,27 +390,28 @@ Không sao chép các Next.js 16 Route Handler từ e-commerce sang JPULSE. JPUL
 
 ### Phase 6 — Migration rehearsal
 
-- [ ] Dry-run production source.
-- [ ] Copy sang Firebase test.
-- [ ] Đối soát 14 campaign và 1.428.254 code.
-- [ ] Kiểm tra ảnh/checksum.
-- [ ] UAT trên dữ liệu thật đã ẩn PII khi cần.
+- [x] Dry-run production source.
+- [x] Copy sang Firebase test.
+- [x] Đối soát 14 campaign và 1.428.254 code.
+- [x] Kiểm tra ảnh/checksum.
+- [x] UAT trên dữ liệu thật đã ẩn PII khi cần.
 
 ### Phase 7 — Production cutover
 
 - [ ] Deploy backend/rules/indexes trước, route tắt bằng feature flag.
-- [ ] Initial bulk migration.
-- [ ] Delta migration.
-- [ ] Maintenance window và final reconcile.
+- [x] Initial bulk migration.
+- [x] Delta migration (post-cutover verify xác nhận không có delta).
+- [ ] Maintenance window và khóa write hệ thống cũ.
+- [x] Final reconcile production.
 - [ ] Bật route/permission.
 - [ ] Theo dõi job, Brevo, Firestore reads/writes và Cloud Run.
 
 ### Phase 8 — Ổn định và rollback window
 
 - [ ] Giữ hệ thống cũ read-only tối thiểu 30 ngày.
-- [ ] Theo dõi audit và reconciliation hằng ngày.
+- [x] Thiết lập đối soát chỉ đọc hằng ngày; tiếp tục theo dõi đủ rollback window.
 - [ ] Có script reverse-delta nếu phải rollback.
-- [ ] Email đã gửi không thể rollback; báo cáo dispatch được giữ nguyên.
+- [x] Lịch sử email trên voucher được giữ nguyên; email đã gửi không rollback.
 
 Ước lượng: khoảng 25–35 ngày công cho một developer, gồm migration rehearsal và UAT.
 

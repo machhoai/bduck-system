@@ -80,6 +80,17 @@ const targetAccount = (expectedProjectId: string | null): ServiceAccount => {
   throw new Error("TARGET_FIREBASE_CREDENTIALS_MISSING");
 };
 
+export const resolveMarketingVoucherTargetBucket = (input: {
+  expectedProjectId: string | null;
+  explicitBucket?: string;
+  productionBucket?: string;
+  testBucket?: string;
+}): string | undefined =>
+  input.explicitBucket ??
+  (input.expectedProjectId === "jw-system-f2104"
+    ? input.productionBucket
+    : input.testBucket);
+
 const createClient = (
   name: string,
   account: ServiceAccount,
@@ -107,6 +118,12 @@ export const createMarketingVoucherMigrationClients = (
   needsTarget: boolean,
   expectedTargetProjectId: string | null,
 ): MigrationFirebaseClients => {
+  const targetBucketName = resolveMarketingVoucherTargetBucket({
+    expectedProjectId: expectedTargetProjectId,
+    explicitBucket: process.env.MARKETING_VOUCHER_TARGET_STORAGE_BUCKET,
+    productionBucket: process.env.PROD_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    testBucket: process.env.TEST_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  });
   const source = createClient(
     `voucher-migration-source-${Date.now()}`,
     sourceAccount(),
@@ -116,8 +133,7 @@ export const createMarketingVoucherMigrationClients = (
     ? createClient(
         `voucher-migration-target-${Date.now()}`,
         targetAccount(expectedTargetProjectId),
-        process.env.MARKETING_VOUCHER_TARGET_STORAGE_BUCKET ??
-          process.env.TEST_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        targetBucketName,
       )
     : null;
   return {
