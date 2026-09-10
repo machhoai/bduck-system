@@ -75,20 +75,20 @@ export function MarketingVoucherAppearanceSheet({
       desktopClassName="md:inset-y-0 md:bottom-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[720px] md:rounded-none md:border-0"
       contentClassName="flex-1 overflow-y-auto px-5 pb-8 md:px-7"
     >
-      <form onSubmit={submit} className="space-y-6 pt-6">
+      <form onSubmit={submit} className="space-y-4 pt-4">
         <div>
-          <h2 className="hidden text-xl font-bold text-slate-950 md:block">
+          <h2 className="hidden text-base font-semibold text-slate-950 md:block">
             {copy.appearance.title}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-xs text-slate-500">
             {copy.appearance.hint}
           </p>
         </div>
         <fieldset>
-          <legend className="text-sm font-bold text-slate-800">
+          <legend className="text-xs font-semibold text-slate-800">
             {copy.appearance.choose}
           </legend>
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-2 flex flex-wrap gap-2">
             {presets.map((preset) => (
               <button
                 key={preset.value}
@@ -96,40 +96,40 @@ export function MarketingVoucherAppearanceSheet({
                 aria-label={preset.value}
                 aria-pressed={color === preset.value}
                 onClick={() => setColor(preset.value)}
-                className={`grid h-11 w-11 place-items-center rounded-2xl ring-2 ring-offset-2 transition ${preset.className} ${color === preset.value ? "ring-slate-950" : "ring-transparent hover:ring-slate-300"}`}
+                className={`grid h-8 w-8 place-items-center rounded-lg ring-2 ring-offset-2 transition ${preset.className} ${color === preset.value ? "ring-slate-950" : "ring-transparent hover:ring-slate-300"}`}
               >
                 {color === preset.value ? (
-                  <Check className="text-white drop-shadow" size={18} />
+                  <Check className="text-white drop-shadow" size={14} />
                 ) : null}
               </button>
             ))}
           </div>
         </fieldset>
-        <label className="block text-sm font-bold text-slate-800">
+        <label className="block text-xs font-semibold text-slate-800">
           {copy.appearance.custom}
-          <span className="mt-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+          <span className="mt-2 flex h-8 w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3">
             <input
               type="color"
               value={color}
               onChange={(event) => setColor(event.target.value.toUpperCase())}
-              className="h-10 w-14 cursor-pointer rounded-xl border-0 bg-transparent p-0"
+              className="h-6 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
             />
-            <span className="font-mono text-sm font-bold text-slate-700">
+            <span className="font-mono text-sm font-semibold text-slate-700">
               {color}
             </span>
           </span>
         </label>
         <section>
-          <h3 className="mb-3 text-sm font-bold text-slate-800">
+          <h3 className="mb-2 text-xs font-semibold text-slate-800">
             {copy.appearance.preview}
           </h3>
           <MarketingVoucherPreview campaign={campaign} accentColor={color} />
         </section>
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-          <button type="button" disabled={isPending} onClick={onClose} className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button" disabled={isPending} onClick={onClose} className="h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
             {copy.action.cancel}
           </button>
-          <button type="submit" disabled={isPending || color === campaign.accent_color.toUpperCase()} className="rounded-2xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50">
+          <button type="submit" disabled={isPending || color === campaign.accent_color.toUpperCase()} className="h-8 inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:opacity-50">
             {copy.appearance.save}
           </button>
         </div>

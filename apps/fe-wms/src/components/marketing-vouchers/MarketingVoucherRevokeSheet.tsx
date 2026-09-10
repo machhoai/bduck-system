@@ -58,14 +58,14 @@ export function MarketingVoucherRevokeSheet({
       desktopClassName="md:inset-y-0 md:bottom-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[440px] md:rounded-none md:border-0"
       contentClassName="flex-1 overflow-y-auto px-5 pb-7 md:px-7"
     >
-      <form onSubmit={submit} className="pt-6">
-        <h2 className="hidden text-xl font-bold text-slate-950 md:block">
+      <form onSubmit={submit} className="pt-4">
+        <h2 className="hidden text-base font-semibold text-slate-950 md:block">
           {copy.codes.revokeTitle}
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-1 text-xs text-slate-600">
           {codeIds.length} {copy.codes.selected}
         </p>
-        <label className="mt-6 block text-sm font-semibold text-slate-700">
+        <label className="mt-4 block text-xs font-semibold text-slate-700">
           {copy.codes.revokeReason}
           <textarea
             autoFocus
@@ -75,22 +75,22 @@ export function MarketingVoucherRevokeSheet({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder={copy.codes.revokeReasonPlaceholder}
-            className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
           />
         </label>
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             disabled={isPending}
             onClick={onClose}
-            className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {copy.action.cancel}
           </button>
           <button
             type="submit"
             disabled={isPending || !reason.trim()}
-            className="rounded-2xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-rose-500 disabled:opacity-50"
+            className="h-8 inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
           >
             {copy.codes.revoke}
           </button>

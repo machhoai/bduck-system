@@ -7,7 +7,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useMarketingVoucherEmailDraftStore } from "@/stores/useMarketingVoucherEmailDraftStore";
 
 const inputClass =
-  "mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
+  "mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500";
 
 export function MarketingVoucherEmailRecipientsStep({
   codes,
@@ -23,8 +23,8 @@ export function MarketingVoucherEmailRecipientsStep({
   );
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-2">
         {(
           [
             ["GROUPED", copy.grouped, copy.groupedHint, Mails],
@@ -36,16 +36,16 @@ export function MarketingVoucherEmailRecipientsStep({
             type="button"
             aria-pressed={draft.mode === mode}
             onClick={() => update({ mode })}
-            className={`rounded-2xl border p-4 text-left transition ${draft.mode === mode ? "border-amber-500 bg-amber-50 ring-2 ring-amber-100" : "border-slate-200 bg-white hover:border-slate-300"}`}
+            className={`rounded-xl border p-3 text-left transition ${draft.mode === mode ? "border-amber-500 bg-amber-50 ring-1 ring-amber-500" : "border-slate-200 bg-white hover:border-slate-300"}`}
           >
-            <Icon size={19} className="text-amber-700" />
-            <p className="mt-3 text-sm font-bold text-slate-950">{title}</p>
+            <Icon size={16} className="text-amber-700" />
+            <p className="mt-2 text-sm font-semibold text-slate-950">{title}</p>
             <p className="mt-1 text-xs leading-5 text-slate-500">{hint}</p>
           </button>
         ))}
       </div>
       {draft.mode === "GROUPED" ? (
-        <label className="block text-sm font-bold text-slate-700">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.recipient}
           <input
             autoFocus
@@ -57,11 +57,11 @@ export function MarketingVoucherEmailRecipientsStep({
           />
         </label>
       ) : (
-        <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
+        <div className="max-h-[46vh] space-y-2 overflow-y-auto pr-1">
           {codes.map((code) => (
             <label
               key={code.id}
-              className="block rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm font-bold text-slate-700"
+              className="block rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs font-semibold text-slate-700"
             >
               {copy.recipientFor} <span className="font-mono">{code.id}</span>
               <input

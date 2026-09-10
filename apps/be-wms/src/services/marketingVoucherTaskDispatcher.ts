@@ -1,8 +1,23 @@
 import { createHash } from "node:crypto";
 
+import { resolveMarketingVouchersFeatureEnabled } from "@bduck/shared-types";
 import { CloudTasksClient } from "@google-cloud/tasks";
 
+import {
+  db,
+  defaultLocalFirebaseTarget,
+  isLocalFirebaseTargetConfigured,
+} from "../config/firebase.js";
+import {
+  getRequestLocalFirebaseTarget,
+  LOCAL_FIREBASE_TARGETS,
+  runWithLocalFirebaseTarget,
+} from "../config/firebaseTargetContext.js";
+
 let client: CloudTasksClient | null = null;
+const scheduledLocalJobs = new Set<string>();
+const rerunLocalJobs = new Set<string>();
+const LOCAL_RECOVERY_INTERVAL_MS = 15_000;
 
 const getClient = () => {
   client ??= new CloudTasksClient();
@@ -35,6 +50,88 @@ export const marketingVoucherTasksConfigured = () => {
   );
 };
 
+export const marketingVoucherLocalWorkerEnabled = (
+  nodeEnv = process.env.NODE_ENV,
+  configuredValue = process.env.MARKETING_VOUCHER_LOCAL_WORKER_ENABLED,
+) =>
+  nodeEnv !== "production" &&
+  resolveMarketingVouchersFeatureEnabled(configuredValue);
+
+const dispatchMarketingVoucherJobLocally = (
+  jobId: string,
+  target = getRequestLocalFirebaseTarget(defaultLocalFirebaseTarget),
+) => {
+  const localJobKey = `${target}:${jobId}`;
+  if (scheduledLocalJobs.has(localJobKey)) {
+    rerunLocalJobs.add(localJobKey);
+    return;
+  }
+  scheduledLocalJobs.add(localJobKey);
+  setImmediate(() => {
+    void runWithLocalFirebaseTarget(target, async () => {
+      const { processMarketingVoucherJob } = await import(
+        "./marketingVoucherJobService.js"
+      );
+      await processMarketingVoucherJob(jobId);
+    })
+      .catch((error: unknown) => {
+        console.error("MARKETING_VOUCHER_LOCAL_WORKER_FAILED", {
+          job_id: jobId,
+          error,
+        });
+      })
+      .finally(() => {
+        scheduledLocalJobs.delete(localJobKey);
+        if (rerunLocalJobs.delete(localJobKey)) {
+          dispatchMarketingVoucherJobLocally(jobId, target);
+        }
+      });
+  });
+};
+
+const recoverMarketingVoucherJobsForTarget = async (
+  target: (typeof LOCAL_FIREBASE_TARGETS)[number],
+) =>
+  runWithLocalFirebaseTarget(target, async () => {
+    const snapshots = await Promise.all(
+      ["QUEUED", "PROCESSING"].map((status) =>
+        db
+          .collection("marketing_voucher_jobs")
+          .where("status", "==", status)
+          .limit(50)
+          .get(),
+      ),
+    );
+    snapshots.forEach((snapshot) => {
+      snapshot.docs
+        .filter((job) => job.get("is_deleted") !== true)
+        .slice(0, 20)
+        .forEach((job) => dispatchMarketingVoucherJobLocally(job.id));
+    });
+  });
+
+export const recoverLocalMarketingVoucherJobs = async () => {
+  if (!marketingVoucherLocalWorkerEnabled()) return;
+  await Promise.all(
+    LOCAL_FIREBASE_TARGETS.filter(isLocalFirebaseTargetConfigured).map(
+      recoverMarketingVoucherJobsForTarget,
+    ),
+  );
+};
+
+export const startLocalMarketingVoucherWorkerRecovery = () => {
+  if (!marketingVoucherLocalWorkerEnabled()) return;
+  const recover = () => {
+    void recoverLocalMarketingVoucherJobs().catch((error: unknown) => {
+      console.error("MARKETING_VOUCHER_LOCAL_RECOVERY_FAILED", error);
+    });
+  };
+  recover();
+  const interval = setInterval(recover, LOCAL_RECOVERY_INTERVAL_MS);
+  interval.unref();
+  console.info("[marketing-vouchers] local worker recovery enabled");
+};
+
 const taskId = (jobId: string, revision: number) =>
   `voucher-${createHash("sha256")
     .update(`${jobId}:r${revision}`)
@@ -45,6 +142,10 @@ export const dispatchMarketingVoucherJob = async (input: {
   revision: number;
 }) => {
   if (!marketingVoucherTasksConfigured()) {
+    if (marketingVoucherLocalWorkerEnabled()) {
+      dispatchMarketingVoucherJobLocally(input.jobId);
+      return { mode: "LOCAL_WORKER" as const };
+    }
     return { mode: "SCHEDULER_FALLBACK" as const };
   }
   const config = marketingVoucherTaskConfig();

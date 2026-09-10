@@ -146,21 +146,21 @@ export function MarketingVoucherCampaignActionSheet({
       desktopClassName="md:inset-y-0 md:bottom-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[440px] md:rounded-none md:border-0"
       contentClassName="flex-1 overflow-y-auto px-5 pb-7 md:px-7"
     >
-      <form onSubmit={submit} className="pt-6">
-        <h2 className="hidden text-xl font-bold text-slate-950 md:block">
+      <form onSubmit={submit} className="pt-4">
+        <h2 className="hidden text-base font-semibold text-slate-950 md:block">
           {titles[action]}
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="mt-1 text-xs leading-5 text-slate-600">
           {descriptions[action]}
         </p>
-        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        <div className="mt-4 rounded-xl bg-slate-50 p-3">
+          <p className="text-xxs font-semibold uppercase tracking-wider text-slate-500">
             {copy.campaigns.title}
           </p>
-          <p className="mt-1 font-bold text-slate-950">{campaign.name}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-950">{campaign.name}</p>
         </div>
         {action === "generate" ? (
-          <label className="mt-5 block text-sm font-semibold text-slate-700">
+          <label className="mt-4 block text-xs font-semibold text-slate-700">
             {copy.action.quantity}
             <input
               autoFocus
@@ -175,7 +175,7 @@ export function MarketingVoucherCampaignActionSheet({
           </label>
         ) : null}
         {action === "extend" ? (
-          <label className="mt-5 block text-sm font-semibold text-slate-700">
+          <label className="mt-4 block text-xs font-semibold text-slate-700">
             {copy.action.newValidTo}
             <input
               autoFocus
@@ -191,24 +191,24 @@ export function MarketingVoucherCampaignActionSheet({
         {error ? (
           <p
             role="alert"
-            className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+            className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-700"
           >
             {error}
           </p>
         ) : null}
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             disabled={isPending}
             onClick={onClose}
-            className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {copy.action.cancel}
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className={`rounded-2xl px-5 py-2.5 text-sm font-bold disabled:opacity-50 ${action === "end" ? "bg-rose-600 text-white hover:bg-rose-500" : "bg-amber-500 text-slate-950 hover:bg-amber-400"}`}
+            className={`h-8 inline-flex items-center justify-center rounded-lg px-4 text-sm font-semibold disabled:opacity-50 ${action === "end" ? "bg-rose-600 text-white hover:bg-rose-500" : "bg-amber-500 text-slate-950 hover:bg-amber-400"}`}
           >
             {copy.action.confirm}
           </button>

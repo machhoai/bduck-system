@@ -27,7 +27,7 @@ import { MarketingVoucherEmptyState } from "./MarketingVoucherEmptyState";
 import { MarketingVoucherRevokeSheet } from "./MarketingVoucherRevokeSheet";
 
 const filterClass =
-  "w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
+  "h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500";
 
 export function MarketingVoucherCodes({
   campaigns,
@@ -129,9 +129,9 @@ export function MarketingVoucherCodes({
     return <MarketingVoucherSkeleton label={copy.toasts.loading} />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-bold text-slate-950">{copy.codes.title}</h2>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-base font-semibold text-slate-950">{copy.codes.title}</h2>
         {selected.size > 0 ? (
           <div className="flex flex-col gap-2 sm:flex-row">
             {canEmail ? (
@@ -146,9 +146,9 @@ export function MarketingVoucherCodes({
                       : undefined
                 }
                 onClick={() => setEmailOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-black text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 text-xs font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Mail size={17} />
+                <Mail size={14} />
                 {copy.codes.email} · {selected.size}
               </button>
             ) : null}
@@ -158,27 +158,27 @@ export function MarketingVoucherCodes({
                 disabled={!canOpenRevoke}
                 title={!canOpenRevoke ? copy.codes.activeOnlyRevoke : undefined}
                 onClick={() => setRevokeOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 text-xs font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <ShieldOff size={17} />
+                <ShieldOff size={14} />
                 {copy.codes.revoke} · {selected.size}
               </button>
             ) : null}
           </div>
         ) : null}
       </div>
-      <div className="grid gap-3 rounded-3xl border border-slate-100 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 rounded-xl border border-slate-100 bg-white p-3 md:grid-cols-2 xl:grid-cols-4">
         <label className="relative md:col-span-2 xl:col-span-1">
           <span className="sr-only">{copy.codes.search}</span>
           <Search
-            className="pointer-events-none absolute left-3.5 top-3 text-slate-400"
-            size={17}
+            className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400"
+            size={14}
           />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={copy.codes.search}
-            className={`${filterClass} pl-10 uppercase`}
+            className={`${filterClass} pl-8 uppercase`}
           />
         </label>
         <select
@@ -229,7 +229,7 @@ export function MarketingVoucherCodes({
       {result.error ? (
         <p
           role="alert"
-          className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
         >
           {copy.loadError}
         </p>
@@ -250,27 +250,27 @@ export function MarketingVoucherCodes({
           onToggleOne={toggleOne}
         />
       )}
-      <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
+      <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2">
         <button
           type="button"
           disabled={pageIndex === 0}
           onClick={() => setPageIndex((current) => current - 1)}
-          className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
           {copy.codes.previous}
         </button>
-        <span className="text-sm font-semibold text-slate-600">
+        <span className="text-xs font-semibold text-slate-600">
           {copy.codes.page} {pageIndex + 1}
         </span>
         <button
           type="button"
           disabled={!result.nextCursor}
           onClick={nextPage}
-          className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
         >
           {copy.codes.next}
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
       </div>
       {revokeOpen ? (

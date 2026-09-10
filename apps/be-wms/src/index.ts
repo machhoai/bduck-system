@@ -51,6 +51,7 @@ import dashboardRoutes from "./api/routes/dashboardRoutes.js";
 import posDeviceRoutes from "./api/routes/posDeviceRoutes.js";
 import marketingVoucherRoutes from "./api/routes/marketingVoucherRoutes.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
+import { startLocalMarketingVoucherWorkerRecovery } from "./services/marketingVoucherTaskDispatcher.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
 
@@ -171,4 +172,5 @@ app.listen(PORT, () => {
     "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
   );
   startExternalQueueAutoSubmitWorker();
+  startLocalMarketingVoucherWorkerRecovery();
 });

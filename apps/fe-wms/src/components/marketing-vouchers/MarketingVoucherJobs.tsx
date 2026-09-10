@@ -29,7 +29,7 @@ import { MarketingVoucherJobActions } from "./MarketingVoucherJobActions";
 import { MarketingVoucherStatusBadge } from "./MarketingVoucherStatusBadge";
 
 const filterClass =
-  "w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
+  "h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500";
 
 export function MarketingVoucherJobs({
   jobs,
@@ -126,17 +126,17 @@ export function MarketingVoucherJobs({
     const progress = marketingVoucherJobProgress(job);
     return (
       <div className="min-w-36">
-        <div className="flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center justify-between gap-2 text-xs">
           <span className="text-slate-500">
             {formatVoucherNumber(job.progress.succeeded, lang)}/
             {formatVoucherNumber(job.progress.total, lang)}
           </span>
-          <span className="font-bold text-slate-700">{progress}%</span>
+          <span className="font-semibold text-slate-700">{progress}%</span>
         </div>
         <progress
           max={100}
           value={progress}
-          className="mt-1.5 h-2 w-full accent-amber-500"
+          className="mt-1 h-1.5 w-full accent-amber-500"
         />
         {job.progress.failed > 0 ? (
           <p className="mt-1 text-xs font-medium text-rose-600">
@@ -149,9 +149,9 @@ export function MarketingVoucherJobs({
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-slate-950">{copy.jobs.title}</h2>
-      <div className="grid gap-3 rounded-3xl border border-slate-100 bg-white p-4 md:grid-cols-3">
+    <div className="space-y-3">
+      <h2 className="text-base font-semibold text-slate-950">{copy.jobs.title}</h2>
+      <div className="grid gap-2 rounded-xl border border-slate-100 bg-white p-3 md:grid-cols-3">
         <select
           aria-label={copy.jobs.campaign}
           className={filterClass}
@@ -200,53 +200,53 @@ export function MarketingVoucherJobs({
         <MarketingVoucherEmptyState title={copy.jobs.empty} />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-3xl border border-slate-100 bg-white md:block">
+          <div className="hidden overflow-hidden rounded-xl border border-slate-100 bg-white md:block">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="bg-slate-50 text-xxs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-4">{copy.jobs.campaign}</th>
-                  <th className="px-4 py-4">{copy.jobs.type}</th>
-                  <th className="px-4 py-4">{copy.campaigns.status}</th>
-                  <th className="px-4 py-4">{copy.jobs.progress}</th>
-                  <th className="px-4 py-4">{copy.jobs.attempts}</th>
-                  <th className="px-4 py-4">{copy.jobs.requestedAt}</th>
-                  <th className="px-5 py-4" />
+                  <th className="p-2">{copy.jobs.campaign}</th>
+                  <th className="p-2">{copy.jobs.type}</th>
+                  <th className="p-2">{copy.campaigns.status}</th>
+                  <th className="p-2">{copy.jobs.progress}</th>
+                  <th className="p-2">{copy.jobs.attempts}</th>
+                  <th className="p-2">{copy.jobs.requestedAt}</th>
+                  <th className="p-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-4">
+                    <td className="p-2">
                       <p className="font-semibold text-slate-950">
                         {campaignMap.get(job.campaign_id)?.name ??
                           job.campaign_id}
                       </p>
                       {job.last_error_message ? (
                         <p
-                          className="mt-1 max-w-64 truncate text-xs text-rose-600"
+                          className="mt-0.5 max-w-64 truncate text-xs text-rose-600"
                           title={job.last_error_message}
                         >
                           {job.last_error_message}
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-4 text-slate-700">
+                    <td className="p-2 text-slate-700">
                       {copy.jobType[job.type]}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="p-2">
                       <MarketingVoucherStatusBadge
                         status={job.status}
                         label={copy.jobStatus[job.status]}
                       />
                     </td>
-                    <td className="px-4 py-4">{progressCell(job)}</td>
-                    <td className="px-4 py-4 text-center font-semibold text-slate-700">
+                    <td className="p-2">{progressCell(job)}</td>
+                    <td className="p-2 text-center font-semibold text-slate-700">
                       {job.attempt_count}
                     </td>
-                    <td className="px-4 py-4 text-slate-500">
+                    <td className="p-2 text-slate-500 text-xs">
                       {formatVoucherDateTime(job.created_at, lang)}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="p-2">
                       <MarketingVoucherJobActions
                         job={job}
                         canResume={canResume(job)}
@@ -266,34 +266,36 @@ export function MarketingVoucherJobs({
               </tbody>
             </table>
           </div>
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-2 md:hidden">
             {filtered.map((job) => (
               <article
                 key={job.id}
-                className="rounded-3xl border border-slate-100 bg-white p-4"
+                className="rounded-xl border border-slate-100 bg-white p-3"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-950">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-950 text-sm">
                       {campaignMap.get(job.campaign_id)?.name ??
                         job.campaign_id}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       {copy.jobType[job.type]}
                     </p>
                   </div>
-                  <MarketingVoucherStatusBadge
-                    status={job.status}
-                    label={copy.jobStatus[job.status]}
-                  />
+                  <div className="shrink-0">
+                    <MarketingVoucherStatusBadge
+                      status={job.status}
+                      label={copy.jobStatus[job.status]}
+                    />
+                  </div>
                 </div>
-                <div className="mt-4">{progressCell(job)}</div>
+                <div className="mt-3">{progressCell(job)}</div>
                 {job.last_error_message ? (
-                  <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  <p className="mt-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
                     {job.last_error_message}
                   </p>
                 ) : null}
-                <div className="mt-3">
+                <div className="mt-2">
                   <MarketingVoucherJobActions
                     job={job}
                     canResume={canResume(job)}

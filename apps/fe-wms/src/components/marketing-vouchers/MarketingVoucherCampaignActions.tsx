@@ -129,9 +129,9 @@ export function MarketingVoucherCampaignActions({
             onClick={onClick}
             aria-label={label}
             title={label}
-            className={`rounded-xl p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40 ${tone}`}
+            className={`grid h-8 w-8 place-items-center rounded text-slate-500 disabled:cursor-not-allowed disabled:opacity-40 ${tone}`}
           >
-            <Icon size={16} />
+            <Icon size={14} />
           </button>
         ) : null,
       )}

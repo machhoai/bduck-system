@@ -103,13 +103,13 @@ export function MarketingVoucherCampaigns({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-base font-semibold text-slate-950">
             {copy.campaigns.title}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500">
             {formatVoucherNumber(filtered.length, lang)}{" "}
             {copy.metrics.campaigns.toLocaleLowerCase()}
           </p>
@@ -118,14 +118,14 @@ export function MarketingVoucherCampaigns({
           <button
             type="button"
             onClick={() => setFormCampaign(null)}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 text-sm font-semibold text-slate-950 shadow-sm hover:bg-amber-400 w-fit"
           >
-            <Plus size={17} />
+            <Plus size={14} />
             {copy.campaigns.create}
           </button>
         ) : null}
       </div>
-      <div className="rounded-3xl border border-slate-100 bg-white p-3 shadow-sm shadow-slate-200/30">
+      <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm shadow-slate-200/30">
         <label className="sr-only" htmlFor="campaign-search">
           {copy.campaigns.search}
         </label>
@@ -134,7 +134,7 @@ export function MarketingVoucherCampaigns({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={copy.campaigns.search}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-100"
+          className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-amber-500 focus:bg-white focus:ring-1 focus:ring-amber-500"
         />
       </div>
 
@@ -145,18 +145,18 @@ export function MarketingVoucherCampaigns({
         />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-3xl border border-slate-100 bg-white md:block">
+          <div className="hidden overflow-hidden rounded-xl border border-slate-100 bg-white md:block">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="bg-slate-50 text-xxs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-4">{copy.campaigns.title}</th>
-                  <th className="px-4 py-4">{copy.campaigns.status}</th>
-                  <th className="px-4 py-4">{copy.campaigns.validity}</th>
-                  <th className="px-4 py-4 text-right">
+                  <th className="p-2">{copy.campaigns.title}</th>
+                  <th className="p-2">{copy.campaigns.status}</th>
+                  <th className="p-2">{copy.campaigns.validity}</th>
+                  <th className="p-2 text-right">
                     {copy.campaigns.codes}
                   </th>
-                  <th className="px-4 py-4">{copy.campaigns.updated}</th>
-                  <th className="px-5 py-4">
+                  <th className="p-2">{copy.campaigns.updated}</th>
+                  <th className="p-2">
                     <span className="sr-only">{copy.campaigns.actions}</span>
                   </th>
                 </tr>
@@ -164,62 +164,64 @@ export function MarketingVoucherCampaigns({
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((campaign) => (
                   <tr key={campaign.id} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-4">
+                    <td className="p-2">
                       <p className="font-semibold text-slate-950">
                         {campaign.name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         {copy.purpose[campaign.purpose]} ·{" "}
                         {copy.rewardType[campaign.reward_type]}
                       </p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="p-2">
                       <MarketingVoucherStatusBadge
                         status={campaign.status}
                         label={copy.campaignStatus[campaign.status]}
                       />
                     </td>
-                    <td className="px-4 py-4 text-slate-600">
-                      <span className="inline-flex items-center gap-1.5">
-                        <CalendarDays size={15} />
+                    <td className="p-2 text-slate-600">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays size={14} />
                         {campaign.valid_from} → {campaign.valid_to}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-right font-bold tabular-nums text-slate-950">
+                    <td className="p-2 text-right font-semibold tabular-nums text-slate-950">
                       {formatVoucherNumber(campaign.code_counts.total, lang)}
                     </td>
-                    <td className="px-4 py-4 text-slate-500">
+                    <td className="p-2 text-xs text-slate-500">
                       {formatVoucherDateTime(campaign.updated_at, lang)}
                     </td>
-                    <td className="px-5 py-4">{actionButtons(campaign)}</td>
+                    <td className="p-2">{actionButtons(campaign)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-2 md:hidden">
             {filtered.map((campaign) => (
               <article
                 key={campaign.id}
-                className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/30"
+                className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm shadow-slate-200/30"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-950">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-950 text-sm">
                       {campaign.name}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       {copy.purpose[campaign.purpose]} ·{" "}
                       {formatVoucherNumber(campaign.code_counts.total, lang)}{" "}
                       {copy.campaigns.codes.toLocaleLowerCase()}
                     </p>
                   </div>
-                  <MarketingVoucherStatusBadge
-                    status={campaign.status}
-                    label={copy.campaignStatus[campaign.status]}
-                  />
+                  <div className="shrink-0">
+                    <MarketingVoucherStatusBadge
+                      status={campaign.status}
+                      label={copy.campaignStatus[campaign.status]}
+                    />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
                   <span className="text-xs text-slate-500">
                     {campaign.valid_from} → {campaign.valid_to}
                   </span>

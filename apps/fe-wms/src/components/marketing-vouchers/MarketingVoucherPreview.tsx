@@ -29,7 +29,7 @@ export function MarketingVoucherPreview({
   return (
     <div
       aria-label={`${campaign.name} ${voucherCode}`}
-      className="relative aspect-[16/9] w-full max-w-2xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60"
+      className="relative aspect-[21/9] w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <svg
         aria-hidden="true"
@@ -40,36 +40,36 @@ export function MarketingVoucherPreview({
         <rect width="100" height="100" fill={color} />
       </svg>
       <div className="relative grid h-full grid-cols-[34%_1fr]">
-        <div className="flex flex-col justify-between p-4 text-slate-950 sm:p-6">
-          <p className="text-[9px] font-black tracking-[0.2em] sm:text-xs">
+        <div className="flex flex-col justify-between p-3 text-slate-950 sm:p-4">
+          <p className="text-[8px] font-bold tracking-widest sm:text-[10px]">
             JPULSE · B.DUCK
           </p>
           <div>
-            <p className="text-xl font-black leading-none sm:text-4xl">
+            <p className="text-base font-bold leading-none sm:text-xl">
               {formatVoucherReward(rewardType, rewardValue, lang)}
             </p>
-            <p className="mt-2 text-[9px] font-bold uppercase tracking-wide sm:text-xs">
+            <p className="mt-1 text-[8px] font-semibold uppercase tracking-wide sm:text-[10px]">
               {t.marketingVouchers.codes.reward}
             </p>
           </div>
         </div>
-        <div className="flex min-w-0 flex-col justify-between p-4 sm:p-6">
-          <div className="min-w-0 pr-16 sm:pr-28">
-            <h3 className="truncate text-base font-black text-slate-950 sm:text-2xl">
+        <div className="flex min-w-0 flex-col justify-between p-3 sm:p-4">
+          <div className="min-w-0 pr-12 sm:pr-20">
+            <h3 className="truncate text-sm font-bold text-slate-950 sm:text-base">
               {campaign.name}
             </h3>
-            <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500 sm:text-sm">
+            <p className="mt-1 line-clamp-2 text-[9px] leading-4 text-slate-500 sm:text-xs">
               {campaign.description}
             </p>
           </div>
-          <div className="absolute right-4 top-4 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-100 sm:right-6 sm:top-6 sm:p-2">
-            <QRCodeSVG value={voucherCode} size={72} level="M" />
+          <div className="absolute right-3 top-3 rounded-lg bg-white p-1.5 shadow-sm ring-1 ring-slate-100 sm:right-4 sm:top-4">
+            <QRCodeSVG value={voucherCode} size={48} level="M" />
           </div>
           <div>
-            <p className="truncate font-mono text-sm font-black tracking-wide text-slate-950 sm:text-xl">
+            <p className="truncate font-mono text-xs font-bold tracking-wide text-slate-950 sm:text-sm">
               {voucherCode}
             </p>
-            <p className="mt-1 text-[9px] text-slate-500 sm:text-xs">
+            <p className="mt-0.5 text-[8px] text-slate-500 sm:text-[10px]">
               {t.marketingVouchers.codes.validTo}: {validTo}
             </p>
           </div>

@@ -39,11 +39,11 @@ export function MarketingVoucherCodeResults({
 }: ResultsProps) {
   return (
     <>
-      <div className="hidden overflow-hidden rounded-3xl border border-slate-100 bg-white md:block">
+      <div className="hidden overflow-hidden rounded-xl border border-slate-100 bg-white md:block">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 text-xxs font-semibold uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="w-12 px-4 py-4">
+              <th className="w-12 p-2">
                 {canSelect ? (
                   <input
                     type="checkbox"
@@ -53,12 +53,12 @@ export function MarketingVoucherCodeResults({
                   />
                 ) : null}
               </th>
-              <th className="px-4 py-4">ID</th>
-              <th className="px-4 py-4">{copy.codes.campaign}</th>
-              <th className="px-4 py-4">{copy.codes.reward}</th>
-              <th className="px-4 py-4">{copy.codes.status}</th>
-              <th className="px-4 py-4">{copy.codes.validTo}</th>
-              <th className="px-4 py-4">{copy.codes.distributedTo}</th>
+              <th className="p-2">ID</th>
+              <th className="p-2">{copy.codes.campaign}</th>
+              <th className="p-2">{copy.codes.reward}</th>
+              <th className="p-2">{copy.codes.status}</th>
+              <th className="p-2">{copy.codes.validTo}</th>
+              <th className="p-2">{copy.codes.distributedTo}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -70,7 +70,7 @@ export function MarketingVoucherCodeResults({
               );
               return (
                 <tr key={code.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-4">
+                  <td className="p-2">
                     {isSelectable(code, canSelect) ? (
                       <input
                         type="checkbox"
@@ -80,28 +80,28 @@ export function MarketingVoucherCodeResults({
                       />
                     ) : null}
                   </td>
-                  <td className="px-4 py-4 font-mono font-bold text-slate-950">
+                  <td className="p-2 font-mono font-semibold text-slate-950">
                     {code.id}
                   </td>
-                  <td className="px-4 py-4 text-slate-700">
+                  <td className="p-2 text-slate-700">
                     {campaignMap.get(code.campaign_id)?.name ??
                       code.campaign_name}
                   </td>
-                  <td className="px-4 py-4 text-slate-700">
+                  <td className="p-2 text-slate-700">
                     {formatVoucherReward(
                       code.reward_type,
                       code.reward_value,
                       lang,
                     )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="p-2">
                     <MarketingVoucherStatusBadge
                       status={effectiveStatus}
                       label={copy.codeStatus[effectiveStatus]}
                     />
                   </td>
-                  <td className="px-4 py-4 text-slate-600">{code.valid_to}</td>
-                  <td className="px-4 py-4 text-slate-500">
+                  <td className="p-2 text-slate-600">{code.valid_to}</td>
+                  <td className="p-2 text-slate-500">
                     {code.emailed_to ?? code.distributed_to_phone ?? "—"}
                   </td>
                 </tr>
@@ -110,7 +110,7 @@ export function MarketingVoucherCodeResults({
           </tbody>
         </table>
       </div>
-      <div className="space-y-3 md:hidden">
+      <div className="space-y-2 md:hidden">
         {records.map((code) => {
           const effectiveStatus = getMarketingVoucherEffectiveStatus(
             code,
@@ -120,9 +120,9 @@ export function MarketingVoucherCodeResults({
           return (
             <article
               key={code.id}
-              className="rounded-3xl border border-slate-100 bg-white p-4"
+              className="rounded-xl border border-slate-100 bg-white p-3"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
                 {isSelectable(code, canSelect) ? (
                   <input
                     type="checkbox"
@@ -134,7 +134,7 @@ export function MarketingVoucherCodeResults({
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="truncate font-mono font-bold text-slate-950">
+                    <p className="truncate font-mono font-semibold text-sm text-slate-950">
                       {code.id}
                     </p>
                     <MarketingVoucherStatusBadge
@@ -142,11 +142,11 @@ export function MarketingVoucherCodeResults({
                       label={copy.codeStatus[effectiveStatus]}
                     />
                   </div>
-                  <p className="mt-2 truncate text-sm text-slate-600">
+                  <p className="mt-1 truncate text-xs text-slate-600">
                     {campaignMap.get(code.campaign_id)?.name ??
                       code.campaign_name}
                   </p>
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                     <span>
                       {formatVoucherReward(
                         code.reward_type,

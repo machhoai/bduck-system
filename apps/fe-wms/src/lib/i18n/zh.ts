@@ -1,8 +1,8 @@
 /**
  * Chinese dictionary - WMS Layout
  */
-import type { Dictionary } from "./vi";
 import { revenueExportZh } from "./revenueExportTranslations";
+import type { Dictionary } from "./vi";
 
 const zh: Dictionary = {
   nav: {
@@ -2821,6 +2821,33 @@ const zh: Dictionary = {
         recentCampaigns: "最近活动",
         runningJobs: "当前进度",
         noRunningJobs: "当前没有处理中的任务。",
+        campaignHealthTitle: "各活动券码状态",
+        campaignHealthHint: "实时查看各活动的发放、使用和可用库存。",
+        noCampaigns: "暂无可显示的活动。",
+        total: "券码总数",
+        actualCodes: "实际生成的券码数",
+        issued: "已发放",
+        remaining: "剩余",
+        used: "已使用",
+        ofInventory: "占总库存",
+        availableHint: "可用",
+        afterIssue: "发放后使用",
+        issuedRate: "发放率",
+        issuedRateHint: "已发放占总库存",
+        usageRate: "使用率",
+        usageRateHint: "已使用占已发放",
+        availabilityRate: "可用库存",
+        availabilityRateHint: "仍可发放",
+        distributedUnused: "已发放未使用",
+        revoked: "已撤销",
+        duration: "活动时长",
+        days: "天",
+        inventoryStatus: "券码库存状态",
+        health: {
+          HEALTHY: "库存充足",
+          LOW: "券码即将用完",
+          EMPTY: "券码已用完",
+        },
       },
       campaigns: {
         title: "活动列表",

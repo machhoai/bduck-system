@@ -8,7 +8,9 @@ import type { Dictionary } from "@/lib/i18n/vi";
 import type { MarketingVoucherCampaignDraft } from "@/stores/useMarketingVoucherDraftStore";
 
 const inputClass =
-  "mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 disabled:bg-slate-50 disabled:text-slate-500";
+  "mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 disabled:bg-slate-50 disabled:text-slate-500";
+const textAreaClass =
+  "mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 disabled:bg-slate-50 disabled:text-slate-500";
 
 export function MarketingVoucherCampaignFields({
   campaign,
@@ -23,7 +25,7 @@ export function MarketingVoucherCampaignFields({
 }) {
   return (
     <>
-      <label className="block text-sm font-semibold text-slate-700">
+      <label className="block text-xs font-semibold text-slate-700">
         {copy.form.name}
         <input
           required
@@ -33,18 +35,18 @@ export function MarketingVoucherCampaignFields({
           onChange={(event) => updateDraft({ name: event.target.value })}
         />
       </label>
-      <label className="block text-sm font-semibold text-slate-700">
+      <label className="block text-xs font-semibold text-slate-700">
         {copy.form.description}
         <textarea
           maxLength={2000}
           rows={3}
-          className={inputClass}
+          className={textAreaClass}
           value={draft.description}
           onChange={(event) => updateDraft({ description: event.target.value })}
         />
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-semibold text-slate-700">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.form.rewardType}
           <select
             className={inputClass}
@@ -62,7 +64,7 @@ export function MarketingVoucherCampaignFields({
             ))}
           </select>
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.form.rewardValue}
           <input
             required
@@ -77,7 +79,7 @@ export function MarketingVoucherCampaignFields({
             }
           />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.form.validFrom}
           <input
             required
@@ -89,7 +91,7 @@ export function MarketingVoucherCampaignFields({
             }
           />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.form.validTo}
           <input
             required
@@ -100,7 +102,7 @@ export function MarketingVoucherCampaignFields({
             onChange={(event) => updateDraft({ valid_to: event.target.value })}
           />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-xs font-semibold text-slate-700">
           {copy.form.purpose}
           <select
             className={inputClass}
@@ -119,7 +121,7 @@ export function MarketingVoucherCampaignFields({
           </select>
         </label>
         {!campaign ? (
-          <label className="block text-sm font-semibold text-slate-700">
+          <label className="block text-xs font-semibold text-slate-700">
             {copy.form.quantity}
             <input
               required
@@ -136,8 +138,8 @@ export function MarketingVoucherCampaignFields({
         ) : null}
       </div>
       {!campaign ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block text-sm font-semibold text-slate-700">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block text-xs font-semibold text-slate-700">
             {copy.form.prefix}
             <input
               maxLength={20}
@@ -146,7 +148,7 @@ export function MarketingVoucherCampaignFields({
               onChange={(event) => updateDraft({ prefix: event.target.value })}
             />
           </label>
-          <label className="block text-sm font-semibold text-slate-700">
+          <label className="block text-xs font-semibold text-slate-700">
             {copy.form.codeLength}
             <input
               required
@@ -160,7 +162,7 @@ export function MarketingVoucherCampaignFields({
               }
             />
           </label>
-          <label className="block text-sm font-semibold text-slate-700">
+          <label className="block text-xs font-semibold text-slate-700">
             {copy.form.suffix}
             <input
               maxLength={20}
