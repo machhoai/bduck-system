@@ -1,11 +1,15 @@
-import type { AttendanceLog } from "@bduck/shared-types";
-import type { ExportConfig } from "@/utils/exportExcel";
+import {
+  isEmployeeAttendanceEligibleOnDate,
+  type AttendanceLog,
+} from "@bduck/shared-types";
+
 import {
   formatCheckInTime,
   buildSuccessLogMap,
   type AttendanceDay,
   type AttendanceEmployeeRow,
 } from "@/utils/attendance";
+import type { ExportConfig } from "@/utils/exportExcel";
 
 export function buildTimeAttendanceExportConfig({
   labels,
@@ -28,9 +32,11 @@ export function buildTimeAttendanceExportConfig({
       warehouse: row.warehouse?.name || "",
     };
     days.forEach((day) => {
-      item[day.key] = formatCheckInTime(
-        successMap.get(`${row.user.id}:${day.key}`)?.check_in_at,
-      );
+      item[day.key] = isEmployeeAttendanceEligibleOnDate(row.profile, day.key)
+        ? formatCheckInTime(
+            successMap.get(`${row.user.id}:${day.key}`)?.check_in_at,
+          )
+        : labels.notApplicable || "Không áp dụng";
     });
     return item;
   });

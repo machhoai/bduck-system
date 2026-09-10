@@ -1487,6 +1487,16 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "invoice_documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "is_deleted", "order": "ASCENDING" },
+        { "fieldPath": "next_status_check_at", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "items",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
@@ -1522,6 +1532,55 @@
       "fields": [
         { "fieldPath": "warehouse_id", "order": "ASCENDING" },
         { "fieldPath": "business_date", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "invoice_source_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouse_id", "order": "ASCENDING" },
+        { "fieldPath": "local_order_id", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_order_summaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouseId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_order_summaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouseId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_order_summaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouseId", "order": "ASCENDING" },
+        { "fieldPath": "totalAmount", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "pos_order_summaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "warehouseId", "order": "ASCENDING" },
+        { "fieldPath": "totalAmount", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
       ],
       "density": "SPARSE_ALL"
     },

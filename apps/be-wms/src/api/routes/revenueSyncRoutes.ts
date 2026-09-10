@@ -9,7 +9,12 @@
 import { Router, type Router as ExpressRouter } from "express";
 
 import { getOnlineSalesReportHandler } from "../controllers/onlineSalesReportController.js";
-import { getRevenueDashboardHandler } from "../controllers/revenueDashboardController.js";
+import {
+  getOpenApiRevenueWarehousesHandler,
+  getRevenueDashboardHandler,
+} from "../controllers/revenueDashboardController.js";
+import { exportRevenueHandler } from "../controllers/revenueExportController.js";
+import { getRevenueProductGroupsHandler } from "../controllers/revenueProductController.js";
 import {
   syncRevenueHandler,
   syncPartnerPosOrdersHandler,
@@ -24,9 +29,25 @@ const router: ExpressRouter = Router();
 router.use(requireAuth);
 
 router.get(
+  "/product-groups",
+  requireAnyScopedPermission("revenue.read"),
+  getRevenueProductGroupsHandler,
+);
+
+router.get(
+  "/openapi-warehouses",
+  requireAnyScopedPermission("revenue.read"),
+  getOpenApiRevenueWarehousesHandler,
+);
+router.get(
   "/dashboard",
   requireAnyScopedPermission("revenue.read"),
   getRevenueDashboardHandler,
+);
+router.post(
+  "/export",
+  requireAnyScopedPermission("revenue.export"),
+  exportRevenueHandler,
 );
 router.post(
   "/partner-pos-sync",

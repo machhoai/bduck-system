@@ -14,7 +14,9 @@ const receiptLogoDataUrl = z
   .string()
   .max(1_500_000)
   .refine(
-    (value) => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(value),
+    (value) =>
+      /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(value) ||
+      /^https:\/\//.test(value),
     "Logo phải là ảnh PNG, JPG hoặc WEBP hợp lệ.",
   )
   .nullable();

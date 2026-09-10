@@ -1,6 +1,8 @@
 /**
  * Vietnamese dictionary - ERP WMS Layout
  */
+import { revenueExportVi } from "./revenueExportTranslations";
+
 const vi = {
     nav: {
         dashboard: "Trang chủ",
@@ -53,11 +55,14 @@ const vi = {
 
     runtimeFailure: {
         offlineTitle: "Bạn đang ngoại tuyến",
-        offlineDesc: "Kết nối lại Internet để xác minh phiên đăng nhập và quyền truy cập.",
+        offlineDesc:
+            "Kết nối lại Internet để xác minh phiên đăng nhập và quyền truy cập.",
         authTitle: "Không thể xác minh phiên đăng nhập",
-        authDesc: "Máy chủ xác thực chưa phản hồi hoặc phiên đăng nhập không hợp lệ. Vui lòng thử lại.",
+        authDesc:
+            "Máy chủ xác thực chưa phản hồi hoặc phiên đăng nhập không hợp lệ. Vui lòng thử lại.",
         accessTitle: "Không thể tải quyền truy cập",
-        accessDesc: "Dịch vụ phân quyền hiện không khả dụng. Kết nối Internet của bạn vẫn có thể hoạt động bình thường.",
+        accessDesc:
+            "Dịch vụ phân quyền hiện không khả dụng. Kết nối Internet của bạn vẫn có thể hoạt động bình thường.",
         retry: "Thử lại",
         relogin: "Đăng nhập lại",
     },
@@ -116,10 +121,49 @@ const vi = {
     revenue: {
         title: "Quản lý doanh thu",
         subtitle:
-            "Dashboard doanh thu JoyWorld cho cửa hàng B.Duck Cityfuns Landmark 81.",
+            "Theo dõi doanh thu OpenAPI và POS local theo cùng một chuẩn báo cáo.",
         generatedAt: "Cập nhật lúc",
         syncing: "Đang cập nhật...",
         refreshCountdown: "Tự động cập nhật sau {seconds} giây",
+        sources: {
+            openApi: "OpenAPI",
+            openApiDescription:
+                "Số liệu báo cáo trực tiếp từ hệ thống JoyWorld OpenAPI",
+            localPos: "Dữ liệu local",
+            localPosDescription:
+                "Đơn thanh toán realtime được lưu trong POS local",
+            taxFromLocal: "Thuế được đối chiếu từ POS local",
+            noConfiguredWarehouse: "Chưa có cửa hàng được cấu hình OpenAPI",
+        },
+        export: {
+            ...revenueExportVi,
+            button: "Xuất dữ liệu",
+            modalTitle: "Xuất báo cáo doanh thu",
+            modalDescription:
+                "Chọn nội dung báo cáo Excel phù hợp với nhu cầu phân tích.",
+            dailyRevenue: "Doanh thu từng ngày",
+            dailyRevenueDescription:
+                "Gồm tổng quan, doanh thu theo ngày và cơ cấu phương thức thanh toán.",
+            salesComposition: "Cơ cấu bán hàng",
+            salesCompositionDescription:
+                "Gồm tổng quan, cơ cấu theo nhóm và chi tiết sản phẩm đã bán.",
+            reportTypeLabel: "Nội dung báo cáo",
+            warehouseLabel: "Cửa hàng",
+            sourceLabel: "Nguồn dữ liệu",
+            rangeLabel: "Phạm vi",
+            cancel: "Hủy",
+            close: "Đóng",
+            confirm: "Xuất Excel",
+            selectReportType: "Vui lòng chọn loại báo cáo cần xuất.",
+            loading: "Đang tạo file Excel...",
+            success: "Đã xuất file Excel",
+            successDescription: "Báo cáo đã được tải xuống thiết bị.",
+            error: "Không thể xuất dữ liệu",
+            errorDescription:
+                "Vui lòng kiểm tra quyền, phạm vi ngày và thử lại.",
+            retry: "Thử lại",
+            noPermission: "Bạn chưa có quyền xuất báo cáo.",
+        },
         tabs: {
             revenue: {
                 label: "Doanh thu",
@@ -140,6 +184,7 @@ const vi = {
             warehouse: "Cửa hàng",
             selectWarehouse: "Chọn cửa hàng",
             noWarehouse: "Chưa có cửa hàng",
+            allWarehouses: "Tất cả cửa hàng",
             date: "Ngày",
             month: "Tháng",
             year: "Năm",
@@ -164,6 +209,11 @@ const vi = {
         },
         stats: {
             totalRevenue: "Tổng doanh thu",
+            cashRevenue: "Doanh thu tiền mặt",
+            transferRevenue: "Doanh thu chuyển khoản",
+            otherRevenue: "Thanh toán khác",
+            totalTax: "Tổng tiền thuế",
+            amountBeforeTax: "Doanh thu trước thuế",
             totalOrders: "Tổng đơn hàng",
             averageOrderValue: "Giá trị đơn TB",
             memberCardSales: "Tiền bán thẻ thành viên",
@@ -185,6 +235,7 @@ const vi = {
         paymentMethodLabels: {
             transfer: "Chuyển khoản",
             cash: "Tiền mặt",
+            other: "Khác",
         },
         charts: {
             revenueTitle: "Doanh thu theo thời gian",
@@ -212,6 +263,13 @@ const vi = {
             tooltipComparison: "Kỳ so sánh",
             tooltipSelected: "Mốc đã chọn",
             highlightedDays: "Ngày đang chọn",
+            rangeLabel: "Phạm vi biểu đồ",
+            rangeOptions: {
+                week: "Tuần",
+                month: "Tháng",
+                last7: "7 ngày",
+                last30: "30 ngày",
+            },
         },
         online: {
             title: "Doanh thu online",
@@ -289,9 +347,16 @@ const vi = {
             empty: "Chưa có dữ liệu tiêu thụ thiết bị.",
         },
         orders: {
-            title: "Đơn hàng và hàng hóa đã bán",
+            title: "Chi tiết giao dịch",
             subtitle:
                 "Chuyển đổi giữa danh sách đơn hàng và danh sách sản phẩm theo đơn.",
+            collapsedHint:
+                "Được ẩn mặc định để dashboard tập trung vào số liệu doanh thu.",
+            expandedHint:
+                "Lọc, phân trang và mở từng giao dịch khi cần đối soát.",
+            summary: "{orders} đơn · {items} hàng hóa",
+            showDetails: "Xem chi tiết",
+            hideDetails: "Thu gọn",
             tabs: {
                 orders: "Theo đơn hàng",
                 items: "Theo hàng hóa",
@@ -318,6 +383,14 @@ const vi = {
             },
             results: "kết quả",
             empty: "Không có dữ liệu phù hợp với bộ lọc.",
+            pagination: {
+                label: "Phân trang giao dịch",
+                range: "{from}–{to} trên {total}",
+                perPage: "Số dòng",
+                previous: "Trang trước",
+                next: "Trang sau",
+                page: "Trang",
+            },
         },
         detail: {
             compareWith: "So sánh với",
@@ -1682,12 +1755,15 @@ const vi = {
             forceCancelReasonRequired: "Vui lòng nhập lý do hủy đặc biệt",
             restartButton: "Khởi tạo lại duyệt",
             restartReason: "Lý do khởi tạo lại luồng duyệt (bắt buộc)",
-            restartReasonRequired: "Vui lòng nhập lý do khởi tạo lại luồng duyệt",
+            restartReasonRequired:
+                "Vui lòng nhập lý do khởi tạo lại luồng duyệt",
             restarting: "Đang khởi tạo lại luồng duyệt...",
             restartSuccess: "Đã khởi tạo lại luồng duyệt",
-            restartSuccessDesc: "Attempt mới đã được tạo theo cấu hình mới nhất.",
+            restartSuccessDesc:
+                "Attempt mới đã được tạo theo cấu hình mới nhất.",
             restartError: "Không thể khởi tạo lại luồng duyệt",
-            restartErrorDesc: "Vui lòng kiểm tra cấu hình và người duyệt rồi thử lại.",
+            restartErrorDesc:
+                "Vui lòng kiểm tra cấu hình và người duyệt rồi thử lại.",
         },
     },
 
@@ -2288,8 +2364,7 @@ const vi = {
                     },
                     catalog: {
                         title: "Chọn hàng có thể xuất",
-                        content:
-                            "Tìm và chọn sản phẩm còn ATP tại kho nguồn.",
+                        content: "Tìm và chọn sản phẩm còn ATP tại kho nguồn.",
                     },
                     selectedItems: {
                         title: "Phân bổ hàng xuất",
@@ -2330,8 +2405,7 @@ const vi = {
                     },
                     catalog: {
                         title: "Chọn hàng điều chuyển",
-                        content:
-                            "Chọn sản phẩm còn ATP tại kho nguồn.",
+                        content: "Chọn sản phẩm còn ATP tại kho nguồn.",
                     },
                     selectedItems: {
                         title: "Phân bổ hàng chuyển",
@@ -2353,7 +2427,8 @@ const vi = {
             inProgress: {
                 empty: {
                     title: "Chưa có lệnh đang xử lý",
-                    content: "Khi có lệnh hoạt động, chúng sẽ xuất hiện tại đây.",
+                    content:
+                        "Khi có lệnh hoạt động, chúng sẽ xuất hiện tại đây.",
                 },
                 filters: {
                     title: "Lọc lệnh đang xử lý",
@@ -2367,13 +2442,15 @@ const vi = {
                 },
                 noResults: {
                     title: "Không có kết quả phù hợp",
-                    content: "Đổi từ khóa hoặc bỏ bớt bộ lọc để xem lại dữ liệu.",
+                    content:
+                        "Đổi từ khóa hoặc bỏ bớt bộ lọc để xem lại dữ liệu.",
                 },
             },
             history: {
                 empty: {
                     title: "Chưa có lịch sử",
-                    content: "Lệnh hoàn thành hoặc kết thúc sẽ được lưu tại đây.",
+                    content:
+                        "Lệnh hoàn thành hoặc kết thúc sẽ được lưu tại đây.",
                 },
                 filters: {
                     title: "Tra cứu lịch sử",
@@ -2382,7 +2459,8 @@ const vi = {
                 },
                 cards: {
                     title: "Kết quả lịch sử",
-                    content: "Bấm một thẻ để xem đầy đủ thông tin và các dòng hàng.",
+                    content:
+                        "Bấm một thẻ để xem đầy đủ thông tin và các dòng hàng.",
                 },
                 noResults: {
                     title: "Không tìm thấy lịch sử",
@@ -2390,7 +2468,8 @@ const vi = {
                 },
                 pagination: {
                     title: "Chuyển trang",
-                    content: "Dùng các nút trang để xem phần kết quả tiếp theo.",
+                    content:
+                        "Dùng các nút trang để xem phần kết quả tiếp theo.",
                 },
             },
             detail: {
@@ -2401,15 +2480,18 @@ const vi = {
                 },
                 information: {
                     title: "Thông tin nghiệp vụ",
-                    content: "Kiểm tra kho, người tạo, thời gian và ghi chú của lệnh.",
+                    content:
+                        "Kiểm tra kho, người tạo, thời gian và ghi chú của lệnh.",
                 },
                 items: {
                     title: "Danh sách hàng",
-                    content: "Xem sản phẩm, vị trí, số lượng và tình trạng từng dòng.",
+                    content:
+                        "Xem sản phẩm, vị trí, số lượng và tình trạng từng dòng.",
                 },
                 attachments: {
                     title: "Chứng từ đính kèm",
-                    content: "Mở các tệp đã gắn với lệnh nếu khu vực này xuất hiện.",
+                    content:
+                        "Mở các tệp đã gắn với lệnh nếu khu vực này xuất hiện.",
                 },
                 actions: {
                     title: "Thao tác khả dụng",
@@ -2598,6 +2680,19 @@ const vi = {
         placeholderSecretKey: "Nhập SecretKey",
         baseUrl: "Base URL",
         apiVersion: "API version",
+        paymentMapping: {
+            title: "Ánh xạ kênh thanh toán",
+            description:
+                "Nhập đúng tên kênh OpenAPI tùy chỉnh và xếp vào nhóm dùng trên dashboard, báo cáo Excel.",
+            channel: "Tên kênh",
+            category: "Nhóm thanh toán",
+            placeholder: "Ví dụ: VietQR, Momo",
+            add: "Thêm kênh",
+            remove: "Xóa kênh",
+            cash: "Tiền mặt",
+            transfer: "Chuyển khoản",
+            other: "Khác",
+        },
         enableOpenApi: "Bật kết nối OpenAPI cho cửa hàng này",
         testBtn: "Kiểm tra",
         saveBtn: "Lưu cấu hình",
@@ -2785,7 +2880,8 @@ const vi = {
             notes: "Ghi chú",
             linkAccount: "Liên kết tài khoản có sẵn",
             unlinked: "Chưa liên kết",
-            createAccountWithProfile: "Tạo tài khoản đăng nhập đi kèm hồ sơ này",
+            createAccountWithProfile:
+                "Tạo tài khoản đăng nhập đi kèm hồ sơ này",
             accountEmail: "Email tài khoản",
             accountStatus: "Trạng thái tài khoản",
             employmentTimeline: "Mốc thời gian lao động",
@@ -2830,9 +2926,13 @@ const vi = {
             targetStatus: "Trạng thái mới",
             selectTarget: "Chọn trạng thái",
             effectiveDate: "Ngày hiệu lực",
+            resignationImpactTitle: "Tác động khi lệnh nghỉ việc có hiệu lực",
+            resignationImpactDescription:
+                "Hồ sơ nhân sự và tài khoản sẽ ngừng hoạt động, các phiên đăng nhập bị thu hồi, phân quyền hiện tại được kết thúc và nhân sự không còn được tính chấm công từ ngày hiệu lực.",
             probationEndDate: "Ngày kết thúc thử việc",
             reason: "Lý do",
-            reasonPlaceholder: "Nhập lý do chi tiết cho việc chuyển trạng thái...",
+            reasonPlaceholder:
+                "Nhập lý do chi tiết cho việc chuyển trạng thái...",
             submit: "Ghi nhận chuyển trạng thái",
             historyTitle: "Lịch sử chuyển trạng thái",
             emptyHistory: "Chưa có lịch sử chuyển trạng thái.",
@@ -3653,6 +3753,7 @@ Object.assign(vi, {
         allEmployees: "Tất cả nhân viên",
         calendar: "Lịch chấm công",
         blankMeansNoCheckIn: "Ô trống nghĩa là chưa có check-in thành công.",
+        notApplicable: "Không áp dụng",
         employees: "nhân viên",
         employee: "Nhân viên",
         employeeCode: "Mã nhân viên",

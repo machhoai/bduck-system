@@ -123,3 +123,26 @@ export const canSafelyAutoRebaseInvoiceDocument = (
   !document.reviewed_at &&
   !document.rejected_at &&
   !document.active_issue_job_id;
+
+const calculationHash = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const hash = (value as Record<string, unknown>).calculation_hash;
+  return typeof hash === "string" && hash ? hash : null;
+};
+
+export const invoiceDocumentShouldRefreshFromSource = (
+  current: Record<string, unknown>,
+  next: Record<string, unknown>,
+): boolean => {
+  if (!canSafelyAutoRebaseInvoiceDocument(current)) {
+    return false;
+  }
+  return (
+    current.source_financial_fingerprint !==
+      next.source_financial_fingerprint ||
+    calculationHash(current.calculation) !==
+      calculationHash(next.calculation) ||
+    current.payment_method_name !== next.payment_method_name ||
+    current.meinvoice_account_id !== next.meinvoice_account_id
+  );
+};

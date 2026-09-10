@@ -15,15 +15,28 @@ import { logAudit, type AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { bulkIssueConfigFingerprint } from "./invoiceBulkIssuePolicy.js";
 import {
+  dateFromInvoiceValue,
+  deadlineTerminalInvoiceIssueStatus,
+  invoiceIssueBusinessDate,
+  invoiceIssueDeadline,
+  invoiceIssueDeadlineExpired,
+  retryTimeBeforeInvoiceDeadline,
+} from "./invoiceIssueDeadline.js";
+import {
   classifyInvoiceIssueFailure,
-  isExplicitMisaRejection,
+  findInvoiceRetryDuplicate,
   issueJobId,
+  publishResultConfirmsInvoice,
   sameInvoiceDocumentSet,
   statusIsIssued,
   validateInvoiceIssueCandidate,
 } from "./invoiceIssuePolicy.js";
+import { fetchMisaInvoicesForDate } from "./invoiceReconciliationService.js";
 import { dispatchInvoiceIssueItem } from "./invoiceTaskDispatcher.js";
-import { MeInvoiceApiError } from "./meInvoiceClient.js";
+import {
+  MeInvoiceApiError,
+  type MeInvoiceStatusResult,
+} from "./meInvoiceClient.js";
 import { executeWithMeInvoiceClient } from "./meInvoiceConnectionService.js";
 import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
@@ -79,6 +92,15 @@ const serializeJob = (
     })) ?? [],
 });
 
+const misaStatusHasIssueTrace = (status: MeInvoiceStatusResult | undefined) =>
+  Boolean(
+    status &&
+    (status.isDeleted ||
+      statusIsIssued(status.publishStatus, status.isDeleted) ||
+      status.transactionId ||
+      status.invoiceCode),
+  );
+
 export const createInvoiceIssueJob = async (
   input: {
     warehouse_id: string;
@@ -98,6 +120,7 @@ export const createInvoiceIssueJob = async (
     options.permission ?? "invoices.issue",
     input.warehouse_id,
   );
+  const requestedAt = new Date();
   const documentIds = [...new Set(input.invoice_document_ids)];
   if (documentIds.length !== input.invoice_document_ids.length) {
     throw serviceError(
@@ -201,6 +224,19 @@ export const createInvoiceIssueJob = async (
         );
       }
       const built = buildMeInvoicePayload(document, config, account);
+      const businessDate = invoiceIssueBusinessDate(
+        sourceOrder.business_date,
+        document.payment_time,
+      );
+      const issueDeadlineAt = invoiceIssueDeadline(businessDate);
+      if (invoiceIssueDeadlineExpired(issueDeadlineAt, requestedAt)) {
+        throw serviceError(
+          409,
+          "Đã qua 00:00 giờ Việt Nam của ngày kinh doanh nên hóa đơn không còn được phép phát hành hoặc thử lại.",
+          "INVOICE_ISSUE_DEADLINE_EXPIRED",
+          { document_id: documentId, business_date: businessDate },
+        );
+      }
       return {
         documentId,
         sourceOrderId: String(document.source_order_id),
@@ -209,6 +245,8 @@ export const createInvoiceIssueJob = async (
         refId: built.ref_id,
         payloadHash: built.prepared_payload_hash,
         payload: built.payload,
+        businessDate,
+        issueDeadlineAt,
       };
     }),
   );
@@ -290,19 +328,31 @@ const finalizeAndSchedule = async (input: {
   errorCode?: string | null;
   lastError?: string | null;
   retryEligible?: boolean;
+  clearManualRetryRequest?: boolean;
+  issueDeadlineAt?: unknown;
+  circuitOpenMs?: number;
 }) => {
   const max =
     input.status === InvoiceIssueItemStatus.PENDING_CONFIRMATION
       ? PENDING_MAX_ATTEMPTS
       : MAX_ATTEMPTS;
+  const now = new Date();
+  const deadline = dateFromInvoiceValue(input.issueDeadlineAt);
   const exhausted = input.retryAfterMs !== null && input.attempt >= max;
-  const status = exhausted
-    ? InvoiceIssueItemStatus.MANUAL_RECONCILIATION
-    : input.status;
-  const nextAttemptAt =
+  const retryAt =
     !exhausted && input.retryAfterMs !== null
-      ? new Date(Date.now() + input.retryAfterMs)
+      ? deadline
+        ? retryTimeBeforeInvoiceDeadline(input.retryAfterMs, deadline, now)
+        : new Date(now.getTime() + input.retryAfterMs)
       : null;
+  const deadlineBlocked =
+    input.retryAfterMs !== null && Boolean(deadline) && retryAt === null;
+  const status = deadlineBlocked
+    ? deadlineTerminalInvoiceIssueStatus(input.status)
+    : exhausted
+      ? InvoiceIssueItemStatus.MANUAL_RECONCILIATION
+      : input.status;
+  const nextAttemptAt = deadlineBlocked ? null : retryAt;
   const completion = await invoiceIssueRepository.completeItem({
     jobId: input.jobId,
     itemId: input.itemId,
@@ -312,11 +362,21 @@ const finalizeAndSchedule = async (input: {
     transactionId: input.transactionId,
     invoiceNumber: input.invoiceNumber,
     invoiceCode: input.invoiceCode,
-    errorCode: input.errorCode,
-    lastError: exhausted
-      ? "Retry limit reached; manual reconciliation required."
-      : input.lastError,
-    retryEligible: !exhausted && input.retryEligible === true,
+    errorCode: deadlineBlocked
+      ? "INVOICE_ISSUE_DEADLINE_EXPIRED"
+      : input.errorCode,
+    lastError: deadlineBlocked
+      ? "Vietnam business-day issue deadline reached; no further retry is allowed."
+      : exhausted
+        ? "Retry limit reached; manual reconciliation required."
+        : input.lastError,
+    retryEligible:
+      !deadlineBlocked && !exhausted && input.retryEligible === true,
+    clearManualRetryRequest:
+      input.clearManualRetryRequest ||
+      ((deadlineBlocked || exhausted) &&
+        input.status !== InvoiceIssueItemStatus.ISSUED),
+    circuitOpenMs: deadlineBlocked ? undefined : input.circuitOpenMs,
   });
   if (completion?.applied && nextAttemptAt) {
     await dispatchInvoiceIssueItem({
@@ -346,11 +406,49 @@ export const processInvoiceIssueItem = async (
   if (claimed.busy) return { processed: false, reason: "LANE_BUSY" };
   const attempt = Number(claimed.item.attempt_count ?? 0);
   const previousStatus = claimed.previousStatus;
+  const storedIssueDeadlineAt = dateFromInvoiceValue(
+    claimed.item.issue_deadline_at ?? claimed.job.issue_deadline_at,
+  );
+  let issueDeadlineAt = storedIssueDeadlineAt;
+  if (!issueDeadlineAt) {
+    try {
+      const legacyBusinessDate = invoiceIssueBusinessDate(
+        claimed.item.business_date ??
+          claimed.job.business_dates?.[0] ??
+          claimed.payload.InvDate,
+        claimed.payload.InvDate,
+      );
+      issueDeadlineAt = invoiceIssueDeadline(legacyBusinessDate);
+    } catch {
+      // Legacy items may predate both the deadline fields and InvDate payload.
+    }
+  }
+  const finalizeClaimed = (input: Parameters<typeof finalizeAndSchedule>[0]) =>
+    finalizeAndSchedule({
+      ...input,
+      issueDeadlineAt,
+    });
+  if (issueDeadlineAt && invoiceIssueDeadlineExpired(issueDeadlineAt)) {
+    return finalizeClaimed({
+      jobId,
+      itemId,
+      owner,
+      status: deadlineTerminalInvoiceIssueStatus(previousStatus),
+      attempt,
+      retryAfterMs: null,
+      errorCode: "INVOICE_ISSUE_DEADLINE_EXPIRED",
+      lastError:
+        "Vietnam business-day issue deadline reached; no further retry is allowed.",
+      clearManualRetryRequest: Boolean(
+        claimed.item.manual_retry_requested_at,
+      ),
+    });
+  }
   if (
     process.env.MEINVOICE_ISSUE_ENABLED !== "true" &&
     previousStatus !== InvoiceIssueItemStatus.PENDING_CONFIRMATION
   ) {
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -362,8 +460,13 @@ export const processInvoiceIssueItem = async (
     });
   }
 
+  const manualRetryRequested = Boolean(claimed.item.manual_retry_requested_at);
+  let manualRetryPublishStarted = false;
   try {
-    if (previousStatus === InvoiceIssueItemStatus.PENDING_CONFIRMATION) {
+    if (
+      previousStatus === InvoiceIssueItemStatus.PENDING_CONFIRMATION ||
+      manualRetryRequested
+    ) {
       const statuses = await executeWithMeInvoiceClient(
         claimed.job.meinvoice_account_id,
         (client, token) =>
@@ -376,7 +479,7 @@ export const processInvoiceIssueItem = async (
       );
       const status = statuses[0];
       if (status && statusIsIssued(status.publishStatus, status.isDeleted)) {
-        return finalizeAndSchedule({
+        return finalizeClaimed({
           jobId,
           itemId,
           owner,
@@ -385,10 +488,11 @@ export const processInvoiceIssueItem = async (
           retryAfterMs: null,
           transactionId: status.transactionId,
           invoiceCode: status.invoiceCode,
+          clearManualRetryRequest: manualRetryRequested,
         });
       }
       if (status?.isDeleted) {
-        return finalizeAndSchedule({
+        return finalizeClaimed({
           jobId,
           itemId,
           owner,
@@ -398,31 +502,78 @@ export const processInvoiceIssueItem = async (
           transactionId: status.transactionId,
           errorCode: "MISA_INVOICE_DELETED",
           lastError: "MISA reports that the invoice was deleted.",
+          clearManualRetryRequest: manualRetryRequested,
         });
       }
-      return finalizeAndSchedule({
-        jobId,
-        itemId,
-        owner,
-        status: InvoiceIssueItemStatus.PENDING_CONFIRMATION,
-        attempt,
-        retryAfterMs: Math.min(15 * 60_000, 30_000 * 2 ** Math.min(attempt, 5)),
-        transactionId: status?.transactionId ?? null,
-        invoiceCode: status?.invoiceCode ?? null,
-      });
+      if (manualRetryRequested) {
+        if (
+          misaStatusHasIssueTrace(status) ||
+          claimed.item.manual_retry_allow_publish !== true
+        ) {
+          return finalizeClaimed({
+            jobId,
+            itemId,
+            owner,
+            status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+            attempt,
+            retryAfterMs: null,
+            transactionId: status?.transactionId ?? null,
+            invoiceCode: status?.invoiceCode ?? null,
+            errorCode: "MISA_DUPLICATE_CHECK_BLOCKED",
+            lastError:
+              "MISA has an invoice trace or matching business information; republish was blocked.",
+            clearManualRetryRequest: true,
+          });
+        }
+      } else {
+        return finalizeClaimed({
+          jobId,
+          itemId,
+          owner,
+          status: InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+          attempt,
+          retryAfterMs: Math.min(
+            15 * 60_000,
+            30_000 * 2 ** Math.min(attempt, 5),
+          ),
+          transactionId: status?.transactionId ?? null,
+          invoiceCode: status?.invoiceCode ?? null,
+        });
+      }
     }
 
+    manualRetryPublishStarted = manualRetryRequested;
     const results = await executeWithMeInvoiceClient(
       claimed.job.meinvoice_account_id,
       (client, token) =>
-        client.publishInvoices(token, Number(claimed.job.sign_type), [
-          claimed.payload,
-        ]),
+        client.publishInvoices(
+          token,
+          Number(
+            manualRetryRequested
+              ? (claimed.item.manual_retry_sign_type ?? claimed.job.sign_type)
+              : claimed.job.sign_type,
+          ),
+          [claimed.payload],
+        ),
     );
     const result = results[0]!;
+    if (publishResultConfirmsInvoice(result)) {
+      return finalizeClaimed({
+        jobId,
+        itemId,
+        owner,
+        status: InvoiceIssueItemStatus.ISSUED,
+        attempt,
+        retryAfterMs: null,
+        transactionId: result.transactionId,
+        invoiceNumber: result.invoiceNumber,
+        invoiceCode: result.invoiceCode,
+        clearManualRetryRequest: manualRetryRequested,
+      });
+    }
     if (result.errorCode) {
       const decision = classifyInvoiceIssueFailure(result.errorCode, attempt);
-      return finalizeAndSchedule({
+      return finalizeClaimed({
         jobId,
         itemId,
         owner,
@@ -436,9 +587,11 @@ export const processInvoiceIssueItem = async (
         lastError: `MISA item error: ${result.errorCode}`,
         retryEligible:
           !result.transactionId && !result.invoiceNumber && !result.invoiceCode,
+        clearManualRetryRequest: manualRetryRequested,
+        circuitOpenMs: decision.cooldownMs,
       });
     }
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -448,10 +601,11 @@ export const processInvoiceIssueItem = async (
       transactionId: result.transactionId,
       invoiceNumber: result.invoiceNumber,
       invoiceCode: result.invoiceCode,
+      clearManualRetryRequest: manualRetryRequested,
     });
   } catch (error) {
     const decision = classifyInvoiceIssueFailure(error, attempt);
-    return finalizeAndSchedule({
+    return finalizeClaimed({
       jobId,
       itemId,
       owner,
@@ -461,8 +615,63 @@ export const processInvoiceIssueItem = async (
       errorCode:
         error instanceof MeInvoiceApiError ? error.code : "UNKNOWN_ERROR",
       lastError: error instanceof Error ? error.message : String(error),
+      clearManualRetryRequest: manualRetryPublishStarted,
+      circuitOpenMs: decision.cooldownMs,
     });
   }
+};
+
+const STUCK_DOCUMENT_STATUSES = new Set<InvoiceDocumentStatus>([
+  InvoiceDocumentStatus.PENDING_CONFIRMATION,
+  InvoiceDocumentStatus.RETRYABLE_ERROR,
+  InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+]);
+const USER_RETRY_MINIMUM_AGE_MS = 10 * 60_000;
+
+const issueItemIsStuck = (item: Record<string, unknown>) => {
+  if (item.status === InvoiceIssueItemStatus.MANUAL_RECONCILIATION) return true;
+  if (Number(item.attempt_count ?? 0) >= 3) return true;
+  const createdAt = toDate(item.created_at);
+  return Boolean(
+    createdAt &&
+    Date.now() - new Date(createdAt).getTime() >= USER_RETRY_MINIMUM_AGE_MS,
+  );
+};
+
+const loadInvoiceIssueRetryCandidates = async (input: {
+  warehouse_id: string;
+  business_date: string;
+}) => {
+  const orders = await invoiceOrderRepository.listOrders(
+    input.warehouse_id,
+    input.business_date,
+  );
+  const stuckOrderIds = orders
+    .filter((order) =>
+      STUCK_DOCUMENT_STATUSES.has(
+        order.invoice_document_status as InvoiceDocumentStatus,
+      ),
+    )
+    .map((order) => String(order.id));
+  if (stuckOrderIds.length === 0) return [];
+  const orderById = new Map(orders.map((order) => [String(order.id), order]));
+  const candidates = await invoiceIssueRepository.listRetryCandidates(
+    stuckOrderIds,
+    input.warehouse_id,
+  );
+  return candidates
+    .map(({ job, item }) => {
+      const issueItem = item as Record<string, unknown>;
+      const order = orderById.get(String(issueItem.invoice_document_id));
+      if (!order) return null;
+      return {
+        job: job as Record<string, unknown>,
+        item: issueItem,
+        order,
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => Boolean(value))
+    .filter(({ item }) => issueItemIsStuck(item));
 };
 
 export const listInvoiceIssueRetryCandidates = async (
@@ -470,47 +679,64 @@ export const listInvoiceIssueRetryCandidates = async (
   authorization: AuthorizationService,
 ) => {
   authorization.assert("invoices.retry", input.warehouse_id);
-  const orders = await invoiceOrderRepository.listOrders(
-    input.warehouse_id,
-    input.business_date,
-  );
-  const failedOrderIds = orders
-    .filter(
-      (order) =>
-        order.invoice_document_status ===
-        InvoiceDocumentStatus.MANUAL_RECONCILIATION,
-    )
-    .map((order) => String(order.id));
-  if (failedOrderIds.length === 0) return [];
+  if (invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))) {
+    return [];
+  }
+  const candidates = await loadInvoiceIssueRetryCandidates(input);
+  return candidates.map(({ job, item, order }) => ({
+    job_id: String(job.id),
+    item_id: String(item.id),
+    invoice_document_id: String(item.invoice_document_id),
+    order_number:
+      typeof order.order_number === "string" ? order.order_number : null,
+    status: String(item.status),
+    misa_error_code:
+      typeof item.misa_error_code === "string" ? item.misa_error_code : null,
+    message:
+      item.status === InvoiceIssueItemStatus.PENDING_CONFIRMATION
+        ? "Hóa đơn đang chờ MISA xác nhận và có thể kiểm tra, gửi lại an toàn."
+        : item.status === InvoiceIssueItemStatus.RETRYABLE_ERROR
+          ? "Hóa đơn gặp lỗi tạm thời và có thể kiểm tra, gửi lại an toàn."
+          : "Hóa đơn đang cần xử lý thủ công và có thể kiểm tra, gửi lại an toàn.",
+  }));
+};
 
-  const orderById = new Map(orders.map((order) => [String(order.id), order]));
-  const candidates = await invoiceIssueRepository.listRetryCandidates(
-    failedOrderIds,
-    input.warehouse_id,
-  );
-  return candidates.map(({ job, item }) => {
-    const candidate = item as Record<string, unknown>;
-    const order = orderById.get(String(candidate.invoice_document_id));
-    return {
-      job_id: String(job.id),
-      item_id: String(candidate.id),
-      invoice_document_id: String(candidate.invoice_document_id),
-      order_number:
-        typeof order?.order_number === "string" ? order.order_number : null,
-      misa_error_code: String(candidate.misa_error_code),
-      message:
-        candidate.misa_error_code === "CallSignServiceFail"
-          ? "MISA không thể gọi dịch vụ chữ ký số. Hóa đơn chưa được phát hành."
-          : "MISA đã từ chối hóa đơn trước khi phát hành.",
-    };
-  });
+const chunksOf = <T>(values: T[], size: number): T[][] => {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+};
+
+const buyerTaxCode = (order: Record<string, unknown>): string | null => {
+  const buyer =
+    order.buyer &&
+    typeof order.buyer === "object" &&
+    !Array.isArray(order.buyer)
+      ? (order.buyer as Record<string, unknown>)
+      : null;
+  return typeof buyer?.tax_code === "string" && buyer.tax_code.trim()
+    ? buyer.tax_code.trim()
+    : null;
+};
+
+const buyerName = (order: Record<string, unknown>): string | null => {
+  const buyer =
+    order.buyer &&
+    typeof order.buyer === "object" &&
+    !Array.isArray(order.buyer)
+      ? (order.buyer as Record<string, unknown>)
+      : null;
+  const value = buyer?.legal_name ?? buyer?.full_name;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 };
 
 export const retryRejectedInvoiceIssueItems = async (
   input: {
     warehouse_id: string;
+    business_date: string;
     otp: string;
-    items: Array<{ job_id: string; item_id: string }>;
   },
   actorId: string,
   authorization: AuthorizationService,
@@ -518,14 +744,11 @@ export const retryRejectedInvoiceIssueItems = async (
 ) => {
   authorization.assert("invoices.retry", input.warehouse_id);
   requireIssueEnabled();
-  const uniqueKeys = new Set(
-    input.items.map((item) => `${item.job_id}:${item.item_id}`),
-  );
-  if (uniqueKeys.size !== input.items.length) {
+  if (invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))) {
     throw serviceError(
-      400,
-      "Danh sách hóa đơn thử lại có phần tử trùng.",
-      "DUPLICATE_RETRY_ITEM",
+      409,
+      "Đã qua 00:00 giờ Việt Nam của ngày kinh doanh nên hệ thống không thử phát hành lại.",
+      "INVOICE_ISSUE_DEADLINE_EXPIRED",
     );
   }
   if (!(await verifyMfa(actorId, input.otp))) {
@@ -553,142 +776,207 @@ export const retryRejectedInvoiceIssueItems = async (
     );
   }
   const config = toPublicStoreConfig(storedConfig);
-  const grouped = new Map<string, string[]>();
-  input.items.forEach((item) => {
-    grouped.set(item.job_id, [
-      ...(grouped.get(item.job_id) ?? []),
-      item.item_id,
-    ]);
-  });
-
-  const prepared: Array<{
-    jobId: string;
-    itemIds: string[];
-    job: Record<string, unknown>;
-    items: Record<string, unknown>[];
-  }> = [];
-  for (const [jobId, itemIds] of grouped) {
-    const loaded = await invoiceIssueRepository.getJob(
-      jobId,
-      input.warehouse_id,
-    );
-    if (!loaded) {
-      throw serviceError(
-        404,
-        "Không tìm thấy tiến trình phát hành cần thử lại.",
-        "INVOICE_ISSUE_JOB_NOT_FOUND",
-      );
-    }
-    const job = loaded as Record<string, unknown> & {
-      items: Record<string, unknown>[];
+  const candidates = await loadInvoiceIssueRetryCandidates(input);
+  if (candidates.length === 0) {
+    return {
+      retried_count: 0,
+      already_on_misa_count: 0,
+      duplicate_blocked_count: 0,
+      skipped_count: 0,
+      retried_items: [],
+      blocked_items: [],
     };
-    if (
-      job.meinvoice_account_id !== config.meinvoice_account_id ||
-      job.inv_series !== config.inv_series ||
-      job.invoice_with_code !== config.invoice_with_code
-    ) {
-      throw serviceError(
-        409,
-        "Tài khoản, ký hiệu hoặc loại hóa đơn đã thay đổi. Không thể dùng lại RefID cũ.",
-        "INVOICE_RETRY_CONFIG_IDENTITY_CHANGED",
-      );
-    }
-    const selected = job.items.filter((item) =>
-      itemIds.includes(String(item.id)),
+  }
+  if (
+    candidates.some(
+      ({ job }) =>
+        job.meinvoice_account_id !== config.meinvoice_account_id ||
+        job.inv_series !== config.inv_series ||
+        job.invoice_with_code !== config.invoice_with_code,
+    )
+  ) {
+    throw serviceError(
+      409,
+      "Tài khoản, ký hiệu hoặc loại hóa đơn đã thay đổi. Không thể dùng lại RefID cũ.",
+      "INVOICE_RETRY_CONFIG_IDENTITY_CHANGED",
     );
-    if (
-      selected.length !== itemIds.length ||
-      selected.some((item) => !isExplicitMisaRejection(item))
-    ) {
-      throw serviceError(
-        409,
-        "Chỉ hóa đơn bị MISA từ chối rõ ràng và chưa có mã phát hành mới được thử lại.",
-        "INVOICE_RETRY_ITEM_NOT_ELIGIBLE",
-      );
-    }
-    if (
-      selected.some(
-        (item) => item.misa_error_code === "CallSignServiceFail",
-      ) &&
-      job.sign_type === config.sign_type
-    ) {
-      throw serviceError(
-        422,
-        "MISA từ chối dịch vụ chữ ký số nhưng hình thức ký chưa thay đổi. Hãy chọn “Máy tính tiền (5)”, lưu và xác minh cấu hình trước khi thử lại.",
-        "MEINVOICE_SIGN_TYPE_NOT_CORRECTED",
-      );
-    }
-
-    const statuses = await executeWithMeInvoiceClient(
-      config.meinvoice_account_id,
-      (client, token) =>
-        client.getInvoiceStatuses(token, {
-          refIds: selected.map((item) => String(item.ref_id)),
-          invoiceWithCode: job.invoice_with_code === true,
-          invoiceCalculatingMachine: job.invoice_calculating_machine === true,
-        }),
-    );
-    const conflict = statuses.find(
-      (status) =>
-        status.isDeleted ||
-        statusIsIssued(status.publishStatus, status.isDeleted) ||
-        Boolean(status.transactionId) ||
-        Boolean(status.invoiceCode),
-    );
-    if (conflict) {
-      throw serviceError(
-        409,
-        "MISA đã có dấu vết phát hành cho ít nhất một RefID. Hệ thống đã chặn gửi lại để tránh trùng hóa đơn.",
-        "MISA_STATUS_FOUND_RETRY_BLOCKED",
-        { ref_id: conflict.refId },
-      );
-    }
-    prepared.push({ jobId, itemIds, job, items: selected });
   }
 
-  const retried: Array<{ job_id: string; item_id: string }> = [];
-  for (const group of prepared) {
-    const result = await invoiceIssueRepository.requeueRejectedItems({
-      jobId: group.jobId,
-      warehouseId: input.warehouse_id,
-      itemIds: group.itemIds,
-      actorId,
-      accountId: config.meinvoice_account_id,
-      invSeries: config.inv_series,
-      signType: config.sign_type,
-      invoiceWithCode: config.invoice_with_code,
-      invoiceCalculatingMachine: config.is_invoice_calculating_machine,
-    });
-    await Promise.all(
-      result.requeued.map(async (itemId) => {
-        await dispatchInvoiceIssueItem({
-          jobId: group.jobId,
-          itemId,
-          attempt: 0,
+  // Both checks must complete successfully. A 429, timeout or 5xx throws here,
+  // before any item is scheduled, so an unavailable MISA is never interpreted
+  // as “invoice not found”.
+  const misaInvoices = await fetchMisaInvoicesForDate(
+    config.meinvoice_account_id,
+    config.invoice_with_code,
+    input.business_date,
+    [config.inv_series],
+    { forceRefresh: true },
+  );
+  const statusesByCandidate = new Map<string, MeInvoiceStatusResult>();
+  const statusGroups = new Map<string, typeof candidates>();
+  for (const candidate of candidates) {
+    const key = `${candidate.job.invoice_with_code === true}:${candidate.job.invoice_calculating_machine === true}`;
+    statusGroups.set(key, [...(statusGroups.get(key) ?? []), candidate]);
+  }
+  for (const group of statusGroups.values()) {
+    for (const batch of chunksOf(group, 30)) {
+      const statuses = await executeWithMeInvoiceClient(
+        config.meinvoice_account_id,
+        (client, token) =>
+          client.getInvoiceStatuses(token, {
+            refIds: batch.map(({ item }) => String(item.ref_id)),
+            invoiceWithCode: batch[0]!.job.invoice_with_code === true,
+            invoiceCalculatingMachine:
+              batch[0]!.job.invoice_calculating_machine === true,
+          }),
+      );
+      const byRefId = new Map(
+        statuses
+          .filter((status) => status.refId)
+          .map((status) => [status.refId!, status]),
+      );
+      batch.forEach((candidate, index) => {
+        const status =
+          byRefId.get(String(candidate.item.ref_id)) ??
+          (statuses.length === batch.length ? statuses[index] : undefined);
+        if (status) {
+          statusesByCandidate.set(
+            `${candidate.job.id}:${candidate.item.id}`,
+            status,
+          );
+        }
+      });
+    }
+  }
+
+  const scheduled: Array<{
+    candidate: (typeof candidates)[number];
+    allowPublish: boolean;
+  }> = [];
+  const blockedItems: Array<{
+    job_id: string;
+    item_id: string;
+    order_number: string | null;
+    reason: string;
+  }> = [];
+  let alreadyOnMisaCount = 0;
+  for (const candidate of candidates) {
+    const { job, item, order } = candidate;
+    const duplicate = findInvoiceRetryDuplicate(
+      {
+        refId: String(item.ref_id),
+        sourceOrderId: String(order.source_order_id ?? item.source_order_id),
+        orderNumber:
+          typeof order.order_number === "string" ? order.order_number : null,
+        invSeries: String(job.inv_series),
+        businessDate: input.business_date,
+        totalAmount:
+          typeof order.real_money === "number" ? order.real_money : null,
+        buyerTaxCode: buyerTaxCode(order),
+        buyerName: buyerName(order),
+        sellerShopCode: config.seller_shop_code,
+      },
+      misaInvoices,
+    );
+    const status = statusesByCandidate.get(`${job.id}:${item.id}`);
+    if (duplicate && duplicate.reason !== "REF_ID") {
+      blockedItems.push({
+        job_id: String(job.id),
+        item_id: String(item.id),
+        order_number:
+          typeof order.order_number === "string" ? order.order_number : null,
+        reason: duplicate.reason,
+      });
+      continue;
+    }
+    const allowPublish = !duplicate && !misaStatusHasIssueTrace(status);
+    if (!allowPublish) alreadyOnMisaCount += 1;
+    scheduled.push({ candidate, allowPublish });
+  }
+
+  const duplicateBlockedCount = blockedItems.length;
+  const requestId = randomUUID();
+  const grouped = new Map<string, typeof scheduled>();
+  for (const value of scheduled) {
+    const jobId = String(value.candidate.job.id);
+    grouped.set(jobId, [...(grouped.get(jobId) ?? []), value]);
+  }
+  const scheduledItems: Array<{ job_id: string; item_id: string }> = [];
+  let retriedCount = 0;
+  for (const [jobId, group] of grouped) {
+    let result: Awaited<
+      ReturnType<typeof invoiceIssueRepository.requestVerifiedRetryItems>
+    >;
+    try {
+      result = await invoiceIssueRepository.requestVerifiedRetryItems({
+        jobId,
+        warehouseId: input.warehouse_id,
+        actorId,
+        requestId,
+        signType: config.sign_type,
+        items: group.map(({ candidate, allowPublish }) => ({
+          itemId: String(candidate.item.id),
+          allowPublish,
+        })),
+      });
+    } catch (error) {
+      if ((error as { statusCode?: number }).statusCode !== 409) throw error;
+      group.forEach(({ candidate }) => {
+        blockedItems.push({
+          job_id: jobId,
+          item_id: String(candidate.item.id),
+          order_number:
+            typeof candidate.order.order_number === "string"
+              ? candidate.order.order_number
+              : null,
+          reason: "STATE_CHANGED",
         });
-        retried.push({ job_id: group.jobId, item_id: itemId });
+      });
+      continue;
+    }
+    await Promise.all(
+      result.scheduled.map(async (item) => {
+        await dispatchInvoiceIssueItem({
+          jobId,
+          itemId: item.itemId,
+          attempt: item.attempt,
+          deduplicationKey: `manual-${requestId}`,
+        });
+        scheduledItems.push({ job_id: jobId, item_id: item.itemId });
+        if (item.allowPublish) retriedCount += 1;
       }),
     );
   }
 
   await logAudit({
     entity_type: "INVOICE_ISSUE_RETRY",
-    entity_id: `retry:${randomUUID()}`,
+    entity_id: `retry:${requestId}`,
     warehouse_id: input.warehouse_id,
     action: AuditAction.UPDATE,
     user_id: actorId,
     old_value: null,
     new_value: {
-      item_count: retried.length,
-      items: retried,
+      business_date: input.business_date,
+      candidate_count: candidates.length,
+      retried_count: retriedCount,
+      already_on_misa_count: alreadyOnMisaCount,
+      duplicate_blocked_count: duplicateBlockedCount,
+      skipped_count: blockedItems.length - duplicateBlockedCount,
+      scheduled_items: scheduledItems,
+      blocked_items: blockedItems,
       sign_type: config.sign_type,
     },
-    notes: "Retry explicit MISA rejections after RefID status verification",
+    notes:
+      "User requested bulk retry after RefID and business duplicate verification",
     ...auditMetadata,
   });
   return {
-    retried_count: retried.length,
-    retried_items: retried,
+    retried_count: retriedCount,
+    already_on_misa_count: alreadyOnMisaCount,
+    duplicate_blocked_count: duplicateBlockedCount,
+    skipped_count: blockedItems.length - duplicateBlockedCount,
+    retried_items: scheduledItems,
+    blocked_items: blockedItems,
   };
 };
 

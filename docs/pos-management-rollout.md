@@ -24,6 +24,10 @@ thanh toán cơ bản tiếp tục hoạt động khi UI gặp lỗi hoặc ứn
 ## Biến môi trường bắt buộc
 
 - Backend JPULSE: `POS_ENROLLMENT_HASH_SECRET` là chuỗi ngẫu nhiên tối thiểu 32 byte.
+- Backend JPULSE: `JPOS_PRODUCT_SYNC_URL` trỏ đến HTTPS endpoint
+  `syncProductsFromJpulse` đã deploy từ repository JPOS.
+- Backend JPULSE và JPOS Functions: `JPOS_PRODUCT_SYNC_SECRET` phải là cùng một
+  chuỗi ngẫu nhiên dài, chỉ lưu ở môi trường server/Secret Manager.
 - Backend JPULSE: `BE_WMS_CORS_ORIGIN` phải gồm origin web JPULSE và origin Tauri
   `http://tauri.localhost,https://tauri.localhost,tauri://localhost`.
 - Build JPOS: `NEXT_PUBLIC_JPULSE_API_URL` trỏ đến backend JPULSE production.
@@ -31,15 +35,19 @@ thanh toán cơ bản tiếp tục hoạt động khi UI gặp lỗi hoặc ứn
 
 ## Thứ tự triển khai an toàn
 
-1. Deploy shared types, backend JPULSE, Firestore indexes và rules hợp nhất.
-2. Cấp `pos.devices.manage`, `pos.settings.manage`, `pos.access.manage` cho nhóm quản trị.
-3. Tạo các vai trò thu ngân/ca trưởng theo cửa hàng với `pos.login` và quyền chức năng cần thiết.
-4. Cấu hình hóa đơn và QR dự phòng cho từng cửa hàng trên `/pos-management`.
-5. Phát hành JPOS desktop mới; tạo OTP kích hoạt ngay trên trang quản lý POS để
+1. Tạo `JPOS_PRODUCT_SYNC_SECRET` trong Secret Manager của JPOS, deploy
+   `syncProductsFromJpulse`, rồi lấy URL HTTPS của function.
+2. Cấu hình URL và cùng secret đó cho backend JPULSE; deploy shared types,
+   backend JPULSE, frontend JPULSE, Firestore indexes và rules hợp nhất.
+3. Cấp `pos.devices.manage`, `pos.settings.manage`, `pos.access.manage` cho nhóm quản trị.
+4. Tạo các vai trò thu ngân/ca trưởng theo cửa hàng với `pos.login` và quyền chức năng cần thiết.
+5. Cấu hình hóa đơn và QR dự phòng cho từng cửa hàng trên `/pos-management`.
+6. Phát hành JPOS desktop mới; tạo OTP kích hoạt ngay trên trang quản lý POS để
    kích hoạt từng máy.
-6. Xác nhận heartbeat, phiên bản app và cấu hình trên JPULSE.
-7. Chỉ sau khi các máy pilot đã kích hoạt, deploy POS Cloud Functions có kiểm tra device credential.
-8. Mở rộng theo từng cửa hàng; không triển khai đồng loạt ngay lần đầu.
+7. Xác nhận heartbeat, phiên bản app và cấu hình trên JPULSE.
+8. Chỉ sau khi các máy pilot đã kích hoạt, deploy các POS Cloud Functions còn lại
+   có kiểm tra device credential.
+9. Mở rộng theo từng cửa hàng; không triển khai đồng loạt ngay lần đầu.
 
 ## Ma trận quyền khuyến nghị
 
@@ -67,6 +75,11 @@ thanh toán cơ bản tiếp tục hoạt động khi UI gặp lỗi hoặc ứn
     dùng quyền/cấu hình cache tối đa 8 giờ khi backend không khả dụng.
 11. Kiểm tra audit chỉ có nghiệp vụ/bảo mật và chứa cửa hàng, máy, người thao tác,
     thời gian thao tác cùng thời gian đồng bộ.
+12. Trên JPULSE, bấm **Đồng bộ sản phẩm** hai lần liên tiếp; chỉ một lượt chạy,
+    lượt lặp cùng request ID không tạo thêm thay đổi.
+13. Xác nhận sản phẩm cũ giữ nguyên trạng thái, sản phẩm mới được thêm vào danh
+    sách ẩn của mọi cửa hàng JPOS, rồi bật một sản phẩm và kiểm tra nó xuất hiện
+    trên POS. Tải lại trang và xác nhận trạng thái thu gọn nhóm được đặt lại.
 
 ## Rollback
 

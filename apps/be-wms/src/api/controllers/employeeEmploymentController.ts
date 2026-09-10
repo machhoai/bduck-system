@@ -1,15 +1,17 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
+import {
+  cancelEmployeeEmploymentTransitionSchema,
+  createEmployeeEmploymentTransitionSchema,
+} from "../../services/employeeEmploymentSchemas.js";
 import {
   applyDueEmployeeEmploymentTransitions,
   cancelEmployeeEmploymentTransition,
   createEmployeeEmploymentTransition,
   fetchEmployeeEmploymentTransitions,
 } from "../../services/employeeEmploymentService.js";
-import {
-  cancelEmployeeEmploymentTransitionSchema,
-  createEmployeeEmploymentTransitionSchema,
-} from "../../services/employeeEmploymentSchemas.js";
+import { processPendingEmployeeIdentitySyncJobs } from "../../services/employeeIdentitySyncService.js";
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { mapFirebaseError } from "../../utils/firebaseErrorHandler.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
@@ -162,6 +164,42 @@ export const applyDueEmployeeEmploymentTransitionsHandler = async (
     return sendSuccess(res, data, {
       vi: "Đã xử lý các lệnh chuyển trạng thái đến hạn.",
       zh: "已处理到期的劳动状态转换。",
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const processPendingEmployeeIdentitySyncJobsHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const configuredSecret = process.env.EMPLOYEE_EMPLOYMENT_CRON_SECRET;
+    if (!hasNonEmptySecret(configuredSecret)) {
+      return sendError(
+        res,
+        {
+          vi: "Chưa cấu hình khóa bảo mật cho đồng bộ tài khoản nhân sự.",
+          zh: "尚未配置员工账号同步密钥。",
+        },
+        503,
+      );
+    }
+    if (!securelyMatchesSecret(req.header("x-cron-secret"), configuredSecret)) {
+      return sendError(
+        res,
+        {
+          vi: "Khóa bảo mật đồng bộ tài khoản không hợp lệ.",
+          zh: "员工账号同步密钥无效。",
+        },
+        401,
+      );
+    }
+    const data = await processPendingEmployeeIdentitySyncJobs();
+    return sendSuccess(res, data, {
+      vi: "Đã xử lý hàng đợi đồng bộ tài khoản nhân sự.",
+      zh: "已处理员工账号同步队列。",
     });
   } catch (error) {
     return handleError(res, error);

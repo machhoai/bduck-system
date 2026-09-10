@@ -7,6 +7,9 @@ import {
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 
+import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
+import { INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS } from "./invoiceIssueDeadline.js";
+import type { NormalizedMisaInvoice } from "./invoiceReconciliationPolicy.js";
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
 export const issueJobId = (
@@ -78,6 +81,30 @@ export const validateInvoiceIssueCandidate = (
       message: "Source order changed after review.",
     });
   }
+  const sourceItems = Array.isArray(sourceOrder.normalized_items)
+    ? sourceOrder.normalized_items
+    : [];
+  const sourceCalculation =
+    sourceOrder.calculation && typeof sourceOrder.calculation === "object"
+      ? (sourceOrder.calculation as Record<string, unknown>)
+      : null;
+  const documentCalculation =
+    document.calculation && typeof document.calculation === "object"
+      ? (document.calculation as Record<string, unknown>)
+      : null;
+  if (
+    sourceItems.length > 0 &&
+    (invoiceFinancialFingerprint(sourceItems) !==
+      document.source_financial_fingerprint ||
+      sourceCalculation?.calculation_hash !==
+        documentCalculation?.calculation_hash)
+  ) {
+    issues.push({
+      code: "SOURCE_FINANCIALS_STALE",
+      message:
+        "Draft tax or financial calculation is older than the source order.",
+    });
+  }
   if (sourceOrder.match_status === InvoiceOrderMatchStatus.MATCHED) {
     issues.push({
       code: "SOURCE_ALREADY_INVOICED",
@@ -104,11 +131,17 @@ export type InvoiceFailureDecision =
   | {
       status: InvoiceIssueItemStatus.PENDING_CONFIRMATION;
       retryAfterMs: number;
+      cooldownMs?: number;
     }
-  | { status: InvoiceIssueItemStatus.RETRYABLE_ERROR; retryAfterMs: number }
+  | {
+      status: InvoiceIssueItemStatus.RETRYABLE_ERROR;
+      retryAfterMs: number;
+      cooldownMs?: number;
+    }
   | {
       status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION;
       retryAfterMs: null;
+      cooldownMs?: number;
     };
 
 const AMBIGUOUS_CODES = new Set([
@@ -137,6 +170,21 @@ export const classifyInvoiceIssueFailure = (
         : null;
   const boundedAttempt = Math.max(1, attempt);
   const backoff = Math.min(15 * 60_000, 15_000 * 2 ** (boundedAttempt - 1));
+  const rateLimited =
+    code === "TooManyRequest" ||
+    code === "MEINVOICE_RATE_LIMITED" ||
+    (error instanceof MeInvoiceApiError && error.httpStatus === 429);
+  if (rateLimited) {
+    const cooldownMs = Math.min(
+      15 * 60_000,
+      INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS * 2 ** (boundedAttempt - 1),
+    );
+    return {
+      status: InvoiceIssueItemStatus.RETRYABLE_ERROR,
+      retryAfterMs: cooldownMs,
+      cooldownMs,
+    };
+  }
   const ambiguousCode =
     code &&
     (AMBIGUOUS_CODES.has(code) ||
@@ -153,8 +201,7 @@ export const classifyInvoiceIssueFailure = (
   }
   if (
     (code && RETRYABLE_CODES.has(code)) ||
-    (error instanceof MeInvoiceApiError &&
-      (error.httpStatus === 401 || error.httpStatus === 429))
+    (error instanceof MeInvoiceApiError && error.httpStatus === 401)
   ) {
     return {
       status: InvoiceIssueItemStatus.RETRYABLE_ERROR,
@@ -166,6 +213,15 @@ export const classifyInvoiceIssueFailure = (
     retryAfterMs: null,
   };
 };
+
+export const publishResultConfirmsInvoice = (result: {
+  errorCode?: string | null;
+  transactionId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceCode?: string | null;
+}): boolean =>
+  !result.errorCode &&
+  Boolean(result.transactionId || result.invoiceNumber || result.invoiceCode);
 
 export const statusIsIssued = (publishStatus: number, isDeleted: boolean) =>
   publishStatus === 1 && !isDeleted;
@@ -192,4 +248,99 @@ export const isExplicitMisaRejection = (
     typeof item.last_error === "string" &&
     item.last_error.startsWith("MISA item error:")
   );
+};
+
+const USER_RETRY_STATUSES = new Set<InvoiceIssueItemStatus>([
+  InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+  InvoiceIssueItemStatus.RETRYABLE_ERROR,
+  InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+]);
+
+export const isUserRetryCandidate = (item: Record<string, unknown>): boolean =>
+  USER_RETRY_STATUSES.has(item.status as InvoiceIssueItemStatus) &&
+  !item.manual_retry_requested_at &&
+  typeof item.ref_id === "string" &&
+  Boolean(item.ref_id.trim());
+
+const normalizedIdentity = (value: unknown): string | null =>
+  typeof value === "string" && value.trim()
+    ? value.trim().toLocaleUpperCase("vi")
+    : null;
+
+const normalizedDate = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  return value.match(/^(\d{4}-\d{2}-\d{2})/u)?.[1] ?? null;
+};
+
+export type InvoiceRetryDuplicateReason =
+  | "REF_ID"
+  | "ORDER_CODE"
+  | "BUSINESS_FINGERPRINT";
+
+export const findInvoiceRetryDuplicate = (
+  input: {
+    refId: string;
+    sourceOrderId: string;
+    orderNumber: string | null;
+    invSeries: string;
+    businessDate: string;
+    totalAmount: number | null;
+    buyerTaxCode: string | null;
+    buyerName: string | null;
+    sellerShopCode: string | null;
+  },
+  invoices: NormalizedMisaInvoice[],
+): {
+  reason: InvoiceRetryDuplicateReason;
+  invoice: NormalizedMisaInvoice;
+} | null => {
+  const refId = normalizedIdentity(input.refId);
+  const orderCodes = new Set(
+    [input.sourceOrderId, input.orderNumber]
+      .map(normalizedIdentity)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const invSeries = normalizedIdentity(input.invSeries);
+  const buyerTaxCode = normalizedIdentity(input.buyerTaxCode);
+  const buyerName = normalizedIdentity(input.buyerName);
+  const buyerIdentity =
+    buyerTaxCode ||
+    (buyerName &&
+    !buyerName.includes("KHÁCH LẺ") &&
+    !buyerName.includes("KHACH LE")
+      ? buyerName
+      : null);
+  const sellerShopCode = normalizedIdentity(input.sellerShopCode);
+
+  for (const invoice of invoices) {
+    if (refId && normalizedIdentity(invoice.ref_id) === refId) {
+      return { reason: "REF_ID", invoice };
+    }
+  }
+  for (const invoice of invoices) {
+    const buyerOrderCode = normalizedIdentity(invoice.buyer_order_code);
+    if (buyerOrderCode && orderCodes.has(buyerOrderCode)) {
+      return { reason: "ORDER_CODE", invoice };
+    }
+  }
+  if (input.totalAmount === null || !buyerIdentity) return null;
+  for (const invoice of invoices) {
+    const sameSeller =
+      !sellerShopCode ||
+      !invoice.seller_shop_code ||
+      normalizedIdentity(invoice.seller_shop_code) === sellerShopCode;
+    if (
+      sameSeller &&
+      normalizedIdentity(invoice.inv_series) === invSeries &&
+      normalizedDate(invoice.invoice_date) === input.businessDate &&
+      (buyerTaxCode
+        ? normalizedIdentity(invoice.buyer_tax_code) === buyerTaxCode
+        : normalizedIdentity(invoice.buyer_name) === buyerIdentity) &&
+      invoice.total_amount !== null &&
+      Math.abs(invoice.total_amount - input.totalAmount) < 1
+    ) {
+      return { reason: "BUSINESS_FINGERPRINT", invoice };
+    }
+  }
+  return null;
 };

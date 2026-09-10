@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  PosLuckyDrawSettingsView,
   PosReceiptSettings,
   PosStoreOverview,
   PosTicketSettings,
@@ -18,6 +19,8 @@ export function usePosManagement(
   const [settings, setSettings] = useState<PosReceiptSettings | null>(null);
   const [ticketSettings, setTicketSettings] =
     useState<PosTicketSettings | null>(null);
+  const [luckyDrawView, setLuckyDrawView] =
+    useState<PosLuckyDrawSettingsView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -28,24 +31,33 @@ export function usePosManagement(
     setLoading(true);
     setError(null);
     try {
-      const [nextOverview, nextDevices, nextSettings, nextTicketSettings] =
-        await Promise.all([
-          access.devices ? posManagementApi.getOverview(warehouseId) : null,
-          access.devices || access.settings
-            ? posManagementApi.listDevices(warehouseId)
-            : [],
-          access.settings
-            ? posManagementApi.getReceiptSettings(warehouseId)
-            : null,
-          access.settings
-            ? posManagementApi.getTicketSettings(warehouseId)
-            : null,
-        ]);
+      const [
+        nextOverview,
+        nextDevices,
+        nextSettings,
+        nextTicketSettings,
+        nextLuckyDrawView,
+      ] = await Promise.all([
+        access.devices ? posManagementApi.getOverview(warehouseId) : null,
+        access.devices || access.settings
+          ? posManagementApi.listDevices(warehouseId)
+          : [],
+        access.settings
+          ? posManagementApi.getReceiptSettings(warehouseId)
+          : null,
+        access.settings
+          ? posManagementApi.getTicketSettings(warehouseId)
+          : null,
+        access.settings
+          ? posManagementApi.getLuckyDrawSettings(warehouseId)
+          : null,
+      ]);
       if (requestId.current !== activeRequestId) return;
       setOverview(nextOverview);
       setDevices(nextDevices);
       setSettings(nextSettings);
       setTicketSettings(nextTicketSettings);
+      setLuckyDrawView(nextLuckyDrawView);
     } catch (reason: unknown) {
       if (requestId.current !== activeRequestId) return;
       setError(
@@ -65,10 +77,12 @@ export function usePosManagement(
     let disposed = false;
     const syncPrintSettings = async () => {
       try {
-        const [nextSettings, nextTicketSettings] = await Promise.all([
-          posManagementApi.getReceiptSettings(warehouseId),
-          posManagementApi.getTicketSettings(warehouseId),
-        ]);
+        const [nextSettings, nextTicketSettings, nextLuckyDrawView] =
+          await Promise.all([
+            posManagementApi.getReceiptSettings(warehouseId),
+            posManagementApi.getTicketSettings(warehouseId),
+            posManagementApi.getLuckyDrawSettings(warehouseId),
+          ]);
         if (disposed) return;
         setSettings((current) =>
           current?.version === nextSettings?.version ? current : nextSettings,
@@ -78,6 +92,7 @@ export function usePosManagement(
             ? current
             : nextTicketSettings,
         );
+        setLuckyDrawView(nextLuckyDrawView);
       } catch {
         // The regular refresh flow owns visible errors; background sync stays quiet.
       }
@@ -101,6 +116,7 @@ export function usePosManagement(
     devices,
     settings,
     ticketSettings,
+    luckyDrawView,
     loading,
     error,
     refresh,

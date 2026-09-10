@@ -118,48 +118,6 @@ export const posCustomerDisplayRepository = {
       .map((snapshot) => mapMedia(snapshot.data() || {}));
   },
 
-  waitForVersionChange(
-    warehouseId: string,
-    knownVersion: number | null,
-    timeoutMs: number,
-    signal?: AbortSignal,
-  ): Promise<{ changed: boolean; settings: PosCustomerDisplaySettings | null }> {
-    return new Promise((resolve, reject) => {
-      let unsubscribe: () => void = () => undefined;
-      let settled = false;
-      const finish = (result: { changed: boolean; settings: PosCustomerDisplaySettings | null }) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        signal?.removeEventListener("abort", handleAbort);
-        unsubscribe();
-        resolve(result);
-      };
-      const fail = (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        signal?.removeEventListener("abort", handleAbort);
-        unsubscribe();
-        reject(error);
-      };
-      const handleAbort = () => finish({ changed: false, settings: null });
-      const timer = setTimeout(() => finish({ changed: false, settings: null }), timeoutMs);
-      if (signal?.aborted) {
-        finish({ changed: false, settings: null });
-        return;
-      }
-      signal?.addEventListener("abort", handleAbort, { once: true });
-      unsubscribe = settingsRef(warehouseId).onSnapshot(
-        (snapshot) => {
-          const settings = snapshot.exists ? mapSettings(snapshot.data() || {}) : null;
-          if ((settings?.version ?? 0) !== (knownVersion ?? 0)) finish({ changed: true, settings });
-        },
-        fail,
-      );
-    });
-  },
-
   async createMedia(input: {
     warehouseId: string;
     actorId: string;

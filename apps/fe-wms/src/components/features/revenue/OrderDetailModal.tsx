@@ -161,13 +161,6 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
                                             <span className="font-semibold text-rose-500">-{formatCurrency(data.discountMoney)}</span>
                                         </div>
                                     )}
-                                    {data.taxMoney > 0 && (
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-500">Thuế</span>
-                                            <span className="font-semibold text-slate-700">{formatCurrency(data.taxMoney)}</span>
-                                        </div>
-                                    )}
-
                                     <div className="my-1 border-t border-dashed border-slate-200"></div>
 
                                     <div className="flex items-center justify-between">

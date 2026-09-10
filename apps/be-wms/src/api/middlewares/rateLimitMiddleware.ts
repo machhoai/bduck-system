@@ -176,3 +176,33 @@ export const marketingVoucherEmailRateLimiter = createRateLimiter(
     10,
   ),
 );
+
+export const resolvePosSettingsMutationRateLimitKey = (
+  request: Pick<Request, "headers" | "ip" | "params"> & {
+    user?: { id?: string };
+  },
+): string => {
+  const deviceId =
+    typeof request.headers["x-pos-device-id"] === "string"
+      ? request.headers["x-pos-device-id"].trim().toLowerCase()
+      : "";
+  const actorId = request.user?.id?.trim().toLowerCase() || "anonymous";
+  const warehouseParam = request.params?.warehouseId;
+  const warehouseId = typeof warehouseParam === "string"
+    ? warehouseParam.trim().toLowerCase()
+    : "device";
+  const principal = POS_DEVICE_ID_PATTERN.test(deviceId) ? deviceId : actorId;
+  return `pos-settings-mutation:${principal}:${warehouseId}:${ipKeyGenerator(request.ip ?? "unknown")}`;
+};
+
+export const posSettingsMutationRateLimiter = createRateLimiter(
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_SETTINGS_MUTATION_WINDOW_MS,
+    60_000,
+  ),
+  parsePositiveInteger(
+    process.env.BE_WMS_POS_SETTINGS_MUTATION_MAX_REQUESTS,
+    30,
+  ),
+  resolvePosSettingsMutationRateLimitKey,
+);

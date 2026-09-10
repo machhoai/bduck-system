@@ -1,7 +1,15 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
 import { invoiceGlobalSourceIdentityDocumentId } from "../services/invoiceSourceIdentityPolicy.js";
+
+import {
+  deduplicateSourceOrderWrites,
+  invoiceSourceOrderDocumentId,
+  sourceSystemForWrite,
+} from "./invoiceOrderIdentity.js";
+
+export { invoiceSourceOrderDocumentId } from "./invoiceOrderIdentity.js";
 
 const orders = db.collection("invoice_source_orders");
 const payloads = db.collection("invoice_source_order_payloads");
@@ -22,15 +30,6 @@ export interface SourceOrderWriteResult {
   unchanged_count: number;
 }
 
-export const invoiceSourceOrderDocumentId = (
-  warehouseId: string,
-  sourceOrderId: string,
-  sourceSystem: "JOYWORLD" | "JPOS" = "JOYWORLD",
-) =>
-  createHash("sha256")
-    .update(`${warehouseId}:${sourceSystem}:${sourceOrderId}`)
-    .digest("hex");
-
 const globalIdentityForWrite = (value: SourceOrderWrite) => {
   const sourceAccountKey = value.projection.external_source_account_key;
   const externalOrderNumber = value.projection.external_order_number;
@@ -44,7 +43,6 @@ const globalIdentityForWrite = (value: SourceOrderWrite) => {
   }
   return { sourceAccountKey, externalOrderNumber };
 };
-
 export const invoiceOrderRepository = {
   async createRun(value: Record<string, unknown>): Promise<string> {
     const id = randomUUID();
@@ -68,14 +66,19 @@ export const invoiceOrderRepository = {
       unchanged_count: 0,
     };
 
-    for (let cursor = 0; cursor < values.length; cursor += WRITE_CHUNK_SIZE) {
-      const chunk = values.slice(cursor, cursor + WRITE_CHUNK_SIZE);
+    const uniqueValues = deduplicateSourceOrderWrites(values);
+    for (
+      let cursor = 0;
+      cursor < uniqueValues.length;
+      cursor += WRITE_CHUNK_SIZE
+    ) {
+      const chunk = uniqueValues.slice(cursor, cursor + WRITE_CHUNK_SIZE);
       const refs = chunk.map((value) =>
         orders.doc(
           invoiceSourceOrderDocumentId(
             warehouseId,
             value.source_order_id,
-            value.projection.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+            sourceSystemForWrite(value),
           ),
         ),
       );

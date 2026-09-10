@@ -62,6 +62,7 @@ $RECYCLE.BIN/
 # Logs
 # ========================
 logs/
+.codex-tmp/
 *.log
 npm-debug.log*
 pnpm-debug.log*
@@ -70,5 +71,3 @@ yarn-error.log*
 
 # Generated migration rehearsal reports (may contain production metadata)
 artifacts/marketing-voucher-migration/
-
-

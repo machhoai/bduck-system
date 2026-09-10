@@ -1,5 +1,5 @@
-import type { EncryptedCredential } from "../services/meInvoiceCredentialCrypto.js";
 import { db } from "../config/firebase.js";
+import type { EncryptedCredential } from "../services/meInvoiceCredentialCrypto.js";
 
 export interface StoredMeInvoiceAccount {
   id: string;
@@ -10,6 +10,8 @@ export interface StoredMeInvoiceAccount {
   base_url: string;
   enabled: boolean;
   credential_revision?: number;
+  rate_limited_until?: unknown;
+  last_rate_limited_at?: unknown;
   client_id?: EncryptedCredential;
   client_secret?: EncryptedCredential;
   username?: EncryptedCredential;

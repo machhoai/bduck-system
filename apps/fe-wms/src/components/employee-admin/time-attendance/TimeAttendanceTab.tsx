@@ -1,17 +1,14 @@
 "use client";
 
-import type { User, UserWarehouseRole } from "@bduck/shared-types";
+import {
+    isEmployeeAttendanceEligibleOnDate,
+    type User,
+    type UserWarehouseRole,
+} from "@bduck/shared-types";
 import { AlertTriangle, CheckCircle2, UsersRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { LateArrivalReportSheet } from "./LateArrivalReportSheet";
-import { AttendanceWorkArrangementPanel } from "./AttendanceWorkArrangementPanel";
-import { TimeAttendanceCalendar } from "./TimeAttendanceCalendar";
-import { TimeAttendanceFilters } from "./TimeAttendanceFilters";
-import { TimeAttendanceSettingsPanel } from "./TimeAttendanceSettingsPanel";
-import { TimeAttendanceSkeleton } from "./TimeAttendanceSkeleton";
-import { TimeCheckInPanel } from "./TimeCheckInPanel";
-import { buildTimeAttendanceExportConfig } from "./timeAttendanceExport";
+
 import {
     useAllAttendanceExemptions,
     useAttendanceContext,
@@ -31,10 +28,6 @@ import { useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
-    getFacilityPermissionScope,
-    scopeContainsFacility,
-} from "@/utils/facilityPermissionScope";
-import {
     buildAttendanceDays,
     getCurrentMonthKey,
     getTodayKey,
@@ -42,11 +35,24 @@ import {
     type AttendanceRangeMode,
     type AttendanceEmployeeRow,
 } from "@/utils/attendance";
+import {
+    getFacilityPermissionScope,
+    scopeContainsFacility,
+} from "@/utils/facilityPermissionScope";
+
+import { AttendanceWorkArrangementPanel } from "./AttendanceWorkArrangementPanel";
+import { LateArrivalReportSheet } from "./LateArrivalReportSheet";
+import { TimeAttendanceCalendar } from "./TimeAttendanceCalendar";
+import { buildTimeAttendanceExportConfig } from "./timeAttendanceExport";
+import { TimeAttendanceFilters } from "./TimeAttendanceFilters";
+import { TimeAttendanceSettingsPanel } from "./TimeAttendanceSettingsPanel";
+import { TimeAttendanceSkeleton } from "./TimeAttendanceSkeleton";
+import { TimeCheckInPanel } from "./TimeCheckInPanel";
 
 type UserWithAssignments = User & { assignments?: UserWarehouseRole[] };
 
 function fallbackLabels(t: ReturnType<typeof useTranslation>["t"]) {
-    return (t as any).attendance as Record<string, string>;
+    return (t as unknown as { attendance: Record<string, string> }).attendance;
 }
 
 export function TimeAttendanceTab() {
@@ -201,6 +207,13 @@ export function TimeAttendanceTab() {
         return profiles
             .flatMap((profile) => {
                 if (!profile.user_id) return [];
+                if (
+                    !days.some((day) =>
+                        isEmployeeAttendanceEligibleOnDate(profile, day.key),
+                    )
+                ) {
+                    return [];
+                }
                 const targetWarehouseId = profile.workplace_warehouse_id;
                 const policy = policyByWarehouse.get(targetWarehouseId);
                 const linkedUser = userById.get(profile.user_id);
@@ -227,6 +240,7 @@ export function TimeAttendanceTab() {
         canViewAttendance,
         context?.can_check_in,
         context?.warehouse_id,
+        days,
         exemptUserWarehouseKeys,
         myProfile,
         policyByWarehouse,
@@ -240,16 +254,22 @@ export function TimeAttendanceTab() {
     ]);
 
     const filteredLogs = useMemo(() => {
-        const employeeIds = new Set(employeeRows.map((row) => row.user.id));
+        const employeeByUserId = new Map(
+            employeeRows.map((row) => [row.user.id, row.profile]),
+        );
         const warehouseIds =
             selectedWarehouseId === "ALL"
                 ? visibleWarehouseIds
                 : new Set([selectedWarehouseId]);
         return logs.filter(
             (log) =>
-                employeeIds.has(log.user_id) &&
+                employeeByUserId.has(log.user_id) &&
                 warehouseIds.has(log.warehouse_id) &&
-                log.attendance_date <= days[days.length - 1]?.key,
+                log.attendance_date <= days[days.length - 1]?.key &&
+                isEmployeeAttendanceEligibleOnDate(
+                    employeeByUserId.get(log.user_id)!,
+                    log.attendance_date,
+                ),
         );
     }, [days, employeeRows, logs, selectedWarehouseId, visibleWarehouseIds]);
 

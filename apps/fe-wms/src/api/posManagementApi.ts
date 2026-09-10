@@ -2,8 +2,21 @@ import type {
   PosDevice,
   PosDeviceEnrollmentGrant,
   PosDeviceStatus,
+  PosLuckyDrawSettings,
+  PosLuckyDrawSettingsInput,
+  PosLuckyDrawSettingsView,
+  PosOrderCancelInput,
+  PosOrderCancelResult,
+  PosOrderDetail,
+  PosOrderListResult,
+  PosOrderRefundPreview,
   PosPaymentSettings,
   PosPaymentSettingsInput,
+  PosProductCatalogSyncInput,
+  PosProductCatalogSyncResult,
+  PosProductVisibilitySettings,
+  PosProductVisibilitySettingsInput,
+  PosProductVisibilitySettingsView,
   PosReceiptSettings,
   PosStoreOverview,
   PosTicketSettings,
@@ -30,6 +43,11 @@ export type PosReceiptSettingsPayload = Omit<
   | "is_deleted"
   | "created_at"
   | "updated_at"
+  | "logo_storage_path"
+  | "logo_checksum_sha256"
+  | "logo_content_type"
+  | "logo_file_size_bytes"
+  | "logo_content_url"
 >;
 export type PosTicketSettingsPayload = Omit<
   PosTicketSettings,
@@ -40,7 +58,15 @@ export type PosTicketSettingsPayload = Omit<
   | "is_deleted"
   | "created_at"
   | "updated_at"
+  | "logo_storage_path"
+  | "logo_checksum_sha256"
+  | "logo_content_type"
+  | "logo_file_size_bytes"
+  | "logo_content_url"
 >;
+export type PosLuckyDrawSettingsPayload = PosLuckyDrawSettingsInput;
+export type PosProductVisibilitySettingsPayload =
+  PosProductVisibilitySettingsInput;
 
 async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
@@ -49,6 +75,16 @@ async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const envelope = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || envelope.data === null) {
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After"));
+      const waitSeconds =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.ceil(retryAfter)
+          : 60;
+      throw new Error(
+        `Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`,
+      );
+    }
     throw new Error(
       envelope.messages?.vi || "Không thể xử lý yêu cầu quản lý POS.",
     );
@@ -56,7 +92,49 @@ async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
   return envelope.data;
 }
 
+const productVisibilitySaves = new Map<
+  string,
+  Promise<PosProductVisibilitySettings>
+>();
+
+const saveProductVisibilitySettings = (
+  warehouseId: string,
+  value: PosProductVisibilitySettingsPayload,
+): Promise<PosProductVisibilitySettings> => {
+  const current = productVisibilitySaves.get(warehouseId);
+  if (current) return current;
+  const pending = callPosApi<PosProductVisibilitySettings>(
+    `/api/pos/stores/${warehouseId}/product-visibility-settings`,
+    { method: "PUT", body: JSON.stringify(value) },
+  ).finally(() => {
+    productVisibilitySaves.delete(warehouseId);
+  });
+  productVisibilitySaves.set(warehouseId, pending);
+  return pending;
+};
+
 export const posManagementApi = {
+  listOrders: (warehouseId: string, query = "") =>
+    callPosApi<PosOrderListResult>(
+      `/api/pos/stores/${warehouseId}/orders${query ? `?${query}` : ""}`,
+    ),
+  getOrder: (warehouseId: string, localOrderId: string) =>
+    callPosApi<PosOrderDetail>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}`,
+    ),
+  getOrderRefundPreview: (warehouseId: string, localOrderId: string) =>
+    callPosApi<PosOrderRefundPreview>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}/refund-preview`,
+    ),
+  cancelOrder: (
+    warehouseId: string,
+    localOrderId: string,
+    value: PosOrderCancelInput,
+  ) =>
+    callPosApi<PosOrderCancelResult>(
+      `/api/pos/stores/${warehouseId}/orders/${encodeURIComponent(localOrderId)}/cancel`,
+      { method: "POST", body: JSON.stringify(value) },
+    ),
   getOverview: (warehouseId: string) =>
     callPosApi<PosStoreOverview>(`/api/pos/stores/${warehouseId}/overview`),
   listDevices: (warehouseId: string) =>
@@ -117,6 +195,34 @@ export const posManagementApi = {
         method: "PUT",
         body: JSON.stringify(value),
       },
+    ),
+  getLuckyDrawSettings: (warehouseId: string) =>
+    callPosApi<PosLuckyDrawSettingsView>(
+      `/api/pos/stores/${warehouseId}/lucky-draw-settings`,
+    ),
+  saveLuckyDrawSettings: (
+    warehouseId: string,
+    value: PosLuckyDrawSettingsPayload,
+  ) =>
+    callPosApi<PosLuckyDrawSettings>(
+      `/api/pos/stores/${warehouseId}/lucky-draw-settings`,
+      {
+        method: "PUT",
+        body: JSON.stringify(value),
+      },
+    ),
+  getProductVisibilitySettings: (warehouseId: string) =>
+    callPosApi<PosProductVisibilitySettingsView>(
+      `/api/pos/stores/${warehouseId}/product-visibility-settings`,
+    ),
+  saveProductVisibilitySettings: (
+    warehouseId: string,
+    value: PosProductVisibilitySettingsPayload,
+  ) => saveProductVisibilitySettings(warehouseId, value),
+  syncProducts: (warehouseId: string, value: PosProductCatalogSyncInput) =>
+    callPosApi<PosProductCatalogSyncResult>(
+      `/api/pos/stores/${warehouseId}/products/sync`,
+      { method: "POST", body: JSON.stringify(value) },
     ),
   getPaymentSettings: async (deviceId: string) => {
     const response = await authenticatedFetch(

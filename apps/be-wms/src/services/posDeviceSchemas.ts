@@ -45,6 +45,25 @@ export const openPosDeviceSessionSchema = z.object({
   app_version: safeText(1, 30),
 });
 
+export const syncPosDeviceConfigSchema = openPosDeviceSessionSchema.extend({
+  known_versions: z.object({
+    receipt_settings: z.number().int().nonnegative().nullable(),
+    ticket_settings: z.number().int().nonnegative().nullable(),
+    payment_settings: z.number().int().nonnegative().nullable(),
+    customer_display_settings: z.number().int().nonnegative().nullable(),
+  }),
+});
+
+export const posSettingsLogoParamsSchema = z.object({
+  kind: z.enum(["receipt", "ticket"]),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const posDeviceCredentialHeadersSchema = z.object({
+  "x-pos-device-id": z.string().uuid(),
+  "x-pos-device-credential": z.string().min(32).max(200),
+});
+
 export const watchPosReceiptSettingsSchema = openPosDeviceSessionSchema.extend({
   known_version: z.number().int().nonnegative().nullable(),
 });

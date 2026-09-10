@@ -37,7 +37,10 @@ export function PosOverview({
     },
     {
       label: copy.configVersion,
-      value: settingsVersion !== null && settingsVersion !== undefined ? `v${settingsVersion}` : copy.notCreated,
+      value:
+        settingsVersion !== null && settingsVersion !== undefined
+          ? `v${settingsVersion}`
+          : copy.notCreated,
       icon: Settings2,
       color: "text-amber-600 bg-amber-50 border-amber-100",
       badgeColor: "bg-amber-500",
@@ -45,7 +48,10 @@ export function PosOverview({
     {
       label: copy.heartbeat,
       value: overview?.latest_heartbeat_at
-        ? new Date(overview.latest_heartbeat_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        ? new Date(overview.latest_heartbeat_at).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         : copy.never,
       icon: Activity,
       color: "text-blue-600 bg-blue-50 border-blue-100",
@@ -67,7 +73,9 @@ export function PosOverview({
               {card.value}
             </p>
           </div>
-          <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${card.color}`}>
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border ${card.color}`}
+          >
             <card.icon size={18} />
           </div>
         </div>
@@ -82,8 +90,12 @@ export function PosAuditLink({ warehouseId }: { warehouseId: string }) {
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">{copy.auditTitle}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{copy.auditHint}</p>
+          <h2 className="text-sm font-bold text-slate-900">
+            {copy.auditTitle}
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            {copy.auditHint}
+          </p>
         </div>
         <Link
           href={`/audit-logs?warehouse_id=${warehouseId}`}
@@ -114,4 +126,3 @@ export const PosManagementSkeleton = () => (
     </div>
   </div>
 );
-

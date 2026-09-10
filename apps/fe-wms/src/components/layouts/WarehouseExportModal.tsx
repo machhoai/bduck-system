@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
 import {
   Boxes,
   CalendarDays,
@@ -10,18 +9,20 @@ import {
   Table2,
   X,
 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+
 import { useTranslation } from "@/lib/i18n";
 import { WAREHOUSE_EXPORT_MODAL_TEXT } from "@/lib/i18n/componentTranslations";
 import type {
   ExportDataKind,
   ExportDateMode,
-  ExportDialogConfig,
   ExportRequestOptions,
+  WarehouseExportDialogConfig,
 } from "@/utils/exportExcel";
 
 interface WarehouseExportModalProps {
   isOpen: boolean;
-  config: ExportDialogConfig;
+  config: WarehouseExportDialogConfig;
   isExporting: boolean;
   onClose: () => void;
   onSubmit: (options: ExportRequestOptions) => Promise<void>;

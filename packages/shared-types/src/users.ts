@@ -2,6 +2,7 @@
 
 import type { UserStatus } from "./enums.js";
 import type { UserWarehouseRoleScopeOrigin } from "./facilityAccess.js";
+import type { LocalDate } from "./utility.js";
 
 // ─────────────────────────────────────────────
 // USERS & RBAC (ISO 5.3 — Segregation of Duties)
@@ -15,6 +16,12 @@ export interface User {
     full_name: string;
     employee_id: string; // UNIQUE
     status: UserStatus;
+    /** Canonical reason/source fields for auditable account deactivation. */
+    status_reason?: "EMPLOYMENT_RESIGNED" | "MANUAL" | null;
+    status_effective_date?: LocalDate | null;
+    status_source_id?: string | null;
+    deactivated_at?: Date | null;
+    deactivated_by?: string | null;
     is_deleted: boolean;
     created_at: Date;
     updated_at: Date;

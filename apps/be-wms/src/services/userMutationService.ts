@@ -1,5 +1,10 @@
-import { AuditAction, UserStatus } from "@bduck/shared-types";
+import {
+  AuditAction,
+  EmployeeEmploymentStatus,
+  UserStatus,
+} from "@bduck/shared-types";
 import type { z } from "zod";
+
 import { auth } from "../config/firebase.js";
 import {
   getEmployeeProfileByUserId,
@@ -15,23 +20,24 @@ import {
   updateUserRecord,
   UsernameAlreadyExistsError,
 } from "../repositories/userRepository.js";
-import { updateUserSchema } from "../utils/zodSchemas.js";
+import type { updateUserSchema } from "../utils/zodSchemas.js";
+
 import { sendInitialPasswordSetupInvitation } from "./accountInvitationService.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
-import { AuthorizationService } from "./authorization/index.js";
+import type { AuthorizationService } from "./authorization/index.js";
+import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
 import { buildAuthorizedAssignments } from "./userAssignmentService.js";
 import {
   assertUniqueUserFields,
   assertWorkplaceWrite,
   userConflictError,
 } from "./userMutationSupport.js";
-import { assertCanAccessTargetUser } from "./userTargetPolicy.js";
 import {
   createUserView,
   loadUserRecord,
   sanitizeUserRecord,
 } from "./userReadService.js";
-import { rebuildUserAccessForUsers } from "./userAccessRebuildService.js";
+import { assertCanAccessTargetUser } from "./userTargetPolicy.js";
 
 export * from "./userCreationService.js";
 
@@ -78,6 +84,20 @@ export const updateUser = async (
   if (input.workplace_facility_id !== undefined) {
     assertWorkplaceWrite(authorization, input.workplace_facility_id);
   }
+  if (input.status === UserStatus.ACTIVE) {
+    const linkedProfile = await getEmployeeProfileByUserId(userId);
+    if (
+      linkedProfile?.employment_status === EmployeeEmploymentStatus.RESIGNED
+    ) {
+      throw {
+        statusCode: 409,
+        messages: {
+          vi: "Không thể kích hoạt tài khoản khi hồ sơ nhân sự vẫn ở trạng thái nghỉ việc. Hãy thực hiện quy trình tái tuyển dụng riêng.",
+          zh: "员工档案仍为离职状态，无法启用账户。请执行单独的重新入职流程。",
+        },
+      };
+    }
+  }
   await assertUniqueUserFields(
     { email: input.email, employee_id: input.employee_id },
     userId,
@@ -107,6 +127,9 @@ export const updateUser = async (
     displayName: input.full_name,
     disabled: input.status ? input.status !== UserStatus.ACTIVE : undefined,
   });
+  if (input.status && input.status !== UserStatus.ACTIVE) {
+    await auth.revokeRefreshTokens(userId);
+  }
   const updateData = Object.fromEntries(
     Object.entries({
       email: input.email,
@@ -191,6 +214,7 @@ export const deleteUser = async (
   const profile = await getEmployeeProfileByUserId(userId);
 
   await auth.updateUser(userId, { disabled: true });
+  await auth.revokeRefreshTokens(userId);
   await softDeleteUserRecord(userId);
   await deactivateUserWarehouseRoles(userId);
   if (profile) await softDeleteEmployeeProfileRecord(profile.id);

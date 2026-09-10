@@ -18,19 +18,39 @@ import {
   changePosDeviceStatusHandler,
   createPosEnrollmentHandler,
   getPosStoreOverviewHandler,
+  getPosSettingsLogoContentHandler,
+  heartbeatPosDeviceHandler,
   listPosDevicesHandler,
   openPosDeviceSessionHandler,
   savePosReceiptSettingsFromDeviceHandler,
   savePosTicketSettingsFromDeviceHandler,
+  syncPosDeviceConfigHandler,
   transferPosDeviceHandler,
   watchPosCustomerDisplaySettingsHandler,
   watchPosReceiptSettingsHandler,
   watchPosTicketSettingsHandler,
 } from "../controllers/posDeviceController.js";
 import {
+  getPosLuckyDrawSettingsHandler,
+  savePosLuckyDrawSettingsHandler,
+} from "../controllers/posLuckyDrawSettingsController.js";
+import {
+  cancelPosOrderHandler,
+  getPosOrderHandler,
+  getPosOrderRefundPreviewHandler,
+  listPosOrdersHandler,
+} from "../controllers/posOrderController.js";
+import {
   getPosPaymentSettingsHandler,
   savePosPaymentSettingsHandler,
 } from "../controllers/posPaymentSettingsController.js";
+import {
+  getPosProductVisibilitySettingsFromDeviceHandler,
+  getPosProductVisibilitySettingsHandler,
+  savePosProductVisibilitySettingsFromDeviceHandler,
+  savePosProductVisibilitySettingsHandler,
+  syncPosProductCatalogHandler,
+} from "../controllers/posProductVisibilityController.js";
 import {
   getPosReceiptSettingsHandler,
   savePosReceiptSettingsHandler,
@@ -44,6 +64,7 @@ import {
   authRateLimiter,
   posDeviceSessionRateLimiter,
   posDeviceWatchRateLimiter,
+  posSettingsMutationRateLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
@@ -64,6 +85,21 @@ router.post(
   "/devices/session",
   posDeviceSessionRateLimiter,
   openPosDeviceSessionHandler,
+);
+router.post(
+  "/devices/heartbeat",
+  posDeviceSessionRateLimiter,
+  heartbeatPosDeviceHandler,
+);
+router.post(
+  "/devices/config",
+  posDeviceSessionRateLimiter,
+  syncPosDeviceConfigHandler,
+);
+router.get(
+  "/devices/settings-logo/:kind/:checksum/content",
+  posDeviceSessionRateLimiter,
+  getPosSettingsLogoContentHandler,
 );
 router.post(
   "/devices/receipt-settings/watch",
@@ -88,16 +124,37 @@ router.put(
   "/devices/receipt-settings",
   savePosReceiptSettingsFromDeviceHandler,
 );
-router.put(
-  "/devices/ticket-settings",
-  savePosTicketSettingsFromDeviceHandler,
-);
+router.put("/devices/ticket-settings", savePosTicketSettingsFromDeviceHandler);
 
 router.use(requireAuth);
 router.get(
   "/stores/:warehouseId/overview",
   requireAnyScopedPermission("pos.devices.read"),
   getPosStoreOverviewHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders",
+  requireAnyScopedPermission("pos.orders.read"),
+  listPosOrdersHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders/:localOrderId",
+  requireAnyScopedPermission("pos.orders.read"),
+  getPosOrderHandler,
+);
+router.get(
+  "/stores/:warehouseId/orders/:localOrderId/refund-preview",
+  requireAnyScopedPermission("pos.orders.read"),
+  getPosOrderRefundPreviewHandler,
+);
+router.post(
+  "/stores/:warehouseId/orders/:localOrderId/cancel",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission([
+    "pos.orders.cancel_local",
+    "pos.orders.refund_remote",
+  ]),
+  cancelPosOrderHandler,
 );
 router.get(
   "/stores/:warehouseId/devices",
@@ -140,6 +197,33 @@ router.put(
   savePosTicketSettingsHandler,
 );
 router.get(
+  "/stores/:warehouseId/lucky-draw-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosLuckyDrawSettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/lucky-draw-settings",
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosLuckyDrawSettingsHandler,
+);
+router.get(
+  "/stores/:warehouseId/product-visibility-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosProductVisibilitySettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/product-visibility-settings",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosProductVisibilitySettingsHandler,
+);
+router.post(
+  "/stores/:warehouseId/products/sync",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  syncPosProductCatalogHandler,
+);
+router.get(
   "/devices/:deviceId/payment-settings",
   requireAnyScopedPermission("pos.settings.read"),
   getPosPaymentSettingsHandler,
@@ -174,6 +258,17 @@ router.put(
   "/devices/customer-display-settings",
   requireAnyScopedPermission("pos.advertising.manage"),
   savePosCustomerDisplaySettingsFromDeviceHandler,
+);
+router.get(
+  "/devices/product-visibility-settings/editor",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosProductVisibilitySettingsFromDeviceHandler,
+);
+router.put(
+  "/devices/product-visibility-settings",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosProductVisibilitySettingsFromDeviceHandler,
 );
 router.post(
   "/devices/customer-display-media",

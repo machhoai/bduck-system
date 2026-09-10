@@ -1,10 +1,15 @@
 import { create } from "zustand";
-import type { ExportConfig, ExportRequestOptions } from "../utils/exportExcel";
+
+import type {
+  ExportRequestOptions,
+  RegisteredExportConfig,
+} from "../utils/exportExcel";
+import { isCustomExportConfig } from "../utils/exportExcel";
 
 interface ExportStore {
-  exportConfig: ExportConfig | null;
+  exportConfig: RegisteredExportConfig | null;
   isExporting: boolean;
-  setExportConfig: (config: ExportConfig | null) => void;
+  setExportConfig: (config: RegisteredExportConfig | null) => void;
   triggerExport: (options?: ExportRequestOptions) => Promise<void>;
 }
 
@@ -20,6 +25,10 @@ export const useExportStore = create<ExportStore>((set, get) => ({
     try {
       // Small delay to let React render the loading state
       await new Promise((resolve) => setTimeout(resolve, 100));
+      if (isCustomExportConfig(exportConfig)) {
+        await exportConfig.execute(options);
+        return;
+      }
       const configToExport = exportConfig.prepare
         ? await exportConfig.prepare(options)
         : exportConfig;

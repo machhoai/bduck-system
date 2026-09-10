@@ -1,11 +1,18 @@
+import { randomUUID } from "crypto";
+
 import {
   EmployeeEmploymentStatus,
   EmployeeEmploymentTransitionStatus,
   type EmployeeEmploymentTransition,
   type EmployeeProfile,
 } from "@bduck/shared-types";
-import { randomUUID } from "crypto";
+
 import { db } from "../config/firebase.js";
+
+import {
+  applyEmployeeOffboardingWrites,
+  loadEmployeeOffboardingState,
+} from "./employeeOffboardingRepository.js";
 
 const TRANSITIONS_COLLECTION = "employee_employment_transitions";
 const TRANSITION_LOCKS_COLLECTION = "employee_employment_transition_locks";
@@ -34,6 +41,9 @@ export interface EmploymentTransitionDraft {
   reason: string;
   requested_by: string;
   action_time?: Date;
+  ip_address?: string | null;
+  device_id?: string | null;
+  session_token?: string | null;
 }
 
 type EmploymentProfilePatch = Partial<
@@ -55,6 +65,8 @@ export const createEmployeeEmploymentTransitionRecord = async (
   transition: EmployeeEmploymentTransition;
   previousProfile: EmployeeProfile;
   profile: EmployeeProfile;
+  auditsWritten: boolean;
+  identitySyncJobId: string | null;
 }> =>
   db.runTransaction(async (transaction) => {
     const transitionRef = db
@@ -101,9 +113,25 @@ export const createEmployeeEmploymentTransitionRecord = async (
 
     const now = new Date();
     const isImmediate = profilePatch !== null;
+    const isOffboarding =
+      isImmediate && draft.to_status === EmployeeEmploymentStatus.RESIGNED;
+    const offboardingState = isOffboarding
+      ? await loadEmployeeOffboardingState(
+          transaction,
+          previousProfile.user_id,
+        )
+      : null;
     const transitionRecord: EmployeeEmploymentTransition = {
       id: transitionRef.id,
-      ...draft,
+      employee_profile_id: draft.employee_profile_id,
+      employee_user_id: draft.employee_user_id,
+      workplace_warehouse_id: draft.workplace_warehouse_id,
+      from_status: draft.from_status,
+      to_status: draft.to_status,
+      effective_date: draft.effective_date,
+      probation_end_date: draft.probation_end_date,
+      reason: draft.reason,
+      requested_by: draft.requested_by,
       status: isImmediate
         ? EmployeeEmploymentTransitionStatus.APPLIED
         : EmployeeEmploymentTransitionStatus.SCHEDULED,
@@ -138,10 +166,31 @@ export const createEmployeeEmploymentTransitionRecord = async (
       );
     }
 
+    const identitySyncJobId = isOffboarding
+      ? applyEmployeeOffboardingWrites(transaction, {
+          transitionBefore: null,
+          transitionAfter: transitionRecord,
+          profileBefore: previousProfile,
+          profileAfter: profile,
+          state: offboardingState,
+          actorId: draft.requested_by,
+          actionTime: draft.action_time ?? now,
+          syncTime: now,
+          metadata: {
+            action_time: draft.action_time,
+            ip_address: draft.ip_address,
+            device_id: draft.device_id,
+            session_token: draft.session_token,
+          },
+        })
+      : null;
+
     return {
       transition: transitionRecord,
       previousProfile,
       profile,
+      auditsWritten: isOffboarding,
+      identitySyncJobId,
     };
   });
 
@@ -154,6 +203,8 @@ export const applyScheduledEmployeeEmploymentTransition = async (
   transition: EmployeeEmploymentTransition;
   previousProfile: EmployeeProfile;
   profile: EmployeeProfile;
+  auditsWritten: boolean;
+  identitySyncJobId: string | null;
 } | null> =>
   db.runTransaction(async (transaction) => {
     const transitionRef = db
@@ -203,6 +254,14 @@ export const applyScheduledEmployeeEmploymentTransition = async (
     }
 
     const now = new Date();
+    const isOffboarding =
+      transitionBefore.to_status === EmployeeEmploymentStatus.RESIGNED;
+    const offboardingState = isOffboarding
+      ? await loadEmployeeOffboardingState(
+          transaction,
+          previousProfile.user_id,
+        )
+      : null;
     const transitionAfter: EmployeeEmploymentTransition = {
       ...transitionBefore,
       status: EmployeeEmploymentTransitionStatus.APPLIED,
@@ -230,10 +289,24 @@ export const applyScheduledEmployeeEmploymentTransition = async (
         { merge: true },
       );
     }
+    const identitySyncJobId = isOffboarding
+      ? applyEmployeeOffboardingWrites(transaction, {
+          transitionBefore,
+          transitionAfter,
+          profileBefore: previousProfile,
+          profileAfter: profile,
+          state: offboardingState,
+          actorId: appliedBy,
+          actionTime: now,
+          syncTime: now,
+        })
+      : null;
     return {
       transitionBefore,
       transition: transitionAfter,
       previousProfile,
       profile,
+      auditsWritten: isOffboarding,
+      identitySyncJobId,
     };
   });

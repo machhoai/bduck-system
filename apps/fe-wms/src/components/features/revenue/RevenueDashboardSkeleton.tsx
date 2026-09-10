@@ -5,41 +5,44 @@ import { Skeleton } from "@/components/ui/Skeleton";
 export default function RevenueDashboardSkeleton() {
   return (
     <div className="flex w-full flex-col gap-4">
-      {/* Context bar */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-        <div className="rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-3">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-8 w-8 rounded-full" variant="rect" />
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-36" variant="text" />
-              <Skeleton className="h-3 w-52" variant="text" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-3">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-4 w-4" variant="rect" />
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-3 w-20" variant="text" />
-              <Skeleton className="h-4 w-36" variant="text" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`rounded-[var(--radius-lg)] p-3 ${i === 0 ? "bg-[var(--color-brand-primary)]" : "bg-[var(--color-surface-elevated)]"}`}>
-            <div className="flex items-center gap-2">
-              <Skeleton className={`h-4 w-4 ${i === 0 ? "opacity-30" : ""}`} variant="rect" />
-              <Skeleton className={`h-3 w-24 ${i === 0 ? "opacity-30" : ""}`} variant="text" />
+        <div className="rounded-[var(--radius-lg)] bg-[var(--color-brand-primary)] p-5 sm:col-span-2 xl:row-span-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <Skeleton className="h-3 w-28 opacity-30" variant="text" />
+              <Skeleton className="mt-3 h-9 w-52 opacity-30" variant="text" />
+              <Skeleton
+                className="mt-2 h-5 w-16 rounded-full opacity-30"
+                variant="rect"
+              />
             </div>
-            <Skeleton className={`mt-2 h-7 w-36 ${i === 0 ? "opacity-30" : ""}`} variant="text" />
-            <div className="mt-2 flex items-center justify-between">
-              <Skeleton className={`h-3 w-20 ${i === 0 ? "opacity-30" : ""}`} variant="text" />
-              <Skeleton className={`h-5 w-14 rounded-full ${i === 0 ? "opacity-30" : ""}`} variant="rect" />
+            <Skeleton
+              className="h-11 w-11 rounded-lg opacity-30"
+              variant="rect"
+            />
+          </div>
+          <div className="mt-8 grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton
+                key={index}
+                className="h-16 opacity-30"
+                variant="rect"
+              />
+            ))}
+          </div>
+        </div>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-4"
+          >
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-9 w-9 rounded-lg" variant="rect" />
+              <Skeleton className="h-5 w-14 rounded-full" variant="rect" />
             </div>
+            <Skeleton className="mt-5 h-3 w-24" variant="text" />
+            <Skeleton className="mt-2 h-6 w-32" variant="text" />
           </div>
         ))}
       </div>
@@ -54,10 +57,16 @@ export default function RevenueDashboardSkeleton() {
         <div className="rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-4">
           <Skeleton className="h-4 w-36" variant="text" />
           <Skeleton className="mt-1 h-3 w-48" variant="text" />
-          <Skeleton className="mx-auto mt-4 h-[200px] w-[200px]" variant="circle" />
+          <Skeleton
+            className="mx-auto mt-4 h-[200px] w-[200px]"
+            variant="circle"
+          />
           <div className="mt-3 flex flex-col gap-1.5">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between px-1 py-1">
+              <div
+                key={i}
+                className="flex items-center justify-between px-1 py-1"
+              >
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-2 w-2 rounded-full" variant="rect" />
                   <Skeleton className="h-3 w-20" variant="text" />

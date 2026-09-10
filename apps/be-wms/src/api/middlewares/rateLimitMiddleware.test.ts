@@ -5,6 +5,7 @@ import {
   isPosDeviceWatchRequest,
   resolvePosDeviceWatchRateLimitKey,
   resolvePosDeviceSessionRateLimitKey,
+  resolvePosSettingsMutationRateLimitKey,
   resolveTrustProxySetting,
 } from "./rateLimitMiddleware.js";
 
@@ -67,6 +68,23 @@ test("isolates POS watch limits by device behind the same public IP", () => {
   });
 
   assert.notEqual(firstDevice, secondDevice);
+});
+
+test("isolates POS settings mutations by device behind shared store NAT", () => {
+  const request = {
+    ip: "203.0.113.10",
+    params: {},
+    user: { id: "cashier" },
+  };
+  const first = resolvePosSettingsMutationRateLimitKey({
+    ...request,
+    headers: { "x-pos-device-id": "a642997b-e955-4af7-9b68-275982398c46" },
+  });
+  const second = resolvePosSettingsMutationRateLimitKey({
+    ...request,
+    headers: { "x-pos-device-id": "b642997b-e955-4af7-9b68-275982398c46" },
+  });
+  assert.notEqual(first, second);
 });
 
 test("exempts only POST POS device watch endpoints from the global IP limit", () => {

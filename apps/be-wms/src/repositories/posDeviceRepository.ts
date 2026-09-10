@@ -106,16 +106,17 @@ export const posDeviceRepository = {
     return mapDevice(snapshot.id, snapshot.data() || {});
   },
 
-  async touchHeartbeat(id: string, appVersion: string): Promise<PosDevice> {
-    const reference = db.collection(POS_DEVICES_COLLECTION).doc(id);
+  async touchHeartbeat(device: PosDevice, appVersion: string): Promise<void> {
     const now = new Date();
+    const lastSeenAt = device.last_seen_at?.getTime() ?? 0;
+    const heartbeatIsFresh = now.getTime() - lastSeenAt < 4 * 60 * 1000;
+    if (heartbeatIsFresh && device.app_version === appVersion) return;
+    const reference = db.collection(POS_DEVICES_COLLECTION).doc(device.id);
     await reference.update({
       last_seen_at: now,
       app_version: appVersion,
       updated_at: now,
     });
-    const snapshot = await reference.get();
-    return mapDevice(snapshot.id, snapshot.data() || {});
   },
 
   async createEnrollment(

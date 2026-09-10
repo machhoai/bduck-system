@@ -1,18 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
-import {
-  createEmployeeProfileHandler,
-  deleteEmployeeProfileHandler,
-  getEmployeeProfileByIdHandler,
-  getEmployeeProfilesHandler,
-  getMyEmployeeProfileHandler,
-  updateEmployeeProfileHandler,
-} from "../controllers/employeeProfileController.js";
-import {
-  applyDueEmployeeEmploymentTransitionsHandler,
-  cancelEmployeeEmploymentTransitionHandler,
-  createEmployeeEmploymentTransitionHandler,
-  getEmployeeEmploymentTransitionsHandler,
-} from "../controllers/employeeEmploymentController.js";
+
 import {
   cancelEmployeeContractHandler,
   createEmployeeContractHandler,
@@ -27,15 +14,34 @@ import {
   getEmployeeContractDocumentDownloadHandler,
   listEmployeeContractDocumentsHandler,
 } from "../controllers/employeeContractDocumentController.js";
+import {
+  applyDueEmployeeEmploymentTransitionsHandler,
+  cancelEmployeeEmploymentTransitionHandler,
+  createEmployeeEmploymentTransitionHandler,
+  getEmployeeEmploymentTransitionsHandler,
+  processPendingEmployeeIdentitySyncJobsHandler,
+} from "../controllers/employeeEmploymentController.js";
+import {
+  createEmployeeProfileHandler,
+  deleteEmployeeProfileHandler,
+  getEmployeeProfileByIdHandler,
+  getEmployeeProfilesHandler,
+  getMyEmployeeProfileHandler,
+  updateEmployeeProfileHandler,
+} from "../controllers/employeeProfileController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 import { requireEmployeeContractFeatureEnabled } from "../middlewares/employeeContractFeatureGate.js";
+import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
 
 const router: ExpressRouter = Router();
 
 router.post(
   "/cron/employment-transitions/apply-due",
   applyDueEmployeeEmploymentTransitionsHandler,
+);
+router.post(
+  "/cron/identity-sync/process-pending",
+  processPendingEmployeeIdentitySyncJobsHandler,
 );
 
 router.use(requireAuth);

@@ -32,6 +32,11 @@ const toPayload = (settings: PosTicketSettings): PosTicketSettingsPayload => {
     is_deleted: _deleted,
     created_at: _created,
     updated_at: _updated,
+    logo_storage_path: _logoPath,
+    logo_checksum_sha256: _logoChecksum,
+    logo_content_type: _logoType,
+    logo_file_size_bytes: _logoSize,
+    logo_content_url: _logoContentUrl,
     ...payload
   } = settings;
   return payload;

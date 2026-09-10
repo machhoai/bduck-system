@@ -11,6 +11,7 @@ import { UserCheck, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type React from "react";
 
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EffectiveAccessPreview } from "@/components/users/EffectiveAccessPreview";
 import {
     createEmptyAssignment,
@@ -65,6 +66,8 @@ export function EmployeeProfileFormModal({
     const labels = t.employeeManagement;
     const initialContractLabels = employeeInitialContractTranslations[lang];
     const isEdit = Boolean(profile);
+    const title = isEdit ? labels.editProfile : labels.createProfileTitle;
+
     const [formData, setFormData] = useState(emptyProfileForm());
     const [createAccount, setCreateAccount] = useState(false);
     const [accountData, setAccountData] = useState(emptyAccountForm());
@@ -169,119 +172,165 @@ export function EmployeeProfileFormModal({
         }
     };
 
+    const formContent = (
+        <div className="grid gap-4">
+            <EmployeeProfileFields
+                value={formData}
+                users={users}
+                warehouses={warehouses}
+                disableUserLink={createAccount}
+                isEdit={isEdit}
+                canManageEmployment={canManageEmployment}
+                onChange={setFormData}
+            />
+            {!isEdit && (
+                <>
+                    {canManageContracts ? (
+                        <EmployeeInitialContractSection
+                            key={submissionId}
+                            value={initialContract}
+                            canManageDocuments={canManageContractDocuments}
+                            error={contractError}
+                            onChange={(next) => {
+                                setContractError(null);
+                                setInitialContract(next);
+                            }}
+                        />
+                    ) : null}
+                    <EmployeeAccountSection
+                        enabled={createAccount}
+                        value={accountData}
+                        assignments={assignments}
+                        roles={roles}
+                        warehouses={warehouses}
+                        workplaceId={formData.workplace_warehouse_id}
+                        onEnabledChange={setCreateAccount}
+                        onChange={setAccountData}
+                        onAssignmentsChange={setAssignments}
+                    />
+                </>
+            )}
+            <EffectiveAccessPreview
+                key={formData.workplace_warehouse_id}
+                userId={formData.user_id || profile?.user_id}
+                facilities={warehouses}
+                draft={
+                    previewAssignments
+                        ? {
+                            workplaceFacilityId: formData.workplace_warehouse_id,
+                            assignments: previewAssignments,
+                            roles,
+                        }
+                        : undefined
+                }
+            />
+        </div>
+    );
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/40 backdrop-blur-sm sm:p-4">
-            <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex max-h-[90vh] w-[94vw] max-w-5xl xl:max-w-6xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl"
-            >
-                <header className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-3.5 bg-white shrink-0">
-                    <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)] shadow-2xs">
-                            {isEdit ? <UserCheck size={20} /> : <UserPlus size={20} />}
-                        </div>
-                        <div>
-                            <h2 className="text-base font-bold text-[var(--color-text-primary)]">
-                                {isEdit ? labels.editProfile : labels.createProfileTitle}
-                            </h2>
-                            <p className="text-xxs text-[var(--color-text-muted)]">
-                                {t.officeScope.inheritedHint}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={isSubmitting}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)] active:scale-95 cursor-pointer disabled:opacity-50"
-                        aria-label={labels.actions.close}
-                    >
-                        <X size={18} />
-                    </button>
-                </header>
-                <form
-                    id="employeeProfileForm"
-                    onSubmit={handleSubmit}
-                    className="flex-1 overflow-y-auto p-5 bg-[#f8fafc]/50"
+        <>
+            {/* Desktop Modal Dialog (lg and larger) */}
+            <div className="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/40 backdrop-blur-sm sm:p-4 lg:flex">
+                <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex max-h-[90vh] w-[94vw] max-w-5xl xl:max-w-6xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl"
                 >
-                    <div className="grid gap-4">
-                        <EmployeeProfileFields
-                            value={formData}
-                            users={users}
-                            warehouses={warehouses}
-                            disableUserLink={createAccount}
-                            isEdit={isEdit}
-                            canManageEmployment={canManageEmployment}
-                            onChange={setFormData}
-                        />
-                        {!isEdit && (
-                            <>
-                                {canManageContracts ? (
-                                    <EmployeeInitialContractSection
-                                        key={submissionId}
-                                        value={initialContract}
-                                        canManageDocuments={canManageContractDocuments}
-                                        error={contractError}
-                                        onChange={(next) => {
-                                            setContractError(null);
-                                            setInitialContract(next);
-                                        }}
-                                    />
-                                ) : null}
-                                <EmployeeAccountSection
-                                    enabled={createAccount}
-                                    value={accountData}
-                                    assignments={assignments}
-                                    roles={roles}
-                                    warehouses={warehouses}
-                                    workplaceId={formData.workplace_warehouse_id}
-                                    onEnabledChange={setCreateAccount}
-                                    onChange={setAccountData}
-                                    onAssignmentsChange={setAssignments}
-                                />
-                            </>
-                        )}
-                        <EffectiveAccessPreview
-                            key={formData.workplace_warehouse_id}
-                            userId={formData.user_id || profile?.user_id}
-                            facilities={warehouses}
-                            draft={
-                                previewAssignments
-                                    ? {
-                                        workplaceFacilityId: formData.workplace_warehouse_id,
-                                        assignments: previewAssignments,
-                                        roles,
-                                    }
-                                    : undefined
-                            }
-                        />
-                    </div>
-                </form>
-                <footer className="flex items-center justify-between border-t border-[var(--color-border-soft)] bg-white px-5 py-3 shrink-0">
-                    <div className="text-xxs text-[var(--color-text-muted)] hidden sm:block">
-                        * Các trường có dấu sao đỏ là thông tin bắt buộc.
-                    </div>
-                    <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
+                    <header className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-3.5 bg-white shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)] shadow-2xs">
+                                {isEdit ? <UserCheck size={20} /> : <UserPlus size={20} />}
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-[var(--color-text-primary)]">
+                                    {title}
+                                </h2>
+                                <p className="text-xxs text-[var(--color-text-muted)]">
+                                    {t.officeScope.inheritedHint}
+                                </p>
+                            </div>
+                        </div>
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-xs font-semibold text-[var(--color-text-secondary)] shadow-2xs hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50 cursor-pointer"
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)] active:scale-95 cursor-pointer disabled:opacity-50"
+                            aria-label={labels.actions.close}
+                        >
+                            <X size={18} />
+                        </button>
+                    </header>
+                    <form
+                        id="employeeProfileFormDesktop"
+                        onSubmit={handleSubmit}
+                        className="flex-1 overflow-y-auto p-5 bg-[#f8fafc]/50"
+                    >
+                        {formContent}
+                    </form>
+                    <footer className="flex items-center justify-between border-t border-[var(--color-border-soft)] bg-white px-5 py-3 shrink-0">
+                        <div className="text-xxs text-[var(--color-text-muted)] hidden sm:block">
+                            * Các trường có dấu sao đỏ là thông tin bắt buộc.
+                        </div>
+                        <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={isSubmitting}
+                                className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-xs font-semibold text-[var(--color-text-secondary)] shadow-2xs hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                                {t.common.cancel}
+                            </button>
+                            <button
+                                type="submit"
+                                form="employeeProfileFormDesktop"
+                                disabled={isSubmitting}
+                                className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-xs font-semibold text-white shadow-2xs hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                                {isSubmitting ? t.common.loading : t.common.save}
+                            </button>
+                        </div>
+                    </footer>
+                </motion.div>
+            </div>
+
+            {/* Mobile Native BottomSheet (< lg) */}
+            <BottomSheet
+                title={title}
+                isOpen={isOpen}
+                onClose={onClose}
+                defaultSnap="full"
+                mobileBreakpoint="lg"
+                zIndex={50}
+                contentClassName="flex flex-col overflow-y-auto overscroll-contain px-4 pb-6"
+            >
+                <form
+                    id="employeeProfileFormMobile"
+                    onSubmit={handleSubmit}
+                    className="flex flex-col gap-4 pt-2 pb-2"
+                >
+                    {formContent}
+
+                    {/* Sticky Mobile Action Buttons at Bottom of Sheet */}
+                    <div className="sticky bottom-0 -mx-4 -mb-6 mt-4 flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]/95 px-4 py-3 backdrop-blur-sm">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="flex-1 h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-xs font-semibold text-[var(--color-text-secondary)] shadow-2xs hover:bg-[var(--color-surface-card)] active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                             {t.common.cancel}
                         </button>
                         <button
                             type="submit"
-                            form="employeeProfileForm"
                             disabled={isSubmitting}
-                            className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-xs font-semibold text-white shadow-2xs hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50 cursor-pointer"
+                            className="flex-1 h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-xs font-semibold text-white shadow-2xs hover:bg-[var(--color-brand-primary-hover)] active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
-                            {t.common.save}
+                            {isSubmitting ? t.common.loading : t.common.save}
                         </button>
                     </div>
-                </footer>
-            </motion.div>
-        </div>
+                </form>
+            </BottomSheet>
+        </>
     );
 }
+

@@ -22,7 +22,9 @@ export function PosStoreRail({
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return stores;
     return stores.filter((store) =>
-      `${store.name} ${store.code || ""}`.toLocaleLowerCase().includes(normalized),
+      `${store.name} ${store.code || ""}`
+        .toLocaleLowerCase()
+        .includes(normalized),
     );
   }, [query, stores]);
 
@@ -39,7 +41,10 @@ export function PosStoreRail({
           </span>
         </div>
         <div className="relative mt-2">
-          <Search className="absolute left-2.5 top-2.5 text-slate-400" size={14} />
+          <Search
+            className="absolute left-2.5 top-2.5 text-slate-400"
+            size={14}
+          />
           <input
             type="text"
             value={query}
@@ -98,4 +103,3 @@ export function PosStoreRail({
     </aside>
   );
 }
-

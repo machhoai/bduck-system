@@ -2,6 +2,7 @@
  * Chinese dictionary - WMS Layout
  */
 import type { Dictionary } from "./vi";
+import { revenueExportZh } from "./revenueExportTranslations";
 
 const zh: Dictionary = {
   nav: {
@@ -167,6 +168,9 @@ const zh: Dictionary = {
       targetStatus: "新状态",
       selectTarget: "选择状态",
       effectiveDate: "生效日期",
+      resignationImpactTitle: "离职指令生效后的影响",
+      resignationImpactDescription:
+        "员工档案和账户将停用，现有登录会话将被撤销，当前权限将结束，并且从生效日期起不再计入考勤。",
       probationEndDate: "试用结束日期",
       reason: "原因",
       reasonPlaceholder: "请输入状态变更的详细原因...",
@@ -268,10 +272,43 @@ const zh: Dictionary = {
 
   revenue: {
     title: "营收管理",
-    subtitle: "B.Duck Cityfuns Landmark 81 门店的 JoyWorld 营收仪表板。",
+    subtitle: "以统一报表标准跟踪 OpenAPI 与本地 POS 营收。",
     generatedAt: "更新时间",
     syncing: "正在更新...",
     refreshCountdown: "{seconds} 秒后自动更新",
+    sources: {
+      openApi: "OpenAPI",
+      openApiDescription: "直接读取 JoyWorld OpenAPI 报表数据",
+      localPos: "本地数据",
+      localPosDescription: "实时读取本地 POS 已支付订单",
+      taxFromLocal: "税额由本地 POS 数据核对",
+      noConfiguredWarehouse: "暂无已配置 OpenAPI 的门店",
+    },
+    export: {
+      ...revenueExportZh,
+      button: "导出数据",
+      modalTitle: "导出营收报表",
+      modalDescription: "请选择适合分析需求的 Excel 报表内容。",
+      dailyRevenue: "每日营收",
+      dailyRevenueDescription: "包含概览、每日营收和支付方式结构。",
+      salesComposition: "销售结构",
+      salesCompositionDescription: "包含概览、商品分组结构和已售商品明细。",
+      reportTypeLabel: "报表内容",
+      warehouseLabel: "门店",
+      sourceLabel: "数据来源",
+      rangeLabel: "范围",
+      cancel: "取消",
+      close: "关闭",
+      confirm: "导出 Excel",
+      selectReportType: "请选择要导出的报表类型。",
+      loading: "正在生成 Excel...",
+      success: "Excel 已导出",
+      successDescription: "报表已下载到设备。",
+      error: "无法导出数据",
+      errorDescription: "请检查权限和日期范围后重试。",
+      retry: "重试",
+      noPermission: "您没有导出报表的权限。",
+    },
     tabs: {
       revenue: {
         label: "营收",
@@ -291,6 +328,7 @@ const zh: Dictionary = {
       warehouse: "门店",
       selectWarehouse: "选择门店",
       noWarehouse: "暂无门店",
+      allWarehouses: "所有门店",
       date: "日期",
       month: "月份",
       year: "年份",
@@ -315,6 +353,11 @@ const zh: Dictionary = {
     },
     stats: {
       totalRevenue: "总营收",
+      cashRevenue: "现金营收",
+      transferRevenue: "转账营收",
+      otherRevenue: "其他支付",
+      totalTax: "税额合计",
+      amountBeforeTax: "未税营收",
       totalOrders: "订单总数",
       averageOrderValue: "平均订单金额",
       memberCardSales: "会员卡销售金额",
@@ -336,6 +379,7 @@ const zh: Dictionary = {
     paymentMethodLabels: {
       transfer: "转账",
       cash: "现金",
+      other: "其他",
     },
     charts: {
       revenueTitle: "按时间营收",
@@ -361,6 +405,13 @@ const zh: Dictionary = {
       tooltipComparison: "对比期间",
       tooltipSelected: "所选时间点",
       highlightedDays: "选中日期",
+      rangeLabel: "图表范围",
+      rangeOptions: {
+        week: "周",
+        month: "月",
+        last7: "近 7 天",
+        last30: "近 30 天",
+      },
     },
     online: {
       title: "线上营收",
@@ -434,8 +485,13 @@ const zh: Dictionary = {
       empty: "暂无设备消耗数据。",
     },
     orders: {
-      title: "订单与已售商品",
+      title: "交易明细",
       subtitle: "在订单列表和按订单展开的商品列表之间切换。",
+      collapsedHint: "默认收起，让仪表板专注于营收数据。",
+      expandedHint: "需要对账时可筛选、分页并打开单笔交易。",
+      summary: "{orders} 笔订单 · {items} 件商品",
+      showDetails: "查看明细",
+      hideDetails: "收起",
       tabs: {
         orders: "按订单",
         items: "按商品",
@@ -462,6 +518,14 @@ const zh: Dictionary = {
       },
       results: "条结果",
       empty: "没有符合筛选条件的数据。",
+      pagination: {
+        label: "交易分页",
+        range: "第 {from}–{to} 条，共 {total} 条",
+        perPage: "每页条数",
+        previous: "上一页",
+        next: "下一页",
+        page: "第",
+      },
     },
     detail: {
       compareWith: "对比",
@@ -2616,6 +2680,19 @@ const zh: Dictionary = {
     placeholderSecretKey: "输入 SecretKey",
     baseUrl: "Base URL",
     apiVersion: "API version",
+    paymentMapping: {
+      title: "支付渠道映射",
+      description:
+        "输入 OpenAPI 自定义渠道名称，并映射到仪表板和 Excel 报表使用的支付分组。",
+      channel: "渠道名称",
+      category: "支付分组",
+      placeholder: "例如：VietQR、Momo",
+      add: "添加渠道",
+      remove: "删除渠道",
+      cash: "现金",
+      transfer: "转账",
+      other: "其他",
+    },
     enableOpenApi: "为此门店启用 OpenAPI 连接",
     testBtn: "测试连接",
     saveBtn: "保存配置",
@@ -3576,6 +3653,7 @@ Object.assign(zh, {
     checkedInStatus: "已打卡",
     waitingStatus: "等待打卡",
     noLogStatus: "缺卡",
+    notApplicable: "不适用",
     allWarehouses: "全部仓库",
     allEmployees: "全部员工",
     calendar: "考勤日历",
@@ -3838,6 +3916,19 @@ Object.assign(zh, {
     placeholderSecretKey: "输入 SecretKey",
     baseUrl: "Base URL",
     apiVersion: "API version",
+    paymentMapping: {
+      title: "支付渠道映射",
+      description:
+        "输入 OpenAPI 自定义渠道名称，并映射到仪表板和 Excel 报表使用的支付分组。",
+      channel: "渠道名称",
+      category: "支付分组",
+      placeholder: "例如：VietQR、Momo",
+      add: "添加渠道",
+      remove: "删除渠道",
+      cash: "现金",
+      transfer: "转账",
+      other: "其他",
+    },
     enableOpenApi: "为该门店启用 OpenAPI 连接",
     testBtn: "测试",
     saveBtn: "保存配置",

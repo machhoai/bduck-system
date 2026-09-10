@@ -9,9 +9,24 @@ import {
 
 test("JPOS revenue stats include paid orders and de-duplicate local ids", () => {
   const result = aggregatePosRevenueStats([
-    { id: "1", localOrderId: "order-1", status: "SYNC_SUCCESS", totalAmount: 120_000 },
-    { id: "2", localOrderId: "order-2", status: "LOCAL_PAID", totalAmount: 80_000 },
-    { id: "3", localOrderId: "order-1", status: "SYNC_SUCCESS", totalAmount: 120_000 },
+    {
+      id: "1",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 120_000,
+    },
+    {
+      id: "2",
+      localOrderId: "order-2",
+      status: "LOCAL_PAID",
+      totalAmount: 80_000,
+    },
+    {
+      id: "3",
+      localOrderId: "order-1",
+      status: "SYNC_SUCCESS",
+      totalAmount: 120_000,
+    },
     { id: "4", localOrderId: "draft", status: "DRAFT", totalAmount: 500_000 },
   ]);
 
@@ -56,6 +71,73 @@ test("JPOS revenue stats ignore invalid totals", () => {
   );
 });
 
+test("JPOS revenue stats exclude refunded and cancelled orders", () => {
+  const result = aggregatePosRevenueStats([
+    {
+      id: "refunded",
+      status: "SYNC_SUCCESS",
+      paymentStatus: "REFUNDED",
+      syncStatus: "CANCELLED",
+      totalAmount: 222,
+    },
+    {
+      id: "paid",
+      status: "SYNC_SUCCESS",
+      paymentStatus: "PAID",
+      syncStatus: "SYNC_SUCCESS",
+      totalAmount: 100,
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    totalRevenue: 100,
+    totalOrders: 1,
+    averageOrderValue: 100,
+  });
+});
+
+test("all-store dashboard keeps unique item/order references across stores", () => {
+  const dashboard = buildPosRevenueDashboardData({
+    records: ["a", "b"].map((warehouseId) => ({
+      id: `${warehouseId}-document`,
+      warehouseId,
+      localOrderId: "same-order",
+      status: "LOCAL_PAID",
+      totalAmount: warehouseId === "a" ? 100_000 : 300_000,
+      paidAt: "2026-09-06T03:00:00.000Z",
+      paymentMethodId: "CASH",
+      items: [
+        {
+          goodsId: "ticket",
+          goodsName: "Vé",
+          quantity: 1,
+          price: warehouseId === "a" ? 100_000 : 300_000,
+        },
+      ],
+    })),
+    warehouseId: "ALL",
+    filter: {
+      mode: "date",
+      date: "2026-09-06",
+      month: "2026-09",
+      year: "2026",
+      startDate: "2026-09-06",
+      endDate: "2026-09-06",
+    },
+    range: { startDate: "2026-09-06", endDate: "2026-09-06" },
+    generatedAt: "2026-09-06T04:00:00.000Z",
+  });
+  assert.equal(dashboard.stats.totalRevenue.value, 400_000);
+  assert.equal(dashboard.stats.averageOrderValue.value, 200_000);
+  assert.equal(dashboard.charts.points[0].revenue, 400_000);
+  assert.equal(dashboard.topProductGroups[0].revenue, 400_000);
+  assert.equal(new Set(dashboard.soldItems.map((item) => item.id)).size, 2);
+  assert.deepEqual(
+    dashboard.soldItems.map((item) => item.orderId),
+    dashboard.orders.map((order) => order.orderId),
+  );
+});
+
 test("dashboard date bounds follow Vietnam time and use an exclusive end", () => {
   assert.deepEqual(
     toVietnamIsoRange({ startDate: "2025-12-10", endDate: "2025-12-10" }),
@@ -81,6 +163,7 @@ test("JPOS orders feed the legacy dashboard charts, payments and products", () =
             categoryName: "Ẩm thực",
             quantity: 2,
             price: 75_000,
+            taxAmount: 12_000,
           },
         ],
       },
@@ -100,11 +183,54 @@ test("JPOS orders feed the legacy dashboard charts, payments and products", () =
 
   assert.equal(dashboard.stats.totalRevenue.value, 150_000);
   assert.equal(dashboard.stats.totalOrders.value, 1);
+  assert.equal(dashboard.stats.transferRevenue.value, 150_000);
+  assert.equal(dashboard.stats.totalTax.value, 12_000);
+  assert.equal(dashboard.stats.amountBeforeTax.value, 138_000);
+  assert.equal(dashboard.dailyRows[0]?.transferRevenue, 150_000);
   assert.equal(dashboard.charts.paymentMethods[0]?.method, "QR_CODE");
   assert.equal(dashboard.charts.points[0]?.key, "2026-08-13");
   assert.deepEqual(dashboard.topProductGroups[0]?.items[0], {
     name: "Vịt quay",
     quantity: 2,
     revenue: 150_000,
+    taxAmount: 12_000,
   });
+});
+
+test("JPOS dashboard fills missing dates so range charts keep every column", () => {
+  const dashboard = buildPosRevenueDashboardData({
+    records: [
+      {
+        id: "order-1",
+        status: "LOCAL_PAID",
+        totalAmount: 150_000,
+        paidAt: "2026-08-13T03:00:00.000Z",
+      },
+    ],
+    warehouseId: "store-1",
+    filter: {
+      mode: "custom",
+      date: "2026-08-13",
+      month: "2026-08",
+      year: "2026",
+      startDate: "2026-08-10",
+      endDate: "2026-08-16",
+    },
+    range: { startDate: "2026-08-10", endDate: "2026-08-16" },
+    generatedAt: "2026-08-13T04:00:00.000Z",
+  });
+
+  assert.equal(dashboard.charts.points.length, 7);
+  assert.deepEqual(
+    dashboard.charts.points.map((point) => [point.key, point.revenue]),
+    [
+      ["2026-08-10", 0],
+      ["2026-08-11", 0],
+      ["2026-08-12", 0],
+      ["2026-08-13", 150_000],
+      ["2026-08-14", 0],
+      ["2026-08-15", 0],
+      ["2026-08-16", 0],
+    ],
+  );
 });

@@ -1,5 +1,11 @@
 import type { PosDeviceStatus } from "@bduck/shared-types";
-import { ArrowRightLeft, Lock, MonitorCheck, MonitorX, Unlock } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Lock,
+  MonitorCheck,
+  MonitorX,
+  Unlock,
+} from "lucide-react";
 
 import type { SafePosDevice } from "@/api/posManagementApi";
 
@@ -118,10 +124,7 @@ export function PosDeviceTable({
                   <button
                     type="button"
                     onClick={() =>
-                      onStatusChange(
-                        device,
-                        isActive ? "REVOKED" : "ACTIVE",
-                      )
+                      onStatusChange(device, isActive ? "REVOKED" : "ACTIVE")
                     }
                     className={`flex h-7 w-full items-center justify-center gap-1.5 rounded-lg text-xxs font-bold transition-colors ${
                       isActive
@@ -170,9 +173,14 @@ export function PosDeviceTable({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {devices.map((device) => (
-              <tr key={device.id} className="hover:bg-slate-50/60 transition-colors">
+              <tr
+                key={device.id}
+                className="hover:bg-slate-50/60 transition-colors"
+              >
                 <td className="px-3 py-2">
-                  <span className="font-bold text-slate-800">{device.name}</span>
+                  <span className="font-bold text-slate-800">
+                    {device.name}
+                  </span>
                   <span className="block text-xxs text-slate-400">
                     {device.operating_system}
                   </span>
@@ -254,4 +262,3 @@ export function PosDeviceTable({
     </>
   );
 }
-

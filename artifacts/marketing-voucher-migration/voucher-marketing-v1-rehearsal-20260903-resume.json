@@ -1,0 +1,408 @@
+{
+  "version": 1,
+  "migration_id": "voucher-marketing-v1-rehearsal-20260903",
+  "mode": "RESUME",
+  "status": "FAILED",
+  "source_project_id": "e-commerce-72a4b",
+  "target_project_id": "test-jw-system",
+  "pii_redacted": true,
+  "source_campaign_count": 14,
+  "target_campaign_count": 14,
+  "source_code_count": 1428254,
+  "target_code_count": 1428254,
+  "source_checksum": "ffc3d2586722b638b5047168584e9bdda334c0b82d36580ef570f9d24b6fd1b4",
+  "target_checksum": "ffc3d2586722b638b5047168584e9bdda334c0b82d36580ef570f9d24b6fd1b4",
+  "duplicate_or_conflicting_code_count": 0,
+  "image_success_count": 7,
+  "image_failure_count": 0,
+  "uat_campaign_ids": [
+    "1zNKg0nwoXDmSngSiAgF",
+    "SzTZRKmkH1leTR4UVsW0",
+    "54syl0gKaLlHRFG596YD"
+  ],
+  "uat_passed": true,
+  "uat_issues": [],
+  "campaigns": [
+    {
+      "campaign_id": "1zNKg0nwoXDmSngSiAgF",
+      "source_declared_total": 10,
+      "source_actual_total": 10,
+      "target_actual_total": 10,
+      "source_counts": {
+        "available": 7,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 3,
+        "total": 10
+      },
+      "target_counts": {
+        "available": 7,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 3,
+        "total": 10
+      },
+      "source_checksum": "a86ad1b762632b88411e24c1c90de0d8dc73870cdee3ccd94079816917427e98",
+      "target_checksum": "a86ad1b762632b88411e24c1c90de0d8dc73870cdee3ccd94079816917427e98",
+      "purpose_defaulted": true,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    },
+    {
+      "campaign_id": "54syl0gKaLlHRFG596YD",
+      "source_declared_total": 999999,
+      "source_actual_total": 999404,
+      "target_actual_total": 999404,
+      "source_counts": {
+        "available": 999125,
+        "distributed": 35,
+        "used": 244,
+        "revoked": 0,
+        "total": 999404
+      },
+      "target_counts": {
+        "available": 999125,
+        "distributed": 35,
+        "used": 244,
+        "revoked": 0,
+        "total": 999404
+      },
+      "source_checksum": "a1004b3bfa29678fe49bd365bbf9da1a9224c29dab7c668f1893b49c5ac53ac4",
+      "target_checksum": "a1004b3bfa29678fe49bd365bbf9da1a9224c29dab7c668f1893b49c5ac53ac4",
+      "purpose_defaulted": false,
+      "source_image_sha256": "1f480b62a6d84c5e86fd132e68fb68ff56c8fb24792521e117c87f8345e297e2",
+      "target_image_sha256": "1f480b62a6d84c5e86fd132e68fb68ff56c8fb24792521e117c87f8345e297e2",
+      "issues": [
+        "DECLARED_TOTAL_DIFFERENCE:999999:999404"
+      ]
+    },
+    {
+      "campaign_id": "9DK7FGTHLQhmzDYHTNbi",
+      "source_declared_total": 200,
+      "source_actual_total": 200,
+      "target_actual_total": 200,
+      "source_counts": {
+        "available": 0,
+        "distributed": 195,
+        "used": 5,
+        "revoked": 0,
+        "total": 200
+      },
+      "target_counts": {
+        "available": 0,
+        "distributed": 195,
+        "used": 5,
+        "revoked": 0,
+        "total": 200
+      },
+      "source_checksum": "baaeedb87d50a97c2fbb00ab6816daf6fdb18a15e8b621c9209ff5e28b2ebb8e",
+      "target_checksum": "baaeedb87d50a97c2fbb00ab6816daf6fdb18a15e8b621c9209ff5e28b2ebb8e",
+      "purpose_defaulted": false,
+      "source_image_sha256": "791be814a91f1e47522a2bb6bdb8deac59e5a33faf1eda55d11327ad2d392e6b",
+      "target_image_sha256": "791be814a91f1e47522a2bb6bdb8deac59e5a33faf1eda55d11327ad2d392e6b",
+      "issues": []
+    },
+    {
+      "campaign_id": "ENNaE5XcUpiAFFgOSuTr",
+      "source_declared_total": 150,
+      "source_actual_total": 150,
+      "target_actual_total": 150,
+      "source_counts": {
+        "available": 147,
+        "distributed": 1,
+        "used": 2,
+        "revoked": 0,
+        "total": 150
+      },
+      "target_counts": {
+        "available": 147,
+        "distributed": 1,
+        "used": 2,
+        "revoked": 0,
+        "total": 150
+      },
+      "source_checksum": "af262f2be515b4c47e5836804a6ae3b8710c6e54a1e0f1de10df982a341b4cee",
+      "target_checksum": "af262f2be515b4c47e5836804a6ae3b8710c6e54a1e0f1de10df982a341b4cee",
+      "purpose_defaulted": false,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    },
+    {
+      "campaign_id": "MAX7hPNXajtu42LxC3N5",
+      "source_declared_total": 75000,
+      "source_actual_total": 74999,
+      "target_actual_total": 74999,
+      "source_counts": {
+        "available": 73929,
+        "distributed": 1030,
+        "used": 38,
+        "revoked": 2,
+        "total": 74999
+      },
+      "target_counts": {
+        "available": 73929,
+        "distributed": 1030,
+        "used": 38,
+        "revoked": 2,
+        "total": 74999
+      },
+      "source_checksum": "14bb28b72673c0c73b6253ecb1529551a9b60fe2be281ef707b7e142f164592b",
+      "target_checksum": "14bb28b72673c0c73b6253ecb1529551a9b60fe2be281ef707b7e142f164592b",
+      "purpose_defaulted": false,
+      "source_image_sha256": "93e2581fe03413f64d94c429edd7e07b7be9f749e2469c8fb0151ca213409a3f",
+      "target_image_sha256": "93e2581fe03413f64d94c429edd7e07b7be9f749e2469c8fb0151ca213409a3f",
+      "issues": [
+        "DECLARED_TOTAL_DIFFERENCE:75000:74999"
+      ]
+    },
+    {
+      "campaign_id": "NcA5ub8lJMW7O0qOSTGo",
+      "source_declared_total": 4700,
+      "source_actual_total": 4700,
+      "target_actual_total": 4700,
+      "source_counts": {
+        "available": 4700,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 0,
+        "total": 4700
+      },
+      "target_counts": {
+        "available": 4700,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 0,
+        "total": 4700
+      },
+      "source_checksum": "66895b44244ae6c5964b872c06760a1679babf8c0cfc1fe24c2d252542837f7c",
+      "target_checksum": "66895b44244ae6c5964b872c06760a1679babf8c0cfc1fe24c2d252542837f7c",
+      "purpose_defaulted": false,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    },
+    {
+      "campaign_id": "SzTZRKmkH1leTR4UVsW0",
+      "source_declared_total": 1000,
+      "source_actual_total": 1000,
+      "target_actual_total": 1000,
+      "source_counts": {
+        "available": 0,
+        "used": 0,
+        "revoked": 0,
+        "total": 1000,
+        "distributed": 1000
+      },
+      "target_counts": {
+        "available": 0,
+        "distributed": 1000,
+        "used": 0,
+        "revoked": 0,
+        "total": 1000
+      },
+      "source_checksum": "c6c8d284de893c0eaad0c85fd473660be43555ed38b49b306d4e7430c428d642",
+      "target_checksum": "c6c8d284de893c0eaad0c85fd473660be43555ed38b49b306d4e7430c428d642",
+      "purpose_defaulted": false,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": [
+        "TARGET_STATUS_COUNTS_MISMATCH"
+      ]
+    },
+    {
+      "campaign_id": "TUJbeR7PS6vK6kSRPneU",
+      "source_declared_total": 100,
+      "source_actual_total": 100,
+      "target_actual_total": 100,
+      "source_counts": {
+        "available": 0,
+        "distributed": 100,
+        "used": 0,
+        "revoked": 0,
+        "total": 100
+      },
+      "target_counts": {
+        "available": 0,
+        "distributed": 100,
+        "used": 0,
+        "revoked": 0,
+        "total": 100
+      },
+      "source_checksum": "98517e5389cf0a8dfb54988b63b031986f4f580f78684896885254fa877deeeb",
+      "target_checksum": "98517e5389cf0a8dfb54988b63b031986f4f580f78684896885254fa877deeeb",
+      "purpose_defaulted": false,
+      "source_image_sha256": "782906595fcc9092303f0ce62bdd11f8d3d43ef839e507b5512fa288049b8801",
+      "target_image_sha256": "782906595fcc9092303f0ce62bdd11f8d3d43ef839e507b5512fa288049b8801",
+      "issues": []
+    },
+    {
+      "campaign_id": "cehk5pFQ3IQk0SYSCof5",
+      "source_declared_total": 100,
+      "source_actual_total": 100,
+      "target_actual_total": 100,
+      "source_counts": {
+        "available": 97,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 3,
+        "total": 100
+      },
+      "target_counts": {
+        "available": 97,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 3,
+        "total": 100
+      },
+      "source_checksum": "71c00d6ba88c58febc7002d8c480a07f9f00bea56e02b5876bbf3d3c68bfd521",
+      "target_checksum": "71c00d6ba88c58febc7002d8c480a07f9f00bea56e02b5876bbf3d3c68bfd521",
+      "purpose_defaulted": true,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    },
+    {
+      "campaign_id": "dqlDItEPYQ9BJAbyoUlb",
+      "source_declared_total": 450,
+      "source_actual_total": 450,
+      "target_actual_total": 450,
+      "source_counts": {
+        "available": 449,
+        "distributed": 1,
+        "used": 0,
+        "revoked": 0,
+        "total": 450
+      },
+      "target_counts": {
+        "available": 449,
+        "distributed": 1,
+        "used": 0,
+        "revoked": 0,
+        "total": 450
+      },
+      "source_checksum": "582761f0657785129d2751c02c004909c7131018ae0dac0327e424057664cb7b",
+      "target_checksum": "582761f0657785129d2751c02c004909c7131018ae0dac0327e424057664cb7b",
+      "purpose_defaulted": false,
+      "source_image_sha256": "edb7d02f3537712449710221b926ed2119b5e48ecec0057e21ba6bd5584ac25f",
+      "target_image_sha256": "edb7d02f3537712449710221b926ed2119b5e48ecec0057e21ba6bd5584ac25f",
+      "issues": []
+    },
+    {
+      "campaign_id": "nkuC9BRg1bVg58AaLcoZ",
+      "source_declared_total": 225000,
+      "source_actual_total": 224996,
+      "target_actual_total": 224996,
+      "source_counts": {
+        "available": 222125,
+        "distributed": 1308,
+        "used": 1561,
+        "revoked": 2,
+        "total": 224996
+      },
+      "target_counts": {
+        "available": 222125,
+        "distributed": 1308,
+        "used": 1561,
+        "revoked": 2,
+        "total": 224996
+      },
+      "source_checksum": "a3a18883b3a7de47a2c4a82ed21f923a869fa5678cd4b8530458e50e6a25a639",
+      "target_checksum": "a3a18883b3a7de47a2c4a82ed21f923a869fa5678cd4b8530458e50e6a25a639",
+      "purpose_defaulted": false,
+      "source_image_sha256": "791be814a91f1e47522a2bb6bdb8deac59e5a33faf1eda55d11327ad2d392e6b",
+      "target_image_sha256": "791be814a91f1e47522a2bb6bdb8deac59e5a33faf1eda55d11327ad2d392e6b",
+      "issues": [
+        "DECLARED_TOTAL_DIFFERENCE:225000:224996"
+      ]
+    },
+    {
+      "campaign_id": "qLjZe4kxrhbl6Ti2Q8tR",
+      "source_declared_total": 117000,
+      "source_actual_total": 116995,
+      "target_actual_total": 116995,
+      "source_counts": {
+        "revoked": 0,
+        "distributed": 1655,
+        "used": 594,
+        "total": 116995,
+        "available": 114746
+      },
+      "target_counts": {
+        "available": 114746,
+        "distributed": 1655,
+        "used": 594,
+        "revoked": 0,
+        "total": 116995
+      },
+      "source_checksum": "9907bb8d76e13bd293c09ff56336e95b0036a869373010d2347d091629ca1ff7",
+      "target_checksum": "9907bb8d76e13bd293c09ff56336e95b0036a869373010d2347d091629ca1ff7",
+      "purpose_defaulted": false,
+      "source_image_sha256": "cdd27abd8eea15b1d4c41982aa4d376adf99ff421ac49dce9e66b79da77325b6",
+      "target_image_sha256": "cdd27abd8eea15b1d4c41982aa4d376adf99ff421ac49dce9e66b79da77325b6",
+      "issues": [
+        "DECLARED_TOTAL_DIFFERENCE:117000:116995",
+        "TARGET_STATUS_COUNTS_MISMATCH"
+      ]
+    },
+    {
+      "campaign_id": "rJZS3am2z4D5isboXAxP",
+      "source_declared_total": 4700,
+      "source_actual_total": 4700,
+      "target_actual_total": 4700,
+      "source_counts": {
+        "available": 4700,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 0,
+        "total": 4700
+      },
+      "target_counts": {
+        "available": 4700,
+        "distributed": 0,
+        "used": 0,
+        "revoked": 0,
+        "total": 4700
+      },
+      "source_checksum": "a36cd5e89135bd0a289355389dd33094621c1047ce52f70cfa7a8d6af87a1bf8",
+      "target_checksum": "a36cd5e89135bd0a289355389dd33094621c1047ce52f70cfa7a8d6af87a1bf8",
+      "purpose_defaulted": false,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    },
+    {
+      "campaign_id": "tPRgtlZZwXfqu6SmrUWo",
+      "source_declared_total": 450,
+      "source_actual_total": 450,
+      "target_actual_total": 450,
+      "source_counts": {
+        "available": 447,
+        "distributed": 3,
+        "used": 0,
+        "revoked": 0,
+        "total": 450
+      },
+      "target_counts": {
+        "available": 447,
+        "distributed": 3,
+        "used": 0,
+        "revoked": 0,
+        "total": 450
+      },
+      "source_checksum": "7e54382ddc6c9682ed259eb54efdba830756af9498c75d9ef2740e5947301208",
+      "target_checksum": "7e54382ddc6c9682ed259eb54efdba830756af9498c75d9ef2740e5947301208",
+      "purpose_defaulted": false,
+      "source_image_sha256": null,
+      "target_image_sha256": null,
+      "issues": []
+    }
+  ],
+  "issues": [
+    "TARGET_STATUS_COUNTS_MISMATCH:SzTZRKmkH1leTR4UVsW0",
+    "TARGET_STATUS_COUNTS_MISMATCH:qLjZe4kxrhbl6Ti2Q8tR"
+  ],
+  "started_at": "2026-09-03T09:14:21.504Z",
+  "completed_at": "2026-09-03T10:13:06.226Z"
+}

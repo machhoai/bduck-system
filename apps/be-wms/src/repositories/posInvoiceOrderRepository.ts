@@ -1,5 +1,7 @@
 import { db } from "../config/firebase.js";
 
+import { isMissingFirestoreIndexError } from "./firestoreQueryError.js";
+
 export type PosInvoiceOrderRecord = Record<string, unknown> & {
   localOrderId: string;
   hkOrderNumber: string | null;
@@ -12,7 +14,10 @@ export type PosInvoiceOrderRecord = Record<string, unknown> & {
   createdAt: string;
 };
 
-const orders = db.collection("pos_orders");
+// Resolve the collection inside each request. The Firestore export is a
+// request-scoped proxy in local development, so retaining a CollectionReference
+// at module load would permanently bind this repository to the default project.
+const orders = () => db.collection("pos_orders");
 
 const asPosOrder = (
   value: Record<string, unknown>,
@@ -22,7 +27,7 @@ export const posInvoiceOrderRepository = {
   async findByInvoiceRequestToken(
     token: string,
   ): Promise<PosInvoiceOrderRecord | null> {
-    const snapshot = await orders
+    const snapshot = await orders()
       .where("invoiceRequestToken", "==", token)
       .limit(2)
       .get();
@@ -37,12 +42,28 @@ export const posInvoiceOrderRepository = {
     startIso: string,
     endIso: string,
   ): Promise<PosInvoiceOrderRecord[]> {
-    const snapshot = await orders
-      .where("warehouseId", "==", warehouseId)
-      .where("paidAt", ">=", startIso)
-      .where("paidAt", "<", endIso)
-      .get();
-    return snapshot.docs.map((item) => asPosOrder(item.data()));
+    try {
+      const snapshot = await orders()
+        .where("warehouseId", "==", warehouseId)
+        .where("paidAt", ">=", startIso)
+        .where("paidAt", "<", endIso)
+        .get();
+      return snapshot.docs.map((item) => asPosOrder(item.data()));
+    } catch (error) {
+      if (!isMissingFirestoreIndexError(error)) throw error;
+
+      console.warn(
+        "[posInvoiceOrderRepository] Composite index unavailable; using paidAt range fallback.",
+        { warehouseId, startIso, endIso },
+      );
+      const snapshot = await orders()
+        .where("paidAt", ">=", startIso)
+        .where("paidAt", "<", endIso)
+        .get();
+      return snapshot.docs
+        .map((item) => asPosOrder(item.data()))
+        .filter((order) => order.warehouseId === warehouseId);
+    }
   },
 
   async mapByHkOrderNumbers(
@@ -53,7 +74,7 @@ export const posInvoiceOrderRepository = {
     for (let cursor = 0; cursor < unique.length; cursor += 30) {
       const chunk = unique.slice(cursor, cursor + 30);
       if (chunk.length === 0) continue;
-      const snapshot = await orders
+      const snapshot = await orders()
         .where("hkOrderNumber", "in", chunk)
         .get();
       snapshot.docs.forEach((item) => {

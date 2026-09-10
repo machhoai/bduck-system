@@ -40,12 +40,7 @@ const handleError = (res: Response, error: unknown) => {
   }
   if (error instanceof MeInvoiceApiError) {
     const mapped = toInvoicePreviewErrorResponse(error);
-    return sendError(
-      res,
-      mapped.messages,
-      mapped.statusCode,
-      mapped.data,
-    );
+    return sendError(res, mapped.messages, mapped.statusCode, mapped.data);
   }
   const known = error as {
     statusCode?: number;
@@ -128,30 +123,39 @@ export const syncInvoiceOrdersHandler = async (req: Request, res: Response) => {
       authorization,
       auditMetadata,
     );
-    const reconciliationWarehouseIds = input.purpose ===
-      InvoiceOrderSyncPurpose.RECONCILIATION
+    const shouldReconcile =
+      input.purpose === InvoiceOrderSyncPurpose.RECONCILIATION ||
+      input.include_reconciliation;
+    const reconciliationWarehouseIds = shouldReconcile
       ? result.partition_warehouse_ids.filter((warehouseId) =>
           authorization.can("invoices.reconcile", warehouseId),
         )
       : [];
     const reconciliationEntries = await Promise.all(
-      reconciliationWarehouseIds.map(async (warehouseId) => [
-        warehouseId,
-        await reconcileInvoiceDay(
-          warehouseId,
-          input.business_date,
-          actorId,
-          authorization,
-          auditMetadata,
-        ),
-      ] as const),
+      reconciliationWarehouseIds.map(
+        async (warehouseId) =>
+          [
+            warehouseId,
+            await reconcileInvoiceDay(
+              warehouseId,
+              input.business_date,
+              actorId,
+              authorization,
+              auditMetadata,
+            ),
+          ] as const,
+      ),
     );
     const reconciliations = Object.fromEntries(reconciliationEntries);
     const reconciliation = reconciliations[input.warehouse_id] ?? null;
-    return sendSuccess(res, { ...result, reconciliation, reconciliations }, {
-      vi: "Đã đồng bộ đầy đủ dữ liệu đơn hàng trong ngày.",
-      zh: "已完整同步当日订单数据。",
-    });
+    return sendSuccess(
+      res,
+      { ...result, reconciliation, reconciliations },
+      {
+        vi: "Đã đồng bộ đầy đủ dữ liệu đơn hàng trong ngày.",
+        zh: "已完整同步当日订单数据。",
+      },
+    );
   } catch (error) {
     return handleError(res, error);
   }

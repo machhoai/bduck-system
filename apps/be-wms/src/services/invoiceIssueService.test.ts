@@ -19,10 +19,20 @@ import {
   previewInvoiceBulkIssueSchema,
 } from "./invoiceBulkIssueSchemas.js";
 import {
+  deadlineTerminalInvoiceIssueStatus,
+  invoiceIssueBusinessDate,
+  invoiceIssueDeadline,
+  invoiceIssueDeadlineExpired,
+  retryTimeBeforeInvoiceDeadline,
+} from "./invoiceIssueDeadline.js";
+import {
   classifyInvoiceIssueFailure,
+  findInvoiceRetryDuplicate,
   invoiceLaneId,
   isExplicitMisaRejection,
+  isUserRetryCandidate,
   issueJobId,
+  publishResultConfirmsInvoice,
   sameInvoiceDocumentSet,
   statusIsIssued,
   validateInvoiceIssueCandidate,
@@ -123,6 +133,93 @@ test("ambiguous timeout and duplicate RefID never trigger immediate republish", 
   const duplicate = classifyInvoiceIssueFailure("DuplicateInvoiceRefID", 1);
   assert.equal(timeout.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
   assert.equal(duplicate.status, InvoiceIssueItemStatus.PENDING_CONFIRMATION);
+});
+
+test("invoice issue deadline is the next Vietnam midnight", () => {
+  const deadline = invoiceIssueDeadline("2026-08-24");
+  assert.equal(deadline.toISOString(), "2026-08-24T17:00:00.000Z");
+  assert.equal(
+    invoiceIssueBusinessDate(null, "2026-08-24T16:59:59.999Z"),
+    "2026-08-24",
+  );
+  assert.equal(
+    invoiceIssueBusinessDate(null, "2026-08-24T17:00:00.000Z"),
+    "2026-08-25",
+  );
+  assert.equal(
+    invoiceIssueDeadlineExpired(
+      deadline,
+      new Date("2026-08-24T16:59:59.999Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    invoiceIssueDeadlineExpired(
+      deadline,
+      new Date("2026-08-24T17:00:00.000Z"),
+    ),
+    true,
+  );
+});
+
+test("invoice retries never cross the Vietnam midnight deadline", () => {
+  const deadline = invoiceIssueDeadline("2026-08-24");
+  assert.equal(
+    retryTimeBeforeInvoiceDeadline(
+      15_000,
+      deadline,
+      new Date("2026-08-24T16:59:40.000Z"),
+    )?.toISOString(),
+    "2026-08-24T16:59:55.000Z",
+  );
+  assert.equal(
+    retryTimeBeforeInvoiceDeadline(
+      15_000,
+      deadline,
+      new Date("2026-08-24T16:59:50.000Z"),
+    ),
+    null,
+  );
+  assert.equal(
+    deadlineTerminalInvoiceIssueStatus(
+      InvoiceIssueItemStatus.RETRYABLE_ERROR,
+    ),
+    InvoiceIssueItemStatus.CANCELLED,
+  );
+  assert.equal(
+    deadlineTerminalInvoiceIssueStatus(
+      InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+    ),
+    InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+  );
+});
+
+test("MISA 429 opens a five-minute cooldown instead of rapid retries", () => {
+  const decision = classifyInvoiceIssueFailure(
+    new MeInvoiceApiError("rate limited", null, 429),
+    1,
+  );
+  assert.equal(decision.status, InvoiceIssueItemStatus.RETRYABLE_ERROR);
+  assert.equal(decision.retryAfterMs, 5 * 60_000);
+  assert.equal(decision.cooldownMs, 5 * 60_000);
+});
+
+test("a positive MISA publish trace completes without a status poll", () => {
+  assert.equal(
+    publishResultConfirmsInvoice({
+      errorCode: null,
+      transactionId: "transaction-1",
+    }),
+    true,
+  );
+  assert.equal(
+    publishResultConfirmsInvoice({
+      errorCode: "InvalidTaxCode",
+      transactionId: null,
+    }),
+    false,
+  );
+  assert.equal(publishResultConfirmsInvoice({ errorCode: null }), false);
 });
 
 test("Cloud Tasks schedule never rounds a retry before next_attempt_at", () => {
@@ -248,6 +345,39 @@ test("legacy review statuses issue directly without draft approval", () => {
   assert.deepEqual(issues, []);
 });
 
+test("issue policy blocks a draft whose VAT calculation is older than source", () => {
+  const normalizedLine = {
+    line_number: 1,
+    quantity: 1,
+    unit_price: 500_000,
+    discount_rate: null,
+    discount_amount: null,
+    vat_rate_name: "10%",
+  };
+  const issues = validateInvoiceIssueCandidate(
+    {
+      status: InvoiceDocumentStatus.READY_TO_ISSUE,
+      issue_eligible: true,
+      source_payload_hash: "same-raw-payload",
+      source_financial_fingerprint: "stale-zero-vat-fingerprint",
+      calculation: { calculation_hash: "zero-vat" },
+      payment_time: "2026-07-21T12:00:00+07:00",
+    },
+    {
+      source_payload_hash: "same-raw-payload",
+      normalized_items: [normalizedLine],
+      calculation: { calculation_hash: "ten-percent-vat" },
+      match_status: InvoiceOrderMatchStatus.NOT_CHECKED,
+    },
+    {
+      go_live_at: new Date("2026-07-20T00:00:00+07:00"),
+      sign_type: MeInvoiceSignType.CALCULATING_MACHINE,
+    } as MeInvoiceStoreConfig,
+    "issuer",
+  );
+  assert.ok(issues.some((issue) => issue.code === "SOURCE_FINANCIALS_STALE"));
+});
+
 test("job and lane keys are deterministic", () => {
   assert.equal(
     issueJobId("w1", "u1", "click-1"),
@@ -289,11 +419,11 @@ test("issue API accepts at most 30 unique candidates per request", () => {
   );
 });
 
-test("retry API requires OTP and supports multiple 30-item MISA jobs", () => {
+test("bulk stuck retry API requires a business date and OTP", () => {
   const input = {
     warehouse_id: "store-1",
+    business_date: "2026-08-24",
     otp: "123456",
-    items: [{ job_id: "job-1", item_id: "draft-1" }],
   };
   assert.equal(retryInvoiceIssueItemsSchema.safeParse(input).success, true);
   assert.equal(
@@ -303,12 +433,77 @@ test("retry API requires OTP and supports multiple 30-item MISA jobs", () => {
   assert.equal(
     retryInvoiceIssueItemsSchema.safeParse({
       ...input,
-      items: Array.from({ length: 301 }, (_, index) => ({
-        job_id: "job-1",
-        item_id: `draft-${index}`,
-      })),
+      business_date: "24/08/2026",
     }).success,
     false,
+  );
+});
+
+test("all stuck issue states are user retry candidates", () => {
+  for (const status of [
+    InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+    InvoiceIssueItemStatus.RETRYABLE_ERROR,
+    InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+  ]) {
+    assert.equal(isUserRetryCandidate({ status, ref_id: "ref-1" }), true);
+  }
+  assert.equal(
+    isUserRetryCandidate({
+      status: InvoiceIssueItemStatus.SUBMITTING,
+      ref_id: "ref-1",
+    }),
+    false,
+  );
+});
+
+test("duplicate retry check prioritizes RefID and strong business identities", () => {
+  const base = {
+    refId: "REF-1",
+    sourceOrderId: "SOURCE-1",
+    orderNumber: "ORDER-1",
+    invSeries: "1C26TAA",
+    businessDate: "2026-08-24",
+    totalAmount: 550_000,
+    buyerTaxCode: "0312345678",
+    buyerName: "Công ty Joy World",
+    sellerShopCode: "LM81",
+  };
+  const invoice = {
+    ref_id: "ref-1",
+    transaction_id: "transaction-1",
+    inv_series: "1C26TAA",
+    invoice_number: "000001",
+    invoice_date: "2026-08-24",
+    invoice_code: null,
+    buyer_name: null,
+    buyer_tax_code: "0312345678",
+    payment_method_name: null,
+    buyer_order_code: "ORDER-1",
+    seller_shop_code: "LM81",
+    total_amount: 550_000,
+    publish_status: 1,
+    send_tax_status: 2,
+    is_deleted: false,
+  };
+  assert.equal(findInvoiceRetryDuplicate(base, [invoice])?.reason, "REF_ID");
+  assert.equal(
+    findInvoiceRetryDuplicate({ ...base, refId: "new-ref" }, [
+      { ...invoice, ref_id: "other-ref" },
+    ])?.reason,
+    "ORDER_CODE",
+  );
+  assert.equal(
+    findInvoiceRetryDuplicate(
+      { ...base, refId: "new-ref", orderNumber: "new-order" },
+      [
+        {
+          ...invoice,
+          ref_id: "other-ref",
+          buyer_order_code: "other-order",
+        },
+      ],
+    )?.reason,
+    "BUSINESS_FINGERPRINT",
   );
 });
 
@@ -336,6 +531,7 @@ test("bulk issue validates scoped selection, OTP, and partitions MISA jobs", () 
       otp: "123456",
       idempotency_key: "bulk-request-1",
       config_fingerprint: "a".repeat(64),
+      preview_fingerprint: "b".repeat(64),
       action_time: "2026-07-21T10:00:00.000Z",
     }).success,
     true,

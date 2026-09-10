@@ -9,6 +9,7 @@ import {
   PERMISSION_REGISTRY,
   type PermissionDefinition,
 } from "@bduck/shared-types";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useTranslation } from "@/lib/i18n";
 
 interface RoleFormModalProps {
@@ -332,7 +333,7 @@ const PERMISSION_PAGE_DEFINITIONS: PermissionPageDefinition[] = [
           vi: "Cho phép truy cập số liệu doanh thu và đơn hàng.",
           zh: "允许访问营收和订单数据。",
         },
-        keys: ["revenue.read"],
+        keys: ["revenue.read", "revenue.export"],
       },
     ],
   },
@@ -500,6 +501,7 @@ export function RoleFormModal({
   onSave,
 }: RoleFormModalProps) {
   const { t, lang } = useTranslation();
+  const title = role ? t.rbac.editRole : t.rbac.addRole;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#0066cc");
@@ -582,251 +584,297 @@ export function RoleFormModal({
 
   const totalActive = Object.values(permissions).filter(Boolean).length;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-[90%] max-w-[90%] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            {role ? t.rbac.editRole : t.rbac.addRole}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95"
+  const formFields = (
+    <>
+      <label className="block">
+        <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
+          {t.rbac.roleName}
+        </span>
+        <input
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+        />
+      </label>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
+            {t.rbac.roleColor}
+          </span>
+          <input
+            type="color"
+            value={color}
+            onChange={(event) => setColor(event.target.value)}
+            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-2"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
+            {t.rbac.parentRole}
+          </span>
+          <select
+            value={parentId}
+            onChange={(event) => setParentId(event.target.value)}
+            className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
           >
-            <X size={18} />
-          </button>
+            <option value="">{t.rbac.rootRole}</option>
+            {roles
+              .filter((item) => item.id !== role?.id)
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
+          {t.warehouses.descriptionField}
+        </span>
+        <textarea
+          value={description}
+          rows={3}
+          onChange={(event) => setDescription(event.target.value)}
+          className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
+        />
+      </label>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+            {t.rbac.permissions}
+          </p>
+          <span className="rounded-full bg-[var(--color-brand-primary-muted)] px-3 py-1 text-xs font-semibold text-[var(--color-brand-primary)]">
+            {totalActive} {t.rbac.permissionsSelected}
+          </span>
         </div>
 
-        <form
-          id="roleForm"
-          onSubmit={handleSubmit}
-          className="flex-1 space-y-4 overflow-y-auto p-5"
-        >
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
-              {t.rbac.roleName}
-            </span>
-            <input
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            />
-          </label>
+        <div className="space-y-2">
+          {groupedPermissions.map((page) => {
+            const isExpanded = expandedGroups.has(page.id);
+            const activeCount = page.permissions.filter(
+              (p) => permissions[p.key] === true,
+            ).length;
+            const allChecked = activeCount === page.permissions.length;
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
-                {t.rbac.roleColor}
-              </span>
-              <input
-                type="color"
-                value={color}
-                onChange={(event) => setColor(event.target.value)}
-                className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-2"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
-                {t.rbac.parentRole}
-              </span>
-              <select
-                value={parentId}
-                onChange={(event) => setParentId(event.target.value)}
-                className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm outline-none focus:border-[var(--color-border-focus)]"
+            return (
+              <div
+                key={page.id}
+                className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)]"
               >
-                <option value="">{t.rbac.rootRole}</option>
-                {roles
-                  .filter((item) => item.id !== role?.id)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
+                {/* Group Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(page.id)}
+                  className="flex w-full items-center gap-3 bg-[var(--color-surface-card)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-card-hover)] cursor-pointer"
+                >
+                  {isExpanded ? (
+                    <ChevronDown
+                      size={16}
+                      className="shrink-0 text-[var(--color-text-muted)]"
+                    />
+                  ) : (
+                    <ChevronRight
+                      size={16}
+                      className="shrink-0 text-[var(--color-text-muted)]"
+                    />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
+                      {page.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 text-[var(--color-text-muted)]">
+                      {page.description}
+                    </span>
+                  </span>
+                  {activeCount > 0 && (
+                    <span className="rounded-full bg-[var(--color-brand-primary)] px-2.5 py-0.5 text-xxs font-semibold text-white">
+                      {activeCount}/{page.permissions.length}
+                    </span>
+                  )}
+                </button>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-[var(--color-text-secondary)]">
-              {t.warehouses.descriptionField}
-            </span>
-            <textarea
-              value={description}
-              rows={3}
-              onChange={(event) => setDescription(event.target.value)}
-              className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] px-4 py-2 text-sm outline-none focus:border-[var(--color-border-focus)]"
-            />
-          </label>
-
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {t.rbac.permissions}
-              </p>
-              <span className="rounded-full bg-[var(--color-brand-primary-muted)] px-3 py-1 text-xs font-semibold text-[var(--color-brand-primary)]">
-                {totalActive} {t.rbac.permissionsSelected}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              {groupedPermissions.map((page) => {
-                const isExpanded = expandedGroups.has(page.id);
-                const activeCount = page.permissions.filter(
-                  (p) => permissions[p.key] === true,
-                ).length;
-                const allChecked = activeCount === page.permissions.length;
-
-                return (
-                  <div
-                    key={page.id}
-                    className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)]"
-                  >
-                    {/* Group Header */}
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(page.id)}
-                      className="flex w-full items-center gap-3 bg-[var(--color-surface-card)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-card-hover)]"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown
-                          size={16}
-                          className="shrink-0 text-[var(--color-text-muted)]"
-                        />
-                      ) : (
-                        <ChevronRight
-                          size={16}
-                          className="shrink-0 text-[var(--color-text-muted)]"
-                        />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-                          {page.label}
-                        </span>
-                        <span className="mt-0.5 block text-xs leading-5 text-[var(--color-text-muted)]">
-                          {page.description}
-                        </span>
+                {/* Expanded Permissions */}
+                {isExpanded && (
+                  <div className="border-t border-[var(--color-border-soft)] bg-white">
+                    {/* Toggle All */}
+                    <label className="flex items-center gap-3 border-b border-dashed border-[var(--color-border-soft)] px-4 py-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={() => toggleGroupAll(page.permissions)}
+                        className="h-4 w-4 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
+                      />
+                      <span className="text-xs font-semibold text-[var(--color-brand-primary)]">
+                        {t.rbac.toggleAll}
                       </span>
-                      {activeCount > 0 && (
-                        <span className="rounded-full bg-[var(--color-brand-primary)] px-2.5 py-0.5 text-xxs font-semibold text-white">
-                          {activeCount}/{page.permissions.length}
-                        </span>
-                      )}
-                    </button>
+                    </label>
 
-                    {/* Expanded Permissions */}
-                    {isExpanded && (
-                      <div className="border-t border-[var(--color-border-soft)] bg-white">
-                        {/* Toggle All */}
-                        <label className="flex items-center gap-3 border-b border-dashed border-[var(--color-border-soft)] px-4 py-2.5">
-                          <input
-                            type="checkbox"
-                            checked={allChecked}
-                            onChange={() => toggleGroupAll(page.permissions)}
-                            className="h-4 w-4 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
-                          />
-                          <span className="text-xs font-semibold text-[var(--color-brand-primary)]">
-                            {t.rbac.toggleAll}
-                          </span>
-                        </label>
+                    {/* Individual Permissions */}
+                    <div className="divide-y divide-[var(--color-border-soft)]">
+                      {page.sections.map((section) => {
+                        const sectionActiveCount =
+                          section.permissions.filter(
+                            (perm) => permissions[perm.key] === true,
+                          ).length;
+                        const sectionAllChecked =
+                          sectionActiveCount === section.permissions.length;
 
-                        {/* Individual Permissions */}
-                        <div className="divide-y divide-[var(--color-border-soft)]">
-                          {page.sections.map((section) => {
-                            const sectionActiveCount =
-                              section.permissions.filter(
-                                (perm) => permissions[perm.key] === true,
-                              ).length;
-                            const sectionAllChecked =
-                              sectionActiveCount === section.permissions.length;
+                        return (
+                          <section key={section.id} className="px-4 py-3">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                  {section.label}
+                                </h3>
+                                <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)]">
+                                  {section.description}
+                                </p>
+                              </div>
+                              <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-[var(--color-brand-primary)] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={sectionAllChecked}
+                                  onChange={() =>
+                                    toggleGroupAll(section.permissions)
+                                  }
+                                  className="h-4 w-4 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
+                                />
+                                {sectionActiveCount}/
+                                {section.permissions.length}
+                              </label>
+                            </div>
 
-                            return (
-                              <section key={section.id} className="px-4 py-3">
-                                <div className="mb-3 flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                                      {section.label}
-                                    </h3>
-                                    <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)]">
-                                      {section.description}
-                                    </p>
-                                  </div>
-                                  <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-[var(--color-brand-primary)]">
-                                    <input
-                                      type="checkbox"
-                                      checked={sectionAllChecked}
-                                      onChange={() =>
-                                        toggleGroupAll(section.permissions)
-                                      }
-                                      className="h-4 w-4 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
-                                    />
-                                    {sectionActiveCount}/
-                                    {section.permissions.length}
-                                  </label>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                                  {section.permissions.map((perm) => (
-                                    <label
-                                      key={perm.key}
-                                      className="flex min-h-24 cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] px-3 py-3 transition-colors hover:bg-[var(--color-surface-card)]"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={permissions[perm.key] === true}
-                                        onChange={() =>
-                                          togglePermission(perm.key)
-                                        }
-                                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
-                                      />
-                                      <span className="min-w-0">
-                                        <span className="block text-sm font-medium text-[var(--color-text-primary)]">
-                                          {perm.label[lang]}
-                                        </span>
-                                        <code className="mt-1 inline-flex rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] px-2 py-0.5 text-xxs text-[var(--color-text-muted)]">
-                                          {perm.key}
-                                        </code>
-                                        <span className="mt-2 block text-xs leading-relaxed text-[var(--color-text-muted)]">
-                                          {perm.description[lang]}
-                                        </span>
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </section>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                              {section.permissions.map((perm) => (
+                                <label
+                                  key={perm.key}
+                                  className="flex min-h-24 cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] px-3 py-3 transition-colors hover:bg-[var(--color-surface-card)]"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={permissions[perm.key] === true}
+                                    onChange={() =>
+                                      togglePermission(perm.key)
+                                    }
+                                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--color-border-subtle)] text-[var(--color-brand-primary)]"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-medium text-[var(--color-text-primary)]">
+                                      {perm.label[lang]}
+                                    </span>
+                                    <code className="mt-1 inline-flex rounded-[var(--radius-sm)] bg-[var(--color-surface-subtle)] px-2 py-0.5 text-xxs text-[var(--color-text-muted)]">
+                                      {perm.key}
+                                    </code>
+                                    <span className="mt-2 block text-xs leading-relaxed text-[var(--color-text-muted)]">
+                                      {perm.description[lang]}
+                                    </span>
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </section>
+                        );
+                      })}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </form>
-
-        <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50"
-          >
-            {t.common.cancel}
-          </button>
-          <button
-            type="submit"
-            form="roleForm"
-            disabled={isSubmitting}
-            className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm text-white transition-all active:scale-95 disabled:opacity-50"
-          >
-            {t.common.save}
-          </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Modal Dialog (md and larger) */}
+      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4 backdrop-blur-[2px] md:flex">
+        <div className="flex max-h-[92vh] w-[90%] max-w-[860px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] shadow-2xl">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-[var(--color-text-muted)] transition-all hover:bg-[var(--color-surface-card)] active:scale-95 cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form
+            id="roleFormDesktop"
+            onSubmit={handleSubmit}
+            className="flex-1 space-y-4 overflow-y-auto p-5"
+          >
+            {formFields}
+          </form>
+
+          <div className="flex justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-card)] px-5 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="submit"
+              form="roleFormDesktop"
+              disabled={isSubmitting}
+              className="h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? t.common.loading : t.common.save}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Native BottomSheet (< md) */}
+      <BottomSheet
+        title={title}
+        isOpen={isOpen}
+        onClose={onClose}
+        defaultSnap="full"
+        zIndex={50}
+        contentClassName="flex flex-col overflow-y-auto overscroll-contain px-4 pb-6"
+      >
+        <form
+          id="roleFormMobile"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 pt-2 pb-2"
+        >
+          {formFields}
+
+          {/* Sticky Mobile Action Buttons at Bottom of Sheet */}
+          <div className="sticky bottom-0 -mx-4 -mb-6 mt-4 flex items-center justify-end gap-3 border-t border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)]/95 px-4 py-3 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 h-8 rounded-full border border-[var(--color-border-subtle)] bg-white px-4 text-sm font-medium text-[var(--color-text-secondary)] transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 h-8 rounded-full bg-[var(--color-brand-primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? t.common.loading : t.common.save}
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it } from "node:test";
 import { readFile } from "node:fs/promises";
+import { after, before, beforeEach, describe, it } from "node:test";
+
 import {
   assertFails,
   assertSucceeds,
@@ -46,6 +47,11 @@ async function seedAccess(userId, grants, isSystemAdmin = false) {
   await environment.withSecurityRulesDisabled(async (context) => {
     const firestore = context.firestore();
     const versionId = "access-v1";
+    await firestore.doc(`users/${userId}`).set({
+      status: "ACTIVE",
+      is_deleted: false,
+      workplace_facility_id: Object.keys(grants)[0] || null,
+    });
     await context
       .firestore()
       .doc(`user_access/${userId}`)
@@ -209,9 +215,20 @@ async function seedDocuments() {
       ],
       [
         "users/user-a",
-        { workplace_facility_id: "warehouse-c", is_deleted: false },
+        {
+          workplace_facility_id: "warehouse-c",
+          status: "ACTIVE",
+          is_deleted: false,
+        },
       ],
-      ["users/user-b", { workplace_facility_id: "store-d", is_deleted: false }],
+      [
+        "users/user-b",
+        {
+          workplace_facility_id: "store-d",
+          status: "ACTIVE",
+          is_deleted: false,
+        },
+      ],
       [
         "employee_profiles/profile-a",
         {
@@ -591,6 +608,22 @@ async function seedDocuments() {
         },
       ],
       [
+        "pos_order_summaries/local-order-1",
+        {
+          id: "local-order-1",
+          localOrderId: "local-order-1",
+          warehouseId: "store-d",
+          paymentStatus: "PAID",
+          syncStatus: "SYNC_SUCCESS",
+          totalAmount: 100000,
+          createdAt: "2026-07-01T03:00:00.000Z",
+        },
+      ],
+      [
+        "pos_order_cancellations/local-order-1",
+        { local_order_id: "local-order-1", warehouse_id: "store-d" },
+      ],
+      [
         "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
         {
           warehouse_id: "store-d",
@@ -756,6 +789,7 @@ beforeEach(async () => {
       "transfers.read": true,
       "warehouses.read": true,
       "revenue.read": true,
+      "pos.orders.read": true,
       "invoices.read": true,
       "invoices.config": true,
       "pos.advertising.read": true,
@@ -912,17 +946,11 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(admin, "roles", "role-1")));
     await assertFails(
       getDoc(
-        doc(
-          anonymous,
-          "external_store_bindings",
-          "joyworld-store-d-store-f",
-        ),
+        doc(anonymous, "external_store_bindings", "joyworld-store-d-store-f"),
       ),
     );
     await assertSucceeds(
-      getDoc(
-        doc(user, "external_store_bindings", "joyworld-store-d-store-f"),
-      ),
+      getDoc(doc(user, "external_store_bindings", "joyworld-store-d-store-f")),
     );
     await assertFails(
       updateDoc(
@@ -1316,6 +1344,7 @@ describe("grant-aware Firestore rules", () => {
       ["employee_contract_status_operations", "status-operation-a"],
       ["employee_contract_expiry_notification_locks", "warning-a"],
       ["employee_contract_migration_operations", "migration-operation-a"],
+      ["employee_identity_sync_jobs", "identity-sync-a"],
     ]) {
       await assertFails(getDoc(doc(hr, ...path)));
       await assertFails(getDoc(doc(admin, ...path)));
@@ -1533,6 +1562,12 @@ describe("grant-aware Firestore rules", () => {
     await assertSucceeds(getDoc(doc(admin, "meinvoice_accounts", "account-1")));
     await assertFails(getDoc(doc(admin, "meinvoice_tokens", "account-1")));
     await assertSucceeds(getDoc(doc(storeUser, "pos_orders", "local-order-1")));
+    await assertSucceeds(
+      getDoc(doc(storeUser, "pos_order_summaries", "local-order-1")),
+    );
+    await assertFails(
+      getDoc(doc(storeUser, "pos_order_cancellations", "local-order-1")),
+    );
     await assertSucceeds(getDoc(doc(admin, "pos_orders", "local-order-1")));
     await assertFails(
       getDoc(doc(warehouseUser, "pos_orders", "local-order-1")),
@@ -1542,7 +1577,9 @@ describe("grant-aware Firestore rules", () => {
       "pos_device_enrollments",
       "pos_receipt_settings",
       "pos_ticket_settings",
+      "pos_lucky_draw_settings",
       "pos_payment_settings",
+      "pos_product_sync_runs",
     ]) {
       await assertFails(getDoc(doc(storeUser, collectionName, "store-d")));
       await assertFails(getDoc(doc(admin, collectionName, "store-d")));
@@ -1631,6 +1668,34 @@ describe("grant-aware Firestore rules", () => {
     );
   });
 
+  it("allows facility-scoped product visibility snapshots but keeps writes backend-only", async () => {
+    const warehouseUser = environment
+      .authenticatedContext("user-a")
+      .firestore();
+    const storeUser = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    await assertSucceeds(
+      getDoc(doc(storeUser, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertFails(
+      getDoc(doc(warehouseUser, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin, "pos_product_visibility_settings", "store-d")),
+    );
+    await assertFails(
+      setDoc(doc(storeUser, "pos_product_visibility_settings", "store-d"), {
+        warehouse_id: "store-d",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(admin, "pos_product_visibility_settings", "store-d"), {
+        warehouse_id: "store-d",
+      }),
+    );
+  });
+
   it("keeps access snapshots owner-private and internal collections backend-only", async () => {
     const user = environment.authenticatedContext("user-a").firestore();
     const otherUser = environment.authenticatedContext("user-b").firestore();
@@ -1650,6 +1715,17 @@ describe("grant-aware Firestore rules", () => {
     });
     const user = environment.authenticatedContext("user-a").firestore();
     await assertFails(getDoc(doc(user, "inventory", "inventory-c")));
+  });
+
+  it("denies direct Firestore reads immediately for an inactive account", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/user-a").update({
+        status: "INACTIVE",
+      });
+    });
+    const inactiveUser = environment.authenticatedContext("user-a").firestore();
+    await assertFails(getDoc(doc(inactiveUser, "products", "product-1")));
+    await assertFails(getDoc(doc(inactiveUser, "users", "user-a")));
   });
 
   it("allows a materialized system admin to read facility-scoped data globally", async () => {

@@ -4,6 +4,7 @@ import {
   AttendanceRejectedReason,
   AttendanceVerificationStrategy,
   AuditAction,
+  isEmployeeAttendanceEligibleOnDate,
   type AttendanceCheckInContext,
   type AttendanceLateReport,
   type AttendanceLocationInput,
@@ -12,6 +13,7 @@ import {
   type User,
   type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
+
 import {
   createAttendanceLog,
   createAttendanceLateReport,
@@ -25,11 +27,12 @@ import {
 } from "../repositories/attendanceRepository.js";
 import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
 import { warehouseRepository } from "../repositories/warehouseRepository.js";
-import { logAudit, type AuditMetadata } from "./auditService.js";
+
 import {
   evaluateAttendanceLocation,
   type AttendanceLocationDecision,
 } from "./attendanceLocationPolicy.js";
+import { logAudit, type AuditMetadata } from "./auditService.js";
 
 const TIMEZONE = "Asia/Ho_Chi_Minh" as const;
 
@@ -191,12 +194,21 @@ export const fetchAttendanceContext = async (
       ? await getEmployeeProfileByUserId(user.id)
       : profileInput;
   const warehouseId = profile?.workplace_warehouse_id ?? null;
+  const attendanceDate = getVietnamDateKey();
+  const employmentEligible = Boolean(
+    profile && isEmployeeAttendanceEligibleOnDate(profile, attendanceDate),
+  );
   const canViewAttendance = capabilities.canView;
   const hasCheckInPermission = capabilities.canCheckIn;
   const canConfigureAttendance = capabilities.canConfigure;
   const canExportAttendance = capabilities.canExport;
 
-  if (!profile || !warehouseId || !capabilities.canAccessWorkplace) {
+  if (
+    !profile ||
+    !warehouseId ||
+    !capabilities.canAccessWorkplace ||
+    !employmentEligible
+  ) {
     const hasWorkplaceWithoutPermission = Boolean(profile && warehouseId);
     return {
       can_access_page:
@@ -217,17 +229,20 @@ export const fetchAttendanceContext = async (
       location_required: false,
       active_work_arrangement: null,
       messages: {
-        vi: hasWorkplaceWithoutPermission
+        vi: !employmentEligible && profile
+          ? "Hồ sơ lao động đã hết hiệu lực nên không thể chấm công."
+          : hasWorkplaceWithoutPermission
           ? "Bạn không có quyền chấm công tại cơ sở làm việc hiện tại."
           : "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
-        zh: hasWorkplaceWithoutPermission
+        zh: !employmentEligible && profile
+          ? "劳动关系已失效，无法考勤。"
+          : hasWorkplaceWithoutPermission
           ? "您无权在当前工作地点进行考勤。"
           : "账号尚未配置唯一的考勤工作地点。",
       },
     };
   }
 
-  const attendanceDate = getVietnamDateKey();
   const [policy, attendanceRequired, activeWorkArrangement] = await Promise.all([
     getActiveAttendancePolicy(warehouseId),
     isAttendanceRequired(user.id, warehouseId),
@@ -295,6 +310,33 @@ export const checkInAttendance = async (
       400,
       "Tài khoản chưa có một nơi làm việc duy nhất để chấm công.",
       "账号尚未配置唯一的考勤工作地点。",
+    );
+  }
+
+  const actionDate = getVietnamDateKey(actionTime);
+  const syncDate = getVietnamDateKey();
+  if (
+    !isEmployeeAttendanceEligibleOnDate(profile, actionDate) ||
+    !isEmployeeAttendanceEligibleOnDate(profile, syncDate)
+  ) {
+    const log = await createAttendanceLog(
+      buildLog(
+        user,
+        profile,
+        warehouseId,
+        null,
+        AttendanceLogStatus.REJECTED,
+        AttendanceRejectedReason.EMPLOYMENT_INACTIVE,
+        ipAddress,
+        actionTime,
+      ),
+    );
+    await auditAttendanceLog(log, user.id, auditMetadata);
+    throw createApiError(
+      403,
+      "Hồ sơ lao động đã hết hiệu lực nên không thể chấm công.",
+      "劳动关系已失效，无法考勤。",
+      log,
     );
   }
 
@@ -440,6 +482,17 @@ export const createLateArrivalReport = async (
       400,
       "Tài khoản chưa có một nơi làm việc duy nhất để báo đến trễ.",
       "账号尚未配置唯一的考勤工作地点，无法报告迟到。",
+    );
+  }
+
+  if (
+    !isEmployeeAttendanceEligibleOnDate(profile, attendanceDate) ||
+    !isEmployeeAttendanceEligibleOnDate(profile, getVietnamDateKey())
+  ) {
+    throw createApiError(
+      403,
+      "Hồ sơ lao động đã hết hiệu lực nên không thể báo đến trễ.",
+      "劳动关系已失效，无法提交迟到报告。",
     );
   }
 

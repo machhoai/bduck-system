@@ -5,10 +5,16 @@ import type {
   InvoiceBulkSelectionMode,
 } from "@bduck/shared-types";
 import { useEffect, useMemo, useState } from "react";
+
 import {
   invoiceApi,
   type InvoiceBulkIssueSelectionPayload,
 } from "@/api/invoiceApi";
+import { invoiceErrorToast } from "@/components/invoices/invoiceErrorPresentation";
+import {
+  normalizeInvoiceDisplayMappingDraft,
+  withInvoiceDisplayMappingDraftValue,
+} from "@/utils/invoiceDisplayMappingDraft";
 import { showToast } from "@/utils/toast";
 
 const sortedEntries = (mapping: Record<string, string>) =>
@@ -19,18 +25,6 @@ const sameMapping = (
   right: Record<string, string>,
 ) =>
   JSON.stringify(sortedEntries(left)) === JSON.stringify(sortedEntries(right));
-
-const withMappingValue = (
-  current: Record<string, string>,
-  source: string,
-  target: string,
-) => {
-  const next = { ...current };
-  const normalized = target.trim();
-  if (normalized) next[source] = normalized;
-  else delete next[source];
-  return next;
-};
 
 export const useInvoiceBulkDisplayConfig = ({
   warehouseId,
@@ -99,16 +93,14 @@ export const useInvoiceBulkDisplayConfig = ({
       setItemUnitMapping(nextConfig.item_unit_mapping);
     } catch (error) {
       console.error("[useInvoiceBulkDisplayConfig] load", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to load bulk invoice display config.";
-      onError(message);
-      setConfigOpen(false);
-      showToast.error(
-        lang === "vi" ? "Không thể tải cấu hình" : "无法加载配置",
-        message,
+      const presented = invoiceErrorToast(
+        error,
+        "LOAD",
+        "Unable to load bulk invoice display config.",
       );
+      onError(presented.description);
+      setConfigOpen(false);
+      showToast.error(presented.title, presented.description);
     } finally {
       setLoadingConfig(false);
     }
@@ -122,8 +114,8 @@ export const useInvoiceBulkDisplayConfig = ({
       warehouseId,
       businessDate,
       {
-        item_name_mapping: itemNameMapping,
-        item_unit_mapping: itemUnitMapping,
+        item_name_mapping: normalizeInvoiceDisplayMappingDraft(itemNameMapping),
+        item_unit_mapping: normalizeInvoiceDisplayMappingDraft(itemUnitMapping),
       },
     );
     try {
@@ -136,7 +128,8 @@ export const useInvoiceBulkDisplayConfig = ({
             ? "Tên sản phẩm và đơn vị sẽ được áp dụng khi xuất hóa đơn."
             : "商品名称和单位将在开票时应用。",
         errorDescription: (error) =>
-          error instanceof Error ? error.message : "Unknown error",
+          invoiceErrorToast(error, "SAVE", "Không thể lưu cấu hình.")
+            .description,
         retry: () => void saveDisplayConfig(),
         retryLabel: lang === "vi" ? "Thử lại" : "重试",
       });
@@ -146,7 +139,7 @@ export const useInvoiceBulkDisplayConfig = ({
     } catch (error) {
       console.error("[useInvoiceBulkDisplayConfig] save", error);
       onError(
-        error instanceof Error ? error.message : "Unable to save config.",
+        invoiceErrorToast(error, "SAVE", "Unable to save config.").description,
       );
     } finally {
       setSavingConfig(false);
@@ -167,11 +160,11 @@ export const useInvoiceBulkDisplayConfig = ({
     closeConfiguration: () => setConfigOpen(false),
     changeItemName: (source: string, target: string) =>
       setItemNameMapping((current) =>
-        withMappingValue(current, source, target),
+        withInvoiceDisplayMappingDraftValue(current, source, target),
       ),
     changeItemUnit: (source: string, target: string) =>
       setItemUnitMapping((current) =>
-        withMappingValue(current, source, target),
+        withInvoiceDisplayMappingDraftValue(current, source, target),
       ),
   };
 };

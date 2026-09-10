@@ -29,6 +29,7 @@ type StoredOpenApiConfig = {
   base_url: string;
   api_version: string;
   action_versions?: Record<string, string>;
+  payment_channel_mapping?: Record<string, "cash" | "transfer" | "other">;
   enabled: boolean;
   secret_key_ciphertext?: string | null;
   secret_key_iv?: string | null;
@@ -60,6 +61,12 @@ export const updateOpenApiConfigSchema = z.object({
   }),
   api_version: z.string().trim().min(1).max(50).default(DEFAULT_API_VERSION),
   action_versions: z.record(z.string().trim().min(1).max(100), z.string().trim().min(1).max(50)).default(DEFAULT_ACTION_VERSIONS),
+  payment_channel_mapping: z
+    .record(
+      z.string().trim().min(1).max(200),
+      z.enum(["cash", "transfer", "other"]),
+    )
+    .default({}),
   enabled: z.boolean().default(true),
 });
 
@@ -146,6 +153,7 @@ const toPublicConfig = (
       ...DEFAULT_ACTION_VERSIONS,
       ...(data.action_versions ?? {}),
     },
+    payment_channel_mapping: data.payment_channel_mapping ?? {},
     enabled: data.enabled === true,
     has_secret: hasSecret,
     secret_key_mask: hasSecret ? "********" : null,
@@ -215,6 +223,7 @@ export const upsertOpenApiConfig = async (
       ...DEFAULT_ACTION_VERSIONS,
       ...parsed.action_versions,
     },
+    payment_channel_mapping: parsed.payment_channel_mapping,
     enabled: parsed.enabled,
     updated_at: now,
     updated_by: actorId,

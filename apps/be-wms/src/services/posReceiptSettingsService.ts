@@ -5,6 +5,10 @@ import { posReceiptSettingsRepository } from "../repositories/posReceiptSettings
 import type { AuditMetadata } from "./auditService.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import type { PosReceiptSettingsInput } from "./posReceiptSettingsSchemas.js";
+import {
+  persistPosSettingsLogo,
+  toAdminPosSettings,
+} from "./posSettingsLogoStorageService.js";
 import { loadWarehouseById } from "./warehouseService.js";
 
 const assertWarehouse = async (warehouseId: string) => {
@@ -17,7 +21,9 @@ export const getPosReceiptSettings = async (
 ): Promise<PosReceiptSettings | null> => {
   authorization.assert("pos.settings.read", warehouseId);
   await assertWarehouse(warehouseId);
-  return posReceiptSettingsRepository.findByWarehouse(warehouseId);
+  return toAdminPosSettings(
+    await posReceiptSettingsRepository.findByWarehouse(warehouseId),
+  );
 };
 
 export const savePosReceiptSettings = async (input: {
@@ -29,10 +35,19 @@ export const savePosReceiptSettings = async (input: {
 }): Promise<PosReceiptSettings> => {
   input.authorization.assert("pos.settings.manage", input.warehouseId);
   await assertWarehouse(input.warehouseId);
-  return posReceiptSettingsRepository.save({
+  const current = await posReceiptSettingsRepository.findByWarehouse(
+    input.warehouseId,
+  );
+  const logo = await persistPosSettingsLogo({
+    warehouseId: input.warehouseId,
+    logoDataUrl: input.value.logo_data_url,
+    currentSettings: current,
+  });
+  const saved = await posReceiptSettingsRepository.save({
     warehouseId: input.warehouseId,
     actorId: input.actorId,
-    value: input.value,
+    value: { ...input.value, ...logo },
     context: input.auditMetadata,
   });
+  return (await toAdminPosSettings(saved))!;
 };

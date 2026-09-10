@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "msg": "Hoàn tiền thành công",
+  "code": 0,
+  "data": {
+    "orderNumber": "TD00000000000000000000001",
+    "memberStoreDesc": "",
+    "tasks": [
+      {
+        "category": 1000,
+        "printReceiptCategory": 0,
+        "content": "<html><body>REDACTED_REFUND_RECEIPT</body></html>",
+        "remark": "Đặt hàng hoàn thành chứng từ in",
+        "printData": "",
+        "printDataByPay": {
+          "printByPayCategory": 1,
+          "printJsonData": "{}"
+        }
+      }
+    ]
+  },
+  "desc": ""
+}

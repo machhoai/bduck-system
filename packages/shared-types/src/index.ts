@@ -31,3 +31,5 @@ export * from './leaveApproval.js';
 export * from './fileLibrary.js';
 export * from './invoices.js';
 export * from './pos.js';
+export * from './revenue.js';
+export * from './revenueProducts.js';

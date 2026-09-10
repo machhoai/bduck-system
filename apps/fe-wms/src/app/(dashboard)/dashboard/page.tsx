@@ -146,7 +146,7 @@ export default function DashboardPage() {
             {/* ── Header ── */}
             <header
                 id="wms-dashboard-header"
-                className="relative z-10 flex justify-between gap-3 sm:flex-row sm:items-end sm:justify-between"
+                className="relative z-40 flex justify-between gap-3 sm:flex-row sm:items-end sm:justify-between"
             >
                 <div className="flex flex-col gap-0.5">
                     <div className="flex flex-wrap items-center gap-2">
@@ -157,7 +157,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-white/90">{d.title}</p>
                 </div>
 
-                <div id="wms-dashboard-warehouse-filter" className="shrink-0 z-100">
+                <div id="wms-dashboard-warehouse-filter" className="shrink-0 relative z-50">
                     <WarehouseSelector
                         warehouses={stores}
                         selectedId={selectedWarehouseId}
@@ -181,12 +181,6 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {refreshing && (
-                <p className="relative z-10 text-right text-[10px] text-white/80">
-                    {t.common.loading}
-                </p>
-            )}
-
             {hasRevenueAccess && data && stores.length > 0 && (
                 <div className="flex flex-col gap-3">
                     <DashboardRevenueOverview
@@ -199,20 +193,6 @@ export default function DashboardPage() {
                     />
                 </div>
             )}
-
-            {/* ── Expense Dashboard Widgets ── */}
-            {/* {hasExpenseAccess && (
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between pb-1.5">
-                        <h2 className="font-[var(--font-display)] text-base font-semibold leading-tight text-[var(--color-text-primary)]">
-                            {t.expenses?.title || "Quản lý Chi phí"}
-                        </h2>
-                    </div>
-                    <ExpenseDashboardWidgets
-                        warehouseId={selectedWarehouseId || "ALL"}
-                    />
-                </div>
-            )} */}
 
             <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between pb-1.5">

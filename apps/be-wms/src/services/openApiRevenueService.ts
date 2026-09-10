@@ -35,3 +35,16 @@ export const getOpenApiGoodsStatistics = (
     GoodsSellSource: "",
     GoodsTypeNameContent: "",
   });
+
+export const getOpenApiGoodsStatisticsForRange = (
+  warehouseId: string,
+  startDate: string,
+  endDate: string,
+): Promise<OpenApiActionResponse> =>
+  callOpenApiAction(warehouseId, "report_sell_statistics_bygoodstype", {
+    StartDate: startDate,
+    EndDate: endDate,
+    GoodsName: "",
+    GoodsSellSource: "",
+    GoodsTypeNameContent: "",
+  });

@@ -65,6 +65,33 @@ export interface PosDeviceSessionResult {
   server_time: Date;
 }
 
+export interface PosDeviceHeartbeatResult {
+  device: Omit<PosDevice, "credential_hash">;
+  server_time: Date;
+}
+
+export interface PosDeviceConfigVersions {
+  receipt_settings: number | null;
+  ticket_settings: number | null;
+  payment_settings: number | null;
+  customer_display_settings: number | null;
+}
+
+export interface PosDeviceConfigSyncResult {
+  versions: PosDeviceConfigVersions;
+  changed: {
+    receipt_settings: boolean;
+    ticket_settings: boolean;
+    payment_settings: boolean;
+    customer_display_settings: boolean;
+  };
+  receipt_settings: PosReceiptSettings | null;
+  ticket_settings: PosTicketSettings | null;
+  payment_settings: PosPaymentSettings | null;
+  customer_display_settings: PosCustomerDisplaySettingsView | null;
+  server_time: Date;
+}
+
 export interface PosReceiptSettingsWatchResult {
   changed: boolean;
   receipt_settings: PosReceiptSettings | null;
@@ -131,6 +158,56 @@ export interface PosCustomerDisplaySettingsWatchResult {
   server_time: Date;
 }
 
+/** Warehouse-scoped visibility overrides applied on top of the JPOS catalog. */
+export interface PosProductVisibilitySettings extends SoftDeletable {
+  id: string;
+  warehouse_id: string;
+  version: number;
+  disabled_group_keys: string[];
+  disabled_product_ids: string[];
+  updated_by: string;
+}
+
+/** Minimal catalog projection required by the JPOS visibility editors. */
+export interface PosProductVisibilityCatalogItem {
+  goods_id: string;
+  goods_name: string;
+  category: number;
+  group_key: string;
+  group_name: string;
+  type_id: string | null;
+}
+
+export interface PosProductVisibilitySettingsView {
+  settings: PosProductVisibilitySettings | null;
+  products: PosProductVisibilityCatalogItem[];
+}
+
+export interface PosProductVisibilitySettingsInput {
+  expected_version: number;
+  disabled_group_keys: string[];
+  disabled_product_ids: string[];
+  action_time: string;
+}
+
+export interface PosProductCatalogSyncInput {
+  request_id: string;
+  action_time: string;
+}
+
+export interface PosProductCatalogSyncResult {
+  success: true;
+  productCount: number;
+  souvenirProductCount: number;
+  disabledProductCount: number;
+  removedProductCount: number;
+  removedSouvenirCount: number;
+  newProductCount: number;
+  newProductIds: string[];
+  hiddenWarehouseCount: number;
+  syncedAt: string;
+}
+
 export interface PosReceiptFontWeights {
   storeName: number;
   storeDetails: number;
@@ -163,7 +240,14 @@ export interface PosReceiptSettings extends SoftDeletable {
   hotline: string;
   after_sales_text: string;
   footer_message: string;
+  /** Legacy input only. Persisted records use the Storage metadata below. */
   logo_data_url: string | null;
+  logo_storage_path: string | null;
+  logo_checksum_sha256: string | null;
+  logo_content_type: "image/jpeg" | "image/png" | "image/webp" | null;
+  logo_file_size_bytes: number | null;
+  /** Device-only URL; never persisted. */
+  logo_content_url?: string | null;
   logo_width_mm: number;
   logo_max_height_mm: number;
   logo_contrast_percent: number;
@@ -192,7 +276,14 @@ export interface PosTicketSettings extends SoftDeletable {
   subtitle: string;
   instructions: string;
   footer_message: string;
+  /** Legacy input only. Persisted records use the Storage metadata below. */
   logo_data_url: string | null;
+  logo_storage_path: string | null;
+  logo_checksum_sha256: string | null;
+  logo_content_type: "image/jpeg" | "image/png" | "image/webp" | null;
+  logo_file_size_bytes: number | null;
+  /** Device-only URL; never persisted. */
+  logo_content_url?: string | null;
   logo_width_mm: number;
   logo_max_height_mm: number;
   logo_contrast_percent: number;
@@ -208,6 +299,48 @@ export interface PosTicketSettings extends SoftDeletable {
   show_sequence: boolean;
   auto_print_after_payment: boolean;
   updated_by: string;
+}
+
+export type PosLuckyDrawPaperSize = "POS58" | "POS80" | "POS82";
+
+/** Shared contract persisted in pos_lucky_draw_settings for JPULSE and JPOS. */
+export interface PosLuckyDrawSettings {
+  warehouseId: string;
+  enabled: boolean;
+  paperSize: PosLuckyDrawPaperSize;
+  programName: string;
+  ticketTitle: string;
+  message: string;
+  footerMessage: string;
+  packageTicketCounts: Record<string, number>;
+  version: number;
+  updatedAt: string;
+  updatedByUid: string;
+}
+
+export type PosLuckyDrawSettingsInput = Pick<
+  PosLuckyDrawSettings,
+  | "enabled"
+  | "paperSize"
+  | "programName"
+  | "ticketTitle"
+  | "message"
+  | "footerMessage"
+  | "packageTicketCounts"
+>;
+
+export interface PosLuckyDrawPackageOption {
+  goodsId: string;
+  goodsName: string;
+  category: number;
+  typeName: string;
+  price: number;
+  afterTaxPrice: number;
+}
+
+export interface PosLuckyDrawSettingsView {
+  settings: PosLuckyDrawSettings | null;
+  packages: PosLuckyDrawPackageOption[];
 }
 
 export interface PosStoreOverview {
@@ -230,6 +363,140 @@ export interface PosPaymentSettings {
   version: number;
   updatedAt: string;
   updatedByUid: string;
+}
+
+export const POS_ORDER_PAYMENT_STATUSES = [
+  "DRAFT",
+  "PAID",
+  "REFUNDING",
+  "REFUNDED",
+  "REFUND_FAILED",
+  "REFUND_UNKNOWN",
+] as const;
+export type PosOrderPaymentStatus =
+  (typeof POS_ORDER_PAYMENT_STATUSES)[number];
+
+export const POS_ORDER_SYNC_STATUSES = [
+  "NOT_SYNCED",
+  "PENDING",
+  "SYNCING",
+  "SYNC_FAILED",
+  "SYNC_SUCCESS",
+  "CANCELLED",
+] as const;
+export type PosOrderSyncStatus = (typeof POS_ORDER_SYNC_STATUSES)[number];
+
+export const POS_ORDER_CANCELLATION_STATUSES = [
+  "PENDING",
+  "REFUNDING",
+  "SUCCEEDED",
+  "FAILED",
+  "UNKNOWN",
+] as const;
+export type PosOrderCancellationStatus =
+  (typeof POS_ORDER_CANCELLATION_STATUSES)[number];
+
+export type PosOrderSource = "JPOS" | "JOYWORLD_IMPORT";
+
+export interface PosOrderListItem {
+  goodsId: string;
+  goodsName: string;
+  quantity: number;
+  price: number;
+}
+
+export interface PosOrderSummary {
+  id: string;
+  localOrderId: string;
+  warehouseId: string;
+  source: PosOrderSource;
+  legacyStatus: string;
+  paymentStatus: PosOrderPaymentStatus;
+  syncStatus: PosOrderSyncStatus;
+  hkOrderNumber: string | null;
+  remoteOrderId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  normalizedPhone: string | null;
+  operatorId: string;
+  operatorName: string;
+  productNames: string[];
+  items: PosOrderListItem[];
+  totalAmount: number;
+  createdAt: string;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  version: number;
+}
+
+export interface PosOrderSyncDetail {
+  retryCount: number;
+  lastError: string | null;
+  syncedAt: string | null;
+  operationId: string | null;
+}
+
+export interface PosOrderInvoiceSummary {
+  sourceOrderDocumentId: string | null;
+  documentId: string | null;
+  status: string | null;
+  invoiceNumber: string | null;
+  blocked: boolean;
+}
+
+export interface PosOrderCancellationSummary {
+  operationId: string;
+  status: PosOrderCancellationStatus;
+  reason: string;
+  actionTime: string;
+  syncTime: string;
+  cancelledBy: string;
+  refundOrderNumber: string | null;
+  lastError: string | null;
+}
+
+export interface PosOrderDetail extends PosOrderSummary {
+  paymentMethod: string;
+  paymentMethodId: string;
+  paymentMethodName: string;
+  memberCode: string | null;
+  deviceId: string | null;
+  sync: PosOrderSyncDetail;
+  invoice: PosOrderInvoiceSummary;
+  cancellation: PosOrderCancellationSummary | null;
+}
+
+export interface PosOrderListCursor {
+  createdAt: string;
+  id: string;
+}
+
+export interface PosOrderListResult {
+  orders: PosOrderSummary[];
+  nextCursor: string | null;
+  employeeOptions: Array<{ id: string; name: string }>;
+}
+
+export interface PosOrderRefundPreview {
+  mode: "LOCAL_ONLY" | "REMOTE_REFUND";
+  refundable: boolean;
+  amount: number;
+  paymentMethodNames: string;
+  remoteOrderId: string | null;
+  remoteOrderNumber: string | null;
+  blockedReason: string | null;
+}
+
+export interface PosOrderCancelInput {
+  reason: string;
+  action_time: string;
+  expectedVersion: number;
+  refundConfirmed: boolean;
+}
+
+export interface PosOrderCancelResult {
+  order: PosOrderDetail;
+  idempotent: boolean;
 }
 
 export const POS_MEMBER_COMPENSATION_STATUSES = [

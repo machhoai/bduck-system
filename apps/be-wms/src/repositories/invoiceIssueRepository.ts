@@ -10,6 +10,7 @@ import { db } from "../config/firebase.js";
 import {
   invoiceLaneId,
   isExplicitMisaRejection,
+  isUserRetryCandidate,
 } from "../services/invoiceIssuePolicy.js";
 
 const jobs = db.collection("invoice_issue_jobs");
@@ -27,7 +28,11 @@ export interface PreparedIssueItem {
   refId: string;
   payloadHash: string;
   payload: Record<string, unknown>;
+  businessDate: string;
+  issueDeadlineAt: Date;
 }
+
+const INITIAL_STATUS_CHECK_DELAY_MS = 15 * 60_000;
 
 const initialCounts = (total: number): InvoiceIssueJobCounts => ({
   total,
@@ -116,10 +121,22 @@ export const invoiceIssueRepository = {
         Promise.all(sourceRefs.map((ref) => transaction.get(ref))),
         Promise.all(registryRefs.map((ref) => transaction.get(ref))),
       ]);
+      const posOrderRefs = sourceSnaps.map((sourceSnapshot) => {
+        const localOrderId = sourceSnapshot.data()?.local_order_id;
+        return typeof localOrderId === "string" && localOrderId
+          ? db.collection("pos_orders").doc(localOrderId)
+          : null;
+      });
+      const posOrderSnaps = await Promise.all(
+        posOrderRefs.map((reference) =>
+          reference ? transaction.get(reference) : Promise.resolve(null),
+        ),
+      );
       const now = new Date();
       input.items.forEach((item, index) => {
         const document = documentSnaps[index]?.data();
         const source = sourceSnaps[index]?.data();
+        const posOrder = posOrderSnaps[index]?.data();
         if (
           !document ||
           !source ||
@@ -135,7 +152,12 @@ export const invoiceIssueRepository = {
           document.source_payload_hash !== item.sourcePayloadHash ||
           source.source_payload_hash !== item.sourcePayloadHash ||
           source.match_status === InvoiceOrderMatchStatus.MATCHED ||
-          document.active_issue_job_id
+          document.active_issue_job_id ||
+          posOrder?.cancellationOperationId ||
+          ["REFUNDING", "REFUNDED", "REFUND_UNKNOWN"].includes(
+            posOrder?.paymentStatus,
+          ) ||
+          posOrder?.syncStatus === "CANCELLED"
         ) {
           throw Object.assign(new Error("INVOICE_ISSUE_CONFLICT"), {
             statusCode: 409,
@@ -160,6 +182,10 @@ export const invoiceIssueRepository = {
         status: InvoiceIssueJobStatus.QUEUED,
         idempotency_key: input.idempotencyKey,
         requested_by: input.actorId,
+        business_dates: [...new Set(input.items.map((item) => item.businessDate))],
+        issue_deadline_at: new Date(
+          Math.min(...input.items.map((item) => item.issueDeadlineAt.getTime())),
+        ),
         bulk_run_id: input.bulkRunId ?? null,
         counts: initialCounts(input.items.length),
         created_at: now,
@@ -178,6 +204,8 @@ export const invoiceIssueRepository = {
           source_order_id: item.sourceOrderId,
           ref_id: item.refId,
           prepared_payload_hash: item.payloadHash,
+          business_date: item.businessDate,
+          issue_deadline_at: item.issueDeadlineAt,
           status: InvoiceIssueItemStatus.QUEUED,
           attempt_count: 0,
           next_attempt_at: now,
@@ -214,11 +242,14 @@ export const invoiceIssueRepository = {
           prepared_payload_hash: item.payloadHash,
           queued_by: input.actorId,
           queued_at: now,
+          business_date: item.businessDate,
+          issue_deadline_at: item.issueDeadlineAt,
           updated_by: input.actorId,
           updated_at: now,
         });
         transaction.update(sourceRefs[index]!, {
           invoice_document_status: InvoiceDocumentStatus.QUEUED,
+          issue_deadline_at: item.issueDeadlineAt,
           updated_at: now,
         });
       });
@@ -251,13 +282,18 @@ export const invoiceIssueRepository = {
       const job = jobSnap.data()!;
       const item = itemSnap.data()!;
       const status = item.status as InvoiceIssueItemStatus;
+      const userRetryRequested = Boolean(item.manual_retry_requested_at);
       if (
-        ![
-          InvoiceIssueItemStatus.QUEUED,
-          InvoiceIssueItemStatus.RETRYABLE_ERROR,
-          InvoiceIssueItemStatus.PENDING_CONFIRMATION,
-          InvoiceIssueItemStatus.SUBMITTING,
-        ].includes(status)
+        !(
+          [
+            InvoiceIssueItemStatus.QUEUED,
+            InvoiceIssueItemStatus.RETRYABLE_ERROR,
+            InvoiceIssueItemStatus.PENDING_CONFIRMATION,
+            InvoiceIssueItemStatus.SUBMITTING,
+          ].includes(status) ||
+          (status === InvoiceIssueItemStatus.MANUAL_RECONCILIATION &&
+            userRetryRequested)
+        )
       )
         return null;
       const nextAttempt =
@@ -381,6 +417,8 @@ export const invoiceIssueRepository = {
     errorCode?: string | null;
     lastError?: string | null;
     retryEligible?: boolean;
+    clearManualRetryRequest?: boolean;
+    circuitOpenMs?: number;
   }) {
     const jobRef = jobs.doc(input.jobId);
     const itemRef = jobRef.collection("items").doc(input.itemId);
@@ -415,6 +453,10 @@ export const invoiceIssueRepository = {
       counts[countKey(currentStatus)] -= 1;
       counts[countKey(input.status)] += 1;
       const now = new Date();
+      const nextStatusCheckAt =
+        input.status === InvoiceIssueItemStatus.ISSUED
+          ? new Date(now.getTime() + INITIAL_STATUS_CHECK_DELAY_MS)
+          : null;
       const jobStatus = terminalJobStatus(counts);
       const completedAt = [
         InvoiceIssueItemStatus.ISSUED,
@@ -434,6 +476,15 @@ export const invoiceIssueRepository = {
         retry_eligible: input.retryEligible === true,
         completed_at: completedAt,
         updated_at: now,
+        ...(input.clearManualRetryRequest
+          ? {
+              manual_retry_requested_at: null,
+              manual_retry_requested_by: null,
+              manual_retry_allow_publish: null,
+              manual_retry_sign_type: null,
+              manual_retry_request_id: null,
+            }
+          : {}),
       });
       transaction.update(jobRef, {
         status: jobStatus,
@@ -457,6 +508,11 @@ export const invoiceIssueRepository = {
         issue_retry_eligible: input.retryEligible === true,
         last_issue_error_code: input.errorCode ?? null,
         last_issue_error: input.lastError ?? null,
+        next_status_check_at: nextStatusCheckAt,
+        status_check_count:
+          input.status === InvoiceIssueItemStatus.ISSUED ? 0 : null,
+        status_monitoring_complete:
+          input.status === InvoiceIssueItemStatus.ISSUED ? false : true,
         updated_at: now,
       });
       transaction.update(sourceRef, {
@@ -470,6 +526,11 @@ export const invoiceIssueRepository = {
         misa_invoice_number: input.invoiceNumber ?? item.invoice_number ?? null,
         issue_retry_eligible: input.retryEligible === true,
         misa_error_code: input.errorCode ?? null,
+        next_status_check_at: nextStatusCheckAt,
+        status_check_count:
+          input.status === InvoiceIssueItemStatus.ISSUED ? 0 : null,
+        status_monitoring_complete:
+          input.status === InvoiceIssueItemStatus.ISSUED ? false : true,
         updated_at: now,
       });
       if (laneSnap.exists && laneSnap.data()?.lease_owner === input.owner) {
@@ -488,7 +549,9 @@ export const invoiceIssueRepository = {
           heartbeat_at: now,
           consecutive_failures: nextFailures,
           circuit_open_until:
-            nextFailures >= 5
+            input.circuitOpenMs && input.circuitOpenMs > 0
+              ? new Date(now.getTime() + input.circuitOpenMs)
+              : nextFailures >= 5
               ? new Date(now.getTime() + 5 * 60_000)
               : input.status === InvoiceIssueItemStatus.ISSUED
                 ? null
@@ -513,7 +576,11 @@ export const invoiceIssueRepository = {
         if (
           !snapshot.exists ||
           document?.warehouse_id !== warehouseId ||
-          document.status !== InvoiceDocumentStatus.MANUAL_RECONCILIATION ||
+          ![
+            InvoiceDocumentStatus.PENDING_CONFIRMATION,
+            InvoiceDocumentStatus.RETRYABLE_ERROR,
+            InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+          ].includes(document.status as InvoiceDocumentStatus) ||
           typeof document.ref_id !== "string"
         ) {
           return null;
@@ -529,7 +596,7 @@ export const invoiceIssueRepository = {
           !job.exists ||
           job.data()?.warehouse_id !== warehouseId ||
           !item.exists ||
-          !isExplicitMisaRejection(item.data()!)
+          !isUserRetryCandidate(item.data()!)
         ) {
           return null;
         }
@@ -542,6 +609,105 @@ export const invoiceIssueRepository = {
     return reservations.filter(
       (value): value is NonNullable<typeof value> => value !== null,
     );
+  },
+
+  async requestVerifiedRetryItems(input: {
+    jobId: string;
+    warehouseId: string;
+    actorId: string;
+    requestId: string;
+    signType: number;
+    items: Array<{ itemId: string; allowPublish: boolean }>;
+  }) {
+    const uniqueItems = new Map(input.items.map((item) => [item.itemId, item]));
+    if (uniqueItems.size !== input.items.length) {
+      throw Object.assign(new Error("DUPLICATE_RETRY_ITEM"), {
+        statusCode: 400,
+      });
+    }
+    const selected = [...uniqueItems.values()];
+    const jobRef = jobs.doc(input.jobId);
+    const itemRefs = selected.map((item) =>
+      jobRef.collection("items").doc(item.itemId),
+    );
+    const documentRefs = selected.map((item) => documents.doc(item.itemId));
+    const sourceRefs = selected.map((item) => sourceOrders.doc(item.itemId));
+
+    return db.runTransaction(async (transaction) => {
+      const [jobSnap, itemSnaps, documentSnaps, sourceSnaps] =
+        await Promise.all([
+          transaction.get(jobRef),
+          Promise.all(itemRefs.map((ref) => transaction.get(ref))),
+          Promise.all(documentRefs.map((ref) => transaction.get(ref))),
+          Promise.all(sourceRefs.map((ref) => transaction.get(ref))),
+        ]);
+      if (
+        !jobSnap.exists ||
+        jobSnap.data()?.warehouse_id !== input.warehouseId
+      ) {
+        throw Object.assign(new Error("INVOICE_ISSUE_JOB_NOT_FOUND"), {
+          statusCode: 404,
+        });
+      }
+
+      itemSnaps.forEach((itemSnap, index) => {
+        const item = itemSnap.data();
+        const document = documentSnaps[index]?.data();
+        const source = sourceSnaps[index]?.data();
+        if (
+          !itemSnap.exists ||
+          !item ||
+          !isUserRetryCandidate(item) ||
+          !document ||
+          document.warehouse_id !== input.warehouseId ||
+          ![
+            InvoiceDocumentStatus.PENDING_CONFIRMATION,
+            InvoiceDocumentStatus.RETRYABLE_ERROR,
+            InvoiceDocumentStatus.MANUAL_RECONCILIATION,
+          ].includes(document.status as InvoiceDocumentStatus) ||
+          document.ref_id !== item.ref_id ||
+          (document.active_issue_job_id &&
+            document.active_issue_job_id !== input.jobId) ||
+          !source ||
+          source.warehouse_id !== input.warehouseId ||
+          source.match_status === InvoiceOrderMatchStatus.MATCHED
+        ) {
+          throw Object.assign(new Error("INVOICE_RETRY_ITEM_NOT_ELIGIBLE"), {
+            statusCode: 409,
+          });
+        }
+      });
+
+      const now = new Date();
+      itemSnaps.forEach((itemSnap, index) => {
+        const selection = selected[index]!;
+        transaction.update(itemRefs[index]!, {
+          next_attempt_at: now,
+          manual_retry_requested_at: now,
+          manual_retry_requested_by: input.actorId,
+          manual_retry_allow_publish: selection.allowPublish,
+          manual_retry_sign_type: input.signType,
+          manual_retry_request_id: input.requestId,
+          updated_at: now,
+        });
+      });
+      transaction.set(
+        jobRef,
+        {
+          last_retry_by: input.actorId,
+          last_retry_at: now,
+          updated_at: now,
+        },
+        { merge: true },
+      );
+      return {
+        scheduled: itemSnaps.map((snapshot, index) => ({
+          itemId: selected[index]!.itemId,
+          attempt: Number(snapshot.data()?.attempt_count ?? 0),
+          allowPublish: selected[index]!.allowPublish,
+        })),
+      };
+    });
   },
 
   async requeueRejectedItems(input: {

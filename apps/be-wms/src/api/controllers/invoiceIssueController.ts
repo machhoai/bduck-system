@@ -238,8 +238,8 @@ export const listInvoiceIssueRetryCandidatesHandler = async (
       requireRequestAuthorization(req),
     );
     return sendSuccess(res, data, {
-      vi: "Đã tải các hóa đơn bị MISA từ chối có thể thử lại.",
-      zh: "已加载可安全重试的 MISA 拒绝发票。",
+      vi: "Đã tải các hóa đơn đang treo có thể kiểm tra và thử lại.",
+      zh: "已加载可检查并重试的挂起发票。",
     });
   } catch (error) {
     return handleError(res, error);
@@ -259,8 +259,8 @@ export const retryRejectedInvoiceIssueItemsHandler = async (
       getAuditRequestMetadata(req),
     );
     return sendSuccess(res, data, {
-      vi: "Đã kiểm tra RefID và đưa các hóa đơn bị từ chối vào hàng đợi thử lại.",
-      zh: "已检查 RefID，并将被拒发票重新加入队列。",
+      vi: "Đã kiểm tra RefID, thông tin hóa đơn và xử lý toàn bộ đơn đang treo.",
+      zh: "已检查 RefID 和发票信息，并处理所有挂起发票。",
     });
   } catch (error) {
     return handleError(res, error);

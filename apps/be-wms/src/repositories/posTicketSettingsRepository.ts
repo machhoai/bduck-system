@@ -16,6 +16,17 @@ const toDate = (value: unknown): Date => {
 
 const mapSettings = (value: Record<string, unknown>): PosTicketSettings => ({
   ...(value as unknown as PosTicketSettings),
+  logo_storage_path: typeof value.logo_storage_path === "string" ? value.logo_storage_path : null,
+  logo_checksum_sha256:
+    typeof value.logo_checksum_sha256 === "string" ? value.logo_checksum_sha256 : null,
+  logo_content_type:
+    value.logo_content_type === "image/jpeg" ||
+    value.logo_content_type === "image/png" ||
+    value.logo_content_type === "image/webp"
+      ? value.logo_content_type
+      : null,
+  logo_file_size_bytes:
+    typeof value.logo_file_size_bytes === "number" ? value.logo_file_size_bytes : null,
   created_at: toDate(value.created_at),
   updated_at: toDate(value.updated_at),
 });
@@ -29,56 +40,6 @@ export const posTicketSettingsRepository = {
       .doc(warehouseId)
       .get();
     return snapshot.exists ? mapSettings(snapshot.data() || {}) : null;
-  },
-
-  waitForVersionChange(
-    warehouseId: string,
-    knownVersion: number | null,
-    timeoutMs: number,
-    signal?: AbortSignal,
-  ): Promise<{ changed: boolean; settings: PosTicketSettings | null }> {
-    const reference = db
-      .collection(POS_TICKET_SETTINGS_COLLECTION)
-      .doc(warehouseId);
-    return new Promise((resolve, reject) => {
-      let unsubscribe: () => void = () => undefined;
-      let settled = false;
-      const handleAbort = () => finish({ changed: false, settings: null });
-      const finish = (result: {
-        changed: boolean;
-        settings: PosTicketSettings | null;
-      }) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        signal?.removeEventListener("abort", handleAbort);
-        unsubscribe();
-        resolve(result);
-      };
-      const timer = setTimeout(
-        () => finish({ changed: false, settings: null }),
-        timeoutMs,
-      );
-      if (signal?.aborted) return finish({ changed: false, settings: null });
-      signal?.addEventListener("abort", handleAbort, { once: true });
-      unsubscribe = reference.onSnapshot(
-        (snapshot) => {
-          const settings = snapshot.exists
-            ? mapSettings(snapshot.data() || {})
-            : null;
-          if ((settings?.version ?? null) !== knownVersion)
-            finish({ changed: true, settings });
-        },
-        (error) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          signal?.removeEventListener("abort", handleAbort);
-          unsubscribe();
-          reject(error);
-        },
-      );
-    });
   },
 
   async save(input: {

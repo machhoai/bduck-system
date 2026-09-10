@@ -1,3 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy generic exporter accepts multiple domain row shapes */
+import type {
+  RevenueExportReportType,
+  RevenueExportProductSelection,
+  RevenueExportProductOption,
+  RevenueDataSource,
+} from "@bduck/shared-types";
 import ExcelJS from "exceljs";
 
 const API_BASE_URL =
@@ -55,14 +62,44 @@ export interface ExportRequestOptions {
   productMaterial?: string;
   locationId?: string;
   slotId?: string;
+  reportType?: RevenueExportReportType;
+  products?: RevenueExportProductSelection[];
+  roundMoney?: boolean;
 }
 
-export interface ExportDialogConfig {
+export interface WarehouseExportDialogConfig {
   type: "warehouse";
   title: string;
   description?: string;
   defaultOptions?: ExportRequestOptions;
   filterOptions?: ExportFilterOptions;
+}
+
+export interface RevenueExportDialogConfig {
+  type: "revenue";
+  title: string;
+  description?: string;
+  warehouseName?: string;
+  sourceLabel?: string;
+  rangeLabel?: string;
+  source?: RevenueDataSource;
+  contextKey?: string;
+  products?: RevenueExportProductOption[];
+  productsLoading?: boolean;
+  productsError?: string | null;
+}
+
+export type ExportDialogConfig =
+  | WarehouseExportDialogConfig
+  | RevenueExportDialogConfig;
+
+export interface ExportToastConfig {
+  loading: string;
+  success: string;
+  successDescription: string;
+  error: string;
+  errorDescription: string;
+  retry: string;
 }
 
 export interface ExportConfig {
@@ -74,7 +111,24 @@ export interface ExportConfig {
   warehouseId?: string;
   filters?: Record<string, any>;
   dialog?: ExportDialogConfig;
+  toast?: ExportToastConfig;
   prepare?: (options: ExportRequestOptions) => Promise<ExportConfig>;
+}
+
+export interface CustomExportConfig {
+  entityType: string;
+  warehouseId?: string;
+  dialog: RevenueExportDialogConfig;
+  toast?: ExportToastConfig;
+  execute: (options: ExportRequestOptions) => Promise<void>;
+}
+
+export type RegisteredExportConfig = ExportConfig | CustomExportConfig;
+
+export function isCustomExportConfig(
+  config: RegisteredExportConfig,
+): config is CustomExportConfig {
+  return "execute" in config;
 }
 
 export const formatExportDate = (val: any): string => {
@@ -109,7 +163,15 @@ const entityColorMap: Record<string, string> = {
 };
 
 export async function exportToExcel(config: ExportConfig): Promise<void> {
-  const { filename, columns, columnGroups, data, entityType, warehouseId, filters } = config;
+  const {
+    filename,
+    columns,
+    columnGroups,
+    data,
+    entityType,
+    warehouseId,
+    filters,
+  } = config;
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Data");
@@ -139,7 +201,9 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
 
     const groupedKeys = new Set<string>();
     for (const group of columnGroups) {
-      const fromIndex = columns.findIndex((column) => column.key === group.fromKey);
+      const fromIndex = columns.findIndex(
+        (column) => column.key === group.fromKey,
+      );
       const toIndex = columns.findIndex((column) => column.key === group.toKey);
       if (fromIndex < 0 || toIndex < 0) continue;
       for (let index = fromIndex; index <= toIndex; index += 1) {
@@ -181,7 +245,9 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
   data.forEach((row) => {
     const rowData: Record<string, any> = {};
     columns.forEach((col) => {
-      rowData[col.key] = col.format ? col.format(row[col.key], row) : row[col.key];
+      rowData[col.key] = col.format
+        ? col.format(row[col.key], row)
+        : row[col.key];
     });
     sheet.addRow(rowData);
   });

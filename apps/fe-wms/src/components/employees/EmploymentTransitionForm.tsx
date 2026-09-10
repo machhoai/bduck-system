@@ -1,7 +1,7 @@
 "use client";
 
 import { EmployeeEmploymentStatus, type EmployeeProfile } from "@bduck/shared-types";
-import { ArrowRight, CalendarClock } from "lucide-react";
+import { ArrowRight, CalendarClock, UserX } from "lucide-react";
 
 import type { useTranslation } from "@/lib/i18n";
 
@@ -73,6 +73,19 @@ export function EmploymentTransitionForm({
                 className={inputClassName}
               />
             </Field>
+            {state.targetStatus === EmployeeEmploymentStatus.RESIGNED ? (
+              <div className="flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
+                <UserX className="mt-0.5 shrink-0" size={16} />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold">
+                    {labels.resignationImpactTitle}
+                  </p>
+                  <p className="text-xs leading-5">
+                    {labels.resignationImpactDescription}
+                  </p>
+                </div>
+              </div>
+            ) : null}
             {state.targetStatus === EmployeeEmploymentStatus.OFFICIAL &&
             profile.employment_status === EmployeeEmploymentStatus.PROBATION ? (
               <Field label={labels.probationEndDate}>

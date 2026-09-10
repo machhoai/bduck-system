@@ -1,13 +1,16 @@
 "use client";
 
+import { gooeyToast } from "goey-toast";
 import { Save, ShieldCheck, TestTube2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { gooeyToast } from "goey-toast";
+
+import Forbidden403 from "@/components/shared/Forbidden403";
 import { useOpenApiConfig, type OpenApiConfigPayload } from "@/hooks/useOpenApiConfig";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import { useUserStore } from "@/stores/useUserStore";
 import { useTranslation } from "@/lib/i18n";
-import Forbidden403 from "@/components/shared/Forbidden403";
+import { useUserStore } from "@/stores/useUserStore";
+
+import OpenApiPaymentMappingEditor from "./OpenApiPaymentMappingEditor";
 import SystemSettingsSkeleton from "./SystemSettingsSkeleton";
 
 const DEFAULT_VERSION = "10.11.8";
@@ -103,6 +106,7 @@ export default function SystemSettingsPage() {
     base_url: "",
     api_version: DEFAULT_VERSION,
     action_versions: getDefaultActionVersions(),
+    payment_channel_mapping: {},
     enabled: true,
   });
   const [saving, setSaving] = useState(false);
@@ -122,6 +126,7 @@ export default function SystemSettingsPage() {
         ...getDefaultActionVersions(),
         ...(config?.action_versions ?? {}),
       },
+      payment_channel_mapping: config?.payment_channel_mapping ?? {},
       enabled: config?.enabled ?? true,
     });
   }, [config]);
@@ -154,6 +159,11 @@ export default function SystemSettingsPage() {
           ]),
         ),
       },
+      payment_channel_mapping: Object.fromEntries(
+        Object.entries(form.payment_channel_mapping)
+          .map(([channel, category]) => [channel.trim(), category] as const)
+          .filter(([channel]) => channel.length > 0),
+      ),
       secret_key: form.secret_key?.trim() ? form.secret_key.trim() : undefined,
     };
     try {
@@ -320,6 +330,12 @@ export default function SystemSettingsPage() {
                   ))}
                 </div>
               </div>
+              <OpenApiPaymentMappingEditor
+                value={form.payment_channel_mapping}
+                disabled={loading || saving}
+                onChange={(value) => updateField("payment_channel_mapping", value)}
+                copy={t.systemSettings.paymentMapping}
+              />
               <label className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white p-3 md:col-span-2">
                 <input
                   type="checkbox"
