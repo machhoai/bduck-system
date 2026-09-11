@@ -20,6 +20,9 @@ import type {
   PosReceiptSettings,
   PosStoreOverview,
   PosTicketSettings,
+  PosVoucherCampaignSetting,
+  PosVoucherCampaignSettingInput,
+  PosVoucherSettingsView,
 } from "@bduck/shared-types";
 
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
@@ -219,6 +222,19 @@ export const posManagementApi = {
     warehouseId: string,
     value: PosProductVisibilitySettingsPayload,
   ) => saveProductVisibilitySettings(warehouseId, value),
+  getVoucherSettings: (warehouseId: string) =>
+    callPosApi<PosVoucherSettingsView>(
+      `/api/pos/stores/${warehouseId}/voucher-settings`,
+    ),
+  saveVoucherSetting: (
+    warehouseId: string,
+    campaignId: string,
+    value: PosVoucherCampaignSettingInput,
+  ) =>
+    callPosApi<PosVoucherCampaignSetting>(
+      `/api/pos/stores/${warehouseId}/voucher-settings/${campaignId}`,
+      { method: "PUT", body: JSON.stringify(value) },
+    ),
   syncProducts: (warehouseId: string, value: PosProductCatalogSyncInput) =>
     callPosApi<PosProductCatalogSyncResult>(
       `/api/pos/stores/${warehouseId}/products/sync`,

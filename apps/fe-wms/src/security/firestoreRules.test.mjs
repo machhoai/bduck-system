@@ -624,6 +624,14 @@ async function seedDocuments() {
         { local_order_id: "local-order-1", warehouse_id: "store-d" },
       ],
       [
+        "pos_voucher_campaign_settings/store-d__campaign-a",
+        { warehouse_id: "store-d", campaign_id: "campaign-a", enabled: true },
+      ],
+      [
+        "pos_voucher_redemptions/CODE-A",
+        { warehouse_id: "store-d", voucher_code: "CODE-A", status: "COMPLETED" },
+      ],
+      [
         "revenue_dashboards/store-d_date_2026-07-01_2026-07-01",
         {
           warehouse_id: "store-d",
@@ -796,6 +804,9 @@ beforeEach(async () => {
       "employees.contracts.self.read": true,
       "leave.self.read": true,
     },
+  });
+  await seedAccess("pos-settings-user", {
+    "store-d": { "pos.settings.read": true },
   });
   await seedAccess("system-admin", {}, true);
   await seedAccess("remote-marketing-reader", {
@@ -1694,6 +1705,31 @@ describe("grant-aware Firestore rules", () => {
         warehouse_id: "store-d",
       }),
     );
+  });
+
+  it("allows scoped voucher-setting listeners while keeping voucher writes backend-only", async () => {
+    const settingsUser = environment
+      .authenticatedContext("pos-settings-user")
+      .firestore();
+    const otherStoreUser = environment
+      .authenticatedContext("user-a")
+      .firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+
+    await assertSucceeds(getDocs(query(
+      collection(settingsUser, "pos_voucher_campaign_settings"),
+      where("warehouse_id", "==", "store-d"),
+    )));
+    await assertFails(
+      getDoc(doc(otherStoreUser, "pos_voucher_campaign_settings", "store-d__campaign-a")),
+    );
+    await assertFails(
+      setDoc(doc(settingsUser, "pos_voucher_campaign_settings", "store-d__campaign-a"), {
+        warehouse_id: "store-d",
+      }),
+    );
+    await assertFails(getDoc(doc(settingsUser, "pos_voucher_redemptions", "CODE-A")));
+    await assertFails(getDoc(doc(admin, "pos_voucher_redemptions", "CODE-A")));
   });
 
   it("keeps access snapshots owner-private and internal collections backend-only", async () => {

@@ -671,6 +671,15 @@ service cloud.firestore {
       allow read: if readableFacilityDirectory(warehouseId);
       allow write: if false;
     }
+    // Voucher configuration and redemption mutations are transactional,
+    // audited backend operations. JPOS uses callable Functions; JPULSE uses API.
+    match /pos_voucher_campaign_settings/{settingId} {
+      allow read: if hasResourceFacility('warehouse_id', 'pos.settings.read');
+      allow write: if false;
+    }
+    match /pos_voucher_redemptions/{redemptionId} {
+      allow read, write: if false;
+    }
     match /pos_product_sync_runs/{runId} {
       allow read, write: if false;
     }

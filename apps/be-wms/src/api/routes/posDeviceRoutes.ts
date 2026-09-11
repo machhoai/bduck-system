@@ -59,6 +59,10 @@ import {
   getPosTicketSettingsHandler,
   savePosTicketSettingsHandler,
 } from "../controllers/posTicketSettingsController.js";
+import {
+  getPosVoucherSettingsHandler,
+  savePosVoucherSettingHandler,
+} from "../controllers/posVoucherSettingsController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import {
   authRateLimiter,
@@ -216,6 +220,17 @@ router.put(
   posSettingsMutationRateLimiter,
   requireAnyScopedPermission("pos.settings.manage"),
   savePosProductVisibilitySettingsHandler,
+);
+router.get(
+  "/stores/:warehouseId/voucher-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosVoucherSettingsHandler,
+);
+router.put(
+  "/stores/:warehouseId/voucher-settings/:campaignId",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosVoucherSettingHandler,
 );
 router.post(
   "/stores/:warehouseId/products/sync",

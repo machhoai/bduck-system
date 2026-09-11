@@ -40,6 +40,7 @@ import {
 } from "./PosSettingsSubNav";
 import { PosStoreRail } from "./PosStoreRail";
 import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
+import { PosVoucherSettingsPanel } from "./PosVoucherSettingsPanel";
 import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
 import { usePosOrderCopy } from "./usePosOrderCopy";
@@ -315,6 +316,13 @@ export default function PosManagementPage() {
                     {settingsSubTab === "products" && (
                       <PosProductVisibilityPanel
                         key={`${activeStoreId}:products`}
+                        warehouseId={activeStoreId}
+                        canManage={canManageSettings}
+                      />
+                    )}
+                    {settingsSubTab === "vouchers" && (
+                      <PosVoucherSettingsPanel
+                        key={`${activeStoreId}:vouchers`}
                         warehouseId={activeStoreId}
                         canManage={canManageSettings}
                       />
