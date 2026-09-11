@@ -35,7 +35,7 @@ export const marketingVoucherTaskConfig = () => ({
   ),
   serviceAccountEmail:
     process.env.MARKETING_VOUCHER_WORKER_SERVICE_ACCOUNT ?? "",
-  workerSecret: process.env.MARKETING_VOUCHER_WORKER_SECRET ?? "",
+  workerSecret: (process.env.MARKETING_VOUCHER_WORKER_SECRET ?? "").trim(),
 });
 
 export const marketingVoucherTasksConfigured = () => {

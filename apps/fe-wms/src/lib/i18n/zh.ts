@@ -41,6 +41,23 @@ const zh: Dictionary = {
     externalQueue: "外部系统",
     more: "更多",
   },
+  errorPage: {
+    "401": {
+      title: "未授权",
+      description: "系统检测到服务器上的身份验证错误。",
+      action: "去登录"
+    },
+    "403": {
+      title: "禁止访问",
+      description: "您没有权限访问此页面或资源。",
+      action: "返回首页"
+    },
+    "404": {
+      title: "出了点问题",
+      description: "抱歉，我们无法找到该页面。",
+      action: "返回首页"
+    }
+  },
 
   employeeManagement: {
     badge: "员工档案",

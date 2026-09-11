@@ -111,6 +111,24 @@ const vi = {
             "Tài khoản của bạn cần quyền users.read hoặc roles.read để mở workspace người dùng.",
     },
 
+    errorPage: {
+        "401": {
+            title: "Không có quyền truy cập",
+            description: "Hệ thống ghi nhận lỗi xác thực trên máy chủ.",
+            action: "Về trang đăng nhập"
+        },
+        "403": {
+            title: "Bị từ chối",
+            description: "Bạn không có quyền truy cập trang hoặc tài nguyên này.",
+            action: "Về trang chủ"
+        },
+        "404": {
+            title: "Đã xảy ra lỗi",
+            description: "Xin lỗi, chúng tôi không thể tìm thấy trang này.",
+            action: "Về trang chủ"
+        }
+    },
+
     dashboard: {
         title: "Trang chủ",
         welcome: "Xin chào",
