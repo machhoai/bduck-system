@@ -552,6 +552,33 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       zh: "更新和删除库存记录。",
     },
   },
+  {
+    key: "partner_inventory.read",
+    group: "inventory",
+    label: { vi: "Xem đối chiếu kho JoyWorld", zh: "查看 JoyWorld 库存核对" },
+    description: {
+      vi: "Xem mapping và đối chiếu ATP JPULSE với tồn kho JoyWorld trong phạm vi kho được cấp quyền.",
+      zh: "在授权仓库范围内查看 JPULSE ATP 与 JoyWorld 库存映射及核对结果。",
+    },
+  },
+  {
+    key: "partner_inventory.mapping.write",
+    group: "inventory",
+    label: { vi: "Cấu hình mapping kho JoyWorld", zh: "配置 JoyWorld 库存映射" },
+    description: {
+      vi: "Mapping kho và danh mục JPULSE với danh mục tương ứng của kết nối JoyWorld.",
+      zh: "将 JPULSE 仓库和分类映射到 JoyWorld 连接中的对应目录。",
+    },
+  },
+  {
+    key: "partner_inventory.sync",
+    group: "inventory",
+    label: { vi: "Đồng bộ tồn sang JoyWorld", zh: "同步库存到 JoyWorld" },
+    description: {
+      vi: "Gửi tồn khả dụng ATP đã chọn từ JPULSE sang JoyWorld bằng thao tác thủ công.",
+      zh: "通过手动操作将选定的 JPULSE 可用库存 ATP 发送到 JoyWorld。",
+    },
+  },
 
   // ── Stock Counts ──
   {

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+
 import {
   FACILITY_ACCESS_POLICY_VERSION,
   WarehouseType,
 } from "@bduck/shared-types";
+
 import { createAccessContext } from "./accessContextFactory.js";
 import { AuthorizationError } from "./authorizationError.js";
 import { AuthorizationService } from "./authorizationService.js";
@@ -30,6 +32,7 @@ const context = createAccessContext({
         "transfers.write": true,
         "revenue.read": true,
         "invoices.read": true,
+        "partner_inventory.sync": true,
       },
       sources: [directSource("source")],
     },
@@ -41,6 +44,7 @@ const context = createAccessContext({
         "transfers.receive": true,
         "revenue.read": true,
         "invoices.read": true,
+        "partner_inventory.sync": true,
       },
       sources: [directSource("destination")],
     },
@@ -78,6 +82,7 @@ const context = createAccessContext({
         "external_scan.view": true,
         "external_scan.manage_queue": true,
         "invoices.read": true,
+        "partner_inventory.sync": true,
       },
       sources: [directSource("office")],
     },
@@ -130,6 +135,7 @@ describe("AuthorizationService", () => {
     for (const action of [
       "inventory.read",
       "inventory.write",
+      "partner_inventory.sync",
       "locations.read",
       "locations.write",
       "vouchers.read",
@@ -143,6 +149,8 @@ describe("AuthorizationService", () => {
     ]) {
       assert.equal(service.can(action, "office"), false);
     }
+    assert.equal(service.can("partner_inventory.sync", "source"), true);
+    assert.equal(service.can("partner_inventory.sync", "wildcard"), false);
   });
 
   it("fails closed for unknown facilities and exposes bilingual errors", () => {

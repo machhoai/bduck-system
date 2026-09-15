@@ -115,18 +115,19 @@ const vi = {
         "401": {
             title: "Không có quyền truy cập",
             description: "Hệ thống ghi nhận lỗi xác thực trên máy chủ.",
-            action: "Về trang đăng nhập"
+            action: "Về trang đăng nhập",
         },
         "403": {
             title: "Bị từ chối",
-            description: "Bạn không có quyền truy cập trang hoặc tài nguyên này.",
-            action: "Về trang chủ"
+            description:
+                "Bạn không có quyền truy cập trang hoặc tài nguyên này.",
+            action: "Về trang chủ",
         },
         "404": {
             title: "Đã xảy ra lỗi",
             description: "Xin lỗi, chúng tôi không thể tìm thấy trang này.",
-            action: "Về trang chủ"
-        }
+            action: "Về trang chủ",
+        },
     },
 
     dashboard: {
@@ -282,11 +283,28 @@ const vi = {
             tooltipSelected: "Mốc đã chọn",
             highlightedDays: "Ngày đang chọn",
             rangeLabel: "Phạm vi biểu đồ",
+            quarterLabel: "Theo quý",
+            granularityLabels: {
+                day: "Theo ngày",
+                week: "Theo tuần",
+                month: "Theo tháng",
+            },
             rangeOptions: {
                 week: "Tuần",
                 month: "Tháng",
                 last7: "7 ngày",
                 last30: "30 ngày",
+                selectedMonth: "Tháng đã chọn",
+                containingHalfYear: "Nửa năm chứa tháng",
+                last6Months: "6 tháng gần nhất",
+                selectedYear: "Cả năm",
+                firstHalfYear: "6 tháng đầu",
+                secondHalfYear: "6 tháng cuối",
+                quarter1: "Quý 1",
+                quarter2: "Quý 2",
+                quarter3: "Quý 3",
+                quarter4: "Quý 4",
+                selectedRange: "Khoảng đã chọn",
             },
         },
         online: {
@@ -335,6 +353,7 @@ const vi = {
             group: "Nhóm",
             quantity: "Số lượng",
             revenue: "Doanh thu",
+            storeRevenue: "Doanh thu theo cửa hàng",
             revenueStructure: "Cơ cấu doanh thu",
             orderStructure: "Cơ cấu đơn hàng",
             averageValue: "Giá trị trung bình",
@@ -2975,7 +2994,8 @@ const vi = {
     },
     marketingVouchers: {
         title: "Voucher marketing",
-        subtitle: "Quản lý chiến dịch, kho mã và công việc nền theo thời gian thực.",
+        subtitle:
+            "Quản lý chiến dịch, kho mã và công việc nền theo thời gian thực.",
         realtime: "Đang cập nhật trực tiếp",
         cached: "Dữ liệu tạm thời từ phiên offline",
         loadError: "Không thể tải dữ liệu voucher.",
@@ -3001,7 +3021,8 @@ const vi = {
             runningJobs: "Tiến độ hiện tại",
             noRunningJobs: "Không có job nào đang xử lý.",
             campaignHealthTitle: "Tình trạng từng chiến dịch",
-            campaignHealthHint: "Theo dõi nhanh lượng mã đã phát, đã dùng và tồn khả dụng theo thời gian thực.",
+            campaignHealthHint:
+                "Theo dõi nhanh lượng mã đã phát, đã dùng và tồn khả dụng theo thời gian thực.",
             noCampaigns: "Chưa có chiến dịch để hiển thị.",
             total: "Tổng mã",
             actualCodes: "Số mã thực tế đã tạo",
@@ -3072,7 +3093,8 @@ const vi = {
             purpose: "Mục đích",
             quantity: "Số mã cần sinh",
             accentColor: "Màu voucher",
-            saveDraftHint: "Bản nháp được giữ trong phiên này khi mất mạng hoặc tải lại trang.",
+            saveDraftHint:
+                "Bản nháp được giữ trong phiên này khi mất mạng hoặc tải lại trang.",
             submitCreate: "Tạo và sinh mã",
             submitUpdate: "Lưu thay đổi",
             required: "Vui lòng nhập đầy đủ các trường bắt buộc.",
@@ -3082,13 +3104,16 @@ const vi = {
         action: {
             title: "Thao tác chiến dịch",
             pauseTitle: "Tạm dừng toàn bộ voucher",
-            pauseDescription: "Sinh mã, gửi email, xuất file và sử dụng voucher sẽ bị chặn sau batch hiện tại.",
+            pauseDescription:
+                "Sinh mã, gửi email, xuất file và sử dụng voucher sẽ bị chặn sau batch hiện tại.",
             activateTitle: "Kích hoạt lại chiến dịch",
-            activateDescription: "Các hoạt động voucher được phép tiếp tục theo trạng thái job hiện tại.",
+            activateDescription:
+                "Các hoạt động voucher được phép tiếp tục theo trạng thái job hiện tại.",
             generateTitle: "Sinh thêm mã",
             extendTitle: "Gia hạn chiến dịch",
             endTitle: "Kết thúc chiến dịch",
-            endDescription: "Chiến dịch sẽ được ẩn và các job đang chạy bị hủy. Dữ liệu mã vẫn được giữ để audit.",
+            endDescription:
+                "Chiến dịch sẽ được ẩn và các job đang chạy bị hủy. Dữ liệu mã vẫn được giữ để audit.",
             quantity: "Số lượng",
             newValidTo: "Ngày hết hạn mới",
             confirm: "Xác nhận",
@@ -3104,7 +3129,8 @@ const vi = {
             distributedTo: "Người nhận",
             selected: "đã chọn",
             revoke: "Vô hiệu mã",
-            activeOnlyRevoke: "Chỉ có thể vô hiệu mã khi chiến dịch đang hoạt động và không xuất file.",
+            activeOnlyRevoke:
+                "Chỉ có thể vô hiệu mã khi chiến dịch đang hoạt động và không xuất file.",
             revokeTitle: "Vô hiệu mã đã chọn",
             revokeReason: "Lý do vô hiệu",
             revokeReasonPlaceholder: "Nhập lý do để lưu vào audit...",
@@ -3129,8 +3155,10 @@ const vi = {
             subject: "Chủ đề email",
             introduction: "Nội dung giới thiệu",
             preview: "Preview email",
-            senderFixed: "Tên và địa chỉ người gửi lấy từ cấu hình Brevo của JPULSE.",
-            noDesignStep: "Mẫu đã dùng màu lưu của chiến dịch; không cần thiết kế lại.",
+            senderFixed:
+                "Tên và địa chỉ người gửi lấy từ cấu hình Brevo của JPULSE.",
+            noDesignStep:
+                "Mẫu đã dùng màu lưu của chiến dịch; không cần thiết kế lại.",
             next: "Tiếp tục",
             back: "Quay lại",
             queue: "Xác nhận gửi",
@@ -3217,8 +3245,10 @@ const vi = {
             loading: "Đang gửi yêu cầu...",
             success: "Thao tác thành công",
             error: "Không thể xử lý yêu cầu",
-            successDescription: "Thay đổi đã được ghi nhận và sẽ cập nhật trực tiếp.",
-            errorDescription: "Vui lòng thử lại hoặc liên hệ quản trị viên nếu lỗi tiếp diễn.",
+            successDescription:
+                "Thay đổi đã được ghi nhận và sẽ cập nhật trực tiếp.",
+            errorDescription:
+                "Vui lòng thử lại hoặc liên hệ quản trị viên nếu lỗi tiếp diễn.",
         },
     },
 };

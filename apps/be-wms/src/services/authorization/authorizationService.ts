@@ -1,4 +1,5 @@
 import { WarehouseType } from "@bduck/shared-types";
+
 import { authorizationError } from "./authorizationError.js";
 import type { AccessContext } from "./authorizationTypes.js";
 
@@ -20,6 +21,7 @@ const isActionAllowedForFacilityType = (
   }
   if (
     action.startsWith("inventory.") ||
+    action.startsWith("partner_inventory.") ||
     action.startsWith("locations.") ||
     action.startsWith("vouchers.") ||
     action.startsWith("stock_counts.") ||

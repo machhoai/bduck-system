@@ -111,6 +111,9 @@ export default function DashboardPage() {
         : stores
             .filter((store) => hasPermission("revenue.read", store.id))
             .map((store) => store.id);
+    const revenueStores = stores
+        .filter((store) => revenueWarehouseIds.includes(store.id))
+        .map((store) => ({ id: store.id, code: store.code }));
     const hasRevenueAccess = revenueWarehouseIds.length > 0;
     // ── Full skeleton while loading ──
     // ── No access state ──
@@ -186,6 +189,7 @@ export default function DashboardPage() {
                     <DashboardRevenueOverview
                         warehouseId={selectedWarehouseId}
                         warehouseIds={revenueWarehouseIds}
+                        stores={revenueStores}
                         canSyncPartner={
                             Boolean(selectedWarehouseId) &&
                             hasPermission("revenue.sync", selectedWarehouseId)

@@ -1,59 +1,58 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import {
-    AlertTriangle,
-    BarChart3,
-    Boxes,
-    ChevronLeft,
-    Info,
-    MapPin,
-    MapPinned,
-    PackageSearch,
-    Pencil,
-    Warehouse as WarehouseIcon,
-} from "lucide-react";
-import { gooeyToast } from "goey-toast";
 import {
     LocationType,
     WarehouseType,
     type WarehouseLocation,
 } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
+import {
+    AlertTriangle,
+    BarChart3,
+    Info,
+    MapPin,
+    MapPinned,
+    PackageSearch,
+} from "lucide-react";
+import { useParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
-import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
-import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
-import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
-import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
-import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
-import { BottomSheet } from "@/components/ui/BottomSheet";
-import { WarehouseInfoSheet } from "@/components/warehouses/WarehouseInfoSheet";
-import { OfficeFacilityDetail } from "@/components/office-scope/OfficeFacilityDetail";
-
-import StatCardGrid from "@/components/inventory/StatCardGrid";
-import StockDistributionChart from "@/components/inventory/StockDistributionChart";
 import ImportExportChart from "@/components/inventory/ImportExportChart";
 import { InventoryValueChart } from "@/components/inventory/InventoryValueChart";
+import StatCardGrid from "@/components/inventory/StatCardGrid";
+import StockDistributionChart from "@/components/inventory/StockDistributionChart";
+import { OfficeFacilityDetail } from "@/components/office-scope/OfficeFacilityDetail";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { LocationCardGrid } from "@/components/warehouses/LocationCardGrid";
+import { LocationFormModal } from "@/components/warehouses/LocationFormModal";
+import { PartnerInventorySyncButton } from "@/components/warehouses/PartnerInventorySyncButton";
+import { PartnerInventorySyncModal } from "@/components/warehouses/PartnerInventorySyncModal";
 import { WarehouseAuditCard } from "@/components/warehouses/WarehouseAuditCard";
-import { WarehouseInventoryView } from "@/components/warehouses/WarehouseInventoryView";
+import { WarehouseDetailHero } from "@/components/warehouses/WarehouseDetailHero";
 import {
     WarehouseDiscrepancyHistory,
     WarehouseDiscrepancyHistoryButton,
 } from "@/components/warehouses/WarehouseDiscrepancyHistory";
-
-import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
-import { useInventory } from "@/hooks/useInventory";
-import { useProducts } from "@/hooks/useProducts";
+import { WarehouseFormModal } from "@/components/warehouses/WarehouseFormModal";
+import { WarehouseInfoSheet } from "@/components/warehouses/WarehouseInfoSheet";
+import { WarehouseInventoryView } from "@/components/warehouses/WarehouseInventoryView";
+import { WarehouseTableSkeleton } from "@/components/warehouses/WarehouseSkeleton";
 import { useCategories } from "@/hooks/useCategories";
-import { useLocationSlots } from "@/hooks/useLocationSlots";
-import { useUsers } from "@/hooks/useUsers";
+import { useExportRegistration } from "@/hooks/useExportRegistration";
 import { useExportVouchers } from "@/hooks/useExportVouchers";
 import { useImportVouchers } from "@/hooks/useImportVouchers";
-import { useExportRegistration } from "@/hooks/useExportRegistration";
+import { useInventory } from "@/hooks/useInventory";
+import { useLocationSlots } from "@/hooks/useLocationSlots";
+import { useProducts } from "@/hooks/useProducts";
+import { useUsers } from "@/hooks/useUsers";
+import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
-
+import type {
+    ExportConfig,
+    ExportRequestOptions,
+    ExportSelectOption,
+} from "@/utils/exportExcel";
 import {
     computeInventoryValue,
     computeKPIs,
@@ -63,14 +62,8 @@ import {
     buildWarehouseInventoryExportConfig,
     buildWarehouseMovementExportConfig,
 } from "@/utils/warehouseMovementExport";
-import type {
-    ExportConfig,
-    ExportRequestOptions,
-    ExportSelectOption,
-} from "@/utils/exportExcel";
 
 type PageTab = "overview" | "products" | "locations" | "discrepancies";
-type InventoryTab = "products" | "locations";
 
 export default function WarehouseDetailPage() {
     const { t } = useTranslation();
@@ -107,11 +100,11 @@ export default function WarehouseDetailPage() {
     const [editingLocation, setEditingLocation] =
         useState<WarehouseLocation | null>(null);
     const [activeTab, setActiveTab] = useState<PageTab>("overview");
-    const [inventoryTab, setInventoryTab] = useState<InventoryTab>("products");
     const [mobileTab, setMobileTab] = useState<"overview" | "inventory">("overview");
     const [isLocationsSheetOpen, setIsLocationsSheetOpen] = useState(false);
     const [isWarehouseInfoOpen, setIsWarehouseInfoOpen] = useState(false);
     const [isDiscrepancyHistoryOpen, setIsDiscrepancyHistoryOpen] = useState(false);
+    const [isPartnerInventorySyncOpen, setIsPartnerInventorySyncOpen] = useState(false);
 
     const warehouse = useMemo(
         () => warehouses.find((item) => item.id === warehouseId),
@@ -368,6 +361,7 @@ export default function WarehouseDetailPage() {
                         warehouseId={warehouseId}
                         managerName={managerName}
                         onEdit={() => setIsWarehouseModalOpen(true)}
+                        onPartnerInventorySync={() => setIsPartnerInventorySyncOpen(true)}
                     />
                 </div>
                 <div className="flex flex-col gap-3">
@@ -539,6 +533,11 @@ export default function WarehouseDetailPage() {
                     <WarehouseDiscrepancyHistoryButton
                         onClick={() => setIsDiscrepancyHistoryOpen(true)}
                     />
+                    <PartnerInventorySyncButton
+                        warehouseId={warehouseId}
+                        onClick={() => setIsPartnerInventorySyncOpen(true)}
+                        compact
+                    />
                 </div>
 
                 {/* Base canvas content (Overview charts / Inventory search view) */}
@@ -645,6 +644,11 @@ export default function WarehouseDetailPage() {
                 warehouse={warehouse}
                 onClose={() => setIsWarehouseModalOpen(false)}
                 onSave={handleSaveWarehouse}
+            />
+            <PartnerInventorySyncModal
+                warehouseId={warehouseId}
+                isOpen={isPartnerInventorySyncOpen}
+                onClose={() => setIsPartnerInventorySyncOpen(false)}
             />
         </div>
     );

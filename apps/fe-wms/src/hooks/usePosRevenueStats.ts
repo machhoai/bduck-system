@@ -12,9 +12,15 @@ export function usePosRevenueStats(
   warehouseIds: readonly string[],
   filter: RevenueDashboardFilter,
   catalog?: RevenueProductGroups,
+  comparisonFilter?: RevenueDashboardFilter | null,
 ) {
-  const periods = usePosRevenuePeriods(warehouseIds, [filter], catalog);
+  const periods = usePosRevenuePeriods(
+    warehouseIds,
+    comparisonFilter ? [filter, comparisonFilter] : [filter],
+    catalog,
+  );
   const dashboard = periods.data[0];
+  const comparisonDashboard = periods.data[1] ?? null;
   const data = useMemo(
     () =>
       dashboard
@@ -28,5 +34,11 @@ export function usePosRevenueStats(
         : null,
     [dashboard],
   );
-  return { data, loading: periods.loading, error: periods.error };
+  return {
+    data,
+    comparisonDashboard,
+    warehouseRevenue: periods.warehouseRevenueByPeriod[0] ?? [],
+    loading: periods.loading,
+    error: periods.error,
+  };
 }

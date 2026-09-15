@@ -62,9 +62,9 @@ export function WarehouseManagerSelect({
   return (
     <div className="space-y-2">
       {selectedUser ? (
-        <div className="flex min-h-8 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white px-3 py-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-card)] text-[var(--color-text-secondary)]">
-            <UserRound size={17} />
+        <div className="flex min-h-8 items-center gap-2.5 rounded-lg border border-[var(--color-border-subtle)] bg-white px-3 py-1.5 shadow-xs">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]">
+            <UserRound size={16} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
@@ -105,7 +105,7 @@ export function WarehouseManagerSelect({
             setIsOpen(true);
           }}
           placeholder={loading ? t.common.loading : t.warehouses.searchManager}
-          className="h-8 w-full rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-10 pr-4 text-sm outline-none focus:border-[var(--color-border-focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-8 w-full rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-input)] pl-9 pr-3 text-sm outline-none transition-all focus:border-[var(--color-border-focus)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {isOpen && !loading && (

@@ -750,6 +750,21 @@ async function seedDocuments() {
         "in_app_notifications/notification-b",
         { target_user_id: "user-b", is_read: false, is_deleted: false },
       ],
+      [
+        "partner_warehouse_mappings/map-c",
+        { warehouse_id: "warehouse-c", partner_stock_id: "stock-c" },
+      ],
+      [
+        "partner_inventory_snapshots/snapshot-c",
+        { warehouse_id: "warehouse-c", partner_stock_id: "stock-c" },
+      ],
+      [
+        "partner_inventory_sync_jobs/job-c",
+        { warehouse_id: "warehouse-c", partner_stock_id: "stock-c" },
+      ],
+      ["partner_warehouse_mapping_claims/claim-c", { warehouse_id: "warehouse-c" }],
+      ["partner_category_mappings/category-c", { category_id: "category-c" }],
+      ["partner_inventory_sync_locks/lock-c", { partner_stock_id: "stock-c" }],
     ];
     await Promise.all(
       writes.map(([path, data]) => firestore.doc(path).set(data)),
@@ -784,6 +799,9 @@ beforeEach(async () => {
       "employees.contracts.read": true,
       "employees.contracts.documents.read": true,
       "employees.contracts.self.read": true,
+      "partner_inventory.read": true,
+      "partner_inventory.mapping.write": true,
+      "partner_inventory.sync": true,
       "leave.self.read": true,
       "leave.approve": true,
       "leave.approver.reassign": true,
@@ -1740,6 +1758,33 @@ describe("grant-aware Firestore rules", () => {
     await assertFails(getDoc(doc(otherUser, "user_access", "user-a")));
     await assertFails(getDoc(doc(user, "counters", "internal-counter")));
     await assertFails(getDoc(doc(admin, "counters", "internal-counter")));
+  });
+
+  it("scopes partner inventory reads and keeps mapping claims and locks backend-only", async () => {
+    const scoped = environment.authenticatedContext("user-a").firestore();
+    const unrelated = environment.authenticatedContext("user-b").firestore();
+    const admin = environment.authenticatedContext("system-admin").firestore();
+    const readablePaths = [
+      "partner_warehouse_mappings/map-c",
+      "partner_inventory_snapshots/snapshot-c",
+      "partner_inventory_sync_jobs/job-c",
+    ];
+    for (const path of readablePaths) {
+      await assertSucceeds(getDoc(doc(scoped, path)));
+      await assertSucceeds(getDoc(doc(admin, path)));
+      await assertFails(getDoc(doc(unrelated, path)));
+      await assertFails(updateDoc(doc(scoped, path), { tampered: true }));
+      await assertFails(updateDoc(doc(admin, path), { tampered: true }));
+    }
+    for (const path of [
+      "partner_warehouse_mapping_claims/claim-c",
+      "partner_category_mappings/category-c",
+      "partner_inventory_sync_locks/lock-c",
+    ]) {
+      await assertFails(getDoc(doc(scoped, path)));
+      await assertFails(getDoc(doc(admin, path)));
+      await assertFails(updateDoc(doc(scoped, path), { tampered: true }));
+    }
   });
 
   it("fails closed when the active version pointer no longer matches", async () => {

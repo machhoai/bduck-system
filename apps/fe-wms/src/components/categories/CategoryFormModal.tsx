@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { useTranslation } from "../../lib/i18n";
-import { gooeyToast } from "goey-toast";
 import type { ProductCategory } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
+import { X } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { useTranslation } from "../../lib/i18n";
+
+import { PartnerCategoryMappingField } from "./PartnerCategoryMappingField";
+
 import { emitDataMutation } from "@/lib/dataInvalidation";
 import { createDetailedApiError } from "@/utils/apiError";
 
@@ -103,7 +107,8 @@ export default function CategoryFormModal({
         action: {
           error: {
             label: t.common.retry,
-            onClick: () => handleSubmit(new Event("submit") as any),
+            onClick: () =>
+              handleSubmit({ preventDefault: () => undefined } as React.FormEvent),
           },
         },
       });
@@ -232,6 +237,10 @@ export default function CategoryFormModal({
               placeholder="Mô tả tùy chọn..."
             />
           </div>
+
+          {editCategory && (
+            <PartnerCategoryMappingField categoryId={editCategory.id} />
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">

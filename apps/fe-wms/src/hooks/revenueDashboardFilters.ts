@@ -74,11 +74,15 @@ export function buildRevenueComparisonFilters(
   const mode = compatibleComparisonMode(filter.mode, comparison.mode);
   if (mode === "none") return [];
   if (mode === "previous") {
-    return [comparisonFilterFromRange(filter, getPreviousComparisonRange(filter))];
+    return [
+      comparisonFilterFromRange(filter, getPreviousComparisonRange(filter)),
+    ];
   }
   if (mode === "date") {
     const currentDate = normalizeRevenueRange(filter).endDate;
-    return uniqueValues(comparison.dates.length ? comparison.dates : [comparison.date])
+    return uniqueValues(
+      comparison.dates.length ? comparison.dates : [comparison.date],
+    )
       .map(normalizeDate)
       .filter((date) => date !== currentDate)
       .map((date) => ({
@@ -94,7 +98,9 @@ export function buildRevenueComparisonFilters(
   if (mode === "month") {
     const fallback = toDateInput(new Date()).slice(0, 7);
     const current = normalizeRevenueRange(filter).startDate.slice(0, 7);
-    return uniqueValues(comparison.months.length ? comparison.months : [comparison.month])
+    return uniqueValues(
+      comparison.months.length ? comparison.months : [comparison.month],
+    )
       .map((month) => (/^\d{4}-\d{2}$/u.test(month) ? month : fallback))
       .filter((month) => month !== current)
       .map((month) => ({
@@ -110,7 +116,9 @@ export function buildRevenueComparisonFilters(
   if (mode === "year") {
     const fallback = toDateInput(new Date()).slice(0, 4);
     const current = normalizeRevenueRange(filter).startDate.slice(0, 4);
-    return uniqueValues(comparison.years.length ? comparison.years : [comparison.year])
+    return uniqueValues(
+      comparison.years.length ? comparison.years : [comparison.year],
+    )
       .map((year) => (/^\d{4}$/u.test(year) ? year : fallback))
       .filter((year) => year !== current)
       .map((year) => ({
@@ -125,9 +133,10 @@ export function buildRevenueComparisonFilters(
   }
   const first = normalizeDate(comparison.startDate);
   const second = normalizeDate(comparison.endDate || first);
-  const range = first <= second
-    ? { startDate: first, endDate: second }
-    : { startDate: second, endDate: first };
+  const range =
+    first <= second
+      ? { startDate: first, endDate: second }
+      : { startDate: second, endDate: first };
   return [comparisonFilterFromRange({ ...filter, mode: "custom" }, range)];
 }
 
@@ -152,10 +161,7 @@ export function getRevenueComparisonLabel(
   ) {
     return `Tháng ${range.startDate.slice(5, 7)}/${range.startDate.slice(0, 4)}`;
   }
-  if (
-    range.startDate.endsWith("-01-01") &&
-    range.endDate.endsWith("-12-31")
-  ) {
+  if (range.startDate.endsWith("-01-01") && range.endDate.endsWith("-12-31")) {
     return `Năm ${range.startDate.slice(0, 4)}`;
   }
   return `Từ ${formatDate(range.startDate)} đến ${formatDate(range.endDate)}`;
@@ -173,6 +179,7 @@ export function buildRevenueDashboardQuery(
   source: RevenueDataSource = "OPEN_API",
 ): string {
   const query = new URLSearchParams({ mode: filter.mode, warehouseId, source });
+  if (filter.granularity) query.set("granularity", filter.granularity);
   if (filter.mode === "date") query.set("date", filter.date);
   if (filter.mode === "month") query.set("month", filter.month);
   if (filter.mode === "year") query.set("year", filter.year);
@@ -194,6 +201,7 @@ export function getRevenueDashboardCacheKey(
     source,
     warehouseId,
     filter.mode,
+    filter.granularity ?? (filter.mode === "year" ? "month" : "day"),
     range.startDate,
     range.endDate,
   ]

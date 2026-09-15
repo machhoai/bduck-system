@@ -17,6 +17,7 @@ import {
 const dashboardQuerySchema = z.object({
   source: z.enum(["OPEN_API", "LOCAL_POS"]).default("OPEN_API"),
   mode: z.enum(["today", "date", "month", "year", "custom"]).default("today"),
+  granularity: z.enum(["day", "month"]).optional(),
   warehouseId: z.string().trim().min(1).optional(),
   date: z
     .string()
@@ -89,6 +90,7 @@ export const getRevenueDashboardHandler = async (
       {
         source: query.source,
         mode: query.mode,
+        granularity: query.granularity,
         warehouseId,
         warehouseIds,
         date: query.date,

@@ -18,6 +18,7 @@
     "test:scoped-query": "tsx --test src/repositories/facilityScopedQuery.test.ts",
     "test:pos-advertising": "tsx --test src/services/posCustomerDisplayMediaValidation.test.ts",
     "test:joyworld-refund-contract": "tsx --test src/services/joyworldRefundSchemas.test.ts",
+    "test:partner-inventory": "tsx --test src/services/partnerInventoryComparisonService.test.ts src/services/partnerInventorySchemas.test.ts",
     "test:marketing-vouchers-phase1": "tsx --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts",
     "test:marketing-vouchers-phase2": "tsx --env-file=../../.env.local --test src/services/marketingVoucherAccessPolicy.test.ts src/services/marketingVoucherSchemas.test.ts src/repositories/marketingVoucherRepositoryGuards.test.ts src/repositories/marketingVoucherRepository.emulator.test.ts",
     "test:marketing-vouchers-phase4": "tsx --env-file=../../.env.local --test src/services/marketingVoucherSchemas.test.ts src/services/marketingVoucherEmailRenderer.test.ts src/repositories/marketingVoucherEmailRepository.emulator.test.ts",

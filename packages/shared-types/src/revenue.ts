@@ -21,6 +21,7 @@ export type RevenueTaxSource = "OPEN_API" | "LOCAL_POS" | "UNAVAILABLE";
 
 export interface RevenueDashboardFilter {
   mode: RevenueDateMode;
+  granularity?: RevenueChartGranularity;
   date: string;
   month: string;
   year: string;

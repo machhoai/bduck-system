@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { auth, db } from "@/lib/firebase";
 import {
+  aggregatePosRevenueStats,
   buildPosRevenueDashboardData,
   toVietnamIsoRange,
   type PosRevenueOrderRecord,
@@ -22,6 +23,11 @@ import { normalizeRevenueRange } from "./revenueDashboardDateUtils";
 interface PeriodSelection {
   warehouseIds: string[];
   filters: RevenueDashboardFilter[];
+}
+
+export interface PosWarehouseRevenue {
+  warehouseId: string;
+  revenue: number;
 }
 
 const EMPTY_GROUPS: RevenueProductGroups = {};
@@ -44,6 +50,7 @@ export function usePosRevenuePeriods(
   const [state, setState] = useState({
     key: "",
     data: [] as RevenueDashboardData[],
+    warehouseRevenueByPeriod: [] as PosWarehouseRevenue[][],
     loading: enabled,
     error: null as string | null,
   });
@@ -60,6 +67,7 @@ export function usePosRevenuePeriods(
       setState({
         key: selectionKey,
         data: [],
+        warehouseRevenueByPeriod: [],
         loading: Boolean(user),
         error: null,
       });
@@ -91,7 +99,21 @@ export function usePosRevenuePeriods(
             catalog,
           }),
         );
-        setState({ key: selectionKey, data, loading: false, error: null });
+        const warehouseRevenueByPeriod = selection.filters.map((_, index) =>
+          selection.warehouseIds.map((warehouseId) => ({
+            warehouseId,
+            revenue: aggregatePosRevenueStats(
+              recordsByQuery.get(`${index}:${warehouseId}`) ?? [],
+            ).totalRevenue,
+          })),
+        );
+        setState({
+          key: selectionKey,
+          data,
+          warehouseRevenueByPeriod,
+          loading: false,
+          error: null,
+        });
       };
       selection.filters.forEach((filter, index) => {
         const { startIso, endExclusiveIso } = toVietnamIsoRange(
@@ -125,6 +147,7 @@ export function usePosRevenuePeriods(
                 setState({
                   key: selectionKey,
                   data: [],
+                  warehouseRevenueByPeriod: [],
                   loading: false,
                   error: error.message,
                 });
@@ -146,6 +169,9 @@ export function usePosRevenuePeriods(
   const current = enabled && state.key === selectionKey;
   return {
     data: current ? state.data : [],
+    warehouseRevenueByPeriod: current
+      ? state.warehouseRevenueByPeriod
+      : [],
     loading: enabled && (!current || state.loading),
     error: current ? state.error : null,
   };

@@ -466,6 +466,33 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // JoyWorld inventory integration is backend-write-only. Mapping reads use
+    // the authenticated API; snapshots/jobs may be observed in realtime by a
+    // user who can read the concrete JPULSE warehouse.
+    match /partner_warehouse_mappings/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'partner_inventory.read')
+        || hasResourceFacility('warehouse_id', 'partner_inventory.mapping.write');
+      allow write: if false;
+    }
+    match /partner_warehouse_mapping_claims/{docId} {
+      allow read, write: if false;
+    }
+    match /partner_category_mappings/{docId} {
+      allow read, write: if false;
+    }
+    match /partner_inventory_snapshots/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'partner_inventory.read');
+      allow write: if false;
+    }
+    match /partner_inventory_sync_jobs/{docId} {
+      allow read: if hasResourceFacility('warehouse_id', 'partner_inventory.read');
+      allow write: if false;
+    }
+
+    match /partner_inventory_sync_locks/{docId} {
+      allow read, write: if false;
+    }
+
     match /vouchers/{docId} {
       allow read: if hasResourceFacility('warehouse_id', 'vouchers.read');
       allow write: if false;

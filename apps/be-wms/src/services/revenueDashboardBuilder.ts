@@ -29,6 +29,7 @@ interface BuildRevenueDashboardInput {
   warehouseId: string;
   warehouseName: string;
   mode: RevenueDateMode;
+  granularity?: "day" | "month";
   range: RevenueDateRange;
   comparisonRange: RevenueDateRange;
   current: RevenuePeriodData;
@@ -51,7 +52,8 @@ export function buildRevenueDashboard(
 ): RevenueDashboardData {
   const current = summarize(input.current.dailyRows);
   const previous = summarize(input.previous.dailyRows);
-  const granularity = input.mode === "year" ? "month" : "day";
+  const granularity =
+    input.granularity ?? (input.mode === "year" ? "month" : "day");
   const chartRows = aggregateChartRows(input.current.dailyRows, granularity);
 
   return {
@@ -142,9 +144,7 @@ function summarize(rows: RevenueDailyRow[]): RevenuePeriodSummary {
   return {
     ...totals,
     averageOrderValue:
-      totals.totalOrders > 0
-        ? totals.totalRevenue / totals.totalOrders
-        : 0,
+      totals.totalOrders > 0 ? totals.totalRevenue / totals.totalOrders : 0,
   };
 }
 
@@ -187,6 +187,7 @@ function buildCacheKey(input: BuildRevenueDashboardInput): string {
     input.source,
     input.warehouseId,
     input.mode,
+    input.granularity ?? (input.mode === "year" ? "month" : "day"),
     input.range.startDate,
     input.range.endDate,
   ]

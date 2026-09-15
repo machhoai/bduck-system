@@ -77,6 +77,7 @@ export function getRevenueSourceCacheKey(
     query.source,
     warehouseId,
     query.mode,
+    query.granularity ?? (query.mode === "year" ? "month" : "day"),
     range.startDate,
     range.endDate,
   ]
@@ -138,6 +139,7 @@ export async function getRevenueSourceDashboardData(
     warehouseName:
       warehouses.map((warehouse) => warehouse.name).join(", ") || warehouseId,
     mode: query.mode,
+    granularity: query.granularity,
     range,
     comparisonRange,
     current,

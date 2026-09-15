@@ -5,7 +5,6 @@ import { gooeyToast } from "goey-toast";
 import {
     AlertTriangle,
     Banknote,
-    Globe2,
     ReceiptText,
     RefreshCw,
     ShoppingCart,
@@ -29,15 +28,14 @@ import {
 } from "@/components/ui/NumberFlowValue";
 import {
     buildRevenueChartRangeFilter,
+    getDefaultRevenueChartRange,
     getRevenueChartAnchorDate,
+    getRevenueChartRangeAggregation,
     type RevenueChartRange,
 } from "@/hooks/revenueChartRange";
-import {
-    useOnlineSalesReport,
-    type OnlineSalesReport,
-} from "@/hooks/useOnlineSalesReport";
 import { usePosRevenueStats } from "@/hooks/usePosRevenueStats";
 import {
+    buildRevenueComparisonFilter,
     getDefaultRevenueComparison,
     getDefaultRevenueFilter,
     getRevenueComparisonLabel,
@@ -48,6 +46,7 @@ import {
 } from "@/hooks/useRevenueDashboard";
 import { useTranslation } from "@/lib/i18n";
 
+import DashboardRevenueDateFilter from "./DashboardRevenueDateFilter";
 import RevenueChartRangeSelector from "./RevenueChartRangeSelector";
 import {
     chartColors,
@@ -59,13 +58,20 @@ import {
     type ComparableRevenueChartPoint,
 } from "./revenueDashboardUtils";
 import RevenueDateFilter from "./RevenueDateFilter";
-import DashboardRevenueDateFilter from "./DashboardRevenueDateFilter";
 
-type StatKey =
-    | "totalRevenue"
-    | "totalOrders"
-    | "averageOrderValue"
-    | "onlineRevenue";
+type StatKey = "totalRevenue" | "totalOrders" | "averageOrderValue";
+
+interface RevenueStore {
+    id: string;
+    code: string;
+}
+
+interface StoreRevenueBreakdownItem {
+    warehouseId: string;
+    code: string;
+    revenue: number;
+    percentage: number;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -86,11 +92,11 @@ type RevenueDetail =
     | { type: "stat"; key: StatKey; title: string }
     | { type: "timeline"; point: ComparableRevenueChartPoint }
     | {
-        type: "payment";
-        method: PaymentMethodMetric;
-        label: string;
-        total: number;
-    }
+          type: "payment";
+          method: PaymentMethodMetric;
+          label: string;
+          total: number;
+      }
     | { type: "product"; product: DashboardTopProduct }
     | { type: "topProducts"; products: DashboardTopProduct[] };
 
@@ -108,10 +114,12 @@ interface DashboardTopProduct {
 export default function DashboardRevenueOverview({
     warehouseId,
     warehouseIds,
+    stores,
     canSyncPartner = false,
 }: {
     warehouseId?: string;
     warehouseIds: readonly string[];
+    stores: readonly RevenueStore[];
     canSyncPartner?: boolean;
 }) {
     const { t, lang } = useTranslation();
@@ -119,36 +127,74 @@ export default function DashboardRevenueOverview({
     const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
         getDefaultRevenueFilter(),
     );
-    const [chartRange, setChartRange] =
-        useState<RevenueChartRange>("last7");
+    const [chartRange, setChartRange] = useState<RevenueChartRange>("last7");
+    const handleFilterChange = (nextFilter: RevenueDashboardFilter) => {
+        if (nextFilter.mode !== filter.mode) {
+            setChartRange(getDefaultRevenueChartRange(nextFilter.mode));
+        }
+        setFilter(nextFilter);
+    };
     const comparison = useMemo(
         () => getDefaultRevenueComparison(filter),
         [filter],
     );
+    const comparisonFilter = useMemo(
+        () =>
+            buildRevenueComparisonFilter(filter, {
+                ...getDefaultRevenueComparison(filter),
+                mode: "previous",
+            }),
+        [filter],
+    );
     const {
         data: posData,
+        comparisonDashboard,
+        warehouseRevenue,
         loading,
         error,
-    } = usePosRevenueStats(warehouseIds, filter);
+    } = usePosRevenueStats(warehouseIds, filter, undefined, comparisonFilter);
     const data = posData?.dashboard ?? null;
+    const previousPeriodLabel =
+        filter.mode === "month"
+            ? d.comparison.previousMonth
+            : filter.mode === "year"
+              ? d.comparison.previousYear
+              : filter.mode === "date" || filter.mode === "today"
+                ? d.comparison.yesterday
+                : d.comparison.previousPeriod;
+    const storeRevenueBreakdown = useMemo(() => {
+        const storeCodes = new Map(
+            stores.map((store) => [store.id, store.code]),
+        );
+        const totalRevenue = data?.stats.totalRevenue.value ?? 0;
+
+        return warehouseRevenue
+            .flatMap((store) => {
+                const code = storeCodes.get(store.warehouseId);
+                return code
+                    ? [
+                          {
+                              ...store,
+                              code,
+                              percentage:
+                                  totalRevenue > 0
+                                      ? (store.revenue / totalRevenue) * 100
+                                      : 0,
+                          },
+                      ]
+                    : [];
+            })
+            .sort((left, right) => right.revenue - left.revenue);
+    }, [data?.stats.totalRevenue.value, stores, warehouseRevenue]);
     const chartFilter = useMemo(
         () => buildRevenueChartRangeFilter(filter, chartRange),
         [chartRange, filter],
     );
-    const {
-        data: chartPosData,
-        loading: chartLoading,
-    } = usePosRevenueStats(warehouseIds, chartFilter);
+    const { data: chartPosData, loading: chartLoading } = usePosRevenueStats(
+        warehouseIds,
+        chartFilter,
+    );
     const [syncingPartner, setSyncingPartner] = useState(false);
-    const {
-        data: onlineData,
-        loading: onlineLoading,
-        error: onlineError,
-    } = useOnlineSalesReport(filter, {
-        warehouseId,
-        enabled: Boolean(warehouseId),
-        keepPreviousData: true,
-    });
     const [detail, setDetail] = useState<RevenueDetail | null>(null);
     const topProducts = useMemo(
         () => getDashboardTopProducts(data?.topProductGroups ?? []),
@@ -168,15 +214,15 @@ export default function DashboardRevenueOverview({
                     body: JSON.stringify({ warehouseId }),
                 },
             );
-            const payload = (await response.json().catch(() => null)) as
-                | PartnerPosSyncResponse
-                | null;
+            const payload = (await response
+                .json()
+                .catch(() => null)) as PartnerPosSyncResponse | null;
             if (!response.ok || !payload?.success || !payload.data) {
                 throw new Error(
                     payload?.messages?.[lang] ??
-                    (lang === "vi"
-                        ? "Không thể đồng bộ dữ liệu POS đối tác."
-                        : "无法同步合作方 POS 数据。"),
+                        (lang === "vi"
+                            ? "Không thể đồng bộ dữ liệu POS đối tác."
+                            : "无法同步合作方 POS 数据。"),
                 );
             }
             const result = payload.data;
@@ -186,8 +232,8 @@ export default function DashboardRevenueOverview({
                         ? `Đã thêm ${result.inserted_count} đơn mới`
                         : `已新增 ${result.inserted_count} 个订单`
                     : lang === "vi"
-                        ? "Dữ liệu đã là mới nhất"
-                        : "数据已是最新",
+                      ? "Dữ liệu đã là mới nhất"
+                      : "数据已是最新",
                 {
                     description:
                         lang === "vi"
@@ -197,17 +243,14 @@ export default function DashboardRevenueOverview({
                 },
             );
         } catch (syncError) {
-            gooeyToast.error(
-                lang === "vi" ? "Đồng bộ thất bại" : "同步失败",
-                {
-                    description:
-                        syncError instanceof Error
-                            ? syncError.message
-                            : lang === "vi"
-                                ? "Vui lòng thử lại sau."
-                                : "请稍后重试。",
-                },
-            );
+            gooeyToast.error(lang === "vi" ? "Đồng bộ thất bại" : "同步失败", {
+                description:
+                    syncError instanceof Error
+                        ? syncError.message
+                        : lang === "vi"
+                          ? "Vui lòng thử lại sau."
+                          : "请稍后重试。",
+            });
         } finally {
             setSyncingPartner(false);
         }
@@ -239,7 +282,13 @@ export default function DashboardRevenueOverview({
                             icon: Banknote,
                             hero: true,
                         }}
-                        onClick={() => setDetail({ type: "stat", key: "totalRevenue", title: d.stats.totalRevenue })}
+                        onClick={() =>
+                            setDetail({
+                                type: "stat",
+                                key: "totalRevenue",
+                                title: d.stats.totalRevenue,
+                            })
+                        }
                     />
 
                     <div className="flex justify-center relative z-10 gap-2 sm:mt-0 sm:mb-2">
@@ -247,7 +296,7 @@ export default function DashboardRevenueOverview({
                             filter={filter}
                             comparison={comparison}
                             comparisonLabel=""
-                            onChange={setFilter}
+                            onChange={handleFilterChange}
                             onComparisonChange={() => undefined}
                             generatedAt={data?.generatedAt}
                             syncing={loading}
@@ -257,9 +306,6 @@ export default function DashboardRevenueOverview({
 
                     <DashboardRevenueStats
                         data={data}
-                        onlineData={onlineData}
-                        onlineLoading={onlineLoading}
-                        onlineError={onlineError}
                         onSelect={(key, title) =>
                             setDetail({ type: "stat", key, title })
                         }
@@ -269,6 +315,7 @@ export default function DashboardRevenueOverview({
                         <RevenueTimelinePanel
                             data={chartPosData?.dashboard ?? null}
                             filter={chartFilter}
+                            selectionMode={filter.mode}
                             anchorDate={getRevenueChartAnchorDate(filter)}
                             range={chartRange}
                             loading={chartLoading}
@@ -309,9 +356,9 @@ export default function DashboardRevenueOverview({
                 <ResponsiveRevenueDetail
                     detail={detail}
                     data={data}
-                    onlineData={onlineData}
-                    onlineLoading={onlineLoading}
-                    onlineError={onlineError}
+                    comparisonData={comparisonDashboard}
+                    previousPeriodLabel={previousPeriodLabel}
+                    storeRevenueBreakdown={storeRevenueBreakdown}
                     onClose={() => setDetail(null)}
                 />
             )}
@@ -321,20 +368,13 @@ export default function DashboardRevenueOverview({
 
 function DashboardRevenueStats({
     data,
-    onlineData,
-    onlineLoading,
-    onlineError,
     onSelect,
 }: {
     data: RevenueDashboardData;
-    onlineData: OnlineSalesReport | null;
-    onlineLoading: boolean;
-    onlineError: string | null;
     onSelect: (key: StatKey, title: string) => void;
 }) {
     const { t } = useTranslation();
     const d = t.revenue;
-    const overview = d.dashboardOverview;
     const stats: Array<{
         key: StatKey;
         label: string;
@@ -344,39 +384,25 @@ function DashboardRevenueStats({
         hero?: boolean;
         disabled?: boolean;
     }> = [
-            {
-                key: "totalOrders",
-                label: d.stats.totalOrders,
-                value: (
-                    <NumberFlowValue value={data.stats.totalOrders.value} />
-                ),
-                hint: d.stats.ordersHint,
-                icon: ShoppingCart,
-            },
-            {
-                key: "averageOrderValue",
-                label: d.stats.averageOrderValue,
-                value: (
-                    <CurrencyNumberFlow
-                        value={data.stats.averageOrderValue.value}
-                    />
-                ),
-                hint: d.stats.aovHint,
-                icon: ReceiptText,
-            },
-            {
-                key: "onlineRevenue",
-                label: overview.websiteRevenue,
-                value: onlineData ? (
-                    <CurrencyNumberFlow value={onlineData.summary.netRevenue} />
-                ) : (
-                    "---"
-                ),
-                hint: onlineError ?? d.online.subtitle,
-                icon: Globe2,
-                disabled: onlineLoading && !onlineData,
-            },
-        ];
+        {
+            key: "totalOrders",
+            label: d.stats.totalOrders,
+            value: <NumberFlowValue value={data.stats.totalOrders.value} />,
+            hint: d.stats.ordersHint,
+            icon: ShoppingCart,
+        },
+        {
+            key: "averageOrderValue",
+            label: d.stats.averageOrderValue,
+            value: (
+                <CurrencyNumberFlow
+                    value={data.stats.averageOrderValue.value}
+                />
+            ),
+            hint: d.stats.aovHint,
+            icon: ReceiptText,
+        },
+    ];
 
     return (
         <div className="grid grid-cols-2 gap-3">
@@ -411,10 +437,11 @@ function StatButton({
             type="button"
             onClick={onClick}
             disabled={stat.disabled}
-            className={`group relative overflow-hidden flex min-h-[80px] flex-col justify-between rounded-2xl p-4 text-left transition-all duration-150 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 ${stat.hero
-                ? "col-span-2 bg-gradient-to-br from-[var(--color-brand-primary)] to-[var(--color-brand-primary-hover,var(--color-brand-primary))] text-white shadow-sm hover:shadow-md"
-                : "col-span-1 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-surface-card)] border border-[var(--color-border-subtle)]/65 hover:border-[var(--color-brand-primary)]/30 hover:shadow-sm"
-                }`}
+            className={`group relative overflow-hidden flex min-h-[80px] flex-col justify-between rounded-2xl p-4 text-left transition-all duration-150 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 ${
+                stat.hero
+                    ? "col-span-2 bg-gradient-to-br from-[var(--color-brand-primary)] to-[var(--color-brand-primary-hover,var(--color-brand-primary))] text-white shadow-sm hover:shadow-md"
+                    : "col-span-1 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-surface-card)] border border-[var(--color-border-subtle)]/65 hover:border-[var(--color-brand-primary)]/30 hover:shadow-sm"
+            }`}
         >
             {stat.hero ? (
                 <>
@@ -473,10 +500,11 @@ function HeroStatButton({
             type="button"
             onClick={onClick}
             disabled={stat.disabled}
-            className={`group relative overflow-hidden flex min-h-[80px] flex-col justify-between rounded-2xl p-3 text-left transition-all duration-150 active:scale-[0.98] disabled:cursor-wait overflow-visible disabled:opacity-70 ${stat.hero
-                ? "col-span-2 bg-[var(--color-brand-primary)]  text-white"
-                : "col-span-1 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-surface-card)] border border-[var(--color-border-subtle)]/65 hover:border-[var(--color-brand-primary)]/30 hover:shadow-sm"
-                }`}
+            className={`group relative overflow-hidden flex min-h-[80px] flex-col justify-between rounded-2xl p-3 text-left transition-all duration-150 active:scale-[0.98] disabled:cursor-wait overflow-visible disabled:opacity-70 ${
+                stat.hero
+                    ? "col-span-2 bg-[var(--color-brand-primary)]  text-white"
+                    : "col-span-1 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-surface-card)] border border-[var(--color-border-subtle)]/65 hover:border-[var(--color-brand-primary)]/30 hover:shadow-sm"
+            }`}
         >
             {stat.hero ? (
                 <>
@@ -504,10 +532,10 @@ function HeroStatButton({
     );
 }
 
-
 function RevenueTimelinePanel({
     data,
     filter,
+    selectionMode,
     anchorDate,
     range,
     loading,
@@ -516,6 +544,7 @@ function RevenueTimelinePanel({
 }: {
     data: RevenueDashboardData | null;
     filter: RevenueDashboardFilter;
+    selectionMode: RevenueDashboardFilter["mode"];
     anchorDate: string;
     range: RevenueChartRange;
     loading: boolean;
@@ -524,17 +553,33 @@ function RevenueTimelinePanel({
 }) {
     const { t } = useTranslation();
     const d = t.revenue;
+    const aggregation = getRevenueChartRangeAggregation(range);
+    const highlightKey =
+        selectionMode === "date" || selectionMode === "today"
+            ? anchorDate
+            : selectionMode === "month" && aggregation === "month"
+              ? anchorDate.slice(0, 7)
+              : null;
     const prepared = useMemo(
         () =>
             prepareComparableRevenuePoints(
                 (data?.charts.points ?? []).map((point) => ({
                     ...point,
-                    highlighted: point.key === anchorDate,
+                    highlighted: highlightKey
+                        ? point.key.startsWith(highlightKey)
+                        : false,
                 })),
                 undefined,
                 data?.mode ?? filter.mode,
+                aggregation,
             ),
-        [anchorDate, data?.charts.points, data?.mode, filter.mode],
+        [
+            aggregation,
+            data?.charts.points,
+            data?.mode,
+            filter.mode,
+            highlightKey,
+        ],
     );
     const chartData = useMemo<ChartData<"bar" | "line", number[], string>>(
         () => ({
@@ -604,11 +649,12 @@ function RevenueTimelinePanel({
     return (
         <Panel
             title={d.charts.revenueTitle}
-            subtitle={getRevenueComparisonLabel(filter)}
+            subtitle={`${getRevenueComparisonLabel(filter)} · ${d.charts.granularityLabels[prepared.aggregation]}`}
             actions={
                 <RevenueChartRangeSelector
                     value={range}
                     onChange={onRangeChange}
+                    mode={selectionMode}
                 />
             }
         >
@@ -732,7 +778,7 @@ function PaymentMethodsPanel({
                                     style={{
                                         backgroundColor:
                                             donutColors[
-                                            index % donutColors.length
+                                                index % donutColors.length
                                             ],
                                     }}
                                 />
@@ -825,7 +871,9 @@ function TopProductsTable({
                                     <NumberFlowValue value={product.quantity} />
                                 </td>
                                 <td className="px-2 py-2 text-right font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                    <CurrencyNumberFlow value={product.revenue} />
+                                    <CurrencyNumberFlow
+                                        value={product.revenue}
+                                    />
                                 </td>
                             </tr>
                         ))}
@@ -844,16 +892,16 @@ function TopProductsTable({
 function ResponsiveRevenueDetail({
     detail,
     data,
-    onlineData,
-    onlineLoading,
-    onlineError,
+    comparisonData,
+    previousPeriodLabel,
+    storeRevenueBreakdown,
     onClose,
 }: {
     detail: RevenueDetail;
     data: RevenueDashboardData;
-    onlineData: OnlineSalesReport | null;
-    onlineLoading: boolean;
-    onlineError: string | null;
+    comparisonData: RevenueDashboardData | null;
+    previousPeriodLabel: string;
+    storeRevenueBreakdown: StoreRevenueBreakdownItem[];
     onClose: () => void;
 }) {
     const { t } = useTranslation();
@@ -861,9 +909,7 @@ function ResponsiveRevenueDetail({
         detail,
         t.revenue.dashboardOverview.topProducts,
     );
-    const isHeavy =
-        detail.type === "topProducts" ||
-        (detail.type === "stat" && detail.key === "onlineRevenue");
+    const isHeavy = detail.type === "topProducts";
     const defaultSnap = isHeavy ? "full" : "half";
 
     return (
@@ -892,9 +938,9 @@ function ResponsiveRevenueDetail({
                         <RevenueDetailBody
                             detail={detail}
                             data={data}
-                            onlineData={onlineData}
-                            onlineLoading={onlineLoading}
-                            onlineError={onlineError}
+                            comparisonData={comparisonData}
+                            previousPeriodLabel={previousPeriodLabel}
+                            storeRevenueBreakdown={storeRevenueBreakdown}
                         />
                     </div>
                 </div>
@@ -911,9 +957,9 @@ function ResponsiveRevenueDetail({
                         <RevenueDetailBody
                             detail={detail}
                             data={data}
-                            onlineData={onlineData}
-                            onlineLoading={onlineLoading}
-                            onlineError={onlineError}
+                            comparisonData={comparisonData}
+                            previousPeriodLabel={previousPeriodLabel}
+                            storeRevenueBreakdown={storeRevenueBreakdown}
                         />
                     </div>
                 </BottomSheet>
@@ -925,24 +971,24 @@ function ResponsiveRevenueDetail({
 function RevenueDetailBody({
     detail,
     data,
-    onlineData,
-    onlineLoading,
-    onlineError,
+    comparisonData,
+    previousPeriodLabel,
+    storeRevenueBreakdown,
 }: {
     detail: RevenueDetail;
     data: RevenueDashboardData;
-    onlineData: OnlineSalesReport | null;
-    onlineLoading: boolean;
-    onlineError: string | null;
+    comparisonData: RevenueDashboardData | null;
+    previousPeriodLabel: string;
+    storeRevenueBreakdown: StoreRevenueBreakdownItem[];
 }) {
     if (detail.type === "stat") {
         return (
             <StatDetailContent
                 statKey={detail.key}
                 data={data}
-                onlineData={onlineData}
-                onlineLoading={onlineLoading}
-                onlineError={onlineError}
+                comparisonData={comparisonData}
+                previousPeriodLabel={previousPeriodLabel}
+                storeRevenueBreakdown={storeRevenueBreakdown}
             />
         );
     }
@@ -971,31 +1017,28 @@ function RevenueDetailBody({
 function StatDetailContent({
     statKey,
     data,
-    onlineData,
-    onlineLoading,
-    onlineError,
+    comparisonData,
+    previousPeriodLabel,
+    storeRevenueBreakdown,
 }: {
     statKey: StatKey;
     data: RevenueDashboardData;
-    onlineData: OnlineSalesReport | null;
-    onlineLoading: boolean;
-    onlineError: string | null;
+    comparisonData: RevenueDashboardData | null;
+    previousPeriodLabel: string;
+    storeRevenueBreakdown: StoreRevenueBreakdownItem[];
 }) {
     const { t } = useTranslation();
     const d = t.revenue;
     const overview = d.dashboardOverview;
 
-    if (statKey === "onlineRevenue") {
-        return (
-            <OnlineRevenueDetail
-                onlineData={onlineData}
-                onlineLoading={onlineLoading}
-                onlineError={onlineError}
-            />
-        );
-    }
-
     const metric = data.stats[statKey] as RevenueMetric;
+    const previousValue = comparisonData
+        ? (comparisonData.stats[statKey] as RevenueMetric).value
+        : 0;
+    const changePercent =
+        previousValue > 0
+            ? ((metric.value - previousValue) / previousValue) * 100
+            : 0;
 
     return (
         <div className="flex flex-col gap-3">
@@ -1006,15 +1049,15 @@ function StatDetailContent({
                     highlight
                 />
                 <DetailBox
-                    label={d.detail.previous}
-                    value={renderStatValue(statKey, metric.previousValue)}
+                    label={previousPeriodLabel}
+                    value={renderStatValue(statKey, previousValue)}
                 />
                 <DetailBox
                     label={d.detail.change}
                     value={
                         <PercentNumberFlow
-                            value={metric.changePercent}
-                            prefix={metric.changePercent > 0 ? "+" : undefined}
+                            value={changePercent}
+                            prefix={changePercent > 0 ? "+" : undefined}
                         />
                     }
                 />
@@ -1022,72 +1065,16 @@ function StatDetailContent({
 
             {statKey === "totalRevenue" && (
                 <>
-                    <SectionTitle title={overview.revenueStructure} />
-                    <div className="grid grid-cols-2 gap-2">
-                        <DetailBox
-                            label="JPOS"
-                            value={
-                                <CurrencyNumberFlow
-                                    value={data.stats.totalRevenue.value}
-                                />
-                            }
-                            highlight
-                        />
-                        <DetailBox
-                            label={overview.website}
-                            value={
-                                onlineData
-                                    ? (
-                                        <CurrencyNumberFlow
-                                            value={onlineData.summary.netRevenue}
-                                        />
-                                    )
-                                    : "---"
-                            }
-                        />
-                    </div>
+                    <SectionTitle title={overview.storeRevenue} />
+                    <StoreRevenueBreakdown stores={storeRevenueBreakdown} />
+                    <SectionTitle title={d.stats.paymentMethods} />
                     <PaymentBreakdown methods={data.stats.paymentMethods} />
                 </>
             )}
 
             {statKey === "totalOrders" && (
                 <>
-                    <SectionTitle title={overview.orderStructure} />
-                    <div className="grid grid-cols-3 gap-2">
-                        <DetailBox
-                            label="JPOS"
-                            value={
-                                <NumberFlowValue
-                                    value={data.stats.totalOrders.value}
-                                />
-                            }
-                            highlight
-                        />
-                        <DetailBox
-                            label={overview.website}
-                            value={
-                                onlineData
-                                    ? (
-                                        <NumberFlowValue
-                                            value={onlineData.summary.orderCount}
-                                        />
-                                    )
-                                    : "---"
-                            }
-                        />
-                        <DetailBox
-                            label={overview.websiteProducts}
-                            value={
-                                onlineData
-                                    ? (
-                                        <NumberFlowValue
-                                            value={onlineData.summary.itemQuantity}
-                                        />
-                                    )
-                                    : "---"
-                            }
-                        />
-                    </div>
+                    <SectionTitle title={d.stats.paymentMethods} />
                     <PaymentBreakdown methods={data.stats.paymentMethods} />
                 </>
             )}
@@ -1095,7 +1082,7 @@ function StatDetailContent({
             {statKey === "averageOrderValue" && (
                 <>
                     <SectionTitle title={overview.averageValue} />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                         <DetailBox
                             label={d.stats.totalRevenue}
                             value={
@@ -1112,108 +1099,9 @@ function StatDetailContent({
                                 />
                             }
                         />
-                        <DetailBox
-                            label={overview.websiteAov}
-                            value={
-                                onlineData
-                                    ? (
-                                        <CurrencyNumberFlow
-                                            value={
-                                                onlineData.summary
-                                                    .averageOrderValue
-                                            }
-                                        />
-                                    )
-                                    : "---"
-                            }
-                            highlight
-                        />
                     </div>
                 </>
             )}
-        </div>
-    );
-}
-
-function OnlineRevenueDetail({
-    onlineData,
-    onlineLoading,
-    onlineError,
-}: {
-    onlineData: OnlineSalesReport | null;
-    onlineLoading: boolean;
-    onlineError: string | null;
-}) {
-    const { t } = useTranslation();
-    const d = t.revenue.online;
-
-    if (onlineLoading && !onlineData) {
-        return (
-            <div className="h-32 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-card)]" />
-        );
-    }
-
-    if (onlineError || !onlineData) {
-        return (
-            <div className="rounded-[var(--radius-sm)] bg-[var(--color-error-bg)] p-3 text-sm text-[var(--color-error-text)]">
-                {onlineError ?? d.empty}
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-                <DetailBox
-                    label={d.metrics.netRevenue}
-                    value={
-                        <CurrencyNumberFlow
-                            value={onlineData.summary.netRevenue}
-                        />
-                    }
-                    highlight
-                />
-                <DetailBox
-                    label={d.metrics.orders}
-                    value={
-                        <NumberFlowValue value={onlineData.summary.orderCount} />
-                    }
-                />
-                <DetailBox
-                    label={d.metrics.averageOrderValue}
-                    value={
-                        <CurrencyNumberFlow
-                            value={onlineData.summary.averageOrderValue}
-                        />
-                    }
-                />
-                <DetailBox
-                    label={d.metrics.grossRevenue}
-                    value={
-                        <CurrencyNumberFlow
-                            value={onlineData.summary.grossRevenue}
-                        />
-                    }
-                />
-                <DetailBox
-                    label={d.metrics.discountAmount}
-                    value={
-                        <CurrencyNumberFlow
-                            value={onlineData.summary.discountAmount}
-                        />
-                    }
-                />
-                <DetailBox
-                    label={d.metrics.passesIssued}
-                    value={
-                        <NumberFlowValue
-                            value={onlineData.summary.passesIssued}
-                        />
-                    }
-                />
-            </div>
-            <OnlineProviderBreakdown providers={onlineData.paymentProviders} />
-            <OnlineProductList products={onlineData.productSales.slice(0, 6)} />
         </div>
     );
 }
@@ -1242,7 +1130,9 @@ function TimelinePointDetail({
                 />
                 <DetailBox
                     label={d.stats.memberCardSales}
-                    value={<CurrencyNumberFlow value={point.memberCardAmount} />}
+                    value={
+                        <CurrencyNumberFlow value={point.memberCardAmount} />
+                    }
                 />
             </div>
         </div>
@@ -1377,169 +1267,121 @@ function PaymentBreakdown({ methods }: { methods: PaymentMethodMetric[] }) {
     const d = t.revenue;
     const overview = d.dashboardOverview;
     const total = getPaymentTotal(methods);
+    const rows = methods.map((method) => ({
+        ...method,
+        percentage:
+            total > 0 ? (method.amount / total) * 100 : method.percentage,
+    }));
 
     return (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] overflow-hidden divide-y divide-[var(--color-border-subtle)]">
-            {methods.map((method, index) => {
-                const percentage =
-                    total > 0
-                        ? (method.amount / total) * 100
-                        : method.percentage;
-                return (
-                    <div
-                        key={method.method}
-                        className="p-3 bg-[var(--color-surface-card)]"
-                    >
-                        <div className="flex items-center justify-between gap-3">
-                            <span className="flex min-w-0 items-center gap-2">
-                                <span
-                                    className="h-2 w-2 shrink-0 rounded-full"
-                                    style={{
-                                        backgroundColor:
-                                            donutColors[
-                                            index % donutColors.length
-                                            ],
-                                    }}
-                                />
-                                <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                                    {getPaymentMethodLabel(d, method.method)}
-                                </span>
-                            </span>
-                            <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                <CurrencyNumberFlow value={method.amount} />
-                            </span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                                className="h-full rounded-full"
+            <div className="p-3">
+                <RevenueShareBar
+                    percentages={rows.map((method) => method.percentage)}
+                />
+            </div>
+            {rows.map((method, index) => (
+                <div
+                    key={method.method}
+                    className="p-3 bg-[var(--color-surface-card)]"
+                >
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2">
+                            <span
+                                className="h-2 w-2 shrink-0 rounded-full"
                                 style={{
-                                    width: `${Math.min(percentage, 100)}%`,
                                     backgroundColor:
                                         donutColors[index % donutColors.length],
                                 }}
                             />
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
-                            <span>
-                                <NumberFlowValue value={method.orderCount} />{" "}
-                                {overview.ordersUnit}
+                            <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                                {getPaymentMethodLabel(d, method.method)}
                             </span>
-                            <span className="font-semibold text-[var(--color-text-primary)]">
-                                <PercentNumberFlow value={percentage} />
-                            </span>
-                        </div>
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
+                            <CurrencyNumberFlow value={method.amount} />
+                        </span>
                     </div>
-                );
-            })}
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
+                        <span>
+                            <NumberFlowValue value={method.orderCount} />{" "}
+                            {overview.ordersUnit}
+                        </span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            <PercentNumberFlow value={method.percentage} />
+                        </span>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
 
-function OnlineProviderBreakdown({
-    providers,
+function StoreRevenueBreakdown({
+    stores,
 }: {
-    providers: OnlineSalesReport["paymentProviders"];
+    stores: StoreRevenueBreakdownItem[];
 }) {
     const { t } = useTranslation();
-    const d = t.revenue.online;
-    const total = providers.reduce(
-        (sum, provider) => sum + provider.netRevenue,
-        0,
-    );
-    if (providers.length === 0) return null;
 
     return (
-        <div className="flex flex-col gap-2">
-            <SectionTitle title={d.payments.title} />
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] overflow-hidden divide-y divide-[var(--color-border-subtle)]">
-                {providers.map((provider, index) => {
-                    const percentage =
-                        total > 0 ? (provider.netRevenue / total) * 100 : 0;
-                    return (
-                        <div
-                            key={provider.provider}
-                            className="p-3 bg-[var(--color-surface-card)]"
-                        >
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                                    {provider.provider}
-                                </span>
-                                <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                    <CurrencyNumberFlow
-                                        value={provider.netRevenue}
-                                    />
-                                </span>
-                            </div>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                                <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                        width: `${Math.min(percentage, 100)}%`,
-                                        backgroundColor:
-                                            donutColors[index % donutColors.length],
-                                    }}
-                                />
-                            </div>
-                            <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
-                                <span>
-                                    <NumberFlowValue
-                                        value={provider.orderCount}
-                                    />{" "}
-                                    {d.payments.orders}
-                                </span>
-                                <span className="font-semibold text-[var(--color-text-primary)]">
-                                    <PercentNumberFlow value={percentage} />
-                                </span>
-                            </div>
-                        </div>
-                    );
-                })}
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] overflow-hidden divide-y divide-[var(--color-border-subtle)]">
+            <div className="p-3">
+                <RevenueShareBar
+                    percentages={stores.map((store) => store.percentage)}
+                />
             </div>
+            {stores.map((store, index) => (
+                <div
+                    key={store.warehouseId}
+                    className="p-3 bg-[var(--color-surface-card)]"
+                >
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2">
+                            <span
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{
+                                    backgroundColor:
+                                        donutColors[index % donutColors.length],
+                                }}
+                            />
+                            <span className="truncate font-mono text-xs font-semibold text-[var(--color-text-primary)]">
+                                {store.code}
+                            </span>
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
+                            <CurrencyNumberFlow value={store.revenue} />
+                        </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-medium">
+                        <span>{t.revenue.dashboardOverview.share}</span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            <PercentNumberFlow value={store.percentage} />
+                        </span>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
 
-function OnlineProductList({
-    products,
-}: {
-    products: OnlineSalesReport["productSales"];
-}) {
-    const { t } = useTranslation();
-    const d = t.revenue.online;
-    if (products.length === 0) return null;
-
+function RevenueShareBar({ percentages }: { percentages: number[] }) {
     return (
-        <div className="flex flex-col gap-2">
-            <SectionTitle title={d.products.title} />
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-card)] overflow-hidden divide-y divide-[var(--color-border-subtle)]">
-                {products.map((product, index) => (
-                    <div
-                        key={product.productId || product.productName}
-                        className="p-3 bg-[var(--color-surface-card)]"
-                    >
-                        <div className="flex items-center justify-between gap-3">
-                            <span className="min-w-0">
-                                <span className="block truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                                    #{index + 1} {product.productName}
-                                </span>
-                                <span className="text-[10px] text-[var(--color-text-muted)] font-medium">
-                                    <NumberFlowValue
-                                        value={product.quantitySold}
-                                    />{" "}
-                                    {d.products.units} /{" "}
-                                    <NumberFlowValue
-                                        value={product.orderCount}
-                                    />{" "}
-                                    {d.products.orders}
-                                </span>
-                            </span>
-                            <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                <CurrencyNumberFlow value={product.netRevenue} />
-                            </span>
-                        </div>
-                    </div>
-                ))}
-            </div>
+        <div
+            aria-hidden="true"
+            className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
+        >
+            {percentages.map((percentage, index) => (
+                <div
+                    key={index}
+                    className="h-full shrink-0"
+                    style={{
+                        width: `${Math.max(0, Math.min(percentage, 100))}%`,
+                        backgroundColor:
+                            donutColors[index % donutColors.length],
+                    }}
+                />
+            ))}
         </div>
     );
 }
@@ -1566,7 +1408,9 @@ function Panel({
                         {subtitle}
                     </p>
                 </div>
-                {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
+                {actions && (
+                    <div className="w-full shrink-0 sm:w-auto">{actions}</div>
+                )}
             </div>
             <div className="min-h-0 flex-1">{children}</div>
         </section>

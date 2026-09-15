@@ -7,7 +7,10 @@ import type {
 } from "@bduck/shared-types";
 import { useMemo } from "react";
 
-import type { RevenueChartRange } from "@/hooks/revenueChartRange";
+import {
+  getRevenueChartRangeAggregation,
+  type RevenueChartRange,
+} from "@/hooks/revenueChartRange";
 import { useTranslation } from "@/lib/i18n";
 
 import { RevenueChartSummary } from "./RevenueChartPrimitives";
@@ -34,6 +37,7 @@ interface RevenueChartsProps {
   comparisonPoints?: RevenueChartPoint[];
   paymentMethods: PaymentMethodMetric[];
   mode: RevenueDateMode;
+  filterMode: RevenueDateMode;
   comparisonLabel?: string;
   comparisonCount?: number;
   onPointClick?: (key: string) => void;
@@ -49,6 +53,7 @@ export default function RevenueCharts({
   comparisonPoints,
   paymentMethods,
   mode,
+  filterMode,
   comparisonLabel,
   comparisonCount = 0,
   onPointClick,
@@ -67,8 +72,14 @@ export default function RevenueCharts({
     [comparisonCount, comparisonPeriods, currentPeriod],
   );
   const prepared = useMemo(
-    () => prepareComparableRevenuePoints(points, comparisonPoints, mode),
-    [comparisonPoints, mode, points],
+    () =>
+      prepareComparableRevenuePoints(
+        points,
+        comparisonPoints,
+        mode,
+        chartRange ? getRevenueChartRangeAggregation(chartRange) : undefined,
+      ),
+    [chartRange, comparisonPoints, mode, points],
   );
   const usePeriodComparison =
     comparisonCount > 1 || (comparisonCount > 0 && mode === "date");
@@ -91,6 +102,7 @@ export default function RevenueCharts({
           title={t.revenue.charts.revenueTitle}
           onPointClick={onPointClick}
           range={chartRange}
+          rangeMode={filterMode}
           onRangeChange={onChartRangeChange}
           loading={chartLoading}
         />

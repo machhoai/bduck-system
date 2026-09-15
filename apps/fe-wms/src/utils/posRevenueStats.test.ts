@@ -234,3 +234,47 @@ test("JPOS dashboard fills missing dates so range charts keep every column", () 
     ],
   );
 });
+
+test("JPOS dashboard honors explicit monthly granularity for multi-month presets", () => {
+  const dashboard = buildPosRevenueDashboardData({
+    records: [
+      {
+        id: "order-march",
+        status: "LOCAL_PAID",
+        totalAmount: 100_000,
+        paidAt: "2026-03-15T03:00:00.000Z",
+      },
+      {
+        id: "order-august",
+        status: "LOCAL_PAID",
+        totalAmount: 200_000,
+        paidAt: "2026-08-15T03:00:00.000Z",
+      },
+    ],
+    warehouseId: "store-1",
+    filter: {
+      mode: "custom",
+      granularity: "month",
+      date: "2026-08-31",
+      month: "2026-08",
+      year: "2026",
+      startDate: "2026-03-01",
+      endDate: "2026-08-31",
+    },
+    range: { startDate: "2026-03-01", endDate: "2026-08-31" },
+    generatedAt: "2026-08-31T04:00:00.000Z",
+  });
+
+  assert.equal(dashboard.charts.granularity, "month");
+  assert.deepEqual(
+    dashboard.charts.points.map((point) => [point.key, point.revenue]),
+    [
+      ["2026-03", 100_000],
+      ["2026-04", 0],
+      ["2026-05", 0],
+      ["2026-06", 0],
+      ["2026-07", 0],
+      ["2026-08", 200_000],
+    ],
+  );
+});

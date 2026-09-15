@@ -1,6 +1,8 @@
 # Kế hoạch đồng bộ ATP JPULSE → OpenAPI Trung Quốc
 
-Ngày: 2026-09-15. Trạng thái: hoàn thành kế hoạch; chưa triển khai chức năng.
+Ngày: 2026-09-15. Trạng thái: đã triển khai luồng cốt lõi mapping, đối chiếu và đồng bộ thủ công; ghi production vẫn tắt cho tới khi mutation test được nghiệm thu.
+
+> Cập nhật triển khai: backend dùng API quản trị JoyWorld đã khảo sát, chỉ lấy ATP JPULSE làm target, ghép SKU chính xác, có snapshot TTL, recheck trước gửi, idempotency theo request, khóa theo kho, read-back và trạng thái `UNKNOWN`. Khi kết quả chưa xác định, hệ thống chỉ cho đối soát lại bằng thao tác đọc và không gửi lại mutation mù. Frontend có picker-only mapping kho/danh mục và modal desktop/mobile tại chi tiết kho. `JOYWORLD_INVENTORY_SYNC_WRITE_ENABLED` mặc định `false`.
 
 ## 1. Quyết định nghiệp vụ đã chốt
 
@@ -233,19 +235,19 @@ Worker endpoint dùng service identity/JWT xác minh audience và quyền gọi 
 
 ### Giai đoạn 1 — Schema, quyền và mapping
 
-- [ ] Shared types/Zod, collection/index/rules, unique claims và audit transaction.
+- [x] Shared types/Zod, collection/rules, unique mapping claim, sync lease và audit.
 - [ ] Connection identity/config owner; kiểm tra cấu hình trùng account trước migration.
 - [ ] Migration additive, không tự mapping bằng tên; dữ liệu cũ ở trạng thái chưa mapping.
-- [ ] Adapter đọc kho/gift_type; backend mapping controller/service/repository.
-- [ ] Picker kho tại WarehouseFormModal và picker nhóm theo kết nối tại CategoryFormModal.
+- [x] Adapter đọc kho/gift_type; backend mapping controller/service/repository.
+- [x] Picker kho tại WarehouseFormModal và picker nhóm theo kết nối tại CategoryFormModal.
 - [ ] Test mapping trùng, tenant scope, version, soft delete, mất quyền.
 
 ### Giai đoạn 2 — Đối chiếu và modal
 
-- [ ] Backend aggregate ATP đúng kho/vị trí; join exact SKU; snapshot đầy đủ và row eligibility.
-- [ ] `PartnerInventorySyncModal`, summary, toolbar, desktop table/mobile card, footer và status components.
-- [ ] Hook snapshot thủ công/job và API client riêng; logic selection/aggregation tách khỏi TSX.
-- [ ] Nút mở modal tại WarehouseDetailHero và trang `(dashboard)/warehouses/[id]/page.tsx`.
+- [x] Backend aggregate ATP đúng kho/vị trí; join exact SKU; snapshot và row eligibility.
+- [x] `PartnerInventorySyncModal`, desktop table/mobile card, footer và status components.
+- [x] Hook snapshot thủ công/job và API client riêng; logic aggregation tách khỏi TSX.
+- [x] Nút mở modal tại WarehouseDetailHero và trang `(dashboard)/warehouses/[id]/page.tsx`.
 - [ ] Chọn một/nhiều/tất cả theo bộ lọc; xử lý pagination, nguồn đổi, ATP 0, thiếu SKU.
 - [ ] Nút làm mới thủ công, offline cache, skeleton, lỗi vi/zh; không polling; chỉ đọc khi write capability chưa sẵn sàng.
 
@@ -256,15 +258,15 @@ Worker endpoint dùng service identity/JWT xác minh audience và quyền gọi 
 - [ ] Adapter tăng/giảm tồn theo contract quản trị, read-back và UNKNOWN recovery; không retry mutation mù.
 - [ ] Lịch sử theo kho và từng dòng; đóng/mở modal không mất tiến độ.
 - [ ] Atomic audit nội bộ/send intent, phục hồi sau crash, không gọi partner trong transaction.
-- [ ] Cấu hình env/feature flag/rate/batch/snapshot TTL và recovery; không tạo lịch định kỳ hoặc worker polling.
+- [x] Cấu hình env/feature flag, batch limit, snapshot TTL và read-back recovery; không tạo lịch định kỳ hoặc polling.
 
 ### Giai đoạn 4 — Kiểm thử và triển khai có kiểm soát
 
-- [ ] Unit test phép cộng ATP, row eligibility, selection và state transition.
-- [ ] Emulator test uniqueness/race, job claims, audit, RBAC và Firestore rules.
+- [x] Unit test phép cộng ATP, row eligibility, idempotency và trạng thái UNKNOWN.
+- [x] Firestore Rules emulator test phạm vi đọc và backend-only writes cho mapping/snapshot/job/claim/lock. Test transaction race và audit tích hợp vẫn cần bổ sung trước rollout production.
 - [ ] Contract test fixture đã xác minh và sandbox end-to-end với đối tác.
 - [ ] UI desktop/mobile: checkbox, focus, skeleton, vi/zh, làm mới thủ công, offline và job resume.
-- [ ] Chạy lint/typecheck/test phù hợp shared-types, backend, frontend và access/rules liên quan.
+- [x] Chạy lint/typecheck/test phù hợp shared-types, backend, frontend và Firestore Rules emulator.
 - [ ] Mở chế độ đối chiếu trước tại một kho; đối chiếu số liệu thực tế với người vận hành.
 - [ ] Sau khi API ghi nghiệm thu, mở gửi thật trên vài SKU của một kho rồi tăng dần.
 - [ ] Theo dõi tỷ lệ lỗi, UNKNOWN, độ trễ xác minh, job kẹt và số dòng lệch sau gửi.

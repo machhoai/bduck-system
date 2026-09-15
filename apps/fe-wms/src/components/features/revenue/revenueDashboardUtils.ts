@@ -1,4 +1,9 @@
-import type { PaymentMethodMetric, RevenueChartPoint, RevenueDateMode, RevenueMetric } from "@/hooks/useRevenueDashboard";
+import type {
+  PaymentMethodMetric,
+  RevenueChartPoint,
+  RevenueDateMode,
+  RevenueMetric,
+} from "@/hooks/useRevenueDashboard";
 
 export function formatCurrency(value: number): string {
   return `${Math.round(value).toLocaleString("vi-VN")}đ`;
@@ -40,10 +45,16 @@ export function prepareComparableRevenuePoints(
   points: RevenueChartPoint[],
   comparisonPoints?: RevenueChartPoint[],
   mode: RevenueDateMode = "custom",
-): { points: ComparableRevenueChartPoint[]; aggregation: RevenueChartAggregation } {
-  const aggregation = getAggregation(points, mode);
+  aggregationOverride?: RevenueChartAggregation,
+): {
+  points: ComparableRevenueChartPoint[];
+  aggregation: RevenueChartAggregation;
+} {
+  const aggregation = aggregationOverride ?? getAggregation(points, mode);
   const current = aggregateRevenuePoints(points, aggregation);
-  const comparison = comparisonPoints ? aggregateRevenuePoints(comparisonPoints, aggregation) : [];
+  const comparison = comparisonPoints
+    ? aggregateRevenuePoints(comparisonPoints, aggregation)
+    : [];
 
   return {
     aggregation,
@@ -56,7 +67,9 @@ export function prepareComparableRevenuePoints(
         comparisonRevenue: comparePoint?.revenue,
         comparisonOrderCount: comparePoint?.orderCount,
         comparisonMemberCardAmount: comparePoint?.memberCardAmount,
-        comparisonTooltipLabel: comparePoint ? formatPointTooltipLabel(comparePoint) : undefined,
+        comparisonTooltipLabel: comparePoint
+          ? formatPointTooltipLabel(comparePoint)
+          : undefined,
       };
     }),
   };
@@ -82,7 +95,10 @@ export function sumComparablePointValue(
   );
 }
 
-function getAggregation(points: RevenueChartPoint[], mode: RevenueDateMode): RevenueChartAggregation {
+function getAggregation(
+  points: RevenueChartPoint[],
+  mode: RevenueDateMode,
+): RevenueChartAggregation {
   if (points.some((point) => /^\d{4}-\d{2}$/.test(point.key))) return "month";
   if (mode !== "custom") return "day";
   if (points.length > 62) return "month";
@@ -90,7 +106,10 @@ function getAggregation(points: RevenueChartPoint[], mode: RevenueDateMode): Rev
   return "day";
 }
 
-function aggregateRevenuePoints(points: RevenueChartPoint[], aggregation: RevenueChartAggregation): RevenueChartPoint[] {
+function aggregateRevenuePoints(
+  points: RevenueChartPoint[],
+  aggregation: RevenueChartAggregation,
+): RevenueChartPoint[] {
   if (aggregation === "day") return points;
   if (aggregation === "week") {
     const chunks: RevenueChartPoint[] = [];
@@ -111,26 +130,40 @@ function aggregateRevenuePoints(points: RevenueChartPoint[], aggregation: Revenu
     .map(([, group]) => mergePointGroup(group, "month"));
 }
 
-function mergePointGroup(points: RevenueChartPoint[], aggregation: RevenueChartAggregation): RevenueChartPoint {
+function mergePointGroup(
+  points: RevenueChartPoint[],
+  aggregation: RevenueChartAggregation,
+): RevenueChartPoint {
   const first = points[0];
   const last = points[points.length - 1] ?? first;
   return {
-    key: aggregation === "month" ? (first?.key ?? "").slice(0, 7) : first?.key ?? "",
+    key:
+      aggregation === "month"
+        ? (first?.key ?? "").slice(0, 7)
+        : (first?.key ?? ""),
     label: getGroupLabel(first?.key ?? "", last?.key ?? "", aggregation),
     revenue: points.reduce((sum, point) => sum + point.revenue, 0),
     orderCount: points.reduce((sum, point) => sum + point.orderCount, 0),
-    memberCardAmount: points.reduce((sum, point) => sum + point.memberCardAmount, 0),
+    memberCardAmount: points.reduce(
+      (sum, point) => sum + point.memberCardAmount,
+      0,
+    ),
     highlighted: points.some((point) => point.highlighted),
   };
 }
 
-function getGroupLabel(startKey: string, endKey: string, aggregation: RevenueChartAggregation): string {
+function getGroupLabel(
+  startKey: string,
+  endKey: string,
+  aggregation: RevenueChartAggregation,
+): string {
   if (aggregation === "month") {
     const month = startKey.slice(5, 7);
     const year = startKey.slice(2, 4);
     return `T${Number(month)}/${year}`;
   }
-  if (aggregation === "week") return `${formatFullDate(startKey)} - ${formatFullDate(endKey)}`;
+  if (aggregation === "week")
+    return `${formatFullDate(startKey)} - ${formatFullDate(endKey)}`;
   return startKey;
 }
 
@@ -141,8 +174,10 @@ function formatFullDate(value: string): string {
 
 function formatPointTooltipLabel(point: RevenueChartPoint): string {
   if (point.label.includes(" - ")) return `Tuần ${point.label}`;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(point.key)) return `Ngày ${formatFullDate(point.key)}`;
-  if (/^\d{4}-\d{2}$/.test(point.key)) return `Tháng ${point.key.slice(5, 7)}/${point.key.slice(0, 4)}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(point.key))
+    return `Ngày ${formatFullDate(point.key)}`;
+  if (/^\d{4}-\d{2}$/.test(point.key))
+    return `Tháng ${point.key.slice(5, 7)}/${point.key.slice(0, 4)}`;
   return point.label;
 }
 

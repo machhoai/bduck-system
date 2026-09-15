@@ -1,4 +1,8 @@
-import type { RevenueDashboardFilter, RevenueDateMode } from "@bduck/shared-types";
+import type {
+  RevenueChartGranularity,
+  RevenueDashboardFilter,
+  RevenueDateMode,
+} from "@bduck/shared-types";
 
 export interface RevenueDateRange {
   startDate: string;
@@ -9,6 +13,7 @@ export interface RevenueDateRange {
 
 export interface RevenueDashboardQuery {
   mode: RevenueDateMode;
+  granularity?: RevenueChartGranularity;
   date?: string;
   month?: string;
   year?: string;
@@ -44,8 +49,7 @@ export function normalizeRevenueRange(
       startDate,
       endDate,
       label: month,
-      highlightedDates:
-        today >= startDate && today <= endDate ? [today] : [],
+      highlightedDates: today >= startDate && today <= endDate ? [today] : [],
     };
   }
 
@@ -62,7 +66,10 @@ export function normalizeRevenueRange(
     };
   }
 
-  const date = normalizeDate(input.mode === "today" ? today : input.date, today);
+  const date = normalizeDate(
+    input.mode === "today" ? today : input.date,
+    today,
+  );
   return {
     startDate: date,
     endDate: date,
@@ -77,7 +84,12 @@ export function previousRevenueRange(
 ): RevenueDateRange {
   if (input.mode === "today" || input.mode === "date") {
     const date = addDays(range.startDate, -1);
-    return { startDate: date, endDate: date, label: date, highlightedDates: [] };
+    return {
+      startDate: date,
+      endDate: date,
+      label: date,
+      highlightedDates: [],
+    };
   }
   if (input.mode === "month") {
     const startDate = startOfMonth(addMonths(range.startDate, -1));

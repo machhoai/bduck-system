@@ -74,7 +74,9 @@ export function buildPosRevenueDashboardData(input: {
     }
   >();
 
-  const granularity = input.filter.mode === "year" ? "month" : "day";
+  const granularity =
+    input.filter.granularity ??
+    (input.filter.mode === "year" ? "month" : "day");
 
   for (const order of orders) {
     const amount = toFiniteNumber(order.totalAmount);

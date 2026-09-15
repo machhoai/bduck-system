@@ -9,7 +9,9 @@ import { useMemo, useState } from "react";
 
 import {
   buildRevenueChartRangeFilter,
+  getDefaultRevenueChartRange,
   getRevenueChartAnchorDate,
+  getRevenueChartRangeAggregation,
   type RevenueChartRange,
 } from "@/hooks/revenueChartRange";
 import { usePosRevenueStats } from "@/hooks/usePosRevenueStats";
@@ -50,6 +52,12 @@ export default function RevenueDashboard() {
     getDefaultRevenueFilter(),
   );
   const [chartRange, setChartRange] = useState<RevenueChartRange>("last7");
+  const handleFilterChange = (nextFilter: RevenueDashboardFilter) => {
+    if (nextFilter.mode !== filter.mode) {
+      setChartRange(getDefaultRevenueChartRange(nextFilter.mode));
+    }
+    setFilter(nextFilter);
+  };
   const [comparison, setComparison] = useState<RevenueComparisonSelection>(() =>
     getDefaultRevenueComparison(getDefaultRevenueFilter()),
   );
@@ -124,13 +132,22 @@ export default function RevenueDashboard() {
       : (localChartDashboard.data?.dashboard ?? null);
   const chartData = chartRangeEnabled ? chartRawData : data;
   const chartAnchorDate = getRevenueChartAnchorDate(filter);
+  const chartAggregation = getRevenueChartRangeAggregation(chartRange);
+  const chartHighlightKey =
+    filter.mode === "date" || filter.mode === "today"
+      ? chartAnchorDate
+      : filter.mode === "month" && chartAggregation === "month"
+        ? chartAnchorDate.slice(0, 7)
+        : null;
   const chartPoints = useMemo(
     () =>
       (chartData?.charts.points ?? []).map((point) => ({
         ...point,
-        highlighted: point.key === chartAnchorDate,
+        highlighted: chartHighlightKey
+          ? point.key.startsWith(chartHighlightKey)
+          : false,
       })),
-    [chartAnchorDate, chartData?.charts.points],
+    [chartData?.charts.points, chartHighlightKey],
   );
   const chartLoading =
     chartRangeEnabled &&
@@ -161,8 +178,10 @@ export default function RevenueDashboard() {
 
   const handleChartPointClick = (key: string) => {
     if (/^\d{4}-\d{2}$/u.test(key)) {
+      setChartRange(getDefaultRevenueChartRange("month"));
       setFilter((current) => ({ ...current, mode: "month", month: key }));
     } else if (/^\d{4}-\d{2}-\d{2}$/u.test(key)) {
+      setChartRange(getDefaultRevenueChartRange("date"));
       setFilter((current) => ({ ...current, mode: "date", date: key }));
     }
   };
@@ -201,7 +220,7 @@ export default function RevenueDashboard() {
           filter={filter}
           comparison={comparison}
           comparisonLabel={comparisonLabel}
-          onChange={setFilter}
+          onChange={handleFilterChange}
           onComparisonChange={setComparison}
           generatedAt={data?.generatedAt}
           syncing={syncing}
@@ -242,6 +261,7 @@ export default function RevenueDashboard() {
             comparisonPoints={comparisons.data[0]?.charts.points}
             paymentMethods={data.charts.paymentMethods}
             mode={chartData?.mode ?? data.mode}
+            filterMode={filter.mode}
             comparisonLabel={comparisonLabel}
             comparisonCount={comparisons.data.length}
             onPointClick={handleChartPointClick}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { RevenueDateMode } from "@bduck/shared-types";
 import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
 import { useMemo } from "react";
 
@@ -37,6 +38,7 @@ export default function RevenueTrendChart({
   variant,
   onPointClick,
   range,
+  rangeMode,
   onRangeChange,
   loading = false,
 }: {
@@ -46,6 +48,7 @@ export default function RevenueTrendChart({
   variant: "timeline" | "period";
   onPointClick?: (key: string) => void;
   range?: RevenueChartRange;
+  rangeMode?: RevenueDateMode;
   onRangeChange?: (range: RevenueChartRange) => void;
   loading?: boolean;
 }) {
@@ -187,7 +190,11 @@ export default function RevenueTrendChart({
       subtitle={copy.charts.revenueSubtitle}
       actions={
         range && onRangeChange ? (
-          <RevenueChartRangeSelector value={range} onChange={onRangeChange} />
+          <RevenueChartRangeSelector
+            value={range}
+            onChange={onRangeChange}
+            mode={rangeMode}
+          />
         ) : undefined
       }
     >

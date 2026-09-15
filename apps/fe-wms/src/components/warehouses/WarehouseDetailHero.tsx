@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
+import type { Warehouse } from "@bduck/shared-types";
 import {
     ArrowDownToLine,
     ArrowRightLeft,
@@ -10,7 +9,11 @@ import {
     Pencil,
     Warehouse as WarehouseIcon,
 } from "lucide-react";
-import type { Warehouse } from "@bduck/shared-types";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { PartnerInventorySyncButton } from "./PartnerInventorySyncButton";
 
 import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
@@ -20,6 +23,7 @@ interface WarehouseDetailHeroProps {
     warehouseId: string;
     managerName: string;
     onEdit: () => void;
+    onPartnerInventorySync: () => void;
 }
 
 export function WarehouseDetailHero({
@@ -27,12 +31,13 @@ export function WarehouseDetailHero({
     warehouseId,
     managerName,
     onEdit,
+    onPartnerInventorySync,
 }: WarehouseDetailHeroProps) {
     const { t } = useTranslation();
     const hasPermission = useUserStore((state) => state.hasPermission);
-    const coordinate = warehouse.coordinate;
     const isActive = warehouse.status === "ACTIVE";
     const canEditWarehouse = hasPermission("warehouses.write", warehouseId);
+    const canReadPartnerInventory = hasPermission("partner_inventory.read", warehouseId);
     const quickActions = [
         {
             key: "import",
@@ -63,12 +68,15 @@ export function WarehouseDetailHero({
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-5 p-4 sm:p-4 rounded-4xl  border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
                     <div className="flex flex-1 h-full gap-4 w-full min-h-0">
-                        <div className="h-56 aspect-square  flex overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
+                        <div className="relative h-56 aspect-square flex overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-pearl)]">
                             {warehouse.warehouse_image_url ? (
-                                <img
+                                <Image
                                     src={warehouse.warehouse_image_url}
                                     alt={warehouse.name}
-                                    className="h-full w-full object-cover"
+                                    fill
+                                    sizes="224px"
+                                    priority
+                                    className="object-cover"
                                 />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center text-[var(--color-brand-primary)]">
@@ -130,7 +138,7 @@ export function WarehouseDetailHero({
                                     </button>
                                 )}
                             </div>
-                            {quickActions.length > 0 && (
+                            {(quickActions.length > 0 || canReadPartnerInventory) && (
                                 <div className="flex min-w-0 row-start-1 col-span-2 flex-1 flex-col gap-2">
                                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                         {t.warehouses.quickActions}:
@@ -145,6 +153,10 @@ export function WarehouseDetailHero({
                                                 icon={action.icon}
                                             />
                                         ))}
+                                        <PartnerInventorySyncButton
+                                            warehouseId={warehouseId}
+                                            onClick={onPartnerInventorySync}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -226,17 +238,6 @@ function InfoTile({ label, value }: { label: string; value: string }) {
             <p className="mt-1 break-words text-sm font-semibold leading-5 text-[var(--color-text-primary)]">
                 {value}
             </p>
-        </div>
-    );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-[var(--color-text-muted)]">{label}</span>
-            <span className="text-right font-semibold text-[var(--color-text-primary)]">
-                {value}
-            </span>
         </div>
     );
 }
