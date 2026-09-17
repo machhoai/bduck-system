@@ -243,6 +243,10 @@ export function AdminOverviewTab({
                         canImportHistory={canImportLeaveHistory}
                         canReadAll={canReadAllLeaveRequests}
                         canAdjustBalance={canAdjustLeaveBalance}
+                        pendingApprovalCount={leaveApprovalTasks.length}
+                        unavailableApprovalCount={
+                            unavailableLeaveApprovalTasks.length
+                        }
                         onCreate={(selectedType) => {
                             setRequestType(selectedType);
                             setActiveSheet("request");

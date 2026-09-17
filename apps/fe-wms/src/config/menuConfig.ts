@@ -169,9 +169,12 @@ export const menuItems: MenuItem[] = [
             "attendance.export",
             "attendance.config",
             "leave.self.read",
+            "leave.approve",
+            "leave.approver.reassign",
             "employees.contracts.self.read",
         ],
         showInBottomNav: true,
+        badgeKey: "employeeAdmin",
     },
     {
         id: "fileLibrary",

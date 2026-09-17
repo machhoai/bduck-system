@@ -26,6 +26,8 @@ interface AdminRequestPanelProps {
     canImportHistory: boolean;
     canReadAll: boolean;
     canAdjustBalance: boolean;
+    pendingApprovalCount: number;
+    unavailableApprovalCount: number;
     onCreate: (requestType: LeaveRequestType) => void;
     onOpenHistory: () => void;
     onOpenHolidays: () => void;
@@ -48,6 +50,8 @@ export function AdminRequestPanel({
     canImportHistory,
     canReadAll,
     canAdjustBalance,
+    pendingApprovalCount,
+    unavailableApprovalCount,
     onCreate,
     onOpenHistory,
     onOpenHolidays,
@@ -95,10 +99,20 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenApprovals}
                             title={labels.approvalInboxTitle}
+                            aria-label={`${labels.approvalInboxTitle}: ${pendingApprovalCount}`}
                             className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-blue-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-2xs transition-all hover:bg-blue-50 active:scale-95 cursor-pointer"
                         >
                             <ClipboardCheck size={14} />
-                            <span className="hidden md:block">{labels.approvalInboxTitle}</span>
+                            <span className="hidden md:block">
+                                {labels.approvalInboxTitle}
+                            </span>
+                            {pendingApprovalCount > 0 && (
+                                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
+                                    {pendingApprovalCount > 99
+                                        ? "99+"
+                                        : pendingApprovalCount}
+                                </span>
+                            )}
                         </button>
                     )}
                     {canReassign && (
@@ -106,10 +120,20 @@ export function AdminRequestPanel({
                             type="button"
                             onClick={onOpenUnavailable}
                             title={labels.approvalUnavailableTitle}
+                            aria-label={`${labels.approvalUnavailableTitle}: ${unavailableApprovalCount}`}
                             className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-amber-200/80 bg-white px-2 py-0.5 text-xs font-semibold text-amber-700 shadow-2xs transition-all hover:bg-amber-50 active:scale-95 cursor-pointer"
                         >
                             <UserRoundX size={14} />
-                            <span className="hidden md:block">{labels.approvalUnavailableTitle}</span>
+                            <span className="hidden md:block">
+                                {labels.approvalUnavailableTitle}
+                            </span>
+                            {unavailableApprovalCount > 0 && (
+                                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
+                                    {unavailableApprovalCount > 99
+                                        ? "99+"
+                                        : unavailableApprovalCount}
+                                </span>
+                            )}
                         </button>
                     )}
                     {canManageApproval && (
