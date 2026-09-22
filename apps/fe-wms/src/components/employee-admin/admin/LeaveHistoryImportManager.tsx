@@ -6,11 +6,14 @@ import {
     type LeaveImportBatchView,
     type LeaveImportCommitResult,
     type LeaveImportEmployeeOption,
+    type CompanyHoliday,
+    type PreviewManualLeaveHistoryInput,
     type PreviewLeaveImportInput,
 } from "@bduck/shared-types";
 import { gooeyToast } from "goey-toast";
 import { Download, FileSpreadsheet, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
+
 import { uploadFile } from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
 import {
@@ -18,17 +21,25 @@ import {
     downloadLeaveImportTemplate,
     validateLeaveImportFile,
 } from "@/utils/leaveImportExcel";
-import { LeaveImportPreviewTable } from "./LeaveImportPreviewTable";
+
 import { LeaveImportBatchHistory } from "./LeaveImportBatchHistory";
+import { LeaveImportPreviewTable } from "./LeaveImportPreviewTable";
+import { ManualLeaveHistoryForm } from "./ManualLeaveHistoryForm";
 
 interface LeaveHistoryImportManagerProps {
     labels: Record<string, string>;
     batches: LeaveImportBatch[];
     employeeOptions: LeaveImportEmployeeOption[];
+    holidays: CompanyHoliday[];
     preview: LeaveImportBatchView | null;
     loading: boolean;
     error: string | null;
-    onPreview: (input: PreviewLeaveImportInput) => Promise<LeaveImportBatchView>;
+    onPreview: (
+        input: PreviewLeaveImportInput,
+    ) => Promise<LeaveImportBatchView>;
+    onPreviewManual: (
+        input: PreviewManualLeaveHistoryInput,
+    ) => Promise<LeaveImportBatchView>;
     onOpenBatch: (batchId: string) => Promise<LeaveImportBatchView>;
     onCommit: (
         batchId: string,
@@ -39,12 +50,21 @@ interface LeaveHistoryImportManagerProps {
 export function LeaveHistoryImportManager(
     props: LeaveHistoryImportManagerProps,
 ) {
-    const { labels, batches, employeeOptions, preview, loading, error } = props;
+    const {
+        labels,
+        batches,
+        employeeOptions,
+        holidays,
+        preview,
+        loading,
+        error,
+    } = props;
     const inputRef = useRef<HTMLInputElement>(null);
     const userId = useUserStore((state) => state.user?.id);
     const [file, setFile] = useState<File | null>(null);
     const [progress, setProgress] = useState(0);
     const [isBusy, setIsBusy] = useState(false);
+    const [entryMode, setEntryMode] = useState<"manual" | "excel">("manual");
 
     const selectFile = (nextFile?: File) => {
         if (!nextFile) return;
@@ -68,7 +88,8 @@ export function LeaveHistoryImportManager(
             });
             return;
         }
-        const action = () => downloadLeaveImportTemplate(labels, employeeOptions);
+        const action = () =>
+            downloadLeaveImportTemplate(labels, employeeOptions);
         try {
             await gooeyToast.promise(action(), {
                 loading: labels.leaveImportTemplateGenerating,
@@ -99,7 +120,11 @@ export function LeaveHistoryImportManager(
             setIsBusy(true);
             setProgress(0);
             const [sourceFileUrl, checksum] = await Promise.all([
-                uploadFile(file, `leave-imports/${userId || "unknown"}`, setProgress),
+                uploadFile(
+                    file,
+                    `leave-imports/${userId || "unknown"}`,
+                    setProgress,
+                ),
                 calculateLeaveImportChecksum(file),
             ]);
             return props.onPreview({
@@ -126,7 +151,10 @@ export function LeaveHistoryImportManager(
                 },
             });
         } catch (previewError) {
-            console.error("[LeaveHistoryImportManager] preview error:", previewError);
+            console.error(
+                "[LeaveHistoryImportManager] preview error:",
+                previewError,
+            );
         } finally {
             setIsBusy(false);
         }
@@ -136,7 +164,9 @@ export function LeaveHistoryImportManager(
         if (!preview || isBusy || preview.batch.invalid_rows > 0) return;
         const action = async () => {
             setIsBusy(true);
-            return props.onCommit(preview.batch.id, { action_time: new Date() });
+            return props.onCommit(preview.batch.id, {
+                action_time: new Date(),
+            });
         };
         try {
             await gooeyToast.promise(action(), {
@@ -155,7 +185,10 @@ export function LeaveHistoryImportManager(
                 },
             });
         } catch (commitError) {
-            console.error("[LeaveHistoryImportManager] commit error:", commitError);
+            console.error(
+                "[LeaveHistoryImportManager] commit error:",
+                commitError,
+            );
         } finally {
             setIsBusy(false);
         }
@@ -181,7 +214,10 @@ export function LeaveHistoryImportManager(
                 },
             });
         } catch (openError) {
-            console.error("[LeaveHistoryImportManager] open batch error:", openError);
+            console.error(
+                "[LeaveHistoryImportManager] open batch error:",
+                openError,
+            );
         } finally {
             setIsBusy(false);
         }
@@ -203,89 +239,132 @@ export function LeaveHistoryImportManager(
                     {error}
                 </div>
             )}
-            <section className="rounded-2xl border border-[var(--color-border-soft)] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                            {labels.leaveImportSelectFile}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                            {labels.leaveImportSelectFileHint}
-                        </p>
+            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+                {(["manual", "excel"] as const).map((mode) => (
+                    <button
+                        key={mode}
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => setEntryMode(mode)}
+                        className={`h-9 rounded-lg text-xs font-semibold transition ${
+                            entryMode === mode
+                                ? "bg-white text-blue-700 shadow-sm"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        {mode === "manual"
+                            ? labels.leaveImportManualTab
+                            : labels.leaveImportExcelTab}
+                    </button>
+                ))}
+            </div>
+
+            {entryMode === "manual" ? (
+                <ManualLeaveHistoryForm
+                    labels={labels}
+                    employees={employeeOptions}
+                    holidays={holidays}
+                    disabled={isBusy || loading}
+                    onPreview={props.onPreviewManual}
+                />
+            ) : (
+                <section className="rounded-2xl border border-[var(--color-border-soft)] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                                {labels.leaveImportSelectFile}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                                {labels.leaveImportSelectFileHint}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => void downloadTemplate()}
+                            disabled={isBusy || loading}
+                            className="inline-flex h-9 items-center gap-2 rounded-xl border border-blue-200 px-3 text-xs font-semibold text-blue-700 disabled:opacity-50"
+                        >
+                            <Download size={15} />
+                            {labels.leaveImportDownloadTemplate}
+                        </button>
                     </div>
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        className="hidden"
+                        onChange={(event) =>
+                            selectFile(event.target.files?.[0])
+                        }
+                    />
                     <button
                         type="button"
-                        onClick={() => void downloadTemplate()}
-                        disabled={isBusy || loading}
-                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-blue-200 px-3 text-xs font-semibold text-blue-700 disabled:opacity-50"
+                        onClick={() => inputRef.current?.click()}
+                        disabled={isBusy}
+                        className="mt-3 flex min-h-24 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center disabled:opacity-50"
                     >
-                        <Download size={15} />
-                        {labels.leaveImportDownloadTemplate}
+                        {file ? (
+                            <>
+                                <FileSpreadsheet
+                                    className="text-emerald-600"
+                                    size={24}
+                                />
+                                <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-800">
+                                    {file.name}
+                                </span>
+                                <span className="text-xs text-slate-500">
+                                    {(file.size / 1024).toFixed(1)} KB
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <UploadCloud
+                                    className="text-blue-600"
+                                    size={24}
+                                />
+                                <span className="mt-2 text-sm font-semibold text-slate-700">
+                                    {labels.leaveImportChooseFile}
+                                </span>
+                            </>
+                        )}
                     </button>
-                </div>
-                <input
-                    ref={inputRef}
-                    type="file"
-                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    className="hidden"
-                    onChange={(event) => selectFile(event.target.files?.[0])}
-                />
-                <button
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    disabled={isBusy}
-                    className="mt-3 flex min-h-24 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center disabled:opacity-50"
-                >
-                    {file ? (
-                        <>
-                            <FileSpreadsheet className="text-emerald-600" size={24} />
-                            <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-800">
-                                {file.name}
-                            </span>
-                            <span className="text-xs text-slate-500">
-                                {(file.size / 1024).toFixed(1)} KB
-                            </span>
-                        </>
-                    ) : (
-                        <>
-                            <UploadCloud className="text-blue-600" size={24} />
-                            <span className="mt-2 text-sm font-semibold text-slate-700">
-                                {labels.leaveImportChooseFile}
-                            </span>
-                        </>
+                    {progress > 0 && progress < 100 && (
+                        <progress
+                            value={progress}
+                            max={100}
+                            className="mt-3 h-2 w-full accent-blue-600"
+                        />
                     )}
-                </button>
-                {progress > 0 && progress < 100 && (
-                    <progress
-                        value={progress}
-                        max={100}
-                        className="mt-3 h-2 w-full accent-blue-600"
-                    />
-                )}
-                <button
-                    type="button"
-                    onClick={() => void createPreview()}
-                    disabled={!file || isBusy}
-                    className="mt-3 h-10 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                    {labels.leaveImportPreview}
-                </button>
-            </section>
+                    <button
+                        type="button"
+                        onClick={() => void createPreview()}
+                        disabled={!file || isBusy}
+                        className="mt-3 h-10 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                        {labels.leaveImportPreview}
+                    </button>
+                </section>
+            )}
 
             {preview && (
                 <>
-                    <LeaveImportPreviewTable labels={labels} preview={preview} />
+                    <LeaveImportPreviewTable
+                        labels={labels}
+                        preview={preview}
+                    />
                     <button
                         type="button"
                         onClick={() => void commit()}
                         disabled={
                             isBusy ||
                             preview.batch.invalid_rows > 0 ||
-                            preview.batch.status === LeaveImportBatchStatus.COMMITTED
+                            preview.batch.status ===
+                                LeaveImportBatchStatus.COMMITTED
                         }
                         className="h-11 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white disabled:opacity-50"
                     >
-                        {preview.batch.status === LeaveImportBatchStatus.COMMITTED
+                        {preview.batch.status ===
+                        LeaveImportBatchStatus.COMMITTED
                             ? labels.leaveImportAlreadyCommitted
                             : labels.leaveImportCommit}
                     </button>

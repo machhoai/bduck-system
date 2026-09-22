@@ -49,7 +49,9 @@ export function LeaveImportBatchHistory({
           >
             <span className="min-w-0">
               <span className="block truncate text-xs font-semibold text-slate-800">
-                {batch.source_file_name}
+                {batch.source_file_name === "manual-entry"
+                  ? labels.leaveImportManualBatchName
+                  : batch.source_file_name}
               </span>
               <span className="mt-0.5 block text-[10px] text-slate-500">
                 {batch.valid_rows}/{batch.total_rows}{" "}

@@ -311,6 +311,15 @@ export interface PreviewLeaveImportInput {
   action_time: Date;
 }
 
+export interface PreviewManualLeaveHistoryInput {
+  client_reference: string;
+  employee_profile_id: string;
+  request_type: Exclude<LeaveRequestType, LeaveRequestType.WORK_FROM_HOME>;
+  days: LeaveRequestDaySelection[];
+  reason: string;
+  action_time: Date;
+}
+
 export interface CommitLeaveImportInput {
   action_time: Date;
 }

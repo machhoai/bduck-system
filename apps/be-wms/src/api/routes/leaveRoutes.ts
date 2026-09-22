@@ -1,19 +1,13 @@
 import { Router, type Router as ExpressRouter } from "express";
+
 import {
-  getMyLeaveBalanceHandler,
-  runLeaveMaintenanceHandler,
-} from "../controllers/leaveBalanceController.js";
-import {
-  createCompanyHolidayHandler,
-  deleteCompanyHolidayHandler,
-  listCompanyHolidaysHandler,
-} from "../controllers/leaveHolidayController.js";
-import {
-  cancelMyLeaveRequestHandler,
-  createMyLeaveRequestHandler,
-  listMyLeaveRequestsHandler,
-  submitMyLeaveRequestHandler,
-} from "../controllers/leaveRequestController.js";
+  getEmployeeLeaveBalanceHandler,
+  getLeavePolicyHandler,
+  listCompanyLeaveRequestsHandler,
+  listLeaveBalanceProfilesHandler,
+  postLeaveBalanceAdjustmentHandler,
+  putLeavePolicyHandler,
+} from "../controllers/leaveAdministrationController.js";
 import {
   getLeaveApprovalConfigHandler,
   getLeaveApprovalConfigOptionsHandler,
@@ -26,20 +20,28 @@ import {
   reassignLeaveApprovalTaskHandler,
 } from "../controllers/leaveApprovalController.js";
 import {
+  getMyLeaveBalanceHandler,
+  runLeaveMaintenanceHandler,
+} from "../controllers/leaveBalanceController.js";
+import {
+  createCompanyHolidayHandler,
+  deleteCompanyHolidayHandler,
+  listCompanyHolidaysHandler,
+} from "../controllers/leaveHolidayController.js";
+import {
   commitLeaveImportHandler,
   getLeaveImportHandler,
   listLeaveImportEmployeeOptionsHandler,
   listLeaveImportsHandler,
+  previewManualLeaveImportHandler,
   previewLeaveImportHandler,
 } from "../controllers/leaveImportController.js";
 import {
-  getEmployeeLeaveBalanceHandler,
-  getLeavePolicyHandler,
-  listCompanyLeaveRequestsHandler,
-  listLeaveBalanceProfilesHandler,
-  postLeaveBalanceAdjustmentHandler,
-  putLeavePolicyHandler,
-} from "../controllers/leaveAdministrationController.js";
+  cancelMyLeaveRequestHandler,
+  createMyLeaveRequestHandler,
+  listMyLeaveRequestsHandler,
+  submitMyLeaveRequestHandler,
+} from "../controllers/leaveRequestController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireLeaveFeatureEnabled } from "../middlewares/leaveFeatureGate.js";
 import { requireAnyScopedPermission } from "../middlewares/rbacMiddleware.js";
@@ -97,6 +99,11 @@ router.post(
   "/imports/preview",
   requireAnyScopedPermission("leave.history.import"),
   previewLeaveImportHandler,
+);
+router.post(
+  "/imports/manual-preview",
+  requireAnyScopedPermission("leave.history.import"),
+  previewManualLeaveImportHandler,
 );
 router.get(
   "/imports/:id",

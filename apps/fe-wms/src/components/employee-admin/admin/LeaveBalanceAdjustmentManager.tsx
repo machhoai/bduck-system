@@ -7,7 +7,9 @@ import type {
 } from "@bduck/shared-types";
 import { gooeyToast } from "goey-toast";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { LeaveBalanceAdjustmentMetric } from "./LeaveBalanceAdjustmentMetric";
+import { SearchableEmployeeSelect } from "./SearchableEmployeeSelect";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -53,7 +55,10 @@ export function LeaveBalanceAdjustmentManager({
         if (active) setSummary(result);
       })
       .catch((loadError) =>
-        console.error("[LeaveBalanceAdjustmentManager] balance error:", loadError),
+        console.error(
+          "[LeaveBalanceAdjustmentManager] balance error:",
+          loadError,
+        ),
       )
       .finally(() => {
         if (active) setIsBusy(false);
@@ -95,37 +100,37 @@ export function LeaveBalanceAdjustmentManager({
       idempotencyKeyRef.current = null;
       setReason("");
     } catch (adjustError) {
-      console.error("[LeaveBalanceAdjustmentManager] adjust error:", adjustError);
+      console.error(
+        "[LeaveBalanceAdjustmentManager] adjust error:",
+        adjustError,
+      );
     } finally {
       setIsBusy(false);
     }
   };
 
   if (loading) {
-    return <div className="h-56 animate-pulse rounded-2xl bg-[var(--color-surface-card)]" />;
+    return (
+      <div className="h-56 animate-pulse rounded-2xl bg-[var(--color-surface-card)]" />
+    );
   }
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-2xl bg-red-50 p-3 text-xs text-red-700">{error}</p>
+        <p className="rounded-2xl bg-red-50 p-3 text-xs text-red-700">
+          {error}
+        </p>
       )}
-      <select
+      <SearchableEmployeeSelect
+        labels={labels}
+        options={profiles}
         value={profileId}
         disabled={isBusy}
-        aria-label={labels.selectEmployee}
-        onChange={(event) => {
+        onChange={(nextProfileId) => {
           idempotencyKeyRef.current = null;
-          setProfileId(event.target.value);
+          setProfileId(nextProfileId);
         }}
-        className="h-11 w-full rounded-xl border border-[var(--color-border-soft)] bg-white px-3 text-sm"
-      >
-        <option value="">{labels.selectEmployee}</option>
-        {profiles.map((profile) => (
-          <option key={profile.id} value={profile.id}>
-            {profile.employee_code} · {profile.full_name}
-          </option>
-        ))}
-      </select>
+      />
       {selectedProfile && (
         <div className="grid grid-cols-3 gap-2">
           <LeaveBalanceAdjustmentMetric

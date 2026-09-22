@@ -6,16 +6,19 @@ import type {
   LeaveImportBatchView,
   LeaveImportEmployeeOption,
   PreviewLeaveImportInput,
+  PreviewManualLeaveHistoryInput,
 } from "@bduck/shared-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   commitLeaveHistoryImport,
   fetchLeaveImportBatch,
   fetchLeaveImportBatches,
   fetchLeaveImportEmployeeOptions,
   previewLeaveHistoryImport,
+  previewManualLeaveHistoryImport,
 } from "@/api/leaveApi";
 import {
   emitDataMutation,
@@ -140,6 +143,19 @@ export function useLeaveImports(enabled: boolean, labels: LeaveImportLabels) {
     [labels.saveError],
   );
 
+  const createManualPreview = useCallback(
+    async (input: PreviewManualLeaveHistoryInput) => {
+      const result = await previewManualLeaveHistoryImport(
+        input,
+        labels.saveError,
+      );
+      setPreview(result);
+      emitDataMutation(["leave_import_batches", "leave_import_rows"]);
+      return result;
+    },
+    [labels.saveError],
+  );
+
   const openBatch = useCallback(
     async (batchId: string) => {
       const result = await fetchLeaveImportBatch(batchId, labels.loadError);
@@ -180,6 +196,7 @@ export function useLeaveImports(enabled: boolean, labels: LeaveImportLabels) {
     isLoading,
     error,
     createPreview,
+    createManualPreview,
     openBatch,
     commit,
     clearPreview: () => setPreview(null),

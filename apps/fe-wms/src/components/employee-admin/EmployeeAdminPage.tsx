@@ -277,6 +277,9 @@ export function EmployeeAdminPage() {
                     leaveImportsLoading={leaveImports.isLoading}
                     leaveImportsError={leaveImports.error}
                     onPreviewLeaveImport={leaveImports.createPreview}
+                    onPreviewManualLeaveImport={
+                        leaveImports.createManualPreview
+                    }
                     onOpenLeaveImport={leaveImports.openBatch}
                     onCommitLeaveImport={leaveImports.commit}
                     leavePolicy={leaveAdministration.policy}

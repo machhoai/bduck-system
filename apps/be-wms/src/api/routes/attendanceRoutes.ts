@@ -1,10 +1,12 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
+
 import {
   approveAttendanceWorkArrangementHandler,
   cancelAttendanceWorkArrangementHandler,
   checkInAttendanceHandler,
   createLateArrivalReportHandler,
   getAttendanceContextHandler,
+  getAttendanceLeaveDaysHandler,
   getAttendanceExemptionsHandler,
   getAttendancePoliciesHandler,
   getAttendanceWorkArrangementsHandler,
@@ -34,6 +36,11 @@ router.get(
     "attendance.config",
   ]),
   getAttendanceContextHandler,
+);
+router.get(
+  "/leave-days",
+  requireAnyScopedPermission(["attendance.view", "attendance.check_in"]),
+  getAttendanceLeaveDaysHandler,
 );
 router.post("/check-in", checkInAttendanceHandler);
 router.post("/late-reports", createLateArrivalReportHandler);

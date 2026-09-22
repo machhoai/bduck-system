@@ -170,6 +170,17 @@ export interface AttendanceLateReport {
   review_notes: string | null;
 }
 
+export interface AttendanceLeaveDay {
+  leave_request_id: string;
+  employee_profile_id: string;
+  employee_user_id: string;
+  warehouse_id: string;
+  attendance_date: string;
+  request_type: import("./leave.js").LeaveRequestType;
+  portion: import("./leave.js").LeaveDayPortion;
+  status: import("./leave.js").LeaveRequestStatus;
+}
+
 export interface AttendanceCheckInContext {
   can_access_page: boolean;
   can_check_in: boolean;

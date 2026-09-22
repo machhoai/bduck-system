@@ -65,6 +65,7 @@ export function AdminOverviewTab({
     leaveImportsLoading,
     leaveImportsError,
     onPreviewLeaveImport,
+    onPreviewManualLeaveImport,
     onOpenLeaveImport,
     onCommitLeaveImport,
     leavePolicy,
@@ -308,6 +309,7 @@ export function AdminOverviewTab({
                     onDecideApproval={onDecideLeaveApproval}
                     onReassignApproval={onReassignLeaveApproval}
                     onPreviewImport={onPreviewLeaveImport}
+                    onPreviewManualImport={onPreviewManualLeaveImport}
                     onOpenImport={onOpenLeaveImport}
                     onCommitImport={onCommitLeaveImport}
                     leavePolicy={leavePolicy}

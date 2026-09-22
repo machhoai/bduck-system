@@ -5,6 +5,7 @@ import {
   type AttendanceLocationInput,
   type AttendanceCheckInContext,
   type AttendanceLateReport,
+  type AttendanceLeaveDay,
   type AttendanceLog,
   type WarehouseAttendanceExemption,
   type WarehouseAttendancePolicy,
@@ -12,16 +13,17 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import {
+  emitDataMutation,
+  subscribeDataMutation,
+} from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
 import {
   buildFacilityScopedQueries,
   subscribeToMergedQueries,
 } from "@/lib/scopedFirestore";
 import { useUserStore } from "@/stores/useUserStore";
-import {
-  emitDataMutation,
-  subscribeDataMutation,
-} from "@/lib/dataInvalidation";
 import { createDetailedApiError } from "@/utils/apiError";
 import { getFacilityPermissionScope } from "@/utils/facilityPermissionScope";
 
@@ -137,7 +139,8 @@ export function useAttendanceContext() {
         typeof window === "undefined"
           ? null
           : window.localStorage.getItem(PENDING_CHECK_IN_KEY);
-      if (!pending || !context?.can_check_in || context.today_success_log) return;
+      if (!pending || !context?.can_check_in || context.today_success_log)
+        return;
       try {
         const parsed = JSON.parse(pending) as {
           version: 1;
@@ -146,11 +149,11 @@ export function useAttendanceContext() {
         if (parsed.version !== 1) return;
         const shouldCaptureLocation = Boolean(
           context.active_work_arrangement ||
-            context.location_required ||
-            context.verification_strategy ===
-              AttendanceVerificationStrategy.GPS_ONLY ||
-            context.verification_strategy ===
-              AttendanceVerificationStrategy.IP_AND_GPS,
+          context.location_required ||
+          context.verification_strategy ===
+            AttendanceVerificationStrategy.GPS_ONLY ||
+          context.verification_strategy ===
+            AttendanceVerificationStrategy.IP_AND_GPS,
         );
         const location = shouldCaptureLocation
           ? await captureAttendanceLocation()
@@ -166,7 +169,10 @@ export function useAttendanceContext() {
         emitDataMutation(["attendance_logs", "audit_logs"]);
         await reload();
       } catch (pendingError) {
-        console.error("[useAttendanceContext] pending check-in error:", pendingError);
+        console.error(
+          "[useAttendanceContext] pending check-in error:",
+          pendingError,
+        );
       }
     };
     window.addEventListener("online", flushPendingCheckIn);
@@ -177,11 +183,11 @@ export function useAttendanceContext() {
   const checkIn = useCallback(async () => {
     const shouldCaptureLocation = Boolean(
       context?.active_work_arrangement ||
-        context?.location_required ||
-        context?.verification_strategy ===
-          AttendanceVerificationStrategy.GPS_ONLY ||
-        context?.verification_strategy ===
-          AttendanceVerificationStrategy.IP_AND_GPS,
+      context?.location_required ||
+      context?.verification_strategy ===
+        AttendanceVerificationStrategy.GPS_ONLY ||
+      context?.verification_strategy ===
+        AttendanceVerificationStrategy.IP_AND_GPS,
     );
     const location = shouldCaptureLocation
       ? await captureAttendanceLocation()
@@ -191,12 +197,12 @@ export function useAttendanceContext() {
       const log = await callAttendanceApi<AttendanceLog>(
         "/api/attendance/check-in",
         {
-        method: "POST",
-        body: JSON.stringify({
-          action_time: actionTime,
-          location,
-        }),
-      },
+          method: "POST",
+          body: JSON.stringify({
+            action_time: actionTime,
+            location,
+          }),
+        },
       );
       emitDataMutation(["attendance_logs", "audit_logs"]);
       await reload();
@@ -239,6 +245,56 @@ export function useAttendanceContext() {
   );
 
   return { context, loading, error, reload, checkIn, reportLate };
+}
+
+export function useAttendanceLeaveDays(dateFrom: string, dateTo: string) {
+  const [leaveDays, setLeaveDays] = useState<AttendanceLeaveDay[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!dateFrom || !dateTo) {
+        setLeaveDays([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await callAttendanceApi<AttendanceLeaveDay[]>(
+          `/api/attendance/leave-days?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+          { method: "GET", signal },
+        );
+        if (!signal?.aborted) setLeaveDays(data);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("[useAttendanceLeaveDays] error:", error);
+        if (!signal?.aborted) setLeaveDays([]);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [dateFrom, dateTo],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    const unsubscribe = subscribeDataMutation(
+      ["leave_requests", "leave_import_rows"],
+      () => void load(controller.signal),
+    );
+    const refreshTimer = window.setInterval(
+      () => void load(controller.signal),
+      60_000,
+    );
+    return () => {
+      controller.abort();
+      unsubscribe();
+      window.clearInterval(refreshTimer);
+    };
+  }, [load]);
+
+  return { leaveDays, loading };
 }
 
 export function useAttendancePolicies() {
@@ -315,10 +371,7 @@ export function useAttendancePolicies() {
   }, [facilityScope]);
 
   const updatePolicy = useCallback(
-    async (
-      warehouseId: string,
-      payload: AttendancePolicyUpdate,
-    ) => {
+    async (warehouseId: string, payload: AttendancePolicyUpdate) => {
       const result = await callAttendanceApi<WarehouseAttendancePolicy>(
         `/api/attendance/policies/${warehouseId}`,
         {

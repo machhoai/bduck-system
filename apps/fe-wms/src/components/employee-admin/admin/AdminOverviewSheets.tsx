@@ -97,7 +97,9 @@ export function AdminOverviewSheets(props: AdminOverviewSheetsProps) {
           preview={props.importPreview}
           loading={props.importsLoading}
           error={props.importsError}
+          holidays={holidays}
           onPreview={props.onPreviewImport}
+          onPreviewManual={props.onPreviewManualImport}
           onOpenBatch={props.onOpenImport}
           onCommit={props.onCommitImport}
         />

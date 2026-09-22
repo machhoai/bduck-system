@@ -1,12 +1,22 @@
 "use client";
 
 import {
+    LeaveDayPortion,
+    LeaveRequestStatus,
+    LeaveRequestType,
     isEmployeeAttendanceEligibleOnDate,
+    type AttendanceLeaveDay,
     type AttendanceLateReport,
     type AttendanceLog,
 } from "@bduck/shared-types";
 import { motion } from "framer-motion";
-import { AlertTriangle, CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
+import {
+    AlertTriangle,
+    CalendarCheck,
+    ChevronLeft,
+    ChevronRight,
+    Inbox,
+} from "lucide-react";
 import { useState, useMemo, useRef, useEffect } from "react";
 
 import {
@@ -32,6 +42,7 @@ interface TimeAttendanceCalendarProps {
     days: AttendanceDay[];
     rows: AttendanceEmployeeRow[];
     logs: AttendanceLog[];
+    leaveDays?: AttendanceLeaveDay[];
     lateReports?: AttendanceLateReport[];
     loading: boolean;
     mode?: AttendanceRangeMode;
@@ -64,18 +75,40 @@ const getAvatarBg = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-const formatMobileDay = (day: AttendanceDay) =>
-    day.date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        timeZone: "Asia/Ho_Chi_Minh",
-    });
+const leaveDotClasses: Record<LeaveRequestType, string> = {
+    [LeaveRequestType.PAID_ANNUAL]: "bg-blue-500",
+    [LeaveRequestType.UNPAID]: "bg-rose-500",
+    [LeaveRequestType.SICK]: "bg-amber-500",
+    [LeaveRequestType.MATERNITY]: "bg-violet-500",
+    [LeaveRequestType.WORK_FROM_HOME]: "bg-cyan-500",
+};
+
+const leaveTypeLabel = (
+    labels: Record<string, string>,
+    type: LeaveRequestType,
+) => labels[`leaveType${type}`] || type;
+
+const leavePortionLabel = (
+    labels: Record<string, string>,
+    portion: LeaveDayPortion,
+) =>
+    portion === LeaveDayPortion.FULL_DAY
+        ? labels.fullDay
+        : portion === LeaveDayPortion.MORNING
+          ? labels.morning
+          : labels.afternoon;
+
+const leaveStatusLabel = (
+    labels: Record<string, string>,
+    status: LeaveRequestStatus,
+) => labels[`leaveStatus${status}`] || status;
 
 export function TimeAttendanceCalendar({
     labels,
     days,
     rows,
     logs,
+    leaveDays = [],
     lateReports = [],
     loading,
     mode = "month",
@@ -86,15 +119,28 @@ export function TimeAttendanceCalendar({
 }: TimeAttendanceCalendarProps) {
     const successMap = buildSuccessLogMap(logs);
     const lateReportMap = buildLatestLateReportMap(lateReports);
+    const leaveDayMap = useMemo(() => {
+        const result = new Map<string, AttendanceLeaveDay[]>();
+        leaveDays.forEach((leaveDay) => {
+            const key = `${leaveDay.employee_profile_id}:${leaveDay.attendance_date}`;
+            result.set(key, [...(result.get(key) || []), leaveDay]);
+        });
+        return result;
+    }, [leaveDays]);
     const todayKey = getTodayKey();
 
     const [selectedDateKey, setSelectedDateKey] = useState<string>("");
 
-    const isVi = labels.allEmployees?.toLowerCase().includes("Nhân viên") || labels.calendar?.toLowerCase().includes("lịch");
-    const txtCheckedIn = labels.checkedInStatus || (isVi ? "Đã check-in" : "已打卡");
-    const txtWaiting = labels.waitingStatus || (isVi ? "Chờ check-in" : "等待打卡");
+    const isVi =
+        labels.allEmployees?.toLowerCase().includes("Nhân viên") ||
+        labels.calendar?.toLowerCase().includes("lịch");
+    const txtCheckedIn =
+        labels.checkedInStatus || (isVi ? "Đã check-in" : "已打卡");
+    const txtWaiting =
+        labels.waitingStatus || (isVi ? "Chờ check-in" : "等待打卡");
     const txtNoLog = labels.noLogStatus || (isVi ? "Vắng" : "缺卡");
-    const txtNotApplicable = labels.notApplicable || (isVi ? "Không áp dụng" : "不适用");
+    const txtNotApplicable =
+        labels.notApplicable || (isVi ? "Không áp dụng" : "不适用");
 
     const mobileContainerRef = useRef<HTMLDivElement>(null);
     const desktopContainerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +156,9 @@ export function TimeAttendanceCalendar({
     }, [days, selectedDateKey, todayKey]);
 
     const targetKey = useMemo(() => {
-        return days.some((d) => d.key === todayKey) ? todayKey : activeSelectedKey;
+        return days.some((d) => d.key === todayKey)
+            ? todayKey
+            : activeSelectedKey;
     }, [days, todayKey, activeSelectedKey]);
 
     useEffect(() => {
@@ -123,7 +171,8 @@ export function TimeAttendanceCalendar({
                 const containerRect = container.getBoundingClientRect();
                 const targetRect = target.getBoundingClientRect();
                 const targetCenter = targetRect.left + targetRect.width / 2;
-                const containerCenter = containerRect.left + container.clientWidth / 2;
+                const containerCenter =
+                    containerRect.left + container.clientWidth / 2;
                 const delta = targetCenter - containerCenter;
                 container.scrollTo({
                     left: Math.max(0, container.scrollLeft + delta),
@@ -140,7 +189,8 @@ export function TimeAttendanceCalendar({
                 const targetCenter = targetRect.left + targetRect.width / 2;
                 const visibleAreaLeft = containerRect.left + stickyWidth;
                 const visibleAreaWidth = container.clientWidth - stickyWidth;
-                const visibleAreaCenter = visibleAreaLeft + visibleAreaWidth / 2;
+                const visibleAreaCenter =
+                    visibleAreaLeft + visibleAreaWidth / 2;
                 const delta = targetCenter - visibleAreaCenter;
                 container.scrollTo({
                     left: Math.max(0, container.scrollLeft + delta),
@@ -158,7 +208,9 @@ export function TimeAttendanceCalendar({
 
     const checkedCount = useMemo(() => {
         return logs.filter(
-            (log) => log.attendance_date === activeSelectedKey && log.status === "SUCCESS",
+            (log) =>
+                log.attendance_date === activeSelectedKey &&
+                log.status === "SUCCESS",
         ).length;
     }, [logs, activeSelectedKey]);
 
@@ -190,13 +242,26 @@ export function TimeAttendanceCalendar({
                                     type="button"
                                     onClick={() => {
                                         if (mode === "month" && month) {
-                                            onMonthChange(getPrevMonthKey(month));
-                                        } else if (mode === "week" && weekStart && onWeekStartChange) {
-                                            onWeekStartChange(getPrevWeekKey(weekStart));
+                                            onMonthChange(
+                                                getPrevMonthKey(month),
+                                            );
+                                        } else if (
+                                            mode === "week" &&
+                                            weekStart &&
+                                            onWeekStartChange
+                                        ) {
+                                            onWeekStartChange(
+                                                getPrevWeekKey(weekStart),
+                                            );
                                         }
                                     }}
                                     className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
-                                    title={labels.prevMonth || (isVi ? "Tháng trước" : "Previous Month")}
+                                    title={
+                                        labels.prevMonth ||
+                                        (isVi
+                                            ? "Tháng trước"
+                                            : "Previous Month")
+                                    }
                                 >
                                     <ChevronLeft size={16} />
                                 </button>
@@ -204,14 +269,22 @@ export function TimeAttendanceCalendar({
                                 <div className="relative flex flex-1 justify-center items-center px-1">
                                     <span className="text-xs font-bold text-[var(--color-text-primary)] cursor-pointer select-none">
                                         {mode === "month"
-                                            ? formatMonthLabel(month || getCurrentMonthKey(), isVi)
+                                            ? formatMonthLabel(
+                                                  month || getCurrentMonthKey(),
+                                                  isVi,
+                                              )
                                             : `${days[0]?.label || ""}/${(days[0]?.date.getMonth() || 0) + 1} - ${days[days.length - 1]?.label || ""}/${(days[days.length - 1]?.date.getMonth() || 0) + 1}`}
                                     </span>
                                     {mode === "month" && (
                                         <input
                                             type="month"
-                                            value={month || getCurrentMonthKey()}
-                                            onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+                                            value={
+                                                month || getCurrentMonthKey()
+                                            }
+                                            onChange={(e) =>
+                                                e.target.value &&
+                                                onMonthChange(e.target.value)
+                                            }
                                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                                         />
                                     )}
@@ -221,13 +294,24 @@ export function TimeAttendanceCalendar({
                                     type="button"
                                     onClick={() => {
                                         if (mode === "month" && month) {
-                                            onMonthChange(getNextMonthKey(month));
-                                        } else if (mode === "week" && weekStart && onWeekStartChange) {
-                                            onWeekStartChange(getNextWeekKey(weekStart));
+                                            onMonthChange(
+                                                getNextMonthKey(month),
+                                            );
+                                        } else if (
+                                            mode === "week" &&
+                                            weekStart &&
+                                            onWeekStartChange
+                                        ) {
+                                            onWeekStartChange(
+                                                getNextWeekKey(weekStart),
+                                            );
                                         }
                                     }}
                                     className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
-                                    title={labels.nextMonth || (isVi ? "Tháng sau" : "Next Month")}
+                                    title={
+                                        labels.nextMonth ||
+                                        (isVi ? "Tháng sau" : "Next Month")
+                                    }
                                 >
                                     <ChevronRight size={16} />
                                 </button>
@@ -264,13 +348,20 @@ export function TimeAttendanceCalendar({
                             <span className="text-slate-300 font-bold">•</span>
                             <span>{txtNoLog}</span>
                         </div>
+                        <div className="flex items-center gap-1.5 text-xxs text-[var(--color-text-secondary)] font-medium">
+                            <span className="h-2 w-2 rounded-full bg-blue-500" />
+                            <span>{labels.leaveOnCalendar}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {rows.length === 0 ? (
                 <div className="flex min-h-64 flex-col items-center justify-center gap-2 p-8 text-center">
-                    <Inbox size={28} className="text-[var(--color-text-muted)]" />
+                    <Inbox
+                        size={28}
+                        className="text-[var(--color-text-muted)]"
+                    />
                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                         {labels.noAttendanceData}
                     </p>
@@ -300,27 +391,38 @@ export function TimeAttendanceCalendar({
                             </div>
                         </div>
 
-                        <div ref={mobileContainerRef} className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-thin">
+                        <div
+                            ref={mobileContainerRef}
+                            className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-thin"
+                        >
                             {days.map((day) => {
                                 const isToday = day.key === todayKey;
-                                const isSelected = day.key === activeSelectedKey;
+                                const isSelected =
+                                    day.key === activeSelectedKey;
                                 const isTargetDay = day.key === targetKey;
                                 return (
                                     <button
                                         key={day.key}
-                                        ref={isTargetDay ? todayMobileRef : null}
+                                        ref={
+                                            isTargetDay ? todayMobileRef : null
+                                        }
                                         type="button"
-                                        onClick={() => setSelectedDateKey(day.key)}
-                                        className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${isSelected
-                                            ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white shadow-sm"
-                                            : isToday
-                                                ? "border-[var(--color-brand-primary-hover)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-                                                : day.isSunday
+                                        onClick={() =>
+                                            setSelectedDateKey(day.key)
+                                        }
+                                        className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${
+                                            isSelected
+                                                ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white shadow-sm"
+                                                : isToday
+                                                  ? "border-[var(--color-brand-primary-hover)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                                  : day.isSunday
                                                     ? "border-[#b4231815] bg-[#b4231808] text-[#b42318]"
                                                     : "border-white bg-white text-[var(--color-text-secondary)] shadow-sm"
-                                            }`}
+                                        }`}
                                     >
-                                        <span className={`text-[10px] font-semibold ${isSelected ? "text-white/80" : "opacity-80"}`}>
+                                        <span
+                                            className={`text-[10px] font-semibold ${isSelected ? "text-white/80" : "opacity-80"}`}
+                                        >
                                             {day.weekday}
                                         </span>
                                         <span className="text-base font-semibold tabular-nums">
@@ -333,14 +435,24 @@ export function TimeAttendanceCalendar({
 
                         <div className="space-y-2">
                             {rows.map((row) => {
-                                const dayLog = successMap.get(`${row.user.id}:${activeSelectedKey}`);
-                                const lateReport = lateReportMap.get(`${row.user.id}:${activeSelectedKey}`);
-                                const isFuture = activeSelectedDay?.isFuture || false;
-                                const isToday = activeSelectedKey === todayKey;
-                                const isEligible = isEmployeeAttendanceEligibleOnDate(
-                                    row.profile,
-                                    activeSelectedKey,
+                                const dayLog = successMap.get(
+                                    `${row.user.id}:${activeSelectedKey}`,
                                 );
+                                const lateReport = lateReportMap.get(
+                                    `${row.user.id}:${activeSelectedKey}`,
+                                );
+                                const dayLeaves =
+                                    leaveDayMap.get(
+                                        `${row.profile.id}:${activeSelectedKey}`,
+                                    ) || [];
+                                const isFuture =
+                                    activeSelectedDay?.isFuture || false;
+                                const isToday = activeSelectedKey === todayKey;
+                                const isEligible =
+                                    isEmployeeAttendanceEligibleOnDate(
+                                        row.profile,
+                                        activeSelectedKey,
+                                    );
 
                                 return (
                                     <article
@@ -349,16 +461,25 @@ export function TimeAttendanceCalendar({
                                     >
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="flex min-w-0 items-center gap-3">
-                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarBg(row.profile.full_name)}`}>
-                                                    {getInitials(row.profile.full_name)}
+                                                <div
+                                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarBg(row.profile.full_name)}`}
+                                                >
+                                                    {getInitials(
+                                                        row.profile.full_name,
+                                                    )}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                                         {row.profile.full_name}
                                                     </p>
                                                     <p className="truncate text-[10px] text-[var(--color-text-muted)]">
-                                                        {row.profile.employee_code} ·{" "}
-                                                        {row.warehouse?.name || labels.unknownWarehouse}
+                                                        {
+                                                            row.profile
+                                                                .employee_code
+                                                        }{" "}
+                                                        ·{" "}
+                                                        {row.warehouse?.name ||
+                                                            labels.unknownWarehouse}
                                                     </p>
                                                 </div>
                                             </div>
@@ -370,12 +491,30 @@ export function TimeAttendanceCalendar({
                                                 ) : dayLog ? (
                                                     <div className="flex flex-col items-end">
                                                         <span className="rounded-full bg-[#257a3e10] border border-[#257a3e20] px-2.5 py-0.5 text-xs font-semibold tabular-nums text-[#257a3e]">
-                                                            {formatCheckInTime(dayLog.check_in_at)}
+                                                            {formatCheckInTime(
+                                                                dayLog.check_in_at,
+                                                            )}
                                                         </span>
                                                         <span className="mt-0.5 text-[9px] font-semibold text-[#257a3e] uppercase">
                                                             {txtCheckedIn}
                                                         </span>
+                                                        {dayLeaves.length >
+                                                        0 ? (
+                                                            <AttendanceLeaveIndicator
+                                                                labels={labels}
+                                                                leaveDays={
+                                                                    dayLeaves
+                                                                }
+                                                                showLabel
+                                                            />
+                                                        ) : null}
                                                     </div>
+                                                ) : dayLeaves.length > 0 ? (
+                                                    <AttendanceLeaveIndicator
+                                                        labels={labels}
+                                                        leaveDays={dayLeaves}
+                                                        showLabel
+                                                    />
                                                 ) : isFuture ? (
                                                     <span className="text-xs font-medium text-[var(--color-text-muted)] opacity-60">
                                                         —
@@ -397,9 +536,13 @@ export function TimeAttendanceCalendar({
                                         </div>
                                         {lateReport ? (
                                             <LateReportHint
-                                                label={labels.reportLate || "Late"}
+                                                label={
+                                                    labels.reportLate || "Late"
+                                                }
                                                 reason={lateReport.reason}
-                                                arrivalTime={getLateReportArrivalTime(lateReport)}
+                                                arrivalTime={getLateReportArrivalTime(
+                                                    lateReport,
+                                                )}
                                             />
                                         ) : null}
                                     </article>
@@ -408,31 +551,47 @@ export function TimeAttendanceCalendar({
                         </div>
                     </div>
 
-                    <div ref={desktopContainerRef} className="hidden max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin md:block">
+                    <div
+                        ref={desktopContainerRef}
+                        className="hidden max-h-[calc(100vh-290px)] min-h-64 overflow-auto scrollbar-thin md:block"
+                    >
                         <table className="min-w-full border-separate border-spacing-0 text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr>
-                                    <th ref={stickyHeaderRef} className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-left text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                    <th
+                                        ref={stickyHeaderRef}
+                                        className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-left text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
+                                    >
                                         {labels.employee}
                                     </th>
                                     {days.map((day) => {
                                         const isToday = day.key === todayKey;
-                                        const isTargetDay = day.key === targetKey;
+                                        const isTargetDay =
+                                            day.key === targetKey;
                                         return (
                                             <th
                                                 key={day.key}
-                                                ref={isTargetDay ? todayDesktopRef : null}
-                                                className={`min-w-16 border-b border-r border-[var(--color-border-soft)] px-2 py-2 text-center text-xs font-semibold ${isToday
-                                                    ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-                                                    : day.isSunday
-                                                        ? "bg-[#b4231805] text-[#b42318]"
-                                                        : day.isSaturday
+                                                ref={
+                                                    isTargetDay
+                                                        ? todayDesktopRef
+                                                        : null
+                                                }
+                                                className={`min-w-16 border-b border-r border-[var(--color-border-soft)] px-2 py-2 text-center text-xs font-semibold ${
+                                                    isToday
+                                                        ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                                        : day.isSunday
+                                                          ? "bg-[#b4231805] text-[#b42318]"
+                                                          : day.isSaturday
                                                             ? "bg-[#f59e0b0d] text-[#9a5b00]"
                                                             : "bg-white text-[var(--color-text-secondary)]"
-                                                    }`}
+                                                }`}
                                             >
-                                                <span className="block text-[9px] uppercase tracking-wider opacity-85">{day.weekday}</span>
-                                                <span className={`inline-block mt-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-[var(--color-brand-primary)] text-white" : ""}`}>
+                                                <span className="block text-[9px] uppercase tracking-wider opacity-85">
+                                                    {day.weekday}
+                                                </span>
+                                                <span
+                                                    className={`inline-block mt-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-[var(--color-brand-primary)] text-white" : ""}`}
+                                                >
                                                     {day.label}
                                                 </span>
                                             </th>
@@ -448,41 +607,63 @@ export function TimeAttendanceCalendar({
                                     >
                                         <td className="sticky left-0 z-[5] border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                             <div className="flex items-center gap-2">
-                                                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(row.profile.full_name)}`}>
-                                                    {getInitials(row.profile.full_name)}
+                                                <div
+                                                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(row.profile.full_name)}`}
+                                                >
+                                                    {getInitials(
+                                                        row.profile.full_name,
+                                                    )}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
                                                         {row.profile.full_name}
                                                     </p>
                                                     <p className="truncate text-micro text-[var(--color-text-muted)]">
-                                                        {row.profile.employee_code} ·{" "}
-                                                        {row.warehouse?.name || labels.unknownWarehouse}
+                                                        {
+                                                            row.profile
+                                                                .employee_code
+                                                        }{" "}
+                                                        ·{" "}
+                                                        {row.warehouse?.name ||
+                                                            labels.unknownWarehouse}
                                                     </p>
                                                 </div>
                                             </div>
                                         </td>
                                         {days.map((day) => {
-                                            const log = successMap.get(`${row.user.id}:${day.key}`);
-                                            const lateReport = lateReportMap.get(`${row.user.id}:${day.key}`);
-                                            const isToday = day.key === todayKey;
-                                            const isEligible = isEmployeeAttendanceEligibleOnDate(
-                                                row.profile,
-                                                day.key,
+                                            const log = successMap.get(
+                                                `${row.user.id}:${day.key}`,
                                             );
+                                            const lateReport =
+                                                lateReportMap.get(
+                                                    `${row.user.id}:${day.key}`,
+                                                );
+                                            const dayLeaves =
+                                                leaveDayMap.get(
+                                                    `${row.profile.id}:${day.key}`,
+                                                ) || [];
+                                            const isToday =
+                                                day.key === todayKey;
+                                            const isEligible =
+                                                isEmployeeAttendanceEligibleOnDate(
+                                                    row.profile,
+                                                    day.key,
+                                                );
                                             return (
                                                 <td
                                                     key={`${row.profile.id}-${day.key}`}
-                                                    className={`h-11 border-b border-r border-[var(--color-border-soft)] px-1.5 text-center tabular-nums transition-colors ${isToday
-                                                        ? "bg-[#0066cc05]"
-                                                        : day.isSunday
-                                                            ? "bg-[#b4231802]"
-                                                            : day.isSaturday
+                                                    className={`h-11 border-b border-r border-[var(--color-border-soft)] px-1.5 text-center tabular-nums transition-colors ${
+                                                        isToday
+                                                            ? "bg-[#0066cc05]"
+                                                            : day.isSunday
+                                                              ? "bg-[#b4231802]"
+                                                              : day.isSaturday
                                                                 ? "bg-[#f59e0b04]"
-                                                                : index % 2 === 0
-                                                                    ? "bg-white"
-                                                                    : "bg-[var(--color-surface-card)]"
-                                                        } ${day.isFuture ? "opacity-45" : ""}`}
+                                                                : index % 2 ===
+                                                                    0
+                                                                  ? "bg-white"
+                                                                  : "bg-[var(--color-surface-card)]"
+                                                    } ${day.isFuture ? "opacity-45" : ""}`}
                                                 >
                                                     {!isEligible ? (
                                                         <span className="text-micro font-medium text-[var(--color-text-muted)]">
@@ -492,38 +673,88 @@ export function TimeAttendanceCalendar({
                                                         <div className="flex flex-col items-center justify-center gap-1">
                                                             <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-micro font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
                                                                 <span className="h-1.5 w-1.5 rounded-full bg-[#257a3e]" />
-                                                                {formatCheckInTime(log.check_in_at)}
+                                                                {formatCheckInTime(
+                                                                    log.check_in_at,
+                                                                )}
                                                             </span>
                                                             {lateReport ? (
                                                                 <LateReportChip
-                                                                    label={labels.reportLate || "Late"}
-                                                                    reason={lateReport.reason}
-                                                                    arrivalTime={getLateReportArrivalTime(lateReport)}
+                                                                    label={
+                                                                        labels.reportLate ||
+                                                                        "Late"
+                                                                    }
+                                                                    reason={
+                                                                        lateReport.reason
+                                                                    }
+                                                                    arrivalTime={getLateReportArrivalTime(
+                                                                        lateReport,
+                                                                    )}
+                                                                />
+                                                            ) : null}
+                                                            {dayLeaves.length >
+                                                            0 ? (
+                                                                <AttendanceLeaveIndicator
+                                                                    labels={
+                                                                        labels
+                                                                    }
+                                                                    leaveDays={
+                                                                        dayLeaves
+                                                                    }
                                                                 />
                                                             ) : null}
                                                         </div>
+                                                    ) : dayLeaves.length > 0 ? (
+                                                        <AttendanceLeaveIndicator
+                                                            labels={labels}
+                                                            leaveDays={
+                                                                dayLeaves
+                                                            }
+                                                        />
                                                     ) : isToday ? (
                                                         <div className="flex flex-col items-center justify-center gap-1">
                                                             <span className="inline-flex items-center justify-center rounded-md border border-dashed border-[var(--color-brand-primary)] px-2 py-0.5 text-micro font-medium text-[var(--color-brand-primary)] animate-pulse">
-                                                                {labels.waitingShort || (isVi ? "Chờ..." : "等待...")}
+                                                                {labels.waitingShort ||
+                                                                    (isVi
+                                                                        ? "Chờ..."
+                                                                        : "等待...")}
                                                             </span>
                                                             {lateReport ? (
                                                                 <LateReportChip
-                                                                    label={labels.reportLate || "Late"}
-                                                                    reason={lateReport.reason}
-                                                                    arrivalTime={getLateReportArrivalTime(lateReport)}
+                                                                    label={
+                                                                        labels.reportLate ||
+                                                                        "Late"
+                                                                    }
+                                                                    reason={
+                                                                        lateReport.reason
+                                                                    }
+                                                                    arrivalTime={getLateReportArrivalTime(
+                                                                        lateReport,
+                                                                    )}
                                                                 />
                                                             ) : null}
                                                         </div>
                                                     ) : !day.isFuture ? (
-                                                        <span className="text-slate-300 font-bold select-none text-xs">•</span>
+                                                        <span className="text-slate-300 font-bold select-none text-xs">
+                                                            •
+                                                        </span>
                                                     ) : null}
-                                                    {isEligible && !log && !isToday && !day.isFuture && lateReport ? (
+                                                    {isEligible &&
+                                                    !log &&
+                                                    !isToday &&
+                                                    !day.isFuture &&
+                                                    lateReport ? (
                                                         <div className="mt-1 flex justify-center">
                                                             <LateReportChip
-                                                                label={labels.reportLate || "Late"}
-                                                                reason={lateReport.reason}
-                                                                arrivalTime={getLateReportArrivalTime(lateReport)}
+                                                                label={
+                                                                    labels.reportLate ||
+                                                                    "Late"
+                                                                }
+                                                                reason={
+                                                                    lateReport.reason
+                                                                }
+                                                                arrivalTime={getLateReportArrivalTime(
+                                                                    lateReport,
+                                                                )}
                                                             />
                                                         </div>
                                                     ) : null}
@@ -538,6 +769,43 @@ export function TimeAttendanceCalendar({
                 </>
             )}
         </motion.section>
+    );
+}
+
+function AttendanceLeaveIndicator({
+    labels,
+    leaveDays,
+    showLabel = false,
+}: {
+    labels: Record<string, string>;
+    leaveDays: AttendanceLeaveDay[];
+    showLabel?: boolean;
+}) {
+    const title = leaveDays
+        .map(
+            (leaveDay) =>
+                `${leaveTypeLabel(labels, leaveDay.request_type)} · ${leavePortionLabel(labels, leaveDay.portion)} · ${leaveStatusLabel(labels, leaveDay.status)}`,
+        )
+        .join("; ");
+    const primary = leaveDays[0];
+    if (!primary) return null;
+    const pending = primary.status !== LeaveRequestStatus.APPROVED;
+
+    return (
+        <span
+            title={title}
+            aria-label={title}
+            className="inline-flex max-w-32 items-center gap-1.5 rounded-md bg-slate-50 px-1.5 py-1 text-[9px] font-semibold text-[var(--color-text-secondary)]"
+        >
+            <span
+                className={`h-2 w-2 shrink-0 rounded-full ${leaveDotClasses[primary.request_type]} ${pending ? "opacity-50 ring-1 ring-current ring-offset-1" : ""}`}
+            />
+            {showLabel ? (
+                <span className="truncate">
+                    {leaveTypeLabel(labels, primary.request_type)}
+                </span>
+            ) : null}
+        </span>
     );
 }
 
@@ -587,56 +855,5 @@ function LateReportChip({
             ) : null}
             <span className="truncate">{reason}</span>
         </span>
-    );
-}
-
-function MobileAttendanceDayCell({
-    day,
-    isToday,
-    logTime,
-    waitingLabel,
-    emptyLabel,
-}: {
-    day: AttendanceDay;
-    isToday: boolean;
-    logTime: string;
-    waitingLabel: string;
-    emptyLabel: string;
-}) {
-    if (logTime) {
-        return (
-            <div className="flex min-w-[76px] flex-col rounded-2xl border border-[#257a3e20] bg-[#257a3e08] p-2">
-                <span className="text-[10px] font-semibold text-[#257a3e]">
-                    {formatMobileDay(day)}
-                </span>
-                <span className="mt-1 text-sm font-semibold tabular-nums text-[#257a3e]">
-                    {logTime}
-                </span>
-            </div>
-        );
-    }
-
-    if (isToday) {
-        return (
-            <div className="flex min-w-[76px] flex-col rounded-2xl border border-dashed border-[var(--color-brand-primary)] bg-white p-2">
-                <span className="text-[10px] font-semibold text-[var(--color-brand-primary)]">
-                    {formatMobileDay(day)}
-                </span>
-                <span className="mt-1 truncate text-xs font-semibold text-[var(--color-brand-primary)]">
-                    {waitingLabel}
-                </span>
-            </div>
-        );
-    }
-
-    return (
-        <div className={`flex min-w-[76px] flex-col rounded-2xl border bg-white p-2 ${day.isFuture ? "border-transparent opacity-45" : "border-[var(--color-border-soft)]"}`}>
-            <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
-                {formatMobileDay(day)}
-            </span>
-            <span className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
-                {day.isFuture ? "" : emptyLabel}
-            </span>
-        </div>
     );
 }

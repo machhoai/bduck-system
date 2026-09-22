@@ -14,6 +14,7 @@ import {
     useAttendanceContext,
     useAttendanceExemptions,
     useAttendanceLateReports,
+    useAttendanceLeaveDays,
     useAttendanceLogs,
     useAttendancePolicies,
 } from "@/hooks/useAttendance";
@@ -102,6 +103,10 @@ export function TimeAttendanceTab() {
         days[0]?.key || "",
         days[days.length - 1]?.key || "",
     );
+    const { leaveDays, loading: leaveDaysLoading } = useAttendanceLeaveDays(
+        days[0]?.key || "",
+        days[days.length - 1]?.key || "",
+    );
     const { reports: lateReports, loading: lateReportsLoading } =
         useAttendanceLateReports(
             days[0]?.key || "",
@@ -138,8 +143,8 @@ export function TimeAttendanceTab() {
         () =>
             canConfigureAttendance
                 ? warehouses.filter((warehouse) =>
-                    scopeContainsFacility(configFacilityScope, warehouse.id),
-                )
+                      scopeContainsFacility(configFacilityScope, warehouse.id),
+                  )
                 : [],
         [canConfigureAttendance, configFacilityScope, warehouses],
     );
@@ -170,7 +175,10 @@ export function TimeAttendanceTab() {
         [warehouses],
     );
     const userById = useMemo(
-        () => new Map((users as UserWithAssignments[]).map((item) => [item.id, item])),
+        () =>
+            new Map(
+                (users as UserWithAssignments[]).map((item) => [item.id, item]),
+            ),
         [users],
     );
     const exemptUserWarehouseKeys = useMemo(
@@ -190,12 +198,14 @@ export function TimeAttendanceTab() {
             const personalUser = userById.get(user.id) || user;
             return context?.can_check_in && myProfile
                 ? [
-                    {
-                        profile: myProfile,
-                        user: personalUser,
-                        warehouse: warehouseById.get(context.warehouse_id || "") || null,
-                    },
-                ]
+                      {
+                          profile: myProfile,
+                          user: personalUser,
+                          warehouse:
+                              warehouseById.get(context.warehouse_id || "") ||
+                              null,
+                      },
+                  ]
                 : [];
         }
 
@@ -221,7 +231,9 @@ export function TimeAttendanceTab() {
                     !linkedUser ||
                     !selectedWarehouseScope.has(targetWarehouseId) ||
                     !policy?.enabled ||
-                    exemptUserWarehouseKeys.has(`${profile.user_id}:${targetWarehouseId}`)
+                    exemptUserWarehouseKeys.has(
+                        `${profile.user_id}:${targetWarehouseId}`,
+                    )
                 ) {
                     return [];
                 }
@@ -234,7 +246,8 @@ export function TimeAttendanceTab() {
                 ];
             })
             .filter(
-                (row) => selectedUserId === "ALL" || row.user.id === selectedUserId,
+                (row) =>
+                    selectedUserId === "ALL" || row.user.id === selectedUserId,
             );
     }, [
         canViewAttendance,
@@ -273,12 +286,28 @@ export function TimeAttendanceTab() {
         );
     }, [days, employeeRows, logs, selectedWarehouseId, visibleWarehouseIds]);
 
+    const filteredLeaveDays = useMemo(() => {
+        const profileIds = new Set(employeeRows.map((row) => row.profile.id));
+        const warehouseIds =
+            selectedWarehouseId === "ALL"
+                ? visibleWarehouseIds
+                : new Set([selectedWarehouseId]);
+        return leaveDays.filter(
+            (day) =>
+                profileIds.has(day.employee_profile_id) &&
+                warehouseIds.has(day.warehouse_id),
+        );
+    }, [employeeRows, leaveDays, selectedWarehouseId, visibleWarehouseIds]);
+
     const mobileStats = useMemo(() => {
         const todayKey = getTodayKey();
         const todayLogs = filteredLogs.filter(
-            (log) => log.attendance_date === todayKey && log.status === "SUCCESS",
+            (log) =>
+                log.attendance_date === todayKey && log.status === "SUCCESS",
         );
-        const rejectedLogs = filteredLogs.filter((log) => log.status === "REJECTED");
+        const rejectedLogs = filteredLogs.filter(
+            (log) => log.status === "REJECTED",
+        );
         return {
             checkedToday: todayLogs.length,
             rejected: rejectedLogs.length,
@@ -319,7 +348,10 @@ export function TimeAttendanceTab() {
         return (
             <div className="flex min-h-96 items-center justify-center">
                 <div className="max-w-[680px] rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-elevated)] p-4 text-center">
-                    <AlertTriangle className="mx-auto mb-3 text-[#b42318]" size={28} />
+                    <AlertTriangle
+                        className="mx-auto mb-3 text-[#b42318]"
+                        size={28}
+                    />
                     <h1 className="text-base font-semibold text-[var(--color-text-primary)]">
                         {labels.noAccessTitle}
                     </h1>
@@ -346,8 +378,17 @@ export function TimeAttendanceTab() {
 
             {/* Mobile Header Stats — shown at the top of the content on mobile */}
             <div className="grid grid-cols-2 gap-2 lg:hidden">
-                <MobileStat icon={<UsersRound size={15} />} label={labels.employees} value={employeeRows.length} />
-                <MobileStat icon={<CheckCircle2 size={15} />} label={labels.today || "Today"} value={mobileStats.checkedToday} tone="success" />
+                <MobileStat
+                    icon={<UsersRound size={15} />}
+                    label={labels.employees}
+                    value={employeeRows.length}
+                />
+                <MobileStat
+                    icon={<CheckCircle2 size={15} />}
+                    label={labels.today || "Today"}
+                    value={mobileStats.checkedToday}
+                    tone="success"
+                />
             </div>
 
             <div className="grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] lg:gap-4">
@@ -385,8 +426,9 @@ export function TimeAttendanceTab() {
                 days={days}
                 rows={employeeRows}
                 logs={filteredLogs}
+                leaveDays={filteredLeaveDays}
                 lateReports={lateReports}
-                loading={logsLoading || lateReportsLoading}
+                loading={logsLoading || lateReportsLoading || leaveDaysLoading}
                 mode={mode}
                 month={month}
                 weekStart={weekStart}
@@ -445,14 +487,16 @@ function MobileStat({
         tone === "success"
             ? "text-[#257a3e]"
             : tone === "danger"
-                ? "text-[#b42318]"
-                : "text-[var(--color-brand-primary)]";
+              ? "text-[#b42318]"
+              : "text-[var(--color-brand-primary)]";
 
     return (
         <div className="min-w-0 rounded-2xl bg-white px-3 py-2 shadow-sm">
             <div className={`mb-1 flex items-center gap-1.5 ${toneClass}`}>
                 {icon}
-                <span className="truncate text-[10px] font-semibold">{label}</span>
+                <span className="truncate text-[10px] font-semibold">
+                    {label}
+                </span>
             </div>
             <p className="text-lg font-semibold tabular-nums text-[var(--color-text-primary)]">
                 {value}

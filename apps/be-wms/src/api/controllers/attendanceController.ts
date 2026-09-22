@@ -1,16 +1,18 @@
-import type { Request, Response } from "express";
-import { z } from "zod";
 import {
   AttendanceLocationRule,
   AttendanceVerificationStrategy,
   AttendanceWorkArrangementType,
 } from "@bduck/shared-types";
+import type { Request, Response } from "express";
+import { z } from "zod";
+
 import {
   approveAttendanceWorkArrangement,
   cancelAttendanceWorkArrangement,
   checkInAttendance,
   createLateArrivalReport,
   fetchAttendanceContext,
+  fetchAttendanceLeaveDays,
   fetchAttendanceExemptions,
   fetchAttendancePolicies,
   fetchAttendanceWorkArrangements,
@@ -25,6 +27,25 @@ import {
 } from "../middlewares/requestAccessContext.js";
 
 const warehouseParamSchema = z.object({ warehouseId: z.string().uuid() });
+const leaveDayRangeSchema = z
+  .object({
+    date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+    date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  })
+  .refine((value) => value.date_from <= value.date_to, {
+    path: ["date_to"],
+    message: "date_to must be on or after date_from",
+  })
+  .refine(
+    (value) =>
+      Date.parse(`${value.date_to}T00:00:00.000Z`) -
+        Date.parse(`${value.date_from}T00:00:00.000Z`) <=
+      62 * 24 * 60 * 60 * 1000,
+    {
+      path: ["date_to"],
+      message: "Attendance leave range cannot exceed 62 days",
+    },
+  );
 const checkInSchema = z.object({
   action_time: z.string().datetime().optional(),
   location: z
@@ -187,6 +208,30 @@ export const getAttendanceContextHandler = async (
       vi: "Lấy ngữ cảnh chấm công thành công.",
       zh: "成功获取考勤上下文。",
     });
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const getAttendanceLeaveDaysHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const range = leaveDayRangeSchema.parse(req.query);
+    return sendSuccess(
+      res,
+      await fetchAttendanceLeaveDays(
+        getRequestUser(req),
+        range.date_from,
+        range.date_to,
+        requireRequestAuthorization(req),
+      ),
+      {
+        vi: "Đã tải các ngày nghỉ trên lịch chấm công.",
+        zh: "已加载考勤日历中的休假日期。",
+      },
+    );
   } catch (error) {
     return handleAttendanceError(res, error);
   }

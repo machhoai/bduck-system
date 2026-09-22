@@ -1,12 +1,17 @@
+import { LeaveDayPortion, LeaveRequestType } from "@bduck/shared-types";
 import type { Request, Response } from "express";
 import { z } from "zod";
+
+import {
+  previewLeaveHistoryImport,
+  previewManualLeaveHistoryImport,
+} from "../../services/leaveImportPreviewService.js";
+import { fetchLeaveImportEmployeeOptions } from "../../services/leaveImportProfileService.js";
 import {
   commitLeaveHistoryImport,
   fetchLeaveImportBatches,
   fetchLeaveImportBatchView,
 } from "../../services/leaveImportService.js";
-import { fetchLeaveImportEmployeeOptions } from "../../services/leaveImportProfileService.js";
-import { previewLeaveHistoryImport } from "../../services/leaveImportPreviewService.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 import {
   requireAuthenticatedRequestUser,
@@ -18,6 +23,8 @@ const safeFileName = z
   .trim()
   .min(1)
   .max(180)
+  // Control characters are intentionally rejected from uploaded file names.
+  // eslint-disable-next-line no-control-regex
   .regex(/^[^/\\<>:"|?*\u0000-\u001F]+\.xlsx$/iu);
 
 const previewSchema = z
@@ -25,6 +32,36 @@ const previewSchema = z
     source_file_name: safeFileName,
     source_file_url: z.string().url().max(2048),
     source_file_checksum: z.string().regex(/^[a-f0-9]{64}$/iu),
+    action_time: z.coerce.date(),
+  })
+  .strict();
+
+const manualPreviewSchema = z
+  .object({
+    client_reference: z.string().uuid(),
+    employee_profile_id: z.string().trim().min(1).max(128),
+    request_type: z.enum([
+      LeaveRequestType.PAID_ANNUAL,
+      LeaveRequestType.UNPAID,
+      LeaveRequestType.SICK,
+      LeaveRequestType.MATERNITY,
+    ]),
+    days: z
+      .array(
+        z
+          .object({
+            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+            portion: z.nativeEnum(LeaveDayPortion),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(31)
+      .refine(
+        (days) => new Set(days.map((day) => day.date)).size === days.length,
+        "Duplicate leave dates are not allowed",
+      ),
+    reason: z.string().trim().min(1).max(500),
     action_time: z.coerce.date(),
   })
   .strict();
@@ -98,6 +135,30 @@ export const previewLeaveImportHandler = async (
       {
         vi: "Đã kiểm tra và tạo bản xem trước.",
         zh: "已校验并生成预览。",
+      },
+      201,
+    );
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const previewManualLeaveImportHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const actor = requireAuthenticatedRequestUser(req);
+    return sendSuccess(
+      res,
+      await previewManualLeaveHistoryImport(
+        manualPreviewSchema.parse(req.body),
+        actor.id,
+        requireRequestAuthorization(req),
+      ),
+      {
+        vi: "Đã kiểm tra dữ liệu nhập thủ công và tạo bản xem trước.",
+        zh: "已校验手动录入数据并生成预览。",
       },
       201,
     );

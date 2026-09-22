@@ -1,15 +1,23 @@
+import type { AttendanceLeaveDay, LeaveRequest } from "@bduck/shared-types";
+
 import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import { listActiveAttendancePolicies } from "../repositories/attendanceRepository.js";
 import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
-import type { AuditMetadata } from "./auditService.js";
+import {
+  findLeaveRequestsByProfile,
+  findLeaveRequestsScoped,
+} from "../repositories/leaveRequestQueryRepository.js";
+
 import {
   assertAnyAttendanceAction,
   assertPersonalAttendanceAction,
   buildAttendanceCapabilities,
 } from "./attendanceAuthorizationPolicy.js";
-import type { AuthorizationService } from "./authorization/index.js";
+import { mapAttendanceLeaveDays } from "./attendanceLeavePolicy.js";
 import * as attendanceService from "./attendanceService.js";
 import * as attendanceWorkArrangementService from "./attendanceWorkArrangementService.js";
+import type { AuditMetadata } from "./auditService.js";
+import type { AuthorizationService } from "./authorization/index.js";
 
 export const fetchAttendanceContext = async (
   user: AuthenticatedRequestUser,
@@ -73,6 +81,31 @@ export const fetchAttendancePolicies = (authorization: AuthorizationService) =>
   listActiveAttendancePolicies(
     authorization.facilityIdsFor("attendance.config"),
   );
+
+export const fetchAttendanceLeaveDays = async (
+  user: AuthenticatedRequestUser,
+  dateFrom: string,
+  dateTo: string,
+  authorization: AuthorizationService,
+): Promise<AttendanceLeaveDay[]> => {
+  const viewFacilityIds = authorization.facilityIdsFor("attendance.view");
+  let requests: LeaveRequest[];
+  if (authorization.context.isSystemAdmin || viewFacilityIds.length > 0) {
+    requests = await findLeaveRequestsScoped({
+      isSystemAdmin: authorization.context.isSystemAdmin,
+      facilityIds: viewFacilityIds,
+    });
+  } else {
+    const profile = await getEmployeeProfileByUserId(user.id);
+    assertPersonalAttendanceAction(
+      authorization,
+      "attendance.check_in",
+      profile?.workplace_warehouse_id ?? null,
+    );
+    requests = profile ? await findLeaveRequestsByProfile(profile.id) : [];
+  }
+  return mapAttendanceLeaveDays(requests, dateFrom, dateTo);
+};
 
 export const updateAttendancePolicy = (
   user: AuthenticatedRequestUser,

@@ -1,17 +1,22 @@
+import { createHash } from "node:crypto";
+
 import {
   LeaveImportRecordType,
   type EmployeeProfile,
   type LeaveBalanceBucket,
   type LeaveImportBatchView,
   type LocalizedText,
+  type PreviewManualLeaveHistoryInput,
   type PreviewLeaveImportInput,
 } from "@bduck/shared-types";
-import { createLeaveImportPreview } from "../repositories/leaveImportRepository.js";
+
+import { findEmployeeProfiles } from "../repositories/employeeProfileRepository.js";
 import {
   createEmptyLeaveBalanceBucket,
   findLeaveBalanceBuckets,
 } from "../repositories/leaveBalanceRepository.js";
-import { findEmployeeProfiles } from "../repositories/employeeProfileRepository.js";
+import { createLeaveImportPreview } from "../repositories/leaveImportRepository.js";
+
 import type { AuthorizationService } from "./authorization/index.js";
 import { applyLeaveDelta } from "./leaveBalancePolicy.js";
 import {
@@ -27,7 +32,11 @@ import {
   validateLeaveImportIdentity,
   validateLeaveImportPayload,
 } from "./leaveImportPolicy.js";
-import { parseLeaveImportWorkbook } from "./leaveImportWorkbookService.js";
+import {
+  parseLeaveImportWorkbook,
+  type ParsedLeaveImportRow,
+} from "./leaveImportWorkbookService.js";
+import { buildManualLeaveImportRows } from "./leaveManualImportPolicy.js";
 
 const localized = (vi: string, zh: string): LocalizedText => ({ vi, zh });
 
@@ -35,29 +44,35 @@ const createBalanceSimulation = async (
   profiles: EmployeeProfile[],
 ): Promise<Map<string, Map<number, LeaveBalanceBucket>>> => {
   const entries = await Promise.all(
-    profiles.map(async (profile) => [
-      profile.id,
-      new Map(
-        (await findLeaveBalanceBuckets(profile.id)).map((bucket) => [
-          bucket.leave_year,
-          bucket,
-        ]),
-      ),
-    ] as const),
+    profiles.map(
+      async (profile) =>
+        [
+          profile.id,
+          new Map(
+            (await findLeaveBalanceBuckets(profile.id)).map((bucket) => [
+              bucket.leave_year,
+              bucket,
+            ]),
+          ),
+        ] as const,
+    ),
   );
   return new Map(entries);
 };
 
-export const previewLeaveHistoryImport = async (
-  input: PreviewLeaveImportInput,
+const createLeaveHistoryPreview = async (
+  input: {
+    source_file_name: string;
+    source_file_url: string;
+    source_file_checksum: string;
+    action_time: Date;
+  },
+  parsedRows: ParsedLeaveImportRow[],
+  profiles: EmployeeProfile[],
   actorId: string,
   authorization: AuthorizationService,
 ): Promise<LeaveImportBatchView> => {
   assertCanImportLeaveHistory(authorization);
-  const [parsedRows, profiles] = await Promise.all([
-    parseLeaveImportWorkbook(input),
-    findEmployeeProfiles(),
-  ]);
   const profilesByCode = mapEmployeeProfilesByCode(profiles);
   const accessibleProfiles = Array.from(
     new Set(
@@ -152,8 +167,10 @@ export const previewLeaveHistoryImport = async (
       record_type: (recordType ?? row.record_type) as LeaveImportRecordType,
       source_reference: row.source_reference,
       employee_code: row.employee_code,
-      normalized_payload:
-        row.normalized_payload as unknown as Record<string, unknown>,
+      normalized_payload: row.normalized_payload as unknown as Record<
+        string,
+        unknown
+      >,
       is_valid: errors.length === 0,
       validation_messages: errors,
     };
@@ -165,9 +182,7 @@ export const previewLeaveHistoryImport = async (
     source_file_checksum: input.source_file_checksum,
     workplace_warehouse_ids: Array.from(
       new Set(
-        accessibleProfiles.map(
-          (profile) => profile.workplace_warehouse_id,
-        ),
+        accessibleProfiles.map((profile) => profile.workplace_warehouse_id),
       ),
     ),
     actor_id: actorId,
@@ -183,4 +198,61 @@ export const previewLeaveHistoryImport = async (
     batch: preview.batch,
     rows: buildLeaveImportRowViews(preview.rows, profilesByCode),
   };
+};
+
+export const previewLeaveHistoryImport = async (
+  input: PreviewLeaveImportInput,
+  actorId: string,
+  authorization: AuthorizationService,
+): Promise<LeaveImportBatchView> => {
+  const [parsedRows, profiles] = await Promise.all([
+    parseLeaveImportWorkbook(input),
+    findEmployeeProfiles(),
+  ]);
+  return createLeaveHistoryPreview(
+    input,
+    parsedRows,
+    profiles,
+    actorId,
+    authorization,
+  );
+};
+
+export const previewManualLeaveHistoryImport = async (
+  input: PreviewManualLeaveHistoryInput,
+  actorId: string,
+  authorization: AuthorizationService,
+): Promise<LeaveImportBatchView> => {
+  assertCanImportLeaveHistory(authorization);
+  const profiles = await findEmployeeProfiles();
+  const profile = profiles.find(
+    (candidate) => candidate.id === input.employee_profile_id,
+  );
+  if (!profile || !canImportLeaveForProfile(authorization, profile)) {
+    throw {
+      statusCode: 404,
+      messages: localized(
+        "Không tìm thấy nhân viên hoặc bạn không có quyền tại cơ sở của nhân viên.",
+        "找不到员工，或您无权访问该员工所在设施。",
+      ),
+    };
+  }
+
+  const parsedRows = buildManualLeaveImportRows(input, profile);
+  const checksum = createHash("sha256")
+    .update(JSON.stringify(parsedRows))
+    .digest("hex");
+
+  return createLeaveHistoryPreview(
+    {
+      source_file_name: "manual-entry",
+      source_file_url: `manual://${input.client_reference}`,
+      source_file_checksum: checksum,
+      action_time: input.action_time,
+    },
+    parsedRows,
+    profiles,
+    actorId,
+    authorization,
+  );
 };

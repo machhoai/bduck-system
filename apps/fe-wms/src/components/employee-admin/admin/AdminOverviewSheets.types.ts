@@ -18,6 +18,7 @@ import type {
   LeaveRequestType,
   ManualLeaveBalanceAdjustmentInput,
   PreviewLeaveImportInput,
+  PreviewManualLeaveHistoryInput,
   ReassignLeaveApprovalTaskInput,
   UpsertCompanyHolidayInput,
   UpsertLeaveApprovalConfigInput,
@@ -96,6 +97,9 @@ export interface AdminOverviewSheetsProps {
   ) => Promise<unknown>;
   onPreviewImport: (
     input: PreviewLeaveImportInput,
+  ) => Promise<LeaveImportBatchView>;
+  onPreviewManualImport: (
+    input: PreviewManualLeaveHistoryInput,
   ) => Promise<LeaveImportBatchView>;
   onOpenImport: (batchId: string) => Promise<LeaveImportBatchView>;
   onCommitImport: (

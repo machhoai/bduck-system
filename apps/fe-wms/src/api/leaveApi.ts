@@ -18,6 +18,7 @@ import type {
   LeaveImportCommitResult,
   LeaveImportEmployeeOption,
   PreviewLeaveImportInput,
+  PreviewManualLeaveHistoryInput,
   CommitLeaveImportInput,
   ManualLeaveBalanceAdjustmentInput,
   ManualLeaveBalanceAdjustmentResult,
@@ -226,6 +227,15 @@ export const previewLeaveHistoryImport = (
   fallbackMessage: string,
 ) =>
   leaveFetch<LeaveImportBatchView>("/imports/preview", fallbackMessage, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+
+export const previewManualLeaveHistoryImport = (
+  input: PreviewManualLeaveHistoryInput,
+  fallbackMessage: string,
+) =>
+  leaveFetch<LeaveImportBatchView>("/imports/manual-preview", fallbackMessage, {
     method: "POST",
     body: JSON.stringify(input),
   });
