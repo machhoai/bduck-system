@@ -142,7 +142,7 @@ test("same-version session refresh does not advance access epoch", () => {
   assert.equal(refreshedState.permissions, readyPermissions);
 });
 
-test("access version revokes old listeners before applying the new scope", () => {
+test("access refresh keeps the last verified shell until the new scope arrives", () => {
   const store = useUserStore.getState();
   store.clearAuth();
   store.setAuthData(user("office-b-user"));
@@ -161,7 +161,10 @@ test("access version revokes old listeners before applying the new scope", () =>
 
   useUserStore.getState().beginAccessRefresh(2, "access-v2");
   assert.equal(useUserStore.getState().accessStatus, "VERIFYING");
-  assert.deepEqual(useUserStore.getState().permissions, {});
+  assert.equal(
+    useUserStore.getState().hasPermission("inventory.read", "warehouse-c"),
+    true,
+  );
   assert.ok(useUserStore.getState().accessEpoch > readyEpoch);
 
   useUserStore.getState().applyAccessSnapshot(2, "access-v2", {
@@ -173,6 +176,31 @@ test("access version revokes old listeners before applying the new scope", () =>
   );
   assert.equal(
     useUserStore.getState().hasPermission("inventory.read", "store-d"),
+    true,
+  );
+});
+
+test("cached session snapshot restores the shell without claiming fresh auth", () => {
+  useUserStore.getState().clearAuth();
+  useUserStore.getState().beginAuthVerification("office-b-user");
+  useUserStore.getState().hydrateSessionSnapshot({
+    user: user("office-b-user"),
+    roleIds: ["employee"],
+    roleAssignments: [],
+    permissions: {
+      "warehouse-c": { "attendance.check_in": true },
+    },
+    accessVersion: 1,
+    activeAccessVersionId: "access-v1",
+  });
+
+  const cachedState = useUserStore.getState();
+  assert.equal(cachedState.authStatus, "VERIFYING");
+  assert.equal(cachedState.isAuthenticated, true);
+  assert.equal(cachedState.accessStatus, "OFFLINE_READY");
+  assert.equal(cachedState.hasUsableSessionSnapshot, true);
+  assert.equal(
+    cachedState.hasPermission("attendance.check_in", "warehouse-c"),
     true,
   );
 });

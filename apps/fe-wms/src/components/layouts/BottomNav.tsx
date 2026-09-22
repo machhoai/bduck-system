@@ -21,6 +21,7 @@ export default function BottomNav() {
     const { t } = useTranslation();
     const pathname = usePathname();
     const hasPermission = useUserStore((s) => s.hasPermission);
+    const authStatus = useUserStore((s) => s.authStatus);
     const workplaceFacilityId = useUserStore(
         (s) => s.user?.workplace_facility_id,
     );
@@ -31,7 +32,10 @@ export default function BottomNav() {
 
     const visibleItems = getVisibleMenuItems(
         menuItems,
-        hasPermission,
+        (permission, facilityId) =>
+            hasPermission(permission, facilityId) ||
+            ((authStatus === "INITIALIZING" || authStatus === "VERIFYING") &&
+                permission === "attendance.check_in"),
         workplaceFacilityId,
     )
         .filter((item) => item.showInBottomNav)

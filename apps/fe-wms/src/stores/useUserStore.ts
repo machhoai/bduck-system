@@ -8,6 +8,15 @@ import type { ClientAuthRuntimeStatus } from "@/lib/authNavigationPolicy";
 
 type PermissionMap = Record<string, Record<string, unknown>>;
 
+export interface HydratedSessionSnapshot {
+  user: User;
+  permissions: PermissionMap;
+  roleIds: string[];
+  roleAssignments: UserWarehouseRole[];
+  accessVersion: number;
+  activeAccessVersionId: string;
+}
+
 interface UserState {
   user: User | null;
   permissions: PermissionMap;
@@ -20,12 +29,14 @@ interface UserState {
   activeAccessVersionId: string | null;
   accessEpoch: number;
   lastAccessServerSyncAt: string | null;
+  hasUsableSessionSnapshot: boolean;
   setAuthData: (
     user: User,
     roleIds?: string[],
     roleAssignments?: UserWarehouseRole[],
   ) => void;
   beginAuthVerification: (firebaseUserId: string) => void;
+  hydrateSessionSnapshot: (snapshot: HydratedSessionSnapshot) => void;
   failAuthVerification: (isOffline?: boolean) => void;
   setRoleAssignments: (roleAssignments: UserWarehouseRole[]) => void;
   beginAccessRefresh: (
@@ -78,6 +89,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   authStatus: "INITIALIZING",
   accessStatus: "SIGNED_OUT",
   accessEpoch: 0,
+  hasUsableSessionSnapshot: false,
   ...emptyAccessState,
 
   beginAuthVerification: (firebaseUserId) =>
@@ -97,6 +109,31 @@ export const useUserStore = create<UserState>()((set, get) => ({
       };
     }),
 
+  hydrateSessionSnapshot: (snapshot) =>
+    set((state) => {
+      if (
+        state.authStatus === "AUTHENTICATED" ||
+        state.user?.id === snapshot.user.id
+      ) {
+        return state;
+      }
+
+      return {
+        user: snapshot.user,
+        roleIds: snapshot.roleIds,
+        roleAssignments: snapshot.roleAssignments,
+        isAuthenticated: true,
+        authStatus: "VERIFYING",
+        permissions: snapshot.permissions,
+        accessStatus: "OFFLINE_READY",
+        accessVersion: snapshot.accessVersion,
+        activeAccessVersionId: snapshot.activeAccessVersionId,
+        lastAccessServerSyncAt: null,
+        hasUsableSessionSnapshot: true,
+        accessEpoch: state.accessEpoch + 1,
+      };
+    }),
+
   failAuthVerification: (isOffline = false) =>
     set((state) => ({
       user: null,
@@ -105,6 +142,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       isAuthenticated: false,
       authStatus: "ERROR",
       accessStatus: isOffline ? "OFFLINE_UNVERIFIED" : "ERROR",
+      hasUsableSessionSnapshot: false,
       accessEpoch: state.accessEpoch + 1,
       ...emptyAccessState,
     })),
@@ -123,6 +161,9 @@ export const useUserStore = create<UserState>()((set, get) => ({
         accessVersion: sameUser ? state.accessVersion : null,
         activeAccessVersionId: sameUser ? state.activeAccessVersionId : null,
         lastAccessServerSyncAt: sameUser ? state.lastAccessServerSyncAt : null,
+        hasUsableSessionSnapshot: sameUser
+          ? state.hasUsableSessionSnapshot
+          : false,
         accessEpoch: sameUser ? state.accessEpoch : state.accessEpoch + 1,
       };
     }),
@@ -145,16 +186,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return {
         roleAssignments: enrichedAssignments,
         roleIds: Array.from(
-          new Set(
-            enrichedAssignments.map((assignment) => assignment.role_id),
-          ),
+          new Set(enrichedAssignments.map((assignment) => assignment.role_id)),
         ),
       };
     }),
 
   beginAccessRefresh: (accessVersion, activeAccessVersionId) =>
     set((state) => ({
-      permissions: {},
+      permissions: state.hasUsableSessionSnapshot ? state.permissions : {},
       accessStatus: "VERIFYING",
       accessVersion,
       activeAccessVersionId,
@@ -180,6 +219,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return {
         permissions,
         accessStatus: "READY",
+        hasUsableSessionSnapshot: true,
         accessVersion,
         activeAccessVersionId,
         lastAccessServerSyncAt: new Date().toISOString(),
@@ -191,7 +231,8 @@ export const useUserStore = create<UserState>()((set, get) => ({
     set((state) => {
       const hasVerifiedAccess =
         state.accessStatus === "READY" ||
-        state.accessStatus === "OFFLINE_READY";
+        state.accessStatus === "OFFLINE_READY" ||
+        state.hasUsableSessionSnapshot;
       return {
         accessStatus: hasVerifiedAccess
           ? "OFFLINE_READY"
@@ -213,6 +254,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     set((state) => ({
       ...emptyAccessState,
       accessStatus: status,
+      hasUsableSessionSnapshot: false,
       accessEpoch: state.accessEpoch + 1,
     })),
 
@@ -224,6 +266,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
       isAuthenticated: false,
       authStatus: "SIGNED_OUT",
       accessStatus: "SIGNED_OUT",
+      hasUsableSessionSnapshot: false,
       accessEpoch: state.accessEpoch + 1,
       ...emptyAccessState,
     })),

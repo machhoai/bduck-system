@@ -12,13 +12,17 @@ import {
 } from "@bduck/shared-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   emitDataMutation,
   subscribeDataMutation,
 } from "@/lib/dataInvalidation";
 import { auth, db } from "@/lib/firebase";
+import {
+  readAttendanceSnapshot,
+  writeAttendanceSnapshot,
+} from "@/lib/attendanceSnapshotCache";
 import {
   buildFacilityScopedQueries,
   subscribeToMergedQueries,
@@ -83,40 +87,80 @@ const captureAttendanceLocation = (): Promise<AttendanceLocationInput> => {
 };
 
 export function useAttendanceContext() {
+  const currentUserId = useUserStore((state) => state.user?.id);
   const [context, setContext] = useState<AttendanceCheckInContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const contextRef = useRef<AttendanceCheckInContext | null>(null);
 
-  const reload = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    try {
-      const data = await callAttendanceApi<AttendanceCheckInContext>(
-        "/api/attendance/context",
-        {
-          method: "GET",
-          signal,
-        },
-      );
-      if (signal?.aborted) return;
-      setContext(data);
-      setError(null);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
+  const reload = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!contextRef.current) setLoading(true);
+      try {
+        const data = await callAttendanceApi<AttendanceCheckInContext>(
+          "/api/attendance/context",
+          {
+            method: "GET",
+            signal,
+          },
+        );
+        if (signal?.aborted) return;
+        contextRef.current = data;
+        setContext(data);
+        setError(null);
+        if (currentUserId) {
+          void writeAttendanceSnapshot(currentUserId, data).catch(
+            (cacheError) => {
+              console.warn(
+                "[useAttendanceContext] cache write failed:",
+                cacheError,
+              );
+            },
+          );
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+        console.error("[useAttendanceContext] error:", err);
+        if (!contextRef.current) {
+          setContext(null);
+          setError(
+            err instanceof Error ? err.message : "Khong the tai cham cong.",
+          );
+        }
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
-      console.error("[useAttendanceContext] error:", err);
-      setContext(null);
-      setError(err instanceof Error ? err.message : "Khong the tai cham cong.");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    [currentUserId],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
-    void reload(controller.signal);
+    let disposed = false;
+
+    contextRef.current = null;
+    setContext(null);
+    setLoading(true);
+    setError(null);
+
+    const restoreThenRevalidate = async () => {
+      if (currentUserId) {
+        const cached = await readAttendanceSnapshot(currentUserId);
+        if (disposed) return;
+        if (cached) {
+          contextRef.current = cached;
+          setContext(cached);
+          setLoading(false);
+        }
+      }
+      await reload(controller.signal);
+    };
+
+    void restoreThenRevalidate();
     const unsubscribe = subscribeDataMutation(
       [
         "attendance_late_reports",
@@ -128,10 +172,11 @@ export function useAttendanceContext() {
       () => void reload(),
     );
     return () => {
+      disposed = true;
       controller.abort();
       unsubscribe();
     };
-  }, [reload]);
+  }, [currentUserId, reload]);
 
   useEffect(() => {
     const flushPendingCheckIn = async () => {

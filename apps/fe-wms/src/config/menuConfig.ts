@@ -15,6 +15,7 @@ import {
     ChartNoAxesCombined,
     ClipboardCheck,
     ClipboardList,
+    Clock3,
     FileClock,
     FileSpreadsheet,
     Files,
@@ -86,6 +87,14 @@ export const menuItems: MenuItem[] = [
         href: "/tasks",
         showInBottomNav: true,
         badgeKey: "tasks",
+    },
+    {
+        id: "attendance",
+        labelKey: "attendance",
+        icon: Clock3,
+        href: "/attendance",
+        permission: "attendance.check_in",
+        showInBottomNav: true,
     },
     {
         id: "warehouses",
@@ -173,7 +182,6 @@ export const menuItems: MenuItem[] = [
             "leave.approver.reassign",
             "employees.contracts.self.read",
         ],
-        showInBottomNav: true,
         badgeKey: "employeeAdmin",
     },
     {

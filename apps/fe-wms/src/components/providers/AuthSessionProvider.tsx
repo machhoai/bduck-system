@@ -13,8 +13,16 @@ import type {
 } from "@bduck/shared-types";
 import { auth } from "@/lib/firebase";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
+import {
+  clearClientSnapshots,
+  isolateClientSnapshotsForAccount,
+} from "@/lib/clientSnapshotCache";
 import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
 import { shouldBootstrapSessionWithFirebase } from "@/lib/apiRolloutCompatibility";
+import {
+  readSessionBootstrap,
+  writeSessionBootstrap,
+} from "@/lib/sessionBootstrapCache";
 import { useUserStore } from "@/stores/useUserStore";
 
 const API_BASE_URL =
@@ -50,6 +58,9 @@ export default function AuthSessionProvider() {
   const clearAuth = useUserStore((state) => state.clearAuth);
   const failAuthVerification = useUserStore(
     (state) => state.failAuthVerification,
+  );
+  const hydrateSessionSnapshot = useUserStore(
+    (state) => state.hydrateSessionSnapshot,
   );
 
   const syncBackendSession = useCallback(
@@ -153,6 +164,7 @@ export default function AuthSessionProvider() {
       if (!firebaseUser) {
         lastSessionSyncAt = 0;
         clearAuth();
+        void clearClientSnapshots().catch(logSessionSyncError);
         void isolateClientDataForAccount(null).catch(logSessionSyncError);
         return;
       }
@@ -161,11 +173,31 @@ export default function AuthSessionProvider() {
         current.authStatus === "AUTHENTICATED" &&
         current.user?.id === firebaseUser.uid;
       if (!isAlreadyAuthenticated) beginAuthVerification(firebaseUser.uid);
+
+      void readSessionBootstrap(firebaseUser.uid)
+        .then((snapshot) => {
+          if (!snapshot || auth.currentUser?.uid !== firebaseUser.uid) return;
+          const latest = useUserStore.getState();
+          if (
+            latest.authStatus === "VERIFYING" &&
+            !latest.hasUsableSessionSnapshot
+          ) {
+            hydrateSessionSnapshot(snapshot);
+          }
+        })
+        .catch(logSessionSyncError);
+
+      void isolateClientSnapshotsForAccount(firebaseUser.uid).catch(
+        logSessionSyncError,
+      );
       void isolateClientDataForAccount(firebaseUser.uid)
         .then(() => syncBackendSession(firebaseUser, false))
         .catch((error) => {
           logSessionSyncError(error);
-          if (!isAlreadyAuthenticated) {
+          const latest = useUserStore.getState();
+          if (latest.hasUsableSessionSnapshot) {
+            if (!window.navigator.onLine) latest.markAccessOffline();
+          } else if (!isAlreadyAuthenticated) {
             failAuthVerification(!window.navigator.onLine);
           }
         });
@@ -174,8 +206,37 @@ export default function AuthSessionProvider() {
     beginAuthVerification,
     clearAuth,
     failAuthVerification,
+    hydrateSessionSnapshot,
     syncBackendSession,
   ]);
+
+  useEffect(() => {
+    let lastPersistedVersion = "";
+    return useUserStore.subscribe((state) => {
+      if (
+        state.authStatus !== "AUTHENTICATED" ||
+        state.accessStatus !== "READY" ||
+        !state.user ||
+        state.accessVersion === null ||
+        !state.activeAccessVersionId
+      ) {
+        return;
+      }
+
+      const version = `${state.user.id}:${state.accessVersion}:${state.activeAccessVersionId}:${state.lastAccessServerSyncAt ?? ""}`;
+      if (version === lastPersistedVersion) return;
+      lastPersistedVersion = version;
+
+      void writeSessionBootstrap({
+        user: state.user,
+        roleIds: state.roleIds,
+        roleAssignments: state.roleAssignments,
+        permissions: state.permissions,
+        accessVersion: state.accessVersion,
+        activeAccessVersionId: state.activeAccessVersionId,
+      }).catch(logSessionSyncError);
+    });
+  }, []);
 
   useEffect(() => {
     const validateCurrentSession = () => {

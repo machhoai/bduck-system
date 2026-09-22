@@ -6,6 +6,7 @@ import { useUserStore } from "../../stores/useUserStore";
 import { I18nProvider, useTranslation } from "../../lib/i18n";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import DashboardSkeleton from "../../components/layouts/DashboardSkeleton";
+import { DashboardBootstrapShell } from "../../components/layouts/DashboardBootstrapShell";
 import { usePagePermission } from "../../hooks/usePagePermission";
 import Forbidden403 from "../../components/shared/Forbidden403";
 import { MFALockScreen } from "../../components/auth/MFALockScreen";
@@ -32,10 +33,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     const authStatus = useUserStore((s) => s.authStatus);
     const accessStatus = useUserStore((s) => s.accessStatus);
     const accessEpoch = useUserStore((s) => s.accessEpoch);
+    const hasUsableSessionSnapshot = useUserStore(
+        (s) => s.hasUsableSessionSnapshot,
+    );
     const [isMounted, setIsMounted] = useState(false);
     const hasAccess = usePagePermission(pathname);
     const { isLocked } = useMFA();
-    useCurrentUserRoleSync();
+    useCurrentUserRoleSync(authStatus === "AUTHENTICATED");
 
     useEffect(() => {
         setIsMounted(true);
@@ -54,7 +58,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         authStatus === "INITIALIZING" || authStatus === "VERIFYING";
     const runtimeFailure = resolveDashboardRuntimeFailure(authStatus, accessStatus);
 
-    if (runtimeFailure) {
+    if (runtimeFailure && !hasUsableSessionSnapshot) {
         const failureMessages = {
             offline: {
                 title: t.runtimeFailure?.offlineTitle || runtimeFailure.title,
@@ -108,8 +112,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (!isMounted || isVerifyingAuth || !isAuthenticated || isVerifyingAccess) {
+    if (!isMounted) {
         return <DashboardSkeleton />;
+    }
+
+    const canUseCachedShell = hasUsableSessionSnapshot && isAuthenticated;
+
+    if (
+        !canUseCachedShell &&
+        (isVerifyingAuth || !isAuthenticated || isVerifyingAccess)
+    ) {
+        return <DashboardBootstrapShell />;
     }
 
     return (

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { QuickCheckInPage } from "@/components/employee-admin/time-attendance/QuickCheckInPage";
 
 export default function AttendanceRoutePage() {
-  redirect("/employee-admin");
+  return <QuickCheckInPage />;
 }

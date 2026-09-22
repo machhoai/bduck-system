@@ -20,7 +20,14 @@ importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-com
 const firebaseConfig = ${escapeScriptJson(firebaseConfig)};
 const BUILD_VERSION = ${escapeScriptJson(buildVersion)};
 const STATIC_CACHE = "wms-static-" + BUILD_VERSION;
-const PRECACHE_URLS = ["/offline", "/manifest.webmanifest", "/logo/jw.png"];
+const PRECACHE_URLS = [
+  "/offline",
+  "/dashboard",
+  "/attendance",
+  "/manifest.webmanifest",
+  "/logo/jw.png",
+];
+const APP_SHELL_PATHS = new Set(["/dashboard", "/attendance"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -81,6 +88,37 @@ async function navigationWithOfflineFallback(request) {
   }
 }
 
+async function appShellWhileRevalidate(event) {
+  const request = event.request;
+  const cached = await caches.match(request);
+  const network = fetch(request)
+    .then(async (response) => {
+      if (
+        response.ok &&
+        response.headers.get("content-type")?.includes("text/html")
+      ) {
+        const cache = await caches.open(STATIC_CACHE);
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    event.waitUntil(network.then(() => undefined));
+    return cached;
+  }
+
+  return (
+    (await network) ||
+    (await caches.match("/offline")) ||
+    new Response("Offline", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -89,6 +127,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (request.mode === "navigate") {
+    if (APP_SHELL_PATHS.has(url.pathname)) {
+      event.respondWith(appShellWhileRevalidate(event));
+      return;
+    }
     event.respondWith(navigationWithOfflineFallback(request));
     return;
   }

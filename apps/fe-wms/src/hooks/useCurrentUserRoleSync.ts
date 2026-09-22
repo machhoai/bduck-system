@@ -9,20 +9,25 @@ import { useUserStore } from "@/stores/useUserStore";
 function isAssignmentActive(assignment: UserWarehouseRole, now = new Date()) {
   if (!assignment.is_active) return false;
 
-  const validFrom = assignment.valid_from ? new Date(assignment.valid_from) : null;
+  const validFrom = assignment.valid_from
+    ? new Date(assignment.valid_from)
+    : null;
   if (validFrom && validFrom.getTime() > now.getTime()) return false;
 
-  const validUntil = assignment.valid_until ? new Date(assignment.valid_until) : null;
+  const validUntil = assignment.valid_until
+    ? new Date(assignment.valid_until)
+    : null;
   if (validUntil && validUntil.getTime() < now.getTime()) return false;
 
   return true;
 }
 
-export function useCurrentUserRoleSync() {
+export function useCurrentUserRoleSync(enabled = true) {
   const userId = useUserStore((state) => state.user?.id);
   const setRoleAssignments = useUserStore((state) => state.setRoleAssignments);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!userId) {
       setRoleAssignments([]);
       return;
@@ -52,5 +57,5 @@ export function useCurrentUserRoleSync() {
         console.error("[useCurrentUserRoleSync] onSnapshot error:", error);
       },
     );
-  }, [setRoleAssignments, userId]);
+  }, [enabled, setRoleAssignments, userId]);
 }
