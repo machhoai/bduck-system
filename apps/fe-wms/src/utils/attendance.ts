@@ -1,3 +1,7 @@
+import {
+  isEmployeeAttendanceEligibleOnDate,
+  type LocalDate,
+} from "@bduck/shared-types";
 import type {
   AttendanceLateReport,
   AttendanceLog,
@@ -71,6 +75,14 @@ export const formatMonthLabel = (monthKey: string, isVi: boolean) => {
 };
 
 export const getTodayKey = () => formatDateKey(new Date());
+
+export const filterAttendanceEligibleProfiles = (
+  profiles: EmployeeProfile[],
+  attendanceDate: LocalDate = getTodayKey(),
+) =>
+  profiles.filter((profile) =>
+    isEmployeeAttendanceEligibleOnDate(profile, attendanceDate),
+  );
 
 export const getWeekStartKey = (date = new Date()) => {
   const copy = new Date(date);

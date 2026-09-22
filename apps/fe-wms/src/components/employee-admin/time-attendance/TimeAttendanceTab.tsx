@@ -30,6 +30,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useUserStore } from "@/stores/useUserStore";
 import {
     buildAttendanceDays,
+    filterAttendanceEligibleProfiles,
     getCurrentMonthKey,
     getTodayKey,
     getWeekStartKey,
@@ -189,6 +190,10 @@ export function TimeAttendanceTab() {
                     .map((item) => `${item.user_id}:${item.warehouse_id}`),
             ),
         [allExemptions],
+    );
+    const attendanceConfigProfiles = useMemo(
+        () => filterAttendanceEligibleProfiles(profiles),
+        [profiles],
     );
 
     const employeeRows = useMemo<AttendanceEmployeeRow[]>(() => {
@@ -441,7 +446,7 @@ export function TimeAttendanceTab() {
                 canConfigure={canConfigureAttendance}
                 warehouses={configurableWarehouses}
                 users={users as UserWithAssignments[]}
-                profiles={profiles}
+                profiles={attendanceConfigProfiles}
                 selectedWarehouseId={settingsWarehouseId || "ALL"}
                 policies={policyByWarehouse}
                 exemptions={settingsExemptions}
@@ -455,7 +460,7 @@ export function TimeAttendanceTab() {
                     labels={labels}
                     warehouseId={settingsWarehouseId}
                     currentUserId={user?.id}
-                    profiles={profiles}
+                    profiles={attendanceConfigProfiles}
                     arrangements={arrangements}
                     onApprove={approveWorkArrangement}
                     onCancel={cancelWorkArrangement}
