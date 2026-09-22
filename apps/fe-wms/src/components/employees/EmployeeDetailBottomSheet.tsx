@@ -156,12 +156,18 @@ export function EmployeeDetailBottomSheet({
         Boolean(profile) &&
         isLeaveFeatureEnabled &&
         hasPermission("leave.requests.read_all", facilityId);
+    const canImportLeaveHistory =
+        Boolean(profile) &&
+        isLeaveFeatureEnabled &&
+        hasPermission("leave.history.import", facilityId);
+    const canAdjustLeaveBalance =
+        Boolean(profile) &&
+        isLeaveFeatureEnabled &&
+        hasPermission("leave.balance.adjust", facilityId);
     const canReadLeaveBalance =
         canReadOwnLeave ||
         canReadAllLeave ||
-        (Boolean(profile) &&
-            isLeaveFeatureEnabled &&
-            hasPermission("leave.balance.adjust", facilityId));
+        canAdjustLeaveBalance;
     const canReadLeaveRequests = canReadOwnLeave || canReadAllLeave;
     const canViewAttendance =
         Boolean(profile) &&
@@ -173,12 +179,16 @@ export function EmployeeDetailBottomSheet({
                 canReadContracts,
                 canReadLeaveBalance,
                 canReadLeaveRequests,
+                canManageLeave:
+                    canImportLeaveHistory || canAdjustLeaveBalance,
                 canViewAttendance,
             }),
         [
             canReadContracts,
             canReadLeaveBalance,
             canReadLeaveRequests,
+            canImportLeaveHistory,
+            canAdjustLeaveBalance,
             canViewAttendance,
         ],
     );
@@ -545,6 +555,13 @@ export function EmployeeDetailBottomSheet({
             </div>
         ) : activeTab === "leave" ? (
             <EmployeeDetailLeaveTab
+                administrationLabels={
+                    (t as unknown as {
+                        employeeAdmin: Record<string, string>;
+                    }).employeeAdmin
+                }
+                canAdjustBalance={canAdjustLeaveBalance}
+                canImportHistory={canImportLeaveHistory}
                 canReadBalance={canReadLeaveBalance}
                 canReadRequests={canReadLeaveRequests}
                 isSelf={isSelf}

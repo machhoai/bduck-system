@@ -3,6 +3,7 @@ import {
   type LeaveBalanceSummary,
 } from "@bduck/shared-types";
 import { CalendarDays, LockKeyhole } from "lucide-react";
+
 import { EmptyState } from "./AdminOverviewParts";
 
 const labelKeyByType: Record<LeaveLedgerEntryType, string> = {
@@ -18,11 +19,16 @@ const labelKeyByType: Record<LeaveLedgerEntryType, string> = {
 };
 
 const entryUnits = (entry: LeaveBalanceSummary["recent_entries"][number]) => {
+  const availableDelta = entry.delta.available_units;
   const values = Object.values(entry.delta).map((value) => Math.abs(value));
-  const units = Math.max(...values, 0);
-  const prefix =
-    entry.entry_type === LeaveLedgerEntryType.YEAR_END_EXPIRED ? "-" : "+";
-  return `${prefix}${units.toLocaleString("vi-VN", {
+  const units =
+    availableDelta !== 0
+      ? Math.abs(availableDelta)
+      : Math.max(...values, 0);
+  const isNegative =
+    availableDelta < 0 ||
+    entry.entry_type === LeaveLedgerEntryType.YEAR_END_EXPIRED;
+  return `${isNegative ? "-" : "+"}${units.toLocaleString("vi-VN", {
     maximumFractionDigits: 1,
   })}`;
 };
@@ -65,9 +71,15 @@ export function LeaveBalanceHistory({
               {entry.posting_date} ·{" "}
               {labels.leaveYear.replace("{year}", String(entry.leave_year))}
             </p>
+            {entry.reason && (
+              <p className="mt-1 line-clamp-2 text-xs text-[var(--color-text-secondary)]">
+                {entry.reason}
+              </p>
+            )}
           </div>
           <span
             className={`text-sm font-bold ${
+              entry.delta.available_units < 0 ||
               entry.entry_type === LeaveLedgerEntryType.YEAR_END_EXPIRED
                 ? "text-[#b42318]"
                 : "text-[#257a3e]"

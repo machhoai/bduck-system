@@ -9,6 +9,7 @@ import { gooeyToast } from "goey-toast";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { LeaveBalanceAdjustmentMetric } from "./LeaveBalanceAdjustmentMetric";
+import { LeaveBalanceHistory } from "./LeaveBalanceHistory";
 import { SearchableEmployeeSelect } from "./SearchableEmployeeSelect";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -18,6 +19,7 @@ export function LeaveBalanceAdjustmentManager({
   profiles,
   loading,
   error,
+  fixedProfile,
   onLoadBalance,
   onAdjust,
 }: {
@@ -25,13 +27,14 @@ export function LeaveBalanceAdjustmentManager({
   profiles: EmployeeProfile[];
   loading: boolean;
   error: string | null;
+  fixedProfile?: EmployeeProfile;
   onLoadBalance: (profileId: string) => Promise<LeaveBalanceSummary>;
   onAdjust: (
     profileId: string,
     input: ManualLeaveBalanceAdjustmentInput,
   ) => Promise<unknown>;
 }) {
-  const [profileId, setProfileId] = useState("");
+  const [profileId, setProfileId] = useState(fixedProfile?.id ?? "");
   const [summary, setSummary] = useState<LeaveBalanceSummary | null>(null);
   const [leaveYear, setLeaveYear] = useState(new Date().getFullYear());
   const [postingDate, setPostingDate] = useState(today());
@@ -40,9 +43,16 @@ export function LeaveBalanceAdjustmentManager({
   const [isBusy, setIsBusy] = useState(false);
   const idempotencyKeyRef = useRef<string | null>(null);
   const selectedProfile = useMemo(
-    () => profiles.find((profile) => profile.id === profileId) ?? null,
-    [profileId, profiles],
+    () =>
+      fixedProfile ??
+      profiles.find((profile) => profile.id === profileId) ??
+      null,
+    [fixedProfile, profileId, profiles],
   );
+
+  useEffect(() => {
+    if (fixedProfile) setProfileId(fixedProfile.id);
+  }, [fixedProfile]);
 
   useEffect(() => {
     idempotencyKeyRef.current = null;
@@ -121,31 +131,52 @@ export function LeaveBalanceAdjustmentManager({
           {error}
         </p>
       )}
-      <SearchableEmployeeSelect
-        labels={labels}
-        options={profiles}
-        value={profileId}
-        disabled={isBusy}
-        onChange={(nextProfileId) => {
-          idempotencyKeyRef.current = null;
-          setProfileId(nextProfileId);
-        }}
-      />
-      {selectedProfile && (
-        <div className="grid grid-cols-3 gap-2">
-          <LeaveBalanceAdjustmentMetric
-            label={labels.availableLeave}
-            value={summary?.available_units}
-          />
-          <LeaveBalanceAdjustmentMetric
-            label={labels.pendingLeave}
-            value={summary?.held_units}
-          />
-          <LeaveBalanceAdjustmentMetric
-            label={labels.usedLeave}
-            value={summary?.used_units}
-          />
+      {fixedProfile ? (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+          <p className="text-xs font-medium text-blue-600">
+            {labels.selectEmployee}
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-900">
+            {fixedProfile.employee_code} · {fixedProfile.full_name}
+          </p>
         </div>
+      ) : (
+        <SearchableEmployeeSelect
+          labels={labels}
+          options={profiles}
+          value={profileId}
+          disabled={isBusy}
+          onChange={(nextProfileId) => {
+            idempotencyKeyRef.current = null;
+            setProfileId(nextProfileId);
+          }}
+        />
+      )}
+      {selectedProfile && (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <LeaveBalanceAdjustmentMetric
+              label={labels.availableLeave}
+              value={summary?.available_units}
+            />
+            <LeaveBalanceAdjustmentMetric
+              label={labels.pendingLeave}
+              value={summary?.held_units}
+            />
+            <LeaveBalanceAdjustmentMetric
+              label={labels.usedLeave}
+              value={summary?.used_units}
+            />
+          </div>
+          <section className="space-y-2 rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-surface-card)] p-3">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+              {labels.leaveHistoryTitle}
+            </p>
+            <div className="max-h-72 overflow-y-auto pr-1">
+              <LeaveBalanceHistory labels={labels} summary={summary} />
+            </div>
+          </section>
+        </>
       )}
       <div className="grid grid-cols-3 gap-2">
         <input

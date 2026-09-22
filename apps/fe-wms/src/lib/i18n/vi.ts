@@ -3362,6 +3362,7 @@ Object.assign(vi, {
         timeTab: "Chấm công",
         employeeProfile: "Hồ sơ nhân viên",
         notUpdated: "Chưa cập nhật",
+        close: "Đóng",
         personalInfo: "Thông tin nhân viên",
         employeeCode: "Mã nhân viên",
         fullName: "Họ tên",

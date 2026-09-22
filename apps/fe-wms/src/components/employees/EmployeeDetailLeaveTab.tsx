@@ -19,6 +19,7 @@ import { useMemo } from "react";
 import { useEmployeeDetailLeaveData } from "@/hooks/useEmployeeDetailLeaveData";
 
 import type { EmployeeDetailTabsLabels } from "./employeeDetailTabsTranslations";
+import { EmployeeLeaveManagementActions } from "./EmployeeLeaveManagementActions";
 
 const formatLocalDate = (value: string) => {
     const [year, month, day] = value.split("-");
@@ -40,6 +41,9 @@ type EmployeeDetailLeaveTabProps = {
     isSelf: boolean;
     canReadBalance: boolean;
     canReadRequests: boolean;
+    canImportHistory: boolean;
+    canAdjustBalance: boolean;
+    administrationLabels: Record<string, string>;
 };
 
 export function EmployeeDetailLeaveTab({
@@ -48,6 +52,9 @@ export function EmployeeDetailLeaveTab({
     isSelf,
     canReadBalance,
     canReadRequests,
+    canImportHistory,
+    canAdjustBalance,
+    administrationLabels,
 }: EmployeeDetailLeaveTabProps) {
     const { balance, requests, balanceError, requestsError, loading, reload } =
         useEmployeeDetailLeaveData({
@@ -92,6 +99,13 @@ export function EmployeeDetailLeaveTab({
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">{labels.leave.subtitle}</p>
             </div>
+
+            <EmployeeLeaveManagementActions
+                profile={profile}
+                labels={administrationLabels}
+                canImportHistory={canImportHistory}
+                canAdjustBalance={canAdjustBalance}
+            />
 
             {loading && !balance && requests.length === 0 ? (
                 <LeaveTabSkeleton />

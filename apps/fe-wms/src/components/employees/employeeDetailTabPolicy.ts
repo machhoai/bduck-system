@@ -8,6 +8,7 @@ export type EmployeeDetailTabAccess = {
   canReadContracts: boolean;
   canReadLeaveBalance: boolean;
   canReadLeaveRequests: boolean;
+  canManageLeave: boolean;
   canViewAttendance: boolean;
 };
 
@@ -15,6 +16,7 @@ export const getVisibleEmployeeDetailTabs = ({
   canReadContracts,
   canReadLeaveBalance,
   canReadLeaveRequests,
+  canManageLeave,
   canViewAttendance,
 }: EmployeeDetailTabAccess): EmployeeDetailTabKey[] => {
   const tabs: EmployeeDetailTabKey[] = ["profile"];
@@ -23,7 +25,7 @@ export const getVisibleEmployeeDetailTabs = ({
     tabs.push("contracts");
   }
 
-  if (canReadLeaveBalance || canReadLeaveRequests) {
+  if (canReadLeaveBalance || canReadLeaveRequests || canManageLeave) {
     tabs.push("leave");
   }
 

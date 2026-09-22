@@ -34,6 +34,8 @@ interface LeaveHistoryImportManagerProps {
     preview: LeaveImportBatchView | null;
     loading: boolean;
     error: string | null;
+    fixedEmployee?: LeaveImportEmployeeOption;
+    manualOnly?: boolean;
     onPreview: (
         input: PreviewLeaveImportInput,
     ) => Promise<LeaveImportBatchView>;
@@ -58,6 +60,8 @@ export function LeaveHistoryImportManager(
         preview,
         loading,
         error,
+        fixedEmployee,
+        manualOnly = false,
     } = props;
     const inputRef = useRef<HTMLInputElement>(null);
     const userId = useUserStore((state) => state.user?.id);
@@ -239,32 +243,35 @@ export function LeaveHistoryImportManager(
                     {error}
                 </div>
             )}
-            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
-                {(["manual", "excel"] as const).map((mode) => (
-                    <button
-                        key={mode}
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => setEntryMode(mode)}
-                        className={`h-9 rounded-lg text-xs font-semibold transition ${
-                            entryMode === mode
-                                ? "bg-white text-blue-700 shadow-sm"
-                                : "text-slate-500"
-                        }`}
-                    >
-                        {mode === "manual"
-                            ? labels.leaveImportManualTab
-                            : labels.leaveImportExcelTab}
-                    </button>
-                ))}
-            </div>
+            {!manualOnly && (
+                <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+                    {(["manual", "excel"] as const).map((mode) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => setEntryMode(mode)}
+                            className={`h-9 rounded-lg text-xs font-semibold transition ${
+                                entryMode === mode
+                                    ? "bg-white text-blue-700 shadow-sm"
+                                    : "text-slate-500"
+                            }`}
+                        >
+                            {mode === "manual"
+                                ? labels.leaveImportManualTab
+                                : labels.leaveImportExcelTab}
+                        </button>
+                    ))}
+                </div>
+            )}
 
-            {entryMode === "manual" ? (
+            {manualOnly || entryMode === "manual" ? (
                 <ManualLeaveHistoryForm
                     labels={labels}
                     employees={employeeOptions}
                     holidays={holidays}
                     disabled={isBusy || loading}
+                    fixedEmployee={fixedEmployee}
                     onPreview={props.onPreviewManual}
                 />
             ) : (
@@ -371,12 +378,14 @@ export function LeaveHistoryImportManager(
                 </>
             )}
 
-            <LeaveImportBatchHistory
-                labels={labels}
-                batches={batches}
-                disabled={isBusy}
-                onOpen={(batchId) => void openBatch(batchId)}
-            />
+            {!manualOnly && (
+                <LeaveImportBatchHistory
+                    labels={labels}
+                    batches={batches}
+                    disabled={isBusy}
+                    onOpen={(batchId) => void openBatch(batchId)}
+                />
+            )}
         </div>
     );
 }

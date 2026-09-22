@@ -3300,6 +3300,7 @@ Object.assign(zh, {
     timeTab: "考勤",
     employeeProfile: "员工档案",
     notUpdated: "未更新",
+    close: "关闭",
     personalInfo: "员工信息",
     employeeCode: "员工编号",
     fullName: "姓名",

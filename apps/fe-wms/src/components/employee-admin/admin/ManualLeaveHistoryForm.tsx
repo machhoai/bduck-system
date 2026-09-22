@@ -9,7 +9,7 @@ import {
   type PreviewManualLeaveHistoryInput,
 } from "@bduck/shared-types";
 import { gooeyToast } from "goey-toast";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { MultiDateLeaveCalendar } from "./MultiDateLeaveCalendar";
 import { SearchableEmployeeSelect } from "./SearchableEmployeeSelect";
@@ -28,17 +28,19 @@ export function ManualLeaveHistoryForm({
   employees,
   holidays,
   disabled,
+  fixedEmployee,
   onPreview,
 }: {
   labels: Record<string, string>;
   employees: LeaveImportEmployeeOption[];
   holidays: CompanyHoliday[];
   disabled: boolean;
+  fixedEmployee?: LeaveImportEmployeeOption;
   onPreview: (
     input: PreviewManualLeaveHistoryInput,
   ) => Promise<LeaveImportBatchView>;
 }) {
-  const [profileId, setProfileId] = useState("");
+  const [profileId, setProfileId] = useState(fixedEmployee?.id ?? "");
   const [requestType, setRequestType] = useState<ManualRequestType>(
     LeaveRequestType.PAID_ANNUAL,
   );
@@ -48,6 +50,10 @@ export function ManualLeaveHistoryForm({
   const clientReference = useRef<string | null>(null);
   const cannotPreview =
     disabled || isBusy || !profileId || days.length === 0 || !reason.trim();
+
+  useEffect(() => {
+    if (fixedEmployee) setProfileId(fixedEmployee.id);
+  }, [fixedEmployee]);
 
   const createPreview = async () => {
     if (cannotPreview) return;
@@ -96,13 +102,24 @@ export function ManualLeaveHistoryForm({
         </p>
       </div>
 
-      <SearchableEmployeeSelect
-        labels={labels}
-        options={employees}
-        value={profileId}
-        disabled={disabled || isBusy}
-        onChange={setProfileId}
-      />
+      {fixedEmployee ? (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+          <p className="text-xs font-medium text-blue-600">
+            {labels.selectEmployee}
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-900">
+            {fixedEmployee.employee_code} · {fixedEmployee.full_name}
+          </p>
+        </div>
+      ) : (
+        <SearchableEmployeeSelect
+          labels={labels}
+          options={employees}
+          value={profileId}
+          disabled={disabled || isBusy}
+          onChange={setProfileId}
+        />
+      )}
 
       <label className="block space-y-1">
         <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
