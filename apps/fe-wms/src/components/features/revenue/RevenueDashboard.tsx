@@ -47,7 +47,7 @@ import TopProductsByGroup from "./TopProductsByGroup";
 export default function RevenueDashboard() {
   const { t } = useTranslation();
   const copy = t.revenue;
-  const [source, setSource] = useState<RevenueDataSource>("OPEN_API");
+  const [source, setSource] = useState<RevenueDataSource>("LOCAL_POS");
   const [filter, setFilter] = useState<RevenueDashboardFilter>(() =>
     getDefaultRevenueFilter(),
   );

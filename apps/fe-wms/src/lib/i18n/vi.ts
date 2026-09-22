@@ -145,10 +145,10 @@ const vi = {
         syncing: "Đang cập nhật...",
         refreshCountdown: "Tự động cập nhật sau {seconds} giây",
         sources: {
-            openApi: "OpenAPI",
+            openApi: "Dữ liệu từ Cityfuns",
             openApiDescription:
                 "Số liệu báo cáo trực tiếp từ hệ thống JoyWorld OpenAPI",
-            localPos: "Dữ liệu local",
+            localPos: "Dữ liệu từ JPOS",
             localPosDescription:
                 "Đơn thanh toán realtime được lưu trong POS local",
             taxFromLocal: "Thuế được đối chiếu từ POS local",
