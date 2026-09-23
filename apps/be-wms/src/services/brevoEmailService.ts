@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
 
+import { applyBrevoEmailSignature } from "./brevoEmailSignature.js";
+
 export interface BrevoEmailAttachment {
   filename: string;
   content: Buffer;
@@ -60,12 +62,12 @@ export async function sendBrevoEmail(
   const signatureHtml = process.env.BREVO_EMAIL_SIGNATURE_HTML || "";
   const signatureText = process.env.BREVO_EMAIL_SIGNATURE_TEXT || "";
 
-  const finalHtml = signatureHtml
-    ? `${input.htmlContent}${signatureHtml}`
-    : input.htmlContent;
-  const finalText = signatureText
-    ? `${input.textContent}${signatureText}`
-    : input.textContent;
+  const finalContent = applyBrevoEmailSignature(
+    input.htmlContent,
+    input.textContent,
+    signatureHtml,
+    signatureText,
+  );
 
   try {
     const info = await transporter.sendMail({
@@ -74,8 +76,8 @@ export async function sendBrevoEmail(
       cc: input.cc ? input.cc.join(", ") : undefined,
       bcc: input.bcc ? input.bcc.join(", ") : undefined,
       subject: input.subject,
-      text: finalText,
-      html: finalHtml,
+      text: finalContent.textContent,
+      html: finalContent.htmlContent,
       attachments: input.attachments,
       messageId: input.messageId,
     });

@@ -6,7 +6,7 @@ import {
   type MarketingVoucherCode,
 } from "@bduck/shared-types";
 import { Check, ChevronLeft, ChevronRight, Send } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   createMarketingVoucherEmailJob,
@@ -73,8 +73,9 @@ export function MarketingVoucherEmailSheet({
     }
     setStep((current) => Math.min(3, current + 1));
   };
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async () => {
+    if (step !== 3 || isPending) return;
+    setError("");
     if (!recipients) {
       setError(copy.email.invalidEmails);
       return;
@@ -122,7 +123,7 @@ export function MarketingVoucherEmailSheet({
       desktopClassName="md:inset-y-0 md:bottom-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[820px] md:rounded-none md:border-0"
       contentClassName="flex-1 overflow-y-auto px-5 pb-8 md:px-7"
     >
-      <form onSubmit={submit} className="space-y-4 pt-4">
+      <div className="space-y-4 pt-4">
         <div className="flex items-center gap-2">
           {steps.map((label, index) => {
             const number = index + 1;
@@ -205,7 +206,8 @@ export function MarketingVoucherEmailSheet({
             </button>
           ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={submit}
               disabled={isPending || !draft.subject.trim()}
               className="h-8 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:opacity-50"
             >
@@ -214,7 +216,7 @@ export function MarketingVoucherEmailSheet({
             </button>
           )}
         </div>
-      </form>
+      </div>
     </BottomSheet>
   );
 }

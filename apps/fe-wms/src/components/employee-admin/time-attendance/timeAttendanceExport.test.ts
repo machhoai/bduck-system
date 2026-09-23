@@ -21,6 +21,7 @@ import type {
   AttendanceDay,
   AttendanceEmployeeRow,
 } from "@/utils/attendance";
+import { buildAttendanceDays } from "@/utils/attendance";
 
 const leaveDay = (
   portion: LeaveDayPortion,
@@ -122,7 +123,7 @@ test("does not finalize KP for today or future dates", () => {
 
 test("counts company holidays as paid company leave", () => {
   const holiday = resolve({ isHoliday: true });
-  assert.equal(holiday.status, "CL");
+  assert.equal(holiday.status, "NL");
   assert.equal(holiday.holidayUnits, 1);
   assert.equal(resolve({ isHoliday: true, hasCheckIn: true }).status, "x");
 });
@@ -194,26 +195,70 @@ test("writes the three-row employee layout and styles to an xlsx file", async ()
   const sheet = workbook.getWorksheet("Chấm công");
 
   assert.ok(sheet);
-  assert.equal(sheet.getCell("D15").value, "Trạng thái");
-  assert.equal(sheet.getCell("D16").value, "Giờ check-in");
-  assert.equal(sheet.getCell("D17").value, "Xin đi trễ");
-  assert.equal(sheet.getCell("E15").value, "x");
-  assert.equal(sheet.getCell("E15").fill.type, "pattern");
-  assert.equal(sheet.getCell("E16").value, "08:46");
-  assert.equal(sheet.getCell("E16").fill.type, "pattern");
-  assert.equal(sheet.getCell("F15").value, "CL");
-  assert.equal(sheet.getCell("K15").value, 1);
-  assert.equal(sheet.getCell("L15").value, 2);
+  assert.equal(sheet.getCell("A4").value, "BẢNG CHẤM CÔNG");
+  assert.equal(sheet.getCell("A5").value, "Tháng 09 năm 2026");
+  assert.equal(sheet.getCell("A6").value, null);
+  assert.match(String(sheet.getCell("E6").value), /Trạng thái/);
+  assert.equal(sheet.getRow(6).height, 82);
+  assert.equal(sheet.getCell("E7").value, "T3");
+  assert.equal(sheet.getCell("E8").value, 1);
+  assert.equal(sheet.getCell("D9").value, "Trạng thái");
+  assert.equal(sheet.getCell("D10").value, "Giờ check-in");
+  assert.equal(sheet.getCell("D11").value, "Xin đi trễ");
+  assert.equal(sheet.getCell("E9").value, "x");
+  assert.equal(sheet.getCell("E9").fill.type, "pattern");
+  assert.equal(sheet.getCell("E10").value, "08:46");
+  assert.equal(sheet.getCell("E10").fill.type, "pattern");
+  assert.equal(sheet.getCell("F9").value, "NL");
+  assert.equal(sheet.getCell("K9").value, 1);
+  assert.equal(sheet.getCell("L9").value, 2);
+  assert.equal(sheet.getCell("G9").border.left?.style, "medium");
+  assert.equal(sheet.getCell("L9").border.right?.style, "medium");
 
   const serialized = await workbook.xlsx.writeBuffer();
   const reopened = new ExcelJS.Workbook();
   await reopened.xlsx.load(serialized);
   const savedSheet = reopened.getWorksheet("Chấm công");
   assert.ok(savedSheet);
-  assert.equal(savedSheet.getCell("E15").value, "x");
-  assert.equal(savedSheet.getCell("E16").value, "08:46");
-  assert.equal(savedSheet.getCell("E15").fill.type, "pattern");
-  assert.equal(savedSheet.getCell("E16").fill.type, "pattern");
-  assert.equal(savedSheet.getCell("F15").value, "CL");
-  assert.equal(savedSheet.getCell("L15").value, 2);
+  assert.equal(savedSheet.getCell("E9").value, "x");
+  assert.equal(savedSheet.getCell("E10").value, "08:46");
+  assert.equal(savedSheet.getCell("E9").fill.type, "pattern");
+  assert.equal(savedSheet.getCell("E10").fill.type, "pattern");
+  assert.equal(savedSheet.getCell("F9").value, "NL");
+  assert.equal(savedSheet.getCell("L9").value, 2);
+  assert.equal(savedSheet.getCell("G9").border.left?.style, "medium");
+  assert.equal(savedSheet.getCell("L9").border.right?.style, "medium");
+});
+
+test("starts the status legend at E6 and leaves A6:D6 empty for week and month", async () => {
+  for (const days of [
+    buildAttendanceDays("week", "2026-09-21"),
+    buildAttendanceDays("month", "2026-09"),
+  ]) {
+    const workbook = buildTimeAttendanceWorkbook({
+      rows: [],
+      days,
+      logs: [],
+      leaveDays: [],
+      holidays: [],
+      lateReports: [],
+      todayKey: "2026-09-23",
+    });
+    const sheet = workbook.getWorksheet("Chấm công");
+    assert.ok(sheet);
+    for (const column of ["A", "B", "C", "D"]) {
+      assert.equal(sheet.getCell(`${column}6`).value, null);
+    }
+    assert.match(String(sheet.getCell("E6").value), /Trạng thái/);
+    assert.equal(sheet.getCell("M6").isMerged, true);
+    assert.equal(sheet.getCell("M6").master.address, "E6");
+    assert.notEqual(sheet.getCell("N6").value, null);
+
+    const reopened = new ExcelJS.Workbook();
+    await reopened.xlsx.load(await workbook.xlsx.writeBuffer());
+    const savedSheet = reopened.getWorksheet("Chấm công");
+    assert.ok(savedSheet);
+    assert.equal(savedSheet.getCell("E6").value, sheet.getCell("E6").value);
+    assert.equal(savedSheet.getCell("M6").master.address, "E6");
+  }
 });

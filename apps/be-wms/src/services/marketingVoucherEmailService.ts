@@ -102,14 +102,16 @@ export const processMarketingVoucherEmailChunk = async (
     claim.items.map(async (item) => {
       try {
         const codes = await loadMarketingVoucherEmailCodes(item);
+        const subject = claim.job.email_subject ?? claim.campaign.name;
         const rendered = await renderMarketingVoucherEmail({
           campaign: claim.campaign,
           codes,
+          subject,
           introduction: claim.job.email_introduction ?? "",
         });
         const result = await sendEmail({
           to: item.recipient_email ? [item.recipient_email] : [],
-          subject: claim.job.email_subject ?? claim.campaign.name,
+          subject,
           htmlContent: rendered.htmlContent,
           textContent: rendered.textContent,
           attachments: rendered.attachments,
