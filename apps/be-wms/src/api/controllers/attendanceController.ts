@@ -12,6 +12,7 @@ import {
   checkInAttendance,
   createLateArrivalReport,
   fetchAttendanceContext,
+  fetchAttendanceHolidays,
   fetchAttendanceLeaveDays,
   fetchAttendanceExemptions,
   fetchAttendancePolicies,
@@ -230,6 +231,25 @@ export const getAttendanceLeaveDaysHandler = async (
       {
         vi: "Đã tải các ngày nghỉ trên lịch chấm công.",
         zh: "已加载考勤日历中的休假日期。",
+      },
+    );
+  } catch (error) {
+    return handleAttendanceError(res, error);
+  }
+};
+
+export const getAttendanceHolidaysHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const range = leaveDayRangeSchema.parse(req.query);
+    return sendSuccess(
+      res,
+      await fetchAttendanceHolidays(range.date_from, range.date_to),
+      {
+        vi: "Đã tải ngày nghỉ công ty trên lịch chấm công.",
+        zh: "已加载考勤日历中的公司假日。",
       },
     );
   } catch (error) {

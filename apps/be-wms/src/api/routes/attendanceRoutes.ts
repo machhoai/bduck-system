@@ -6,6 +6,7 @@ import {
   checkInAttendanceHandler,
   createLateArrivalReportHandler,
   getAttendanceContextHandler,
+  getAttendanceHolidaysHandler,
   getAttendanceLeaveDaysHandler,
   getAttendanceExemptionsHandler,
   getAttendancePoliciesHandler,
@@ -41,6 +42,15 @@ router.get(
   "/leave-days",
   requireAnyScopedPermission(["attendance.view", "attendance.check_in"]),
   getAttendanceLeaveDaysHandler,
+);
+router.get(
+  "/holidays",
+  requireAnyScopedPermission([
+    "attendance.view",
+    "attendance.export",
+    "attendance.check_in",
+  ]),
+  getAttendanceHolidaysHandler,
 );
 router.post("/check-in", checkInAttendanceHandler);
 router.post("/late-reports", createLateArrivalReportHandler);

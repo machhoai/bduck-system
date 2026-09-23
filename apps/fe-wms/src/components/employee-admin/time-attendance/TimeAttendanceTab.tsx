@@ -13,6 +13,7 @@ import {
     useAllAttendanceExemptions,
     useAttendanceContext,
     useAttendanceExemptions,
+    useAttendanceHolidays,
     useAttendanceLateReports,
     useAttendanceLeaveDays,
     useAttendanceLogs,
@@ -100,15 +101,19 @@ export function TimeAttendanceTab() {
         () => buildAttendanceDays(mode, mode === "month" ? month : weekStart),
         [mode, month, weekStart],
     );
-    const { logs, loading: logsLoading } = useAttendanceLogs(
+    const { logs, loading: logsLoading, error: logsError } = useAttendanceLogs(
         days[0]?.key || "",
         days[days.length - 1]?.key || "",
     );
-    const { leaveDays, loading: leaveDaysLoading } = useAttendanceLeaveDays(
+    const { leaveDays, loading: leaveDaysLoading, error: leaveDaysError } = useAttendanceLeaveDays(
         days[0]?.key || "",
         days[days.length - 1]?.key || "",
     );
-    const { reports: lateReports, loading: lateReportsLoading } =
+    const { holidays, loading: holidaysLoading, error: holidaysError } = useAttendanceHolidays(
+        days[0]?.key || "",
+        days[days.length - 1]?.key || "",
+    );
+    const { reports: lateReports, loading: lateReportsLoading, error: lateReportsError } =
         useAttendanceLateReports(
             days[0]?.key || "",
             days[days.length - 1]?.key || "",
@@ -116,6 +121,10 @@ export function TimeAttendanceTab() {
     const canViewAttendance = hasPermission("attendance.view");
     const canConfigureAttendance = hasPermission("attendance.config");
     const canExportAttendance = hasPermission("attendance.export");
+    const exportDataError =
+        logsError || leaveDaysError || holidaysError || lateReportsError;
+    const exportDataLoading =
+        logsLoading || leaveDaysLoading || holidaysLoading || lateReportsLoading;
 
     const viewFacilityScope = useMemo(
         () => getFacilityPermissionScope(permissions, ["attendance.view"]),
@@ -304,6 +313,19 @@ export function TimeAttendanceTab() {
         );
     }, [employeeRows, leaveDays, selectedWarehouseId, visibleWarehouseIds]);
 
+    const filteredLateReports = useMemo(() => {
+        const userIds = new Set(employeeRows.map((row) => row.user.id));
+        const warehouseIds =
+            selectedWarehouseId === "ALL"
+                ? visibleWarehouseIds
+                : new Set([selectedWarehouseId]);
+        return lateReports.filter(
+            (report) =>
+                userIds.has(report.user_id) &&
+                warehouseIds.has(report.warehouse_id),
+        );
+    }, [employeeRows, lateReports, selectedWarehouseId, visibleWarehouseIds]);
+
     const mobileStats = useMemo(() => {
         const todayKey = getTodayKey();
         const todayLogs = filteredLogs.filter(
@@ -320,21 +342,27 @@ export function TimeAttendanceTab() {
     }, [filteredLogs]);
 
     const exportConfig = useMemo(() => {
-        if (!canExportAttendance) return null;
+        if (!canExportAttendance || exportDataLoading || exportDataError) return null;
         return buildTimeAttendanceExportConfig({
-            labels,
             rows: employeeRows,
             days,
             logs: filteredLogs,
+            leaveDays: filteredLeaveDays,
+            holidays,
+            lateReports: filteredLateReports,
             warehouseId:
                 selectedWarehouseId === "ALL" ? undefined : selectedWarehouseId,
         });
     }, [
         canExportAttendance,
+        exportDataLoading,
+        exportDataError,
         days,
         employeeRows,
         filteredLogs,
-        labels,
+        filteredLeaveDays,
+        holidays,
+        filteredLateReports,
         selectedWarehouseId,
     ]);
     useExportRegistration(exportConfig);
@@ -370,6 +398,12 @@ export function TimeAttendanceTab() {
 
     return (
         <div className="flex flex-1 flex-col gap-3 w-full pb-4 lg:gap-4 lg:pb-0">
+            {exportDataError && (
+                <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <AlertTriangle size={18} aria-hidden="true" />
+                    <span>{exportDataError} Chưa thể xuất bảng chấm công chính xác.</span>
+                </div>
+            )}
             <header className="hidden flex-col gap-3 md:flex-row md:items-center md:justify-between lg:flex">
                 <div>
                     <h1 className="font-[var(--font-display)] text-lg font-bold text-[var(--color-text-primary)]">
@@ -433,7 +467,7 @@ export function TimeAttendanceTab() {
                 logs={filteredLogs}
                 leaveDays={filteredLeaveDays}
                 lateReports={lateReports}
-                loading={logsLoading || lateReportsLoading || leaveDaysLoading}
+                loading={logsLoading || lateReportsLoading || leaveDaysLoading || holidaysLoading}
                 mode={mode}
                 month={month}
                 weekStart={weekStart}

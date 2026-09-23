@@ -1,8 +1,9 @@
-import type { AttendanceLeaveDay, LeaveRequest } from "@bduck/shared-types";
+import type { AttendanceLeaveDay, CompanyHoliday, LeaveRequest } from "@bduck/shared-types";
 
 import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import { listActiveAttendancePolicies } from "../repositories/attendanceRepository.js";
 import { getEmployeeProfileByUserId } from "../repositories/employeeProfileRepository.js";
+import { findCompanyHolidays } from "../repositories/leaveHolidayRepository.js";
 import {
   findLeaveRequestsByProfile,
   findLeaveRequestsScoped,
@@ -106,6 +107,11 @@ export const fetchAttendanceLeaveDays = async (
   }
   return mapAttendanceLeaveDays(requests, dateFrom, dateTo);
 };
+
+export const fetchAttendanceHolidays = (
+  dateFrom: string,
+  dateTo: string,
+): Promise<CompanyHoliday[]> => findCompanyHolidays(dateFrom, dateTo);
 
 export const updateAttendancePolicy = (
   user: AuthenticatedRequestUser,

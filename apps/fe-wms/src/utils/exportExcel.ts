@@ -118,7 +118,7 @@ export interface ExportConfig {
 export interface CustomExportConfig {
   entityType: string;
   warehouseId?: string;
-  dialog: RevenueExportDialogConfig;
+  dialog?: ExportDialogConfig;
   toast?: ExportToastConfig;
   execute: (options: ExportRequestOptions) => Promise<void>;
 }

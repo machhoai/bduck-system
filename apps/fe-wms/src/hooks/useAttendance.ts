@@ -7,6 +7,7 @@ import {
   type AttendanceLateReport,
   type AttendanceLeaveDay,
   type AttendanceLog,
+  type CompanyHoliday,
   type WarehouseAttendanceExemption,
   type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
@@ -295,11 +296,13 @@ export function useAttendanceContext() {
 export function useAttendanceLeaveDays(dateFrom: string, dateTo: string) {
   const [leaveDays, setLeaveDays] = useState<AttendanceLeaveDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       if (!dateFrom || !dateTo) {
         setLeaveDays([]);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -309,11 +312,17 @@ export function useAttendanceLeaveDays(dateFrom: string, dateTo: string) {
           `/api/attendance/leave-days?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
           { method: "GET", signal },
         );
-        if (!signal?.aborted) setLeaveDays(data);
+        if (!signal?.aborted) {
+          setLeaveDays(data);
+          setError(null);
+        }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         console.error("[useAttendanceLeaveDays] error:", error);
-        if (!signal?.aborted) setLeaveDays([]);
+        if (!signal?.aborted) {
+          setLeaveDays([]);
+          setError("Không thể tải dữ liệu nghỉ phép.");
+        }
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
@@ -339,7 +348,59 @@ export function useAttendanceLeaveDays(dateFrom: string, dateTo: string) {
     };
   }, [load]);
 
-  return { leaveDays, loading };
+  return { leaveDays, loading, error };
+}
+
+export function useAttendanceHolidays(dateFrom: string, dateTo: string) {
+  const [holidays, setHolidays] = useState<CompanyHoliday[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!dateFrom || !dateTo) {
+        setHolidays([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await callAttendanceApi<CompanyHoliday[]>(
+          `/api/attendance/holidays?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+          { method: "GET", signal },
+        );
+        if (!signal?.aborted) {
+          setHolidays(data);
+          setError(null);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("[useAttendanceHolidays] error:", error);
+        if (!signal?.aborted) {
+          setHolidays([]);
+          setError("Không thể tải ngày nghỉ công ty.");
+        }
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [dateFrom, dateTo],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    const unsubscribe = subscribeDataMutation(["company_holidays"], () =>
+      void load(controller.signal),
+    );
+    return () => {
+      controller.abort();
+      unsubscribe();
+    };
+  }, [load]);
+
+  return { holidays, loading, error };
 }
 
 export function useAttendancePolicies() {

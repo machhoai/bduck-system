@@ -30,6 +30,7 @@ function useScopedAttendanceRecords<T>({
   );
   const [records, setRecords] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -38,6 +39,7 @@ function useScopedAttendanceRecords<T>({
       unsubscribeSnapshot?.();
       if (!user) {
         setRecords([]);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -56,11 +58,13 @@ function useScopedAttendanceRecords<T>({
           }) as T,
         onData: (data) => {
           setRecords(data);
+          setError(null);
           setLoading(false);
         },
         onError: (error) => {
           console.error(`[${collectionName}] snapshot error:`, error);
           setRecords([]);
+          setError("Không thể tải dữ liệu chấm công.");
           setLoading(false);
         },
       });
@@ -71,7 +75,7 @@ function useScopedAttendanceRecords<T>({
     };
   }, [collectionName, constraints, facilityScope]);
 
-  return { records, loading };
+  return { records, loading, error };
 }
 
 export function useAttendanceLogs(dateFrom: string, dateTo: string) {
@@ -82,11 +86,11 @@ export function useAttendanceLogs(dateFrom: string, dateTo: string) {
     ],
     [dateFrom, dateTo],
   );
-  const { records, loading } = useScopedAttendanceRecords<AttendanceLog>({
+  const { records, loading, error } = useScopedAttendanceRecords<AttendanceLog>({
     collectionName: "attendance_logs",
     constraints,
   });
-  return { logs: records, loading };
+  return { logs: records, loading, error };
 }
 
 export function useAttendanceLateReports(dateFrom: string, dateTo: string) {
@@ -97,13 +101,13 @@ export function useAttendanceLateReports(dateFrom: string, dateTo: string) {
     ],
     [dateFrom, dateTo],
   );
-  const { records, loading } = useScopedAttendanceRecords<AttendanceLateReport>(
+  const { records, loading, error } = useScopedAttendanceRecords<AttendanceLateReport>(
     {
       collectionName: "attendance_late_reports",
       constraints,
     },
   );
-  return { reports: records, loading };
+  return { reports: records, loading, error };
 }
 
 export function useAllAttendanceExemptions() {
