@@ -1,6 +1,5 @@
 "use client";
 
-import { collection, getDocs, query, where } from "firebase/firestore";
 import type {
   ExportVoucher,
   ExportVoucherItem,
@@ -9,6 +8,8 @@ import type {
   Inventory,
   Product,
   ProductCategory,
+  TransferOrder,
+  TransferOrderItem,
   WarehouseLocation,
   WarehouseLocationSlot,
   WarehouseLocationSlotProduct,
@@ -17,7 +18,11 @@ import {
   ExportVoucherStatus,
   ImportVoucherStatus,
   LocationType,
+  TransferOrderStatus,
+  TransferType,
 } from "@bduck/shared-types";
+import { collection, getDocs, query, where } from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 import type {
   ExcelColumnConfig,
@@ -49,7 +54,13 @@ interface WarehouseExportContext {
   slotMappings?: WarehouseLocationSlotProduct[];
   importVouchers: ImportVoucher[];
   exportVouchers: ExportVoucher[];
+  transferOrders: TransferOrder[];
   canViewPrice: boolean;
+  itemReaders?: {
+    imports: (voucherId: string) => Promise<ImportVoucherItem[]>;
+    exports: (voucherId: string) => Promise<ExportVoucherItem[]>;
+    transfers: (orderId: string) => Promise<TransferOrderItem[]>;
+  };
 }
 
 const MOVEMENT_EXPORT_KINDS = new Set<ExportDataKind>([
@@ -172,6 +183,25 @@ async function getExportItems(voucherId: string) {
     ),
   );
   return snapshot.docs.map((doc) => doc.data() as ExportVoucherItem);
+}
+
+function formatDayKey(dayKey: string): string {
+  const [year, month, day] = dayKey.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function formatPeriod(startKey: string, endKey: string): string {
+  return `${formatDayKey(startKey)} đến ${formatDayKey(endKey)}`;
+}
+
+async function getTransferItems(orderId: string) {
+  const snapshot = await getDocs(
+    query(
+      collection(db, "transfer_orders", orderId, "items"),
+      where("is_deleted", "==", false),
+    ),
+  );
+  return snapshot.docs.map((doc) => doc.data() as TransferOrderItem);
 }
 
 function getMovementKey(dateKey: string, productId: string) {
@@ -470,12 +500,25 @@ async function collectMovements(
     );
   });
 
+  const transferCandidates = context.transferOrders.filter((order) => {
+    const date = toDate(order.received_at) ?? toDate(order.updated_at);
+    const dateKey = toDateKey(date);
+    return (
+      order.status === TransferOrderStatus.COMPLETED &&
+      order.is_deleted !== true &&
+      (order.source_warehouse_id === context.warehouseId ||
+        order.destination_warehouse_id === context.warehouseId) &&
+      dateKey >= startKey &&
+      dateKey <= maxKey
+    );
+  });
+
   await Promise.all(
     importCandidates.map(async (voucher) => {
       const date = getVoucherDate(voucher);
       if (!date) return;
       const dateKey = toDayKey(date);
-      const items = await getImportItems(voucher.id);
+      const items = await (context.itemReaders?.imports ?? getImportItems)(voucher.id);
 
       for (const item of items) {
         if (
@@ -528,7 +571,7 @@ async function collectMovements(
       const date = getVoucherDate(voucher);
       if (!date) return;
       const dateKey = toDayKey(date);
-      const items = await getExportItems(voucher.id);
+      const items = await (context.itemReaders?.exports ?? getExportItems)(voucher.id);
 
       for (const item of items) {
         if (
@@ -572,6 +615,76 @@ async function collectMovements(
         }
         movement.exportVouchers.add(voucher.voucher_number);
         movement.unitPrice = item.unit_price ?? movement.unitPrice;
+      }
+    }),
+  );
+
+  await Promise.all(
+    transferCandidates.map(async (order) => {
+      const date = toDate(order.received_at) ?? toDate(order.updated_at);
+      if (!date) return;
+      const dateKey = toDayKey(date);
+      const isIntra = order.transfer_type === TransferType.INTRA_WAREHOUSE;
+      const locationScoped = !isAll(options.locationId) || !isAll(options.slotId);
+      const isDestination = order.destination_warehouse_id === context.warehouseId;
+      const items = await (context.itemReaders?.transfers ?? getTransferItems)(order.id);
+
+      for (const item of items) {
+        const quantity = Number(item.received_quantity ?? item.quantity ?? 0);
+        if (quantity <= 0) continue;
+        const sides = isIntra
+          ? [
+              { locationId: item.source_location_id, sign: -1 },
+              { locationId: item.destination_location_id, sign: 1 },
+            ]
+          : isDestination
+            ? [{ locationId: item.destination_location_id, sign: 1 }]
+            : [];
+
+        for (const side of sides) {
+          if (!side.locationId || !itemMatchesFilters(
+            item.product_id,
+            side.locationId,
+            productIds,
+            slotByLocationProduct,
+            options,
+          )) continue;
+
+          if (dateKey > endKey) {
+            if (!isIntra || locationScoped) {
+              addQuantity(afterEndDelta, item.product_id, side.sign * quantity);
+            }
+            addLocationQuantity(afterEndLocationDelta, item.product_id, side.locationId, side.sign * quantity);
+            continue;
+          }
+
+          if (!isIntra || locationScoped) {
+            const movement = getOrCreateMovement(movementMap, dateKey, item.product_id);
+            if (side.sign > 0) {
+              movement.importQty += quantity;
+              movement.importLocationIds.add(side.locationId);
+              movement.importVouchers.add(order.order_number);
+            } else {
+              movement.exportQty += quantity;
+              movement.exportLocationIds.add(side.locationId);
+              movement.exportVouchers.add(order.order_number);
+            }
+          }
+
+          const movement = getOrCreateLocationMovement(
+            locationMovementMap,
+            dateKey,
+            item.product_id,
+            side.locationId,
+          );
+          if (side.sign > 0) {
+            movement.importQty += quantity;
+            movement.importVouchers.add(order.order_number);
+          } else {
+            movement.exportQty += quantity;
+            movement.exportVouchers.add(order.order_number);
+          }
+        }
       }
     }),
   );
@@ -693,6 +806,9 @@ export function buildWarehouseInventoryExportConfig(
     entityType: "inventory",
     warehouseId: context.warehouseId,
     filters: { dataKind: "inventory", ...options },
+    reportTitle: "TỒN KHO HIỆN TẠI",
+    reportPeriod: `Tại thời điểm xuất ${formatDayKey(toDayKey(new Date()))}`,
+    reportWarehouse: context.warehouseName,
     data: buildInventoryRows(context, options),
     columns,
   };
@@ -712,6 +828,27 @@ function buildDailySummaryExportConfig(
   const days = getDayKeys(startKey, endKey);
   const rowByProductId = new Map<string, Record<string, unknown>>();
 
+  const currentStock = buildCurrentStockByProduct(context, options);
+  for (const productId of currentStock.keys()) {
+    const product = productById.get(productId);
+    const category = product ? categoryById.get(product.category_id) : null;
+    rowByProductId.set(productId, {
+      product_code: product?.code ?? productId,
+      product_name: product?.name ?? productId,
+      category_name: category?.name ?? product?.category_id ?? "",
+      product_type: product?.product_type ?? "",
+      product_barcode: product?.barcode ?? "",
+      unit: product?.unit ?? "",
+      unit_price: product?.unit_price ?? null,
+      opening_quantity: 0,
+      total_import_quantity: 0,
+      total_export_quantity: 0,
+      total_ending_quantity: 0,
+      warehouse_id: context.warehouseId,
+      product_id: productId,
+    });
+  }
+
   for (const record of movementMap.values()) {
     if (record.importQty <= 0 && record.exportQty <= 0) continue;
 
@@ -727,6 +864,7 @@ function buildDailySummaryExportConfig(
         product_barcode: product?.barcode ?? "",
         unit: product?.unit ?? "",
         unit_price: record.unitPrice ?? product?.unit_price ?? null,
+        opening_quantity: 0,
         total_import_quantity: 0,
         total_export_quantity: 0,
         total_ending_quantity: 0,
@@ -756,7 +894,7 @@ function buildDailySummaryExportConfig(
     }
   }
 
-  const stockByProduct = buildCurrentStockByProduct(context, options);
+  const stockByProduct = new Map(currentStock);
   for (const [productId, delta] of afterEndDelta.entries()) {
     stockByProduct.set(productId, (stockByProduct.get(productId) ?? 0) - delta);
   }
@@ -785,6 +923,10 @@ function buildDailySummaryExportConfig(
     }
   }
 
+  for (const row of rows) {
+    row.opening_quantity = stockByProduct.get(String(row.product_id)) ?? 0;
+  }
+
   const columns: ExcelColumnConfig[] = [
     { header: "Mã SP", key: "product_code", width: 18 },
     { header: "Tên sản phẩm", key: "product_name", width: 34 },
@@ -797,6 +939,8 @@ function buildDailySummaryExportConfig(
   if (context.canViewPrice) {
     columns.push({ header: "Đơn giá", key: "unit_price", width: 16 });
   }
+
+  columns.push({ header: "Tồn đầu kỳ", key: "opening_quantity", width: 16 });
 
   for (const day of days) {
     columns.push(
@@ -819,6 +963,9 @@ function buildDailySummaryExportConfig(
     entityType: "inventory",
     warehouseId: context.warehouseId,
     filters: { dataKind: "dailySummary", ...options, startKey, endKey },
+    reportTitle: "XUẤT NHẬP TỒN THEO NGÀY",
+    reportPeriod: formatPeriod(startKey, endKey),
+    reportWarehouse: context.warehouseName,
     data: rows,
     columns,
     columnGroups: days.map((day) => ({
@@ -893,6 +1040,7 @@ function buildCounterDailySummaryExportConfig(
         product_barcode: product?.barcode ?? "",
         unit: product?.unit ?? "",
         unit_price: product?.unit_price ?? null,
+        opening_quantity: 0,
         total_import_quantity: 0,
         total_export_quantity: 0,
         total_ending_quantity: 0,
@@ -964,6 +1112,12 @@ function buildCounterDailySummaryExportConfig(
     }
   }
 
+  for (const row of rows) {
+    row.opening_quantity = currentStock.get(
+      getLocationProductKey(String(row.product_id), String(row.location_id)),
+    ) ?? 0;
+  }
+
   const columns: ExcelColumnConfig[] = [
     { header: "Mã quầy", key: "location_code", width: 18 },
     { header: "Quầy", key: "location_name", width: 24 },
@@ -978,6 +1132,8 @@ function buildCounterDailySummaryExportConfig(
   if (context.canViewPrice) {
     columns.push({ header: "Đơn giá", key: "unit_price", width: 16 });
   }
+
+  columns.push({ header: "Tồn đầu kỳ", key: "opening_quantity", width: 16 });
 
   for (const day of days) {
     columns.push(
@@ -1001,6 +1157,9 @@ function buildCounterDailySummaryExportConfig(
     entityType: "inventory",
     warehouseId: context.warehouseId,
     filters: { dataKind: "counterDailySummary", ...options, startKey, endKey },
+    reportTitle: "XUẤT NHẬP TỒN THEO QUẦY",
+    reportPeriod: formatPeriod(startKey, endKey),
+    reportWarehouse: context.warehouseName,
     data: rows,
     columns,
     columnGroups: days.map((day) => ({
@@ -1067,7 +1226,16 @@ export async function buildWarehouseMovementExportConfig(
     closingStock.set(productId, (closingStock.get(productId) ?? 0) - delta);
   }
 
+  const openingStock = new Map(closingStock);
+  for (const record of movementMap.values()) {
+    openingStock.set(
+      record.productId,
+      (openingStock.get(record.productId) ?? 0) - record.importQty + record.exportQty,
+    );
+  }
+
   const rows: Record<string, unknown>[] = [];
+  const representedProducts = new Set<string>();
   for (let cursor = fromDayKey(endKey); toDayKey(cursor) >= startKey; cursor = addDays(cursor, -1)) {
     const dateKey = toDayKey(cursor);
     const records = Array.from(movementMap.values()).filter(
@@ -1085,6 +1253,7 @@ export async function buildWarehouseMovementExportConfig(
         (dataKind === "exports" && record.exportQty > 0);
 
       if (shouldDisplay) {
+        representedProducts.add(record.productId);
         rows.push({
           date: dateKey,
           product_code: product?.code ?? record.productId,
@@ -1094,6 +1263,8 @@ export async function buildWarehouseMovementExportConfig(
           product_barcode: product?.barcode ?? "",
           unit: product?.unit ?? "",
           unit_price: unitPrice,
+          opening_quantity: openingStock.get(record.productId) ?? 0,
+          opening_day_quantity: endingStock - record.importQty + record.exportQty,
           import_quantity: record.importQty,
           export_quantity: record.exportQty,
           ending_quantity: endingStock,
@@ -1113,6 +1284,35 @@ export async function buildWarehouseMovementExportConfig(
     }
   }
 
+  if (dataKind === "movement") {
+    for (const [productId, quantity] of openingStock) {
+      if (representedProducts.has(productId) || quantity === 0) continue;
+      const product = productById.get(productId);
+      const category = product ? categoryById.get(product.category_id) : null;
+      rows.push({
+        date: startKey,
+        product_code: product?.code ?? productId,
+        product_name: product?.name ?? productId,
+        category_name: category?.name ?? product?.category_id ?? "",
+        product_type: product?.product_type ?? "",
+        product_barcode: product?.barcode ?? "",
+        unit: product?.unit ?? "",
+        unit_price: product?.unit_price ?? null,
+        opening_quantity: quantity,
+        opening_day_quantity: quantity,
+        import_quantity: 0,
+        export_quantity: 0,
+        ending_quantity: quantity,
+        import_locations: "",
+        export_locations: "",
+        import_vouchers: "",
+        export_vouchers: "",
+        warehouse_id: context.warehouseId,
+        product_id: productId,
+      });
+    }
+  }
+
   const columns: ExcelColumnConfig[] = [
     { header: "Ngày", key: "date", width: 14 },
     { header: "Mã SP", key: "product_code", width: 18 },
@@ -1128,6 +1328,8 @@ export async function buildWarehouseMovementExportConfig(
   }
 
   columns.push(
+    { header: "Tồn đầu kỳ", key: "opening_quantity", width: 16 },
+    { header: "Tồn đầu ngày", key: "opening_day_quantity", width: 16 },
     { header: "Nhập", key: "import_quantity", width: 14 },
     { header: "Xuất", key: "export_quantity", width: 14 },
     { header: "Tồn cuối ngày", key: "ending_quantity", width: 16 },
@@ -1151,7 +1353,10 @@ export async function buildWarehouseMovementExportConfig(
     entityType: "inventory",
     warehouseId: context.warehouseId,
     filters: { dataKind, ...options, startKey, endKey },
-    data: rows.reverse(),
+    reportTitle: dataKind === "imports" ? "NHẬP KHO" : dataKind === "exports" ? "XUẤT KHO" : "XUẤT NHẬP TỒN",
+    reportPeriod: formatPeriod(startKey, endKey),
+    reportWarehouse: context.warehouseName,
+    data: rows.sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.product_code).localeCompare(String(b.product_code), "vi")),
     columns,
   };
 }

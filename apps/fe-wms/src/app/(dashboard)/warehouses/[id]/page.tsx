@@ -44,6 +44,7 @@ import { useImportVouchers } from "@/hooks/useImportVouchers";
 import { useInventory } from "@/hooks/useInventory";
 import { useLocationSlots } from "@/hooks/useLocationSlots";
 import { useProducts } from "@/hooks/useProducts";
+import { useTransferOrders } from "@/hooks/useTransferOrders";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
 import { useTranslation } from "@/lib/i18n";
@@ -89,10 +90,17 @@ export default function WarehouseDetailPage() {
     const { categories, isLoading: categoriesLoading } = useCategories();
     const { users, isLoading: usersLoading } = useUsers();
     const { slots, mappings: slotMappings } = useLocationSlots(warehouseId);
-    const { allVouchers: importVouchers } = useImportVouchers();
+    const { allVouchers: importVouchers, loading: importsLoading } = useImportVouchers();
+    const {
+        activeOrders: activeTransferOrders,
+        completedOrders: completedTransferOrders,
+        loading: transfersLoading,
+        error: transfersError,
+    } = useTransferOrders();
     const {
         activeVouchers: activeExportVouchers,
         completedVouchers: completedExportVouchers,
+        loading: exportsLoading,
     } = useExportVouchers();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -130,6 +138,10 @@ export default function WarehouseDetailPage() {
         () => [...activeExportVouchers, ...completedExportVouchers],
         [activeExportVouchers, completedExportVouchers],
     );
+    const transferOrders = useMemo(
+        () => [...activeTransferOrders, ...completedTransferOrders],
+        [activeTransferOrders, completedTransferOrders],
+    );
 
     const canViewPrice = hasPermission("products.price.view", warehouseId);
     const exportContext = useMemo(
@@ -144,12 +156,14 @@ export default function WarehouseDetailPage() {
             slotMappings,
             importVouchers,
             exportVouchers,
+            transferOrders,
             canViewPrice,
         }),
         [
             canViewPrice,
             categories,
             exportVouchers,
+            transferOrders,
             importVouchers,
             inventory,
             locations,
@@ -228,15 +242,30 @@ export default function WarehouseDetailPage() {
                 filterOptions: warehouseExportFilterOptions,
             },
             prepare: (options: ExportRequestOptions) => {
+                if (invLoading) {
+                    throw new Error("Dữ liệu tồn kho đang tải. Vui lòng thử xuất lại sau ít phút.");
+                }
                 if (options.dataKind === "inventory") {
                     return Promise.resolve(
                         buildWarehouseInventoryExportConfig(exportContext, options),
                     );
                 }
+                if (!hasPermission("transfers.read", warehouseId)) {
+                    throw new Error("Cần quyền xem điều chuyển để xuất báo cáo nhập xuất tồn đầy đủ.");
+                }
+                if (!hasPermission("vouchers.read", warehouseId)) {
+                    throw new Error("Cần quyền xem chứng từ để xuất báo cáo nhập xuất tồn đầy đủ.");
+                }
+                if (importsLoading || exportsLoading || transfersLoading) {
+                    throw new Error("Dữ liệu chứng từ đang tải. Vui lòng thử xuất lại sau ít phút.");
+                }
+                if (transfersError) {
+                    throw new Error("Không tải được dữ liệu điều chuyển: " + transfersError);
+                }
                 return buildWarehouseMovementExportConfig(exportContext, options);
             },
         };
-    }, [exportContext, warehouse, warehouseExportFilterOptions]);
+    }, [exportContext, exportsLoading, hasPermission, importsLoading, invLoading, transfersError, transfersLoading, warehouse, warehouseExportFilterOptions, warehouseId]);
 
     useExportRegistration(warehouseExportConfig);
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { where } from "firebase/firestore";
 import {
   TransferOrderStatus,
   type TransferOrder,
 } from "@bduck/shared-types";
+import { where } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+
 import { db } from "@/lib/firebase";
 import {
   buildFacilityScopedQueries,
@@ -42,6 +43,7 @@ const time = (value: unknown) => {
 export function useTransferOrders() {
   const [rawOrders, setRawOrders] = useState<TransferOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const userId = useUserStore((state) => state.user?.id);
   const permissions = useUserStore((state) => state.permissions);
   const facilityScope = useMemo(
@@ -53,8 +55,11 @@ export function useTransferOrders() {
     if (!userId) {
       setRawOrders([]);
       setLoading(false);
+      setError(null);
       return;
     }
+    setLoading(true);
+    setError(null);
     const constraints = [where("is_deleted", "==", false)];
     const sourceQueries = buildFacilityScopedQueries({
       db,
@@ -83,10 +88,12 @@ export function useTransferOrders() {
       onData: (orders) => {
         setRawOrders(orders.sort((left, right) => time(right.created_at) - time(left.created_at)));
         setLoading(false);
+        setError(null);
       },
       onError: (error) => {
         console.error("[useTransferOrders] onSnapshot error:", error);
         setLoading(false);
+        setError(error.message);
       },
     });
   }, [facilityScope, userId]);
@@ -99,5 +106,5 @@ export function useTransferOrders() {
     () => rawOrders.filter((order) => COMPLETED_STATUSES.includes(order.status)),
     [rawOrders],
   );
-  return { activeOrders, completedOrders, loading };
+  return { activeOrders, completedOrders, loading, error };
 }

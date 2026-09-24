@@ -104,6 +104,9 @@ export interface ExportToastConfig {
 
 export interface ExportConfig {
   filename: string;
+  reportTitle?: string;
+  reportPeriod?: string;
+  reportWarehouse?: string;
   columns: ExcelColumnConfig[];
   columnGroups?: ExcelColumnGroup[];
   data: any[];
@@ -162,20 +165,41 @@ const entityColorMap: Record<string, string> = {
   default: "FF374151", // Gray 700
 };
 
-export async function exportToExcel(config: ExportConfig): Promise<void> {
+export function buildExportWorkbook(config: ExportConfig): ExcelJS.Workbook {
   const {
-    filename,
     columns,
     columnGroups,
     data,
     entityType,
     warehouseId,
-    filters,
+    reportTitle,
+    reportPeriod,
+    reportWarehouse,
   } = config;
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Data");
   const headerColor = entityColorMap[entityType] || entityColorMap.default;
+  const headerStartRow = reportTitle ? 4 : 1;
+
+  if (reportTitle) {
+    const lastColumn = Math.max(columns.length, 1);
+    for (const [rowNumber, value] of [
+      reportTitle,
+      `Kho: ${reportWarehouse ?? warehouseId ?? ""}`,
+      `Phạm vi dữ liệu: ${reportPeriod ?? "Hiện tại"}`,
+    ].entries()) {
+      sheet.mergeCells(rowNumber + 1, 1, rowNumber + 1, lastColumn);
+      const row = sheet.getRow(rowNumber + 1);
+      row.getCell(1).value = value;
+      row.height = rowNumber === 0 ? 28 : 21;
+      row.getCell(1).font = {
+        bold: rowNumber === 0,
+        size: rowNumber === 0 ? 16 : 11,
+        color: { argb: rowNumber === 0 ? headerColor : "FF374151" },
+      };
+    }
+  }
 
   const styleHeaderCell = (cell: ExcelJS.Cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -209,36 +233,38 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
       for (let index = fromIndex; index <= toIndex; index += 1) {
         groupedKeys.add(columns[index].key);
       }
-      sheet.mergeCells(1, fromIndex + 1, 1, toIndex + 1);
-      sheet.getRow(1).getCell(fromIndex + 1).value = group.header;
+      sheet.mergeCells(headerStartRow, fromIndex + 1, headerStartRow, toIndex + 1);
+      sheet.getRow(headerStartRow).getCell(fromIndex + 1).value = group.header;
     }
 
     columns.forEach((column, index) => {
       const columnIndex = index + 1;
       if (groupedKeys.has(column.key)) {
-        sheet.getRow(2).getCell(columnIndex).value = column.header;
+        sheet.getRow(headerStartRow + 1).getCell(columnIndex).value = column.header;
       } else {
-        sheet.mergeCells(1, columnIndex, 2, columnIndex);
-        sheet.getRow(1).getCell(columnIndex).value = column.header;
+        sheet.mergeCells(headerStartRow, columnIndex, headerStartRow + 1, columnIndex);
+        sheet.getRow(headerStartRow).getCell(columnIndex).value = column.header;
       }
     });
 
-    sheet.getRow(1).height = 22;
-    sheet.getRow(2).height = 20;
-    sheet.getRow(1).eachCell(styleHeaderCell);
-    sheet.getRow(2).eachCell(styleHeaderCell);
-    sheet.views = [{ state: "frozen", ySplit: 2 }];
+    sheet.getRow(headerStartRow).height = 22;
+    sheet.getRow(headerStartRow + 1).height = 20;
+    sheet.getRow(headerStartRow).eachCell(styleHeaderCell);
+    sheet.getRow(headerStartRow + 1).eachCell(styleHeaderCell);
+    sheet.views = [{ state: "frozen", ySplit: headerStartRow + 1 }];
   } else {
     // Format headers
     sheet.columns = columns.map((col) => ({
-      header: col.header,
       key: col.key,
       width: col.width || 20,
     }));
 
-    const headerRow = sheet.getRow(1);
+    const headerRow = sheet.getRow(headerStartRow);
+    columns.forEach((column, index) => {
+      headerRow.getCell(index + 1).value = column.header;
+    });
     headerRow.eachCell(styleHeaderCell);
-    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    sheet.views = [{ state: "frozen", ySplit: headerStartRow }];
   }
 
   // Add data
@@ -251,6 +277,13 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
     });
     sheet.addRow(rowData);
   });
+
+  return workbook;
+}
+
+export async function exportToExcel(config: ExportConfig): Promise<void> {
+  const { filename, entityType, warehouseId, filters } = config;
+  const workbook = buildExportWorkbook(config);
 
   // Call API to log export action
   try {
