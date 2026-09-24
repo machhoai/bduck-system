@@ -1,0 +1,38 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"basis","nodeSpacing":28,"rankSpacing":55}}}%%
+flowchart LR
+  jpos["<b>JPOS</b><br/>Hệ thống ngoài · Ứng dụng POS"]
+  erp["<b>ERP cũ</b><br/>Hệ thống ngoài · Nhân sự, doanh thu, voucher"]
+  cityfuns["<b>JoyWorld / Cityfuns</b><br/>Hệ thống ngoài · Manager API, OpenAPI"]
+
+  subgraph jpulse["JPULSE"]
+    direction TB
+    web["<b>Web JPULSE</b><br/>Ứng dụng · Next.js / React<br/>Hiển thị bản đồ"]
+    api["<b>JPULSE API</b><br/>Ứng dụng · Node.js / Express<br/>Điều phối tích hợp và xử lý tác vụ"]
+  end
+
+  misa["<b>MISA meInvoice</b><br/>Hệ thống ngoài · Hóa đơn điện tử"]
+  vietqr["<b>VietQR Business API</b><br/>Hệ thống ngoài · Tra cứu mã số thuế"]
+  brevo["<b>Brevo</b><br/>Hệ thống ngoài · Chuyển phát email"]
+  fcm["<b>Firebase Cloud Messaging</b><br/>Dịch vụ ngoài · Thông báo đẩy"]
+  tasks["<b>Google Cloud Tasks</b><br/>Dịch vụ quản lý · Phân phối task JPULSE"]
+  mapbox["<b>Mapbox</b><br/>Hệ thống ngoài · Bản đồ / tuyến đường"]
+
+  jpos -->|"Gửi yêu cầu xác thực và<br/>lấy quyền · API"| api
+  api -->|"Yêu cầu đồng bộ sản phẩm<br/>HTTPS POST"| jpos
+  erp -.->|"Tương tác tồn kho theo SRS<br/>hợp đồng thực tế cần xác minh"| api
+  api -->|"Đọc doanh thu / đơn; đối chiếu tồn<br/>HTTP(S) API theo cấu hình"| cityfuns
+  api -->|"Phát hành / tra cứu hóa đơn<br/>HTTPS API"| misa
+  api -->|"Tra cứu doanh nghiệp theo MST<br/>HTTP GET theo base URL"| vietqr
+  api -->|"Gửi email / OTP / voucher<br/>SMTP cổng 587"| brevo
+  api -->|"Gửi push tới thiết bị<br/>Firebase Admin SDK"| fcm
+  api -->|"Tạo task nếu được cấu hình<br/>Cloud Tasks SDK"| tasks
+  tasks -->|"Gọi worker hóa đơn / voucher<br/>HTTP POST + OIDC theo URL cấu hình"| api
+  web -->|"Tải bản đồ / tra tuyến đường<br/>Mapbox SDK + HTTPS"| mapbox
+
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef managed fill:#eee8ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+  class jpos,erp,cityfuns,misa,vietqr,brevo,fcm,mapbox external
+  class web,api app
+  class tasks managed
+  style jpulse fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px

@@ -1,0 +1,37 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":68,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-04A – JPULSE xếp hàng phát hành hóa đơn
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant AUTH as Firebase Auth
+  participant DB as Firestore JPULSE
+  participant TASK as Cloud Tasks
+
+  Note over KT,TASK: Chỉ áp dụng khi phát hành và queue đã được bật
+  KT->>WEB: Chọn draft và xác nhận phát hành
+  WEB->>API: Tạo job phát hành
+  activate API
+  API->>AUTH: Xác minh phiên
+  AUTH-->>API: Danh tính hoặc thất bại
+  alt Phiên không hợp lệ
+    API-->>WEB: Từ chối yêu cầu
+  else Phiên hợp lệ
+    API->>DB: Đọc quyền, cấu hình và draft
+    DB-->>API: Trạng thái và điều kiện phát hành
+    alt Không đủ quyền hoặc chưa đủ điều kiện
+      API-->>WEB: Từ chối tạo job
+    else Đủ điều kiện
+      API->>DB: Giữ RefID và tạo job/item bằng transaction
+      DB-->>API: Job đã tạo hoặc job trùng hợp lệ
+      opt Job mới được tạo
+        loop Mỗi item của job
+          API->>TASK: Tạo HTTP task có tên xác định
+          TASK-->>API: Đã nhận task
+        end
+      end
+      API-->>WEB: Job và trạng thái hàng đợi
+      WEB-->>KT: Hiển thị tiến độ chờ xử lý
+    end
+  end
+  deactivate API

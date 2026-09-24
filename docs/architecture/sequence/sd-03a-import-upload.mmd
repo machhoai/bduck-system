@@ -1,0 +1,25 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":100,"messageMargin":24,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-03A – Web JPULSE tải chứng từ phiếu nhập
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant ST as Storage JPULSE
+
+  NV->>WEB: Chọn chứng từ và nhập thông tin phiếu
+  WEB->>WEB: Kiểm tra loại tệp và dung lượng
+  alt Tệp không hợp lệ
+    WEB-->>NV: Yêu cầu chọn lại tệp
+  else Tệp hợp lệ
+    loop Mỗi tệp khi chưa có lỗi
+      WEB->>ST: Tải chứng từ qua Storage SDK
+      activate ST
+      alt Tải lên thất bại
+        ST-->>WEB: Báo lỗi tải tệp
+        WEB-->>NV: Dừng gửi phiếu và báo lỗi
+      else Tải lên thành công
+        ST-->>WEB: URL tệp
+      end
+      deactivate ST
+    end
+    Note over WEB,ST: Chỉ tiếp SD-03B khi mọi tệp tải thành công
+  end

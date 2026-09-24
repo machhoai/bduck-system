@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":100,"messageMargin":22,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-04D – JPULSE xác nhận kết quả hóa đơn chưa rõ
+  participant TASK as Cloud Tasks
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant MISA as MISA meInvoice
+
+  Note over TASK,API: Tiếp SD-04C khi item PENDING_CONFIRMATION
+  TASK->>API: Giao lại task theo lịch
+  activate API
+  API->>DB: Claim item và đọc RefID
+  DB-->>API: Item chờ xác nhận
+  API->>MISA: Tra trạng thái bằng RefID
+  MISA-->>API: Trạng thái hóa đơn
+  alt MISA xác nhận đã phát hành
+    API->>DB: Ghi ISSUED và thông tin hóa đơn
+  else MISA báo đã xóa
+    API->>DB: Ghi MANUAL_RECONCILIATION
+  else Chưa có kết quả chắc chắn
+    API->>DB: Giữ PENDING_CONFIRMATION và lịch thử lại
+    Note over API,MISA: Không phát hành lại ở nhánh mơ hồ
+  end
+  DB-->>API: Đã cập nhật item/job
+  API-->>TASK: Hoàn tất lần kiểm tra
+  deactivate API

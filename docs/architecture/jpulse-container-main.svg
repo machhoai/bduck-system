@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="975" viewBox="0 0 1800 975" role="img" aria-labelledby="title desc">
+<title id="title">JPULSE — Container Diagram (C4 Level 2)</title>
+<desc id="desc">Khách hàng và nhân viên sử dụng Web JPULSE. Web gọi JPULSE API và truy cập giới hạn tới Firestore, Storage. JPOS gọi API để xác thực. Web và API dùng Firebase Authentication. Firestore và Storage là tài nguyên logic của JPULSE do Google vận hành.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#52657a"/></marker></defs>
+<style>
+  *{font-family:Arial,Helvetica,sans-serif}
+  .canvas{fill:#fff}
+  .title{fill:#14233b;font-size:30px;font-weight:700}
+  .subtitle{fill:#536477;font-size:17px}
+  .boundary{fill:#f8fbff;stroke:#1d4ed8;stroke-width:3}
+  .boundary-title{fill:#1d4ed8;font-size:22px;font-weight:700}
+  g.actor rect{fill:#fff5da;stroke:#a56b17;stroke-width:2}
+  g.app rect{fill:#e2efff;stroke:#2563eb;stroke-width:2.5}
+  g.data rect{fill:#def7e9;stroke:#178454;stroke-width:2.5}
+  g.external rect{fill:#f0f3f7;stroke:#64748b;stroke-width:2.5}
+  .name{text-anchor:middle;fill:#18273c;font-size:24px;font-weight:700}
+  .kind{text-anchor:middle;fill:#273e59;font-size:19px}
+  .desc{text-anchor:middle;fill:#26374b;font-size:19px}
+  .edge{fill:none;stroke:#52657a;stroke-width:2.5;stroke-linejoin:round}
+  .direct{fill:none;stroke:#1692a8;stroke-width:2.5;stroke-dasharray:8 6;stroke-linejoin:round}
+  .edge-label rect{fill:#fff;stroke:#d9e2ea;stroke-width:1}
+  .edge-label text{fill:#33465d;text-anchor:middle;font-size:16px;font-weight:600}
+  .direct-label rect{fill:#e9f9fb;stroke:#b6e8ec;stroke-width:1}
+  .direct-label text{fill:#126477;text-anchor:middle;font-size:16px;font-weight:600}
+  .legend{fill:#52657a;font-size:16px}
+</style>
+<rect class="canvas" width="1800" height="975"/>
+<text x="75" y="53" class="title">JPULSE · Container Diagram (C4 Level 2)</text>
+<text x="75" y="83" class="subtitle">Ranh giới logic, ứng dụng, kho dữ liệu và kết nối trực tiếp</text>
+<rect x="65" y="305" width="1190" height="560" rx="18" class="boundary"/>
+<text x="92" y="339" class="boundary-title">JPULSE</text>
+<path d="M 295 238 V 365" class="edge" marker-end="url(#arrow)"/>
+<path d="M 705 238 V 257 H 470 V 365" class="edge" marker-end="url(#arrow)"/>
+<path d="M 530 425 H 790" class="edge" marker-end="url(#arrow)"/>
+<path d="M 530 365 V 280 H 1325 V 370 H 1345" class="edge" marker-end="url(#arrow)"/>
+<path d="M 1200 395 H 1345" class="edge" marker-end="url(#arrow)"/>
+<path d="M 1345 690 H 1290 V 470 H 1200" class="edge" marker-end="url(#arrow)"/>
+<path d="M 260 505 V 625" class="direct" marker-end="url(#arrow)"/>
+<path d="M 485 505 V 595 H 920 V 625" class="direct" marker-end="url(#arrow)"/>
+<path d="M 840 505 V 550 H 445 V 625" class="edge" marker-end="url(#arrow)"/>
+<path d="M 1060 505 V 625" class="edge" marker-end="url(#arrow)"/>
+<g class="actor"><rect x="125" y="108" width="340" height="130" rx="14"/>
+    <text x="295.0" y="140.0" class="name">Khách hàng</text>
+    <text x="295.0" y="175.0" class="kind">Tác nhân</text>
+    <text x="295.0" y="208.0" class="desc">Gửi yêu cầu hóa đơn.</text></g>
+<g class="actor"><rect x="510" y="108" width="390" height="130" rx="14"/>
+    <text x="705.0" y="140.0" class="name">Nhân viên / quản trị</text>
+    <text x="705.0" y="175.0" class="kind">Tác nhân</text>
+    <text x="705.0" y="208.0" class="desc">Vận hành nghiệp vụ JPULSE.</text></g>
+<g class="app"><rect x="120" y="365" width="410" height="140" rx="14"/>
+    <text x="325.0" y="402.0" class="name">Web JPULSE</text>
+    <text x="325.0" y="437.0" class="kind">Ứng dụng · Next.js / React</text>
+    <text x="325.0" y="470.0" class="desc">Cung cấp giao diện nghiệp vụ.</text></g>
+<g class="app"><rect x="790" y="365" width="410" height="140" rx="14"/>
+    <text x="995.0" y="402.0" class="name">JPULSE API</text>
+    <text x="995.0" y="437.0" class="kind">Ứng dụng · Node.js / Express</text>
+    <text x="995.0" y="470.0" class="desc">Xử lý nghiệp vụ và phân quyền.</text></g>
+<g class="data"><rect x="120" y="625" width="410" height="140" rx="14"/>
+    <text x="325.0" y="662.0" class="name">Firestore JPULSE</text>
+    <text x="325.0" y="697.0" class="kind">Kho dữ liệu · Cloud Firestore</text>
+    <text x="325.0" y="730.0" class="desc">Lưu tài khoản, quyền và nghiệp vụ.</text></g>
+<g class="data"><rect x="790" y="625" width="410" height="140" rx="14"/>
+    <text x="995.0" y="662.0" class="name">Storage JPULSE</text>
+    <text x="995.0" y="697.0" class="kind">Kho tệp · Firebase Storage</text>
+    <text x="995.0" y="730.0" class="desc">Lưu chứng từ và hình ảnh.</text></g>
+<g class="external"><rect x="1345" y="350" width="380" height="140" rx="14"/>
+    <text x="1535.0" y="387.0" class="name">Firebase Authentication</text>
+    <text x="1535.0" y="422.0" class="kind">Dịch vụ Firebase</text>
+    <text x="1535.0" y="455.0" class="desc">Xác thực danh tính và cấp token.</text></g>
+<g class="external"><rect x="1345" y="610" width="380" height="140" rx="14"/>
+    <text x="1535.0" y="647.0" class="name">JPOS</text>
+    <text x="1535.0" y="682.0" class="kind">Hệ thống bên ngoài</text>
+    <text x="1535.0" y="715.0" class="desc">Yêu cầu JPULSE xác thực người dùng.</text></g>
+<g class="edge-label"><rect x="196" y="248" width="197" height="31" rx="5"/>
+    <text x="294.5" y="270">Gửi yêu cầu</text></g>
+<g class="edge-label"><rect x="515" y="223" width="148" height="31" rx="5"/>
+    <text x="589.0" y="245">Sử dụng</text></g>
+<g class="edge-label"><rect x="541" y="389" width="238" height="31" rx="5"/>
+    <text x="660.0" y="411">Nghiệp vụ · HTTP/JSON</text></g>
+<g class="edge-label"><rect x="850" y="245" width="220" height="31" rx="5"/>
+    <text x="960.0" y="267">Đăng nhập · Web SDK</text></g>
+<g class="edge-label"><rect x="1195" y="315" width="240" height="31" rx="5"/>
+    <text x="1315.0" y="337">Xác minh · Admin SDK</text></g>
+<g class="edge-label"><rect x="1193" y="510" width="185" height="31" rx="5"/>
+    <text x="1285.5" y="532">Yêu cầu xác thực</text></g>
+<g class="direct-label"><rect x="275" y="536" width="214" height="31" rx="5"/>
+    <text x="382.0" y="558">Đọc/ghi · Web SDK</text></g>
+<g class="direct-label"><rect x="596" y="562" width="194" height="31" rx="5"/>
+    <text x="693.0" y="584">Tệp · Storage SDK</text></g>
+<g class="edge-label"><rect x="587" y="514" width="237" height="31" rx="5"/>
+    <text x="705.5" y="536">Đọc/ghi · Admin SDK</text></g>
+<g class="edge-label"><rect x="934" y="536" width="204" height="31" rx="5"/>
+    <text x="1036.0" y="558">Tệp · Admin SDK</text></g>
+<line x1="75" y1="900" x2="125" y2="900" stroke="#52657a" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="140" y="906" class="legend">Lời gọi trực tiếp</text>
+<line x1="390" y1="900" x2="440" y2="900" stroke="#1692a8" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<text x="455" y="906" class="legend">Web truy cập dữ liệu trực tiếp</text>
+<rect x="830" y="885" width="22" height="22" fill="#e2efff" stroke="#2563eb" stroke-width="2"/>
+<text x="865" y="904" class="legend">Ứng dụng</text>
+<rect x="1010" y="885" width="22" height="22" fill="#def7e9" stroke="#178454" stroke-width="2"/>
+<text x="1045" y="904" class="legend">Kho dữ liệu/tệp</text>
+<rect x="1280" y="885" width="22" height="22" fill="#f0f3f7" stroke="#64748b" stroke-width="2"/>
+<text x="1315" y="904" class="legend">Dịch vụ/hệ thống ngoài</text>
+<rect x="75" y="936" width="22" height="22" fill="#fff5da" stroke="#a56b17" stroke-width="2"/>
+<text x="110" y="954" class="legend">Tác nhân</text>
+<text x="350" y="954" class="legend">API = giao diện lập trình · SDK = bộ công cụ phát triển · JPOS = hệ thống điểm bán</text>
+</svg>

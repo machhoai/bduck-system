@@ -1,0 +1,29 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":100,"messageMargin":19,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-02B – JPULSE tạo phiên và nạp quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant AUTH as Firebase Auth
+  participant DB as Firestore JPULSE
+
+  Note over WEB,API: Tiếp SD-02A - Web có ID token Firebase
+  WEB->>API: Tạo phiên với ID token
+  activate API
+  API->>AUTH: Xác minh ID token
+  AUTH-->>API: UID hoặc xác thực thất bại
+  alt ID token không hợp lệ
+    API-->>WEB: Từ chối tạo phiên
+  else Danh tính hợp lệ
+    API->>DB: Đọc User, vai trò và access snapshot
+    DB-->>API: Trạng thái và quyền JPULSE
+    alt Tài khoản không dùng được hoặc lỗi quyền
+      API-->>WEB: Từ chối tạo phiên
+    else Tài khoản và quyền hợp lệ
+      API->>AUTH: Tạo session cookie
+      AUTH-->>API: Phiên Firebase
+      API-->>WEB: Cookie phiên, User, vai trò và quyền
+      WEB->>WEB: Khóa màn hình để xác minh MFA
+      Note over WEB,API: Tiếp tục ở SD-02C
+    end
+  end
+  deactivate API

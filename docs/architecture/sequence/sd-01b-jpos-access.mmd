@@ -1,0 +1,28 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":100,"messageMargin":22,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-01B – JPOS nạp quyền từ dữ liệu JPULSE
+  actor NV as Nhân viên POS
+  participant POS as JPOS
+  participant FN as JPOS Functions
+  participant DB as Firestore JPULSE
+
+  Note over POS,FN: Tiếp SD-01A - callable yêu cầu danh tính Firebase
+  POS->>FN: Yêu cầu phiên quyền + chứng thực thiết bị
+  activate FN
+  FN->>DB: Kiểm tra thiết bị ACTIVE và cơ sở
+  DB-->>FN: Trạng thái thiết bị
+  alt Thiết bị bị khóa hoặc không hợp lệ
+    FN-->>POS: Từ chối phiên - không mở bán hàng
+  else Thiết bị hợp lệ
+    FN->>DB: Đọc User, gán vai trò, Role và cơ sở
+    DB-->>FN: Trạng thái tài khoản và dữ liệu quyền
+    FN->>FN: Tính quyền theo cơ sở và pos.login
+    alt Tài khoản không ACTIVE hoặc thiếu pos.login
+      FN-->>POS: Từ chối hoặc không có cơ sở được phép
+    else Có quyền tại cơ sở của thiết bị
+      FN-->>POS: User, vai trò, quyền và cơ sở
+      POS->>POS: Cache phiên quyền có hạn
+      POS-->>NV: Mở phiên bán hàng
+    end
+  end
+  deactivate FN

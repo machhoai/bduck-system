@@ -1,0 +1,28 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":105,"messageMargin":19,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-04B – Worker nhận task và gọi MISA
+  participant TASK as Cloud Tasks
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant MISA as MISA meInvoice
+
+  Note over TASK,API: Sau SD-04A - không chặn phản hồi Web
+  TASK->>API: Giao HTTP task xử lý một item
+  activate API
+  API->>API: Xác thực worker secret
+  alt Worker không hợp lệ
+    API-->>TASK: Từ chối task
+  else Worker hợp lệ
+    API->>DB: Claim item và lane xử lý
+    DB-->>API: Kết quả claim, payload nếu được claim
+    alt Chưa đến hạn hoặc lane bận
+      API-->>TASK: Báo giao lại task
+    else Item đã kết thúc
+      API-->>TASK: Xác nhận không xử lý lại
+    else Item được claim
+      API->>MISA: Yêu cầu phát hành hóa đơn
+      MISA-->>API: Kết quả phát hành hoặc lỗi
+      Note over API,DB: Tiếp SD-04C để ghi kết quả
+    end
+  end
+  deactivate API

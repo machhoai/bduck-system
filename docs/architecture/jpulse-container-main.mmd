@@ -1,0 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":50,"rankSpacing":85}}}%%
+flowchart TB
+  customer["<b>Khách hàng</b><br/>Tác nhân<br/>Gửi yêu cầu hóa đơn."]
+  staff["<b>Nhân viên / quản trị</b><br/>Tác nhân<br/>Vận hành nghiệp vụ JPULSE."]
+
+  subgraph jpulse["JPULSE"]
+    direction TB
+    web["<b>Web JPULSE</b><br/>Ứng dụng · Next.js / React<br/>Cung cấp giao diện nghiệp vụ."]
+    api["<b>JPULSE API</b><br/>Ứng dụng · Node.js / Express<br/>Xử lý nghiệp vụ và phân quyền."]
+    db[("<b>Firestore JPULSE</b><br/>Kho dữ liệu · Cloud Firestore<br/>Lưu tài khoản, quyền và nghiệp vụ.")]
+    files[("<b>Storage JPULSE</b><br/>Kho tệp · Firebase Storage<br/>Lưu chứng từ và hình ảnh.")]
+  end
+
+  jpos["<b>JPOS</b><br/>Hệ thống bên ngoài<br/>Yêu cầu JPULSE xác thực người dùng."]
+  firebaseAuth["<b>Firebase Authentication</b><br/>Dịch vụ Firebase<br/>Xác thực danh tính và cấp token."]
+
+  customer -->|"Gửi yêu cầu"| web
+  staff -->|"Sử dụng"| web
+  web -->|"Nghiệp vụ · HTTP/JSON"| api
+  jpos -->|"Yêu cầu xác thực"| api
+  web -->|"Đăng nhập · Web SDK"| firebaseAuth
+  api -->|"Xác minh · Admin SDK"| firebaseAuth
+  web -->|"Đọc/ghi · Web SDK"| db
+  api -->|"Đọc/ghi · Admin SDK"| db
+  web -->|"Tệp · Storage SDK"| files
+  api -->|"Tệp · Admin SDK"| files
+
+  classDef actor fill:#fff5da,stroke:#a56b17,color:#1f2937,stroke-width:2px
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class customer,staff actor
+  class jpos,firebaseAuth external
+  class web,api app
+  class db,files data
+  style jpulse fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px
