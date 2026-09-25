@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="750" viewBox="0 0 1600 750" role="img" aria-label="JPULSE - Quản trị POS">
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#8B9BB0"/></marker></defs>
+<rect x="0" y="0" width="1600" height="750" rx="0" fill="#FAFBFE" stroke="none" stroke-width="1"/>
+<text x="64" y="66" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#15294B" text-anchor="start">K · Quản trị POS</text>
+<text x="65" y="99" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#5A6A83" text-anchor="start">Chi tiết phân hệ K  •  Menu = tên từ hướng dẫn sử dụng; SRS = nhóm chức năng trong SRS</text>
+<path d="M64 119 L1536 119" fill="none" stroke="#DFE6EF" stroke-width="2"/>
+<rect x="64" y="147" width="1472" height="56" rx="12" fill="#5B76A0" stroke="none" stroke-width="1"/>
+<text x="88" y="183" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#FFFFFF" text-anchor="start">JPULSE</text>
+<text x="1512" y="182" font-family="Arial, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF" text-anchor="end">2 màn hình / nhóm</text>
+<path d="M800.0 203 L800.0 230" fill="none" stroke="#9DABBE" stroke-width="2"/>
+<g id="screen-K1" data-level="3" data-source="SRS">
+<rect x="64" y="254" width="724" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="64" y="254" width="724" height="61" rx="11" fill="#5B76A0" stroke="none" stroke-width="1"/>
+<text x="82" y="293" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">K1  Thiết bị POS</text>
+<rect x="709" y="562" width="61" height="25" rx="7" fill="#FFF2DF" stroke="none" stroke-width="1"/>
+<text x="740" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#8D5B21" text-anchor="middle">SRS</text>
+<path d="M88 316 L88 566" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<g id="action-K1-1" data-level="4">
+<path d="M88 358 L103 358" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="104" y="339" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="359" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Tạo mã ghi danh / kích hoạt</text>
+</g>
+<g id="action-K1-2" data-level="4">
+<path d="M88 398 L103 398" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="104" y="379" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="399" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Khóa / mở / chuyển cơ sở</text>
+</g>
+<g id="action-K1-3" data-level="4">
+<path d="M88 438 L103 438" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="104" y="419" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="439" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Xem nhật ký POS</text>
+</g>
+</g>
+<g id="screen-K2" data-level="3" data-source="SRS">
+<rect x="818" y="254" width="724" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="818" y="254" width="724" height="61" rx="11" fill="#5B76A0" stroke="none" stroke-width="1"/>
+<text x="836" y="293" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">K2  Cấu hình POS</text>
+<rect x="1463" y="562" width="61" height="25" rx="7" fill="#FFF2DF" stroke="none" stroke-width="1"/>
+<text x="1494" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#8D5B21" text-anchor="middle">SRS</text>
+<path d="M842 316 L842 566" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<g id="action-K2-1" data-level="4">
+<path d="M842 358 L857 358" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="858" y="339" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="871" y="359" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Cấu hình hóa đơn in / vé</text>
+</g>
+<g id="action-K2-2" data-level="4">
+<path d="M842 398 L857 398" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="858" y="379" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="871" y="399" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Cấu hình màn hình khách</text>
+</g>
+<g id="action-K2-3" data-level="4">
+<path d="M842 438 L857 438" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="858" y="419" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="871" y="439" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Cấu hình sản phẩm hiển thị</text>
+</g>
+<g id="action-K2-4" data-level="4">
+<path d="M842 478 L857 478" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="858" y="459" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="871" y="479" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Cấu hình thanh toán / rút thăm / voucher JPOS</text>
+</g>
+<g id="action-K2-5" data-level="4">
+<path d="M842 518 L857 518" fill="none" stroke="#5B76A0" stroke-width="2"/>
+<rect x="858" y="499" width="662" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="871" y="519" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Đồng bộ cấu hình theo phiên bản</text>
+</g>
+</g>
+<text x="64" y="694" font-family="Arial, sans-serif" font-size="16" font-weight="400" fill="#566982" text-anchor="start">Vai trò và phạm vi chi tiết: xem bảng trích xuất và bảng phân quyền đi kèm. Các thao tác chỉ hiện theo quyền và cơ sở được cấp.</text>
+</svg>

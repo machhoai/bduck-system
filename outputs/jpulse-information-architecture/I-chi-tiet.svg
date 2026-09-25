@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160" role="img" aria-label="JPULSE - Quản trị hệ thống">
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#8B9BB0"/></marker></defs>
+<rect x="0" y="0" width="1600" height="1160" rx="0" fill="#FAFBFE" stroke="none" stroke-width="1"/>
+<text x="64" y="66" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#15294B" text-anchor="start">I · Quản trị hệ thống</text>
+<text x="65" y="99" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#5A6A83" text-anchor="start">Chi tiết phân hệ I  •  Menu = tên từ hướng dẫn sử dụng; SRS = nhóm chức năng trong SRS</text>
+<path d="M64 119 L1536 119" fill="none" stroke="#DFE6EF" stroke-width="2"/>
+<rect x="64" y="147" width="1472" height="56" rx="12" fill="#546B8D" stroke="none" stroke-width="1"/>
+<text x="88" y="183" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#FFFFFF" text-anchor="start">JPULSE</text>
+<text x="1512" y="182" font-family="Arial, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF" text-anchor="end">4 màn hình / nhóm</text>
+<path d="M800.0 203 L800.0 230" fill="none" stroke="#9DABBE" stroke-width="2"/>
+<g id="screen-I1" data-level="3" data-source="Menu">
+<rect x="64" y="254" width="484" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="64" y="254" width="484" height="61" rx="11" fill="#546B8D" stroke="none" stroke-width="1"/>
+<text x="82" y="293" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">I1  Người dùng</text>
+<rect x="469" y="562" width="61" height="25" rx="7" fill="#E8EEF6" stroke="none" stroke-width="1"/>
+<text x="500" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#415472" text-anchor="middle">Menu</text>
+<path d="M88 316 L88 566" fill="none" stroke="#546B8D" stroke-width="2"/>
+<g id="action-I1-1" data-level="4">
+<path d="M88 358 L103 358" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="339" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="359" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Tạo / xem / cập nhật người dùng</text>
+</g>
+<g id="action-I1-2" data-level="4">
+<path d="M88 398 L103 398" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="379" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="399" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Gửi lời mời</text>
+</g>
+<g id="action-I1-3" data-level="4">
+<path d="M88 438 L103 438" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="419" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="439" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Cấu hình phạm vi cơ sở</text>
+</g>
+<g id="action-I1-4" data-level="4">
+<path d="M88 478 L103 478" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="459" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="479" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Xem quyền hiệu lực</text>
+</g>
+</g>
+<g id="screen-I2" data-level="3" data-source="Menu">
+<rect x="578" y="254" width="484" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="578" y="254" width="484" height="61" rx="11" fill="#546B8D" stroke="none" stroke-width="1"/>
+<text x="596" y="293" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">I2  Vai trò và quyền</text>
+<rect x="983" y="562" width="61" height="25" rx="7" fill="#E8EEF6" stroke="none" stroke-width="1"/>
+<text x="1014" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#415472" text-anchor="middle">Menu</text>
+<path d="M602 316 L602 566" fill="none" stroke="#546B8D" stroke-width="2"/>
+<g id="action-I2-1" data-level="4">
+<path d="M602 358 L617 358" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="618" y="339" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="631" y="359" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Tạo / sửa vai trò</text>
+</g>
+<g id="action-I2-2" data-level="4">
+<path d="M602 398 L617 398" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="618" y="379" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="631" y="399" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Gán quyền</text>
+</g>
+</g>
+<g id="screen-I3" data-level="3" data-source="Menu">
+<rect x="1092" y="254" width="484" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="1092" y="254" width="484" height="61" rx="11" fill="#546B8D" stroke="none" stroke-width="1"/>
+<text x="1110" y="293" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">I3  Audit log</text>
+<rect x="1497" y="562" width="61" height="25" rx="7" fill="#E8EEF6" stroke="none" stroke-width="1"/>
+<text x="1528" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#415472" text-anchor="middle">Menu</text>
+<path d="M1116 316 L1116 566" fill="none" stroke="#546B8D" stroke-width="2"/>
+<g id="action-I3-1" data-level="4">
+<path d="M1116 358 L1131 358" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="1132" y="339" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="1145" y="359" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Tra cứu / xem chi tiết</text>
+</g>
+<g id="action-I3-2" data-level="4">
+<path d="M1116 398 L1131 398" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="1132" y="379" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="1145" y="399" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Xuất audit log</text>
+</g>
+</g>
+<g id="screen-I4" data-level="3" data-source="SRS">
+<rect x="64" y="664" width="484" height="344" rx="12" fill="#FFFFFF" stroke="#D8E1EB" stroke-width="2"/>
+<rect x="64" y="664" width="484" height="61" rx="11" fill="#546B8D" stroke="none" stroke-width="1"/>
+<text x="82" y="703" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="start">I4  Cấu hình Open API</text>
+<rect x="469" y="972" width="61" height="25" rx="7" fill="#FFF2DF" stroke="none" stroke-width="1"/>
+<text x="500" y="990" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#8D5B21" text-anchor="middle">SRS</text>
+<path d="M88 726 L88 976" fill="none" stroke="#546B8D" stroke-width="2"/>
+<g id="action-I4-1" data-level="4">
+<path d="M88 768 L103 768" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="749" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="769" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Quản lý cấu hình</text>
+</g>
+<g id="action-I4-2" data-level="4">
+<path d="M88 808 L103 808" fill="none" stroke="#546B8D" stroke-width="2"/>
+<rect x="104" y="789" width="422" height="31" rx="7" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="117" y="809" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#17253E" text-anchor="start">Kiểm tra kết nối</text>
+</g>
+</g>
+<text x="64" y="1104" font-family="Arial, sans-serif" font-size="16" font-weight="400" fill="#566982" text-anchor="start">Vai trò và phạm vi chi tiết: xem bảng trích xuất và bảng phân quyền đi kèm. Các thao tác chỉ hiện theo quyền và cơ sở được cấp.</text>
+</svg>

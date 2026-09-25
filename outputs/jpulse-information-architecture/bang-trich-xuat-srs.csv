@@ -1,0 +1,217 @@
+﻿Mã yêu cầu SRS,Hệ thống,Phân hệ,Màn hình/nhóm,Chức năng,Vai trò,Nguồn/trang SRS,Vị trí/giải thích
+SRS-4.2.1-01,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Quản lý phiên người dùng,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.1-02,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Đăng nhập,Người dùng,"SRS §4.2.1, tr.74",Ô A1 trong sơ đồ chi tiết/luồng
+SRS-4.2.1-03,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Khôi phục phiên,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.1-04,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Đăng xuất,Người dùng,"SRS §4.2.1, tr.74",Ô A2 trong sơ đồ chi tiết/luồng
+SRS-4.2.1-05,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Phân giải tài khoản,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.1-06,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Xác thực thông tin đăng nhập,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.1-07,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Tải quyền và phạm vi cơ sở,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.1-08,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Xác minh MFA,Người dùng,"SRS §4.2.1, tr.74",Ô A1 trong sơ đồ chi tiết/luồng
+SRS-4.2.1-09,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Yêu cầu đặt lại mật khẩu,Người dùng,"SRS §4.2.1, tr.74",Ô A1 trong sơ đồ chi tiết/luồng
+SRS-4.2.1-10,JPULSE,A,Đăng nhập / Hồ sơ cá nhân,Gửi email khôi phục,Người dùng,"SRS §4.2.1, tr.74","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: A1"
+SRS-4.2.2-01,JPULSE,B,Trang chủ,Xem dashboard,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75",Ô B1 trong sơ đồ chi tiết/luồng
+SRS-4.2.2-02,JPULSE,B,Trang chủ,Xem dashboard tồn kho,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75",Ô B1 trong sơ đồ chi tiết/luồng
+SRS-4.2.2-03,JPULSE,B,Trang chủ,Xem dashboard chi phí,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75",Ô B1 trong sơ đồ chi tiết/luồng
+SRS-4.2.2-04,JPULSE,B,Trang chủ,Kiểm tra quyền và phạm vi cơ sở,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: B1"
+SRS-4.2.2-05,JPULSE,B,Trang chủ,"Tổng hợp tồn, ATP và cảnh báo",Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: B1"
+SRS-4.2.2-06,JPULSE,B,Trang chủ,"Tổng hợp ngân sách, thực chi và lợi nhuận",Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: B1"
+SRS-4.2.2-07,JPULSE,B,Trang chủ,Lọc theo cơ sở / kỳ,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75",Ô B1 trong sơ đồ chi tiết/luồng
+SRS-4.2.2-08,JPULSE,B,Trang chủ,Xem chi tiết chỉ số,Theo quyền và phạm vi cơ sở,"SRS §4.2.2, tr.75",Ô B1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-01,JPULSE,C,Kho hàng / Sản phẩm,Quản lý cấu trúc cơ sở,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-02,JPULSE,C,Kho hàng / Sản phẩm,Quản lý tổ chức,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C3 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-03,JPULSE,C,Kho hàng / Sản phẩm,Quản lý cơ sở,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-04,JPULSE,C,Kho hàng / Sản phẩm,Quản lý khu vực,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-05,JPULSE,C,Kho hàng / Sản phẩm,Quản lý ô kệ,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-06,JPULSE,C,Kho hàng / Sản phẩm,Gán sản phẩm vào ô kệ,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-07,JPULSE,C,Kho hàng / Sản phẩm,Xem chi tiết cơ sở,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C1 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-08,JPULSE,C,Kho hàng / Sản phẩm,Xem tồn kho theo vị trí,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75",Ô C2 trong sơ đồ chi tiết/luồng
+SRS-4.2.3-09,JPULSE,C,Kho hàng / Sản phẩm,Kiểm tra mã và quan hệ,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: C1"
+SRS-4.2.3-10,JPULSE,C,Kho hàng / Sản phẩm,Ghi nhật ký thay đổi,Quản trị / nhân viên kho theo quyền,"SRS §4.2.3, tr.75","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: C1"
+SRS-4.2.4-01,JPULSE,C,Kho hàng / Sản phẩm,Quản lý danh mục hàng hóa,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-02,JPULSE,C,Kho hàng / Sản phẩm,Quản lý sản phẩm,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-03,JPULSE,C,Kho hàng / Sản phẩm,Quản lý danh mục sản phẩm,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C5 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-04,JPULSE,C,Kho hàng / Sản phẩm,Cấu hình BOM,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-05,JPULSE,C,Kho hàng / Sản phẩm,Cấu hình chính sách tồn,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-06,JPULSE,C,Kho hàng / Sản phẩm,Xem đơn giá,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-07,JPULSE,C,Kho hàng / Sản phẩm,Tìm kiếm và lọc,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76",Ô C4 trong sơ đồ chi tiết/luồng
+SRS-4.2.4-08,JPULSE,C,Kho hàng / Sản phẩm,"Kiểm tra mã, quan hệ và dữ liệu",Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: C4"
+SRS-4.2.4-09,JPULSE,C,Kho hàng / Sản phẩm,Ghi nhật ký thay đổi,Quản trị / nhân viên kho theo quyền,"SRS §4.2.4, tr.76","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: C4"
+SRS-4.2.5-01,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo chứng từ tồn kho,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-02,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo phiếu nhập,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-03,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo phiếu xuất,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-04,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo lệnh điều chuyển,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-05,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tải cấu hình quy trình,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D1 / F01"
+SRS-4.2.5-06,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,"Kiểm tra quyền, sản phẩm, vị trí và ATP",Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D1 / F01"
+SRS-4.2.5-07,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Yêu cầu phê duyệt,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-08,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Ghi nhận thực nhập,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-09,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Ghi nhận soạn hàng,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-10,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Hoàn tất xuất hàng,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-11,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Nhận hàng điều chuyển,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.5-12,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Cập nhật tồn kho,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D1 / F01"
+SRS-4.2.5-13,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Theo dõi chứng từ và timeline,Người lập phiếu / nhân viên kho / người duyệt theo bước,"SRS §4.2.5, tr.77",Ô D1 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-01,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Ra quyết định duyệt,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D2 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-02,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Phê duyệt,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D2 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-03,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Từ chối,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D2 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-04,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Cấu hình quy trình,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D3 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-05,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xem việc cần xử lý,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D2 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-06,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xem timeline phê duyệt,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D2 / F01 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-07,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,"Kiểm tra quyền, cấp duyệt và OTP",Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D2 / F01"
+SRS-4.2.6-08,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Hủy / khởi động lại quy trình,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D3 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-09,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xử lý báo cáo không phù hợp,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D5 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-10,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Cập nhật cách ly và tồn kho,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78",Ô D5 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.6-11,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Ghi nhật ký,Người duyệt; người xử lý ngoại lệ theo quyền,"SRS §4.2.6, tr.78","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D2 / F01"
+SRS-4.2.7-01,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xử lý phiên kiểm kê,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-02,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo phiên kiểm kê,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-03,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Nhập kết quả kiểm đếm,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-04,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Gửi kết quả,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-05,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Hủy phiên,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-06,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Chụp số tồn làm mốc,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D4 / F02"
+SRS-4.2.7-07,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tính chênh lệch,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D4 / F02"
+SRS-4.2.7-08,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Đính kèm bằng chứng,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-09,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Kiểm đếm lại,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D4 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.7-10,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo báo cáo không phù hợp,Người kiểm kê; người xử lý ngoại lệ khác người ghi nhận,"SRS §4.2.7, tr.79",Ô D5 / F02 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-01,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tác nghiệp ngoài,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-02,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Kiểm kê đầu / cuối ca,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-03,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Quét sản phẩm,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-04,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Chốt batch,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-05,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xác thực API key và phạm vi,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D6"
+SRS-4.2.8-06,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Giữ số lượng khỏi ATP,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D6"
+SRS-4.2.8-07,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Xử lý batch,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D6"
+SRS-4.2.8-08,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Phê duyệt batch,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-09,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Từ chối batch,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-10,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Sửa số lượng / hủy lượt quét,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-11,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tạo báo cáo không phù hợp,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.8-12,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Tự động gửi / duyệt theo cấu hình,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: D6"
+SRS-4.2.8-13,JPULSE,D,Tạo lệnh / Việc cần xử lý / Kiểm kê,Cấu hình lịch và sản phẩm được quét,Người quét / người duyệt batch theo quyền,"SRS §4.2.8, tr.80",Ô D6 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-01,JPULSE,E,Chi phí / Doanh thu,Nhập liệu chi phí,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-02,JPULSE,E,Chi phí / Doanh thu,Cập nhật dòng cố định,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-03,JPULSE,E,Chi phí / Doanh thu,Quản lý dòng tự tạo,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-04,JPULSE,E,Chi phí / Doanh thu,Nhập từ Excel,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-05,JPULSE,E,Chi phí / Doanh thu,Kiểm tra kỳ còn mở và dữ liệu,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: E1 / F07"
+SRS-4.2.9-06,JPULSE,E,Chi phí / Doanh thu,Ghi nhật ký thay đổi,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: E1 / F07"
+SRS-4.2.9-07,JPULSE,E,Chi phí / Doanh thu,Quản lý kỳ kế toán,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-08,JPULSE,E,Chi phí / Doanh thu,Chốt kỳ,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-09,JPULSE,E,Chi phí / Doanh thu,Mở lại kỳ,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E1 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-10,JPULSE,E,Chi phí / Doanh thu,Xem báo cáo chi phí,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E2 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.9-11,JPULSE,E,Chi phí / Doanh thu,Lọc theo cơ sở và kỳ,Người nhập liệu; quản lý / kế toán; người chốt kỳ theo quyền,"SRS §4.2.9, tr.81",Ô E2 / F07 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-01,JPULSE,E,Chi phí / Doanh thu,Tạo báo cáo,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E4 / F04 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-02,JPULSE,E,Chi phí / Doanh thu,Xuất báo cáo doanh thu,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E4 / F04 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-03,JPULSE,E,Chi phí / Doanh thu,Xuất báo cáo theo mẫu,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E5 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-04,JPULSE,E,Chi phí / Doanh thu,Đồng bộ dữ liệu doanh thu,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: E4 / F04"
+SRS-4.2.10-05,JPULSE,E,Chi phí / Doanh thu,Xem dashboard doanh thu,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E3 / F04 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-06,JPULSE,E,Chi phí / Doanh thu,Tổng hợp KPI và biểu đồ,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: E3 / F04"
+SRS-4.2.10-07,JPULSE,E,Chi phí / Doanh thu,Xem chi tiết đơn hàng,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E3 / F04 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-08,JPULSE,E,Chi phí / Doanh thu,Quản lý mẫu báo cáo,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E5 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-09,JPULSE,E,Chi phí / Doanh thu,Cấu hình ánh xạ ô,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E5 trong sơ đồ chi tiết/luồng
+SRS-4.2.10-10,JPULSE,E,Chi phí / Doanh thu,Xem trước dữ liệu mẫu,Quản lý / kế toán; người quản lý mẫu theo quyền,"SRS §4.2.10, tr.82",Ô E5 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-01,JPULSE,F,Hóa đơn điện tử,Phát hành hóa đơn,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-02,JPULSE,F,Hóa đơn điện tử,Phát hành đơn lẻ,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-03,JPULSE,F,Hóa đơn điện tử,Phát hành hàng loạt,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-04,JPULSE,F,Hóa đơn điện tử,Cấu hình meInvoice theo cơ sở,Quản trị cấu hình,"SRS §4.2.11, tr.83",Ô F1 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-05,JPULSE,F,Hóa đơn điện tử,Đồng bộ đơn hàng nguồn,Kế toán,"SRS §4.2.11, tr.83",Ô F2 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-06,JPULSE,F,Hóa đơn điện tử,Chuẩn bị chứng từ hóa đơn,Kế toán,"SRS §4.2.11, tr.83","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: F3 / F03"
+SRS-4.2.11-07,JPULSE,F,Hóa đơn điện tử,Chỉnh sửa chứng từ,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-08,JPULSE,F,Hóa đơn điện tử,Xem trước và preflight,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-09,JPULSE,F,Hóa đơn điện tử,Gọi meInvoice và ghi sổ,Kế toán,"SRS §4.2.11, tr.83","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: F3 / F03"
+SRS-4.2.11-10,JPULSE,F,Hóa đơn điện tử,Thử phát hành lại,Kế toán,"SRS §4.2.11, tr.83",Ô F4 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-11,JPULSE,F,Hóa đơn điện tử,Xử lý case đối soát,Kế toán,"SRS §4.2.11, tr.83",Ô F5 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-12,JPULSE,F,Hóa đơn điện tử,"Xem / tải PDF, XML",Kế toán,"SRS §4.2.11, tr.83",Ô F4 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-13,JPULSE,F,Hóa đơn điện tử,Gửi thông tin xuất hóa đơn,Kế toán,"SRS §4.2.11, tr.83",Ô F3 / F03 trong sơ đồ chi tiết/luồng
+SRS-4.2.11-14,JPULSE,F,Hóa đơn điện tử,Kiểm tra token và chống gửi trùng,Kế toán,"SRS §4.2.11, tr.83","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: F3 / F03"
+SRS-4.2.12-01,JPULSE,G,Nhân sự,Quản lý hồ sơ nhân viên,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G1 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-02,JPULSE,G,Nhân sự,Xem hồ sơ / hợp đồng của tôi,Nhân viên (hồ sơ của tôi),"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-03,JPULSE,G,Nhân sự,Lên lịch chuyển trạng thái làm việc,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G1 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-04,JPULSE,G,Nhân sự,Quản lý hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-05,JPULSE,G,Nhân sự,Tạo hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-06,JPULSE,G,Nhân sự,Sửa hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-07,JPULSE,G,Nhân sự,Gia hạn hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-08,JPULSE,G,Nhân sự,Hủy / chấm dứt hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-09,JPULSE,G,Nhân sự,"Kiểm tra vòng đời, ngày và revision",HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: G1"
+SRS-4.2.12-10,JPULSE,G,Nhân sự,Tải và quản lý tệp hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-11,JPULSE,G,Nhân sự,Tải tệp trực tiếp lên storage,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-12,JPULSE,G,Nhân sự,Nhập lịch sử hợp đồng,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84",Ô G2 trong sơ đồ chi tiết/luồng
+SRS-4.2.12-13,JPULSE,G,Nhân sự,Ghi nhật ký,HR / quản trị nhân sự theo quyền,"SRS §4.2.12, tr.84","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: G1"
+SRS-4.2.13-01,JPULSE,G,Nhân sự,Thực hiện chấm công,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-02,JPULSE,G,Nhân sự,Chấm công tại cơ sở,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-03,JPULSE,G,Nhân sự,Chấm công theo thỏa thuận ngoài cơ sở,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-04,JPULSE,G,Nhân sự,Tải chính sách và trạng thái chấm công,Nhân viên,"SRS §4.2.13, tr.85","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: G3 / F05"
+SRS-4.2.13-05,JPULSE,G,Nhân sự,Xác minh IP / GPS / miễn trừ,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-06,JPULSE,G,Nhân sự,Gửi báo cáo đi muộn,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-07,JPULSE,G,Nhân sự,Cấu hình chấm công,HR / quản trị,"SRS §4.2.13, tr.85",Ô G4 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-08,JPULSE,G,Nhân sự,Cấu hình chính sách cơ sở,HR / quản trị,"SRS §4.2.13, tr.85",Ô G4 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-09,JPULSE,G,Nhân sự,Cấu hình miễn trừ,HR / quản trị,"SRS §4.2.13, tr.85",Ô G4 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-10,JPULSE,G,Nhân sự,Phê duyệt thỏa thuận làm việc,HR / quản trị,"SRS §4.2.13, tr.85",Ô G4 trong sơ đồ chi tiết/luồng
+SRS-4.2.13-11,JPULSE,G,Nhân sự,Xem / xuất dữ liệu chấm công,Nhân viên,"SRS §4.2.13, tr.85",Ô G3 / F05 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-01,JPULSE,G,Nhân sự,Quản lý đơn nghỉ,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-02,JPULSE,G,Nhân sự,Tạo / sửa đơn nháp,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-03,JPULSE,G,Nhân sự,Gửi đơn nghỉ,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-04,JPULSE,G,Nhân sự,Hủy đơn nghỉ,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-05,JPULSE,G,Nhân sự,Xem số dư và lịch sử phép,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-06,JPULSE,G,Nhân sự,Kiểm tra số dư và trùng lịch,Nhân viên,"SRS §4.2.14, tr.86","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: G5 / F06"
+SRS-4.2.14-07,JPULSE,G,Nhân sự,Ra quyết định duyệt,Người duyệt / quản trị phép,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-08,JPULSE,G,Nhân sự,Duyệt đơn,Người duyệt / quản trị phép,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-09,JPULSE,G,Nhân sự,Từ chối đơn,Nhân viên,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-10,JPULSE,G,Nhân sự,Chuyển người duyệt,Người duyệt / quản trị phép,"SRS §4.2.14, tr.86",Ô G5 / F06 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-11,JPULSE,G,Nhân sự,Quản trị phép,HR / quản trị phép,"SRS §4.2.14, tr.86",Ô G6 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-12,JPULSE,G,Nhân sự,Cấu hình chính sách và cấp duyệt,HR / quản trị phép,"SRS §4.2.14, tr.86",Ô G6 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-13,JPULSE,G,Nhân sự,Quản lý ngày lễ,HR / quản trị phép,"SRS §4.2.14, tr.86",Ô G6 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-14,JPULSE,G,Nhân sự,Điều chỉnh số dư,HR / quản trị phép,"SRS §4.2.14, tr.86",Ô G6 trong sơ đồ chi tiết/luồng
+SRS-4.2.14-15,JPULSE,G,Nhân sự,Nhập lịch sử nghỉ phép,HR / quản trị phép,"SRS §4.2.14, tr.86",Ô G6 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-01,JPULSE,H,Tài liệu / Thông báo,Quản lý tài liệu,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H2 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-02,JPULSE,H,Tài liệu / Thông báo,Quản lý tài liệu quy trình,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H2 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-03,JPULSE,H,Tài liệu / Thông báo,Quản lý biểu mẫu,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H2 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-04,JPULSE,H,Tài liệu / Thông báo,Quản lý bộ biểu mẫu,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H2 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-05,JPULSE,H,Tài liệu / Thông báo,Quản lý phiên bản tệp,Người được cấp quyền,"SRS §4.2.15, tr.87","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: H2"
+SRS-4.2.15-06,JPULSE,H,Tài liệu / Thông báo,Gửi thông báo,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H3 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-07,JPULSE,H,Tài liệu / Thông báo,Gửi thông báo trong ứng dụng,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H3 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-08,JPULSE,H,Tài liệu / Thông báo,Gửi email,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H3 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-09,JPULSE,H,Tài liệu / Thông báo,Đăng ký / gửi push,Người được cấp quyền,"SRS §4.2.15, tr.87","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: H4"
+SRS-4.2.15-10,JPULSE,H,Tài liệu / Thông báo,Phân giải người nhận và làm sạch nội dung,Người được cấp quyền,"SRS §4.2.15, tr.87","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: H3"
+SRS-4.2.15-11,JPULSE,H,Tài liệu / Thông báo,Xem lịch sử gửi,Người được cấp quyền,"SRS §4.2.15, tr.87",Ô H3 trong sơ đồ chi tiết/luồng
+SRS-4.2.15-12,JPULSE,H,Tài liệu / Thông báo,Ghi nhật ký thay đổi,Người được cấp quyền,"SRS §4.2.15, tr.87","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: H2"
+SRS-4.2.16-01,JPULSE,I,Quản trị hệ thống,Quản lý truy cập,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I1 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-02,JPULSE,I,Quản trị hệ thống,Quản lý người dùng,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I1 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-03,JPULSE,I,Quản trị hệ thống,Quản lý vai trò và quyền,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I2 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-04,JPULSE,I,Quản trị hệ thống,Cấu hình phạm vi cơ sở,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I1 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-05,JPULSE,I,Quản trị hệ thống,Kiểm tra trần phân quyền,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: I2"
+SRS-4.2.16-06,JPULSE,I,Quản trị hệ thống,Tính lại access snapshot,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: I1"
+SRS-4.2.16-07,JPULSE,I,Quản trị hệ thống,Gửi lời mời người dùng,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I1 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-08,JPULSE,I,Quản trị hệ thống,Xem quyền hiệu lực,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I1 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-09,JPULSE,I,Quản trị hệ thống,Cấu hình Open API,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I4 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-10,JPULSE,I,Quản trị hệ thống,Kiểm tra kết nối,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: I4"
+SRS-4.2.16-11,JPULSE,I,Quản trị hệ thống,Tra cứu audit log,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I3 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-12,JPULSE,I,Quản trị hệ thống,Xuất audit log,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88",Ô I3 trong sơ đồ chi tiết/luồng
+SRS-4.2.16-13,JPULSE,I,Quản trị hệ thống,Ghi audit cho thao tác quản trị,Quản trị hệ thống / kiểm toán viên theo quyền,"SRS §4.2.16, tr.88","Bước xử lý/kiểm soát tự động, không phải nút điều hướng; ngữ cảnh: I3"
+SRS-4.2.17-01,JPOS,JPOS,JPOS (ngoài IA JPULSE),Xử lý đơn POS,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-02,JPOS,JPOS,JPOS (ngoài IA JPULSE),Tạo giao dịch bán hàng,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-03,JPOS,JPOS,JPOS (ngoài IA JPULSE),Xem lịch sử / chi tiết đơn,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-04,JPOS,JPOS,JPOS (ngoài IA JPULSE),Hủy đơn local,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-05,JPOS,JPOS,JPOS (ngoài IA JPULSE),Hoàn tiền đơn đã đồng bộ,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-06,JPOS,JPOS,JPOS (ngoài IA JPULSE),Thử lại đồng bộ,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-07,JPOS,JPOS,JPOS (ngoài IA JPULSE),Đăng nhập JPOS,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-08,JPOS,JPOS,JPOS (ngoài IA JPULSE),"Xác minh tài khoản, thiết bị và quyền",Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-09,JPOS,JPOS,JPOS (ngoài IA JPULSE),Hoàn tất thanh toán,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-10,JPOS,JPOS,JPOS (ngoài IA JPULSE),Xác nhận chuyển khoản thủ công,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-11,JPOS,JPOS,JPOS (ngoài IA JPULSE),Áp dụng voucher,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-12,JPOS,JPOS,JPOS (ngoài IA JPULSE),In hóa đơn / vé,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-13,JPOS,JPOS,JPOS (ngoài IA JPULSE),Đồng bộ đơn với máy chủ / JoyWorld,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-14,JPOS,JPOS,JPOS (ngoài IA JPULSE),Kết ca,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.2.17-15,JPOS,JPOS,JPOS (ngoài IA JPULSE),Nạp bù tài khoản thành viên,Thu ngân / người có quyền JPOS,"SRS §4.2.17, tr.89",Ngoài IA JPULSE: vận hành JPOS; F04 chỉ nêu luồng dữ liệu sang JPULSE
+SRS-4.1.19-01,JPULSE,K,Thiết bị POS,Tạo mã ghi danh / kích hoạt,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-02,JPULSE,K,Thiết bị POS,Khóa / mở / chuyển cơ sở,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-03,JPULSE,K,Thiết bị POS,Xem nhật ký POS,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-04,JPULSE,K,Cấu hình POS,Cấu hình hóa đơn in / vé,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-05,JPULSE,K,Cấu hình POS,Cấu hình màn hình khách,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-06,JPULSE,K,Cấu hình POS,Cấu hình sản phẩm hiển thị,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-07,JPULSE,K,Cấu hình POS,Cấu hình thanh toán / rút thăm / voucher JPOS,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.19-08,JPULSE,K,Cấu hình POS,Đồng bộ cấu hình theo phiên bản,Quản trị viên POS / quản lý cơ sở,"SRS §4.1.19, tr.72",Chi tiết K
+SRS-4.1.20-01,JPULSE,J,Chiến dịch voucher,Tạo / theo dõi chiến dịch,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-02,JPULSE,J,Chiến dịch voucher,Sinh thêm mã,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-03,JPULSE,J,Chiến dịch voucher,Gia hạn / tạm dừng / kích hoạt / kết thúc,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-04,JPULSE,J,Mã voucher,Xem danh sách / trạng thái mã,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-05,JPULSE,J,Mã voucher,Thu hồi mã hợp lệ,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-06,JPULSE,J,Mã voucher,Thiết kế mẫu và hình ảnh,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-07,JPULSE,J,Phân phối voucher,Gửi voucher qua email,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-08,JPULSE,J,Phân phối voucher,Xuất voucher Excel,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-09,JPULSE,J,Tác vụ nền,Theo dõi tiến độ / lỗi,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J
+SRS-4.1.20-10,JPULSE,J,Tác vụ nền,Tiếp tục tác vụ lỗi,Quản trị marketing,"SRS §4.1.20, tr.73; §3.1.8, tr.37–39",Chi tiết J

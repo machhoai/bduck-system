@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="870" viewBox="0 0 1600 870" role="img" aria-label="Luồng Nhập, xuất và điều chuyển">
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#8B9BB0"/></marker></defs>
+<rect x="0" y="0" width="1600" height="870" rx="0" fill="#FAFBFE" stroke="none" stroke-width="1"/>
+<text x="64" y="66" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#15294B" text-anchor="start">Luồng 01 · Nhập, xuất và điều chuyển</text>
+<text x="65" y="99" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#5A6A83" text-anchor="start">Liên kết IA: phân hệ D  •  Mũi tên = bước kế tiếp  •  Số thứ tự theo SRS</text>
+<path d="M64 119 L1536 119" fill="none" stroke="#DFE6EF" stroke-width="2"/>
+<rect x="64" y="146" width="1472" height="50" rx="11" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="85" y="179" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#FFFFFF" text-anchor="start">JPULSE · D</text>
+<g id="flow-01-step-1" data-level="step">
+<rect x="64" y="250" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="64" y="250" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="92" y="279" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="84" y="327" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Chọn loại chứng từ và cơ sở</text>
+<path d="M408 327 L428 327" fill="none" stroke="#8B9BB0" stroke-width="2" marker-end="url(#arrow)"/>
+</g>
+<g id="flow-01-step-2" data-level="step">
+<rect x="432" y="250" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="432" y="250" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="460" y="279" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="452" y="327" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Nhập sản phẩm, vị trí, số</text>
+<text x="452" y="355" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">lượng, chứng từ</text>
+<path d="M776 327 L796 327" fill="none" stroke="#8B9BB0" stroke-width="2" marker-end="url(#arrow)"/>
+</g>
+<g id="flow-01-step-3" data-level="step">
+<rect x="800" y="250" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="800" y="250" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="828" y="279" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="820" y="327" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Kiểm tra quyền, dữ liệu và</text>
+<text x="820" y="355" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">ATP</text>
+<path d="M1144 327 L1164 327" fill="none" stroke="#8B9BB0" stroke-width="2" marker-end="url(#arrow)"/>
+</g>
+<g id="flow-01-step-4" data-level="step">
+<rect x="1168" y="250" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="1168" y="250" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="1196" y="279" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="1188" y="327" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Duyệt hoặc từ chối theo cấu</text>
+<text x="1188" y="355" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">hình</text>
+<path d="M1338.0 407 L1338.0 482" fill="none" stroke="#8B9BB0" stroke-width="2" marker-end="url(#arrow)"/>
+</g>
+<g id="flow-01-step-5" data-level="step">
+<rect x="1168" y="486" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="1168" y="486" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="1196" y="515" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="1188" y="563" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Nhập thực tế / soạn và xuất /</text>
+<text x="1188" y="591" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">nhận điều chuyển</text>
+<path d="M1164 563 L1144 563" fill="none" stroke="#8B9BB0" stroke-width="2" marker-end="url(#arrow)"/>
+</g>
+<g id="flow-01-step-6" data-level="step">
+<rect x="800" y="486" width="340" height="156" rx="12" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2"/>
+<rect x="800" y="486" width="56" height="42" rx="10" fill="#1684A2" stroke="none" stroke-width="1"/>
+<text x="828" y="515" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="820" y="563" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">Cập nhật tồn, trạng thái và</text>
+<text x="820" y="591" font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#20344F" text-anchor="start">timeline</text>
+</g>
+<rect x="64" y="745" width="1472" height="73" rx="10" fill="#EEF3F9" stroke="none" stroke-width="1"/>
+<text x="86" y="772" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#273E60" text-anchor="start">Điều kiện / ngoại lệ</text>
+<text x="86" y="797" font-family="Arial, sans-serif" font-size="15" font-weight="400" fill="#4B5D78" text-anchor="start">Tách nhánh vận hành theo loại phiếu; chứng từ bị từ chối không được vận hành. SRS §3.1.1, tr.29–30.</text>
+</svg>

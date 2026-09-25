@@ -1,0 +1,12 @@
+Mã phân hệ,Phân hệ,Vai trò/trách nhiệm được SRS nêu,Giới hạn,Tham chiếu
+A,Truy cập và cá nhân,Người dùng đăng nhập; quản trị cấu hình tài khoản,Theo RBAC và phạm vi cơ sở,SRS §3.2; §4.2.1
+B,Trang chủ,Người dùng có quyền xem dashboard,Theo quyền và phạm vi cơ sở,SRS §4.2.2
+C,Kho hàng và sản phẩm,Nhân viên kho; quản lý cơ sở; quản trị dữ liệu,Theo quyền và phạm vi cơ sở,SRS §3.2; §4.2.3–4
+D,Chứng từ và kiểm kê,Người lập phiếu; nhân viên kho; người kiểm kê; người duyệt; người xử lý ngoại lệ,Người ghi nhận ngoại lệ không tự xử lý; xử lý yêu cầu quyền và OTP,SRS §3.2; §3.3 BR-CNT-003–004
+E,Chi phí và doanh thu,Người nhập liệu; kế toán; quản lý; người chốt/mở kỳ theo quyền,LOCAL_POS chỉ trong phạm vi revenue.read; kỳ CLOSED chỉ người có quyền mở lại,SRS §3.2; §3.3 BR-REV-001 BR-EXP-001–002
+F,Hóa đơn điện tử,Kế toán; quản trị cấu hình meInvoice,Phát hành theo phiên và cơ sở được phép; lỗi không chắc chắn phải đối soát,SRS §3.1.3; §3.2
+G,Nhân sự,Nhân viên; HR; người duyệt; quản trị phép,Đơn nghỉ theo cấp duyệt và feature flag,SRS §3.1.5–6; §3.2
+H,Tài liệu và thông báo,Người được cấp quyền tài liệu/thông báo,Theo RBAC và phạm vi cơ sở,SRS §4.2.15
+I,Quản trị hệ thống,Quản trị hệ thống; kiểm toán viên,Không cấp quyền vượt trần của chính mình,SRS §3.2; §4.2.16
+J,Voucher marketing,Quản trị marketing,Feature flag; chiến dịch PAUSED hạn chế thao tác; mã USED không thu hồi,SRS §3.1.8; §3.3 BR-VOU-001–004
+K,Quản trị POS,Quản trị viên POS; quản lý cơ sở,Theo quyền và cơ sở; vận hành bán hàng ở JPOS,SRS §4.1.19 tr.72
